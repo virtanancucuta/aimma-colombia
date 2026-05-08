@@ -308,6 +308,17 @@
     try {
       const result = await window.AIMMA.enviarDiagnostico(data);
       if (result.success) {
+        // Replica el lead a Google Sheets via Apps Script (no bloquea UX si falla)
+        await enviarAGoogleSheets({
+          empresa:    data.empresa,
+          telefono:   data.telefono,
+          correo:     data.correo,
+          web:        data.web || '',
+          ciudad:     data.ciudad,
+          instagram:  data.instagram || '',
+          dedicacion: data.actividad,
+          procesos:   data.procesos
+        });
         showSuccess(data);
       } else {
         const errMsg = (result.error && result.error.message) || 'Error desconocido';
@@ -322,6 +333,20 @@
       btnSubmit.textContent = 'Enviar Diagnóstico';
     }
   });
+
+  async function enviarAGoogleSheets(datos) {
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyoQcHG2GBadgcbdEtPCfM4Gt-757ZUB0v0sQNnSYFr43plNkYU3nuGSPSSeHSOw93oOA/exec';
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos)
+      });
+    } catch (err) {
+      console.warn('Google Sheets no disponible:', err);
+    }
+  }
 
   function showSuccess(data) {
     form.hidden = true;
