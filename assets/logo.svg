@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Hexagono exterior -->
+  <polygon points="50,6 88,28 88,72 50,94 12,72 12,28" stroke="#00d4f5" stroke-width="2" fill="none" stroke-linejoin="round"/>
+  <!-- Hexagono interior sutil -->
+  <polygon points="50,18 76,33 76,67 50,82 24,67 24,33" stroke="#00d4f5" stroke-width="0.6" fill="none" stroke-linejoin="round" opacity="0.35"/>
+  <!-- Compas A central -->
+  <line x1="50" y1="32" x2="36" y2="72" stroke="#00d4f5" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="50" y1="32" x2="64" y2="72" stroke="#00d4f5" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Punto blanco arriba -->
+  <circle cx="50" cy="30" r="2.6" fill="#ffffff"/>
+</svg>

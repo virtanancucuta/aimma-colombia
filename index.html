@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+
+  <title>AIMMA Colombia · Inteligencia Artificial + Finanzas + Tecnología</title>
+  <meta name="description" content="Consultoría con IA en Cúcuta, Colombia. Presupuestos comerciales, marketing financiero, compras eficientes y desarrollo a medida. Diagnóstico gratuito." />
+  <meta name="keywords" content="inteligencia artificial Colombia, IA Cúcuta, agentes IA, scraping IA, presupuesto ventas IA, marketing financiero, automatización empresas, consultoria IA" />
+  <meta name="author" content="AIMMA Colombia" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="AIMMA Colombia · IA para tu Negocio" />
+  <meta property="og:description" content="Consultoría con IA. Vende más, gasta mejor, opera inteligente." />
+  <meta property="og:image" content="https://www.aimma.colombia.com/assets/logo.png" />
+  <meta property="og:url" content="https://www.aimma.colombia.com" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_CO" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AIMMA Colombia · IA para tu Negocio" />
+  <meta name="twitter:description" content="Consultoría con IA en Cúcuta, Colombia. Diagnóstico gratuito." />
+  <meta name="twitter:image" content="https://www.aimma.colombia.com/assets/logo.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo.png" />
+
+  <!-- Preconnect / Preload de fuentes criticas -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Schema.org JSON-LD para LocalBusiness -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "AIMMA Colombia",
+    "image": "https://www.aimma.colombia.com/assets/logo.png",
+    "url": "https://www.aimma.colombia.com",
+    "telephone": "+573172615415",
+    "email": "aimma.colombia@gmail.com",
+    "description": "Consultoría con Inteligencia Artificial. Presupuestos comerciales, marketing financiero, compras eficientes y desarrollo a medida.",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Cúcuta",
+      "addressRegion": "Norte de Santander",
+      "addressCountry": "CO"
+    },
+    "areaServed": "CO",
+    "priceRange": "$$",
+    "sameAs": [
+      "https://instagram.com/aimma.colombia"
+    ]
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Halos cian de fondo -->
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <!-- ============ HEADER / NAV ============ -->
+  <header class="site-header" id="siteHeader">
+    <div class="header-inner">
+      <a href="#home" class="brand" data-tab="home" aria-label="AIMMA Colombia - Inicio">
+        <img src="assets/logo.svg" alt="" class="brand-logo" width="40" height="40" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-suffix">.COLOMBIA</span>
+        </span>
+      </a>
+
+      <nav class="main-nav" aria-label="Navegación principal">
+        <ul class="nav-list" role="tablist">
+          <li><a href="#home" class="nav-link active" data-tab="home" role="tab">Home</a></li>
+          <li><a href="#inteligencia-comercial" class="nav-link" data-tab="inteligencia-comercial" role="tab">Inteligencia Comercial</a></li>
+          <li><a href="#marketing-financiero" class="nav-link" data-tab="marketing-financiero" role="tab">Marketing Financiero</a></li>
+          <li><a href="#compras-logistica" class="nav-link" data-tab="compras-logistica" role="tab">Compras &amp; Logística</a></li>
+          <li><a href="#tecnologia-ia" class="nav-link" data-tab="tecnologia-ia" role="tab">Tecnología IA</a></li>
+        </ul>
+      </nav>
+
+      <a href="#home" class="cta-btn cta-btn--header" data-scroll="formulario" aria-label="Agenda diagnóstico gratuito">
+        Diagnóstico Gratuito
+      </a>
+
+      <button class="hamburger" id="hamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobileDrawer">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Drawer mobile -->
+  <aside class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
+    <button class="drawer-close" id="drawerClose" aria-label="Cerrar menú">&times;</button>
+    <nav class="drawer-nav">
+      <a href="#home" class="drawer-link" data-tab="home">Home</a>
+      <a href="#inteligencia-comercial" class="drawer-link" data-tab="inteligencia-comercial">Inteligencia Comercial</a>
+      <a href="#marketing-financiero" class="drawer-link" data-tab="marketing-financiero">Marketing Financiero</a>
+      <a href="#compras-logistica" class="drawer-link" data-tab="compras-logistica">Compras &amp; Logística</a>
+      <a href="#tecnologia-ia" class="drawer-link" data-tab="tecnologia-ia">Tecnología IA</a>
+      <a href="#home" class="cta-btn cta-btn--block" data-scroll="formulario">Diagnóstico Gratuito</a>
+    </nav>
+  </aside>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+  <!-- ============ MAIN ============ -->
+  <main id="main">
+
+    <!-- ===== HOME ===== -->
+    <section id="home" class="tab-section active" role="tabpanel">
+
+      <!-- Hero -->
+      <div class="hero">
+        <canvas id="heroParticles" class="hero-canvas" aria-hidden="true"></canvas>
+        <div class="hero-content">
+          <h1 class="hero-title">
+            <span class="line">Inteligencia Artificial</span>
+            <span class="line accent">que entiende de números.</span>
+          </h1>
+          <p class="hero-subtitle">
+            Consultoría con IA para empresas que quieren vender más, gastar mejor y operar inteligente. Cúcuta · Colombia.
+          </p>
+          <div class="hero-ctas">
+            <a href="#formulario" class="cta-btn cta-btn--lg" data-scroll="formulario">
+              Agenda tu Diagnóstico Gratuito
+            </a>
+            <a href="#inteligencia-comercial" class="cta-btn cta-btn--outline" data-tab="inteligencia-comercial">
+              Ver servicios
+            </a>
+          </div>
+        </div>
+        <a href="#servicios-grid" class="scroll-indicator" data-scroll="servicios-grid" aria-label="Desplazar a servicios">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Banda servicios -->
+      <div class="services-band container" id="servicios-grid">
+        <p class="eyebrow">— ÁREAS DE SERVICIO</p>
+        <h2 class="section-title">Donde la IA mueve tu negocio</h2>
+        <div class="services-grid">
+          <button class="service-card" data-tab="inteligencia-comercial" aria-label="Ir a Inteligencia Comercial">
+            <span class="hex-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40"><polygon points="20,3 35,12 35,28 20,37 5,28 5,12" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 26 L17 19 L22 23 L29 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <h3>Inteligencia Comercial</h3>
+            <p>Presupuestos de venta y seguimiento comercial con IA.</p>
+            <span class="card-link">Saber más →</span>
+          </button>
+
+          <button class="service-card" data-tab="marketing-financiero" aria-label="Ir a Marketing Financiero">
+            <span class="hex-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40"><polygon points="20,3 35,12 35,28 20,37 5,28 5,12" fill="none" stroke="currentColor" stroke-width="1.6"/><text x="20" y="26" text-anchor="middle" font-family="Exo 2" font-weight="800" font-size="16" fill="currentColor">$</text></svg>
+            </span>
+            <h3>Marketing Financiero</h3>
+            <p>Pauta eficiente y auditoría de campañas con ROI medible.</p>
+            <span class="card-link">Saber más →</span>
+          </button>
+
+          <button class="service-card" data-tab="compras-logistica" aria-label="Ir a Compras y Logística">
+            <span class="hex-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40"><polygon points="20,3 35,12 35,28 20,37 5,28 5,12" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="13" y="15" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="13" y1="20" x2="27" y2="20" stroke="currentColor" stroke-width="1.5"/></svg>
+            </span>
+            <h3>Compras &amp; Logística</h3>
+            <p>Compras inteligentes y análisis de inventario en tiempo real.</p>
+            <span class="card-link">Saber más →</span>
+          </button>
+
+          <button class="service-card" data-tab="tecnologia-ia" aria-label="Ir a Tecnología IA">
+            <span class="hex-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40"><polygon points="20,3 35,12 35,28 20,37 5,28 5,12" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="20" cy="20" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="20" cy="20" r="7" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6"/></svg>
+            </span>
+            <h3>Tecnología IA</h3>
+            <p>Scraping, páginas, apps y agentes IA con voz a tu medida.</p>
+            <span class="card-link">Saber más →</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Diagnostico Gratuito -->
+      <div class="diagnostico container" id="formulario">
+        <div class="diagnostico-header">
+          <span class="badge-free">100% GRATIS</span>
+          <h2 class="section-title">Obtén tu Diagnóstico</h2>
+          <p class="section-subtitle">Cuéntanos sobre tu empresa. En menos de 24h te contactamos con un análisis preliminar de oportunidades de IA.</p>
+        </div>
+
+        <form id="diagForm" class="wizard" novalidate>
+          <!-- Progreso -->
+          <div class="wizard-progress" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-steps">
+              <span class="step-dot active" data-step="1">1</span>
+              <span class="step-label">Empresa</span>
+              <span class="step-dot" data-step="2">2</span>
+              <span class="step-label">Contacto</span>
+              <span class="step-dot" data-step="3">3</span>
+              <span class="step-label">Negocio</span>
+            </div>
+          </div>
+
+          <!-- Paso 1 -->
+          <fieldset class="wizard-step active" data-step="1">
+            <legend class="step-title">Tu Empresa</legend>
+            <label class="field">
+              <span>Nombre de la empresa <em>*</em></span>
+              <input type="text" name="empresa" required maxlength="120" autocomplete="organization" />
+              <small class="field-error" data-error="empresa"></small>
+            </label>
+            <label class="field">
+              <span>Página web</span>
+              <input type="url" name="web" placeholder="https://" maxlength="200" autocomplete="url" />
+            </label>
+            <label class="field">
+              <span>Ciudad sede <em>*</em></span>
+              <input type="text" name="ciudad" required maxlength="80" autocomplete="address-level2" />
+              <small class="field-error" data-error="ciudad"></small>
+            </label>
+            <label class="field">
+              <span>Instagram</span>
+              <input type="text" name="instagram" placeholder="@tuempresa" maxlength="60" />
+            </label>
+          </fieldset>
+
+          <!-- Paso 2 -->
+          <fieldset class="wizard-step" data-step="2">
+            <legend class="step-title">Contacto</legend>
+            <label class="field">
+              <span>Tu nombre <em>*</em></span>
+              <input type="text" name="nombre" required maxlength="100" autocomplete="name" />
+              <small class="field-error" data-error="nombre"></small>
+            </label>
+            <label class="field">
+              <span>Teléfono <em>*</em></span>
+              <input type="tel" name="telefono" required maxlength="20" autocomplete="tel" placeholder="+57 300 000 0000" />
+              <small class="field-error" data-error="telefono"></small>
+            </label>
+            <label class="field">
+              <span>Correo electrónico <em>*</em></span>
+              <input type="email" name="correo" required maxlength="120" autocomplete="email" />
+              <small class="field-error" data-error="correo"></small>
+            </label>
+          </fieldset>
+
+          <!-- Paso 3 -->
+          <fieldset class="wizard-step" data-step="3">
+            <legend class="step-title">Tu Negocio</legend>
+            <label class="field">
+              <span>¿A qué se dedica tu empresa? <em>*</em></span>
+              <textarea name="actividad" required rows="3" maxlength="500"></textarea>
+              <small class="field-error" data-error="actividad"></small>
+            </label>
+            <label class="field">
+              <span>¿Qué procesos te gustaría automatizar con IA? <em>*</em></span>
+              <textarea name="procesos" required rows="4" maxlength="800" placeholder="Ej: ventas, atención al cliente vía WhatsApp, inventarios, presupuestos, agendamiento de citas..."></textarea>
+              <small class="field-error" data-error="procesos"></small>
+            </label>
+          </fieldset>
+
+          <!-- Acciones -->
+          <div class="wizard-actions">
+            <button type="button" class="cta-btn cta-btn--ghost" id="btnPrev" disabled>← Anterior</button>
+            <button type="button" class="cta-btn" id="btnNext">Siguiente →</button>
+            <button type="submit" class="cta-btn cta-btn--lg" id="btnSubmit" hidden>Enviar Diagnóstico</button>
+          </div>
+
+          <p class="wizard-footnote">Al enviar aceptas que te contactemos por WhatsApp, correo o teléfono. No spam.</p>
+        </form>
+
+        <!-- Pantalla exito -->
+        <div class="success-screen" id="successScreen" hidden>
+          <div class="success-check" aria-hidden="true">
+            <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="36" fill="none" stroke="currentColor" stroke-width="2"/><path d="M24 40 L36 52 L57 30" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>¡Listo! Te contactaremos en menos de 24h.</h3>
+          <p id="successMessage">Recibimos tu solicitud. Un consultor revisará tu información y te enviará el diagnóstico inicial.</p>
+          <a href="#" class="cta-btn cta-btn--lg" id="successWhatsApp" target="_blank" rel="noopener">Continuar en WhatsApp</a>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===== INTELIGENCIA COMERCIAL ===== -->
+    <section id="inteligencia-comercial" class="tab-section" role="tabpanel" hidden>
+      <div class="container">
+        <header class="section-header">
+          <p class="eyebrow">— SERVICIOS / INTELIGENCIA COMERCIAL</p>
+          <h2 class="section-title">Vende más. Con datos. Con IA.</h2>
+          <p class="section-subtitle">Convertimos tu histórico en pronóstico, y tu pronóstico en metas que se cumplen.</p>
+        </header>
+
+        <!-- 2.1 Presupuesto de Ventas -->
+        <div class="split">
+          <div class="split-text">
+            <h3>Presupuesto de Ventas con IA</h3>
+            <p>Construimos presupuestos comerciales basados en histórico, estacionalidad y comportamiento real de tu mercado. Y los ajustamos automáticamente cuando algo cambia.</p>
+            <ul class="check-list">
+              <li>Proyección por canal, equipo y periodo</li>
+              <li>Metas inteligentes basadas en histórico</li>
+              <li>Ajustes automáticos por estacionalidad</li>
+            </ul>
+            <a href="#home" class="cta-btn" data-scroll="formulario">Agenda diagnóstico</a>
+          </div>
+          <div class="split-visual">
+            <div class="dash-frame" id="chartLineFrame">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · DASHBOARD COMERCIAL</span>
+              </div>
+              <div class="dash-frame-body">
+                <canvas id="chartVentasRent" width="600" height="320"></canvas>
+                <div class="kpi-grid" id="kpiGrid" hidden>
+                  <div class="kpi-card">
+                    <div class="kpi-ring" data-pct="112"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,0.08)" stroke-width="8" fill="none"/><circle class="kpi-ring-fg" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" fill="none" stroke-dasharray="263.89" stroke-dashoffset="263.89" stroke-linecap="round" transform="rotate(-90 50 50)"/></svg><span class="kpi-ring-label">112%</span></div>
+                    <p>Cumplimiento Presupuesto</p>
+                  </div>
+                  <div class="kpi-card">
+                    <div class="kpi-number" data-target="18" data-prefix="+" data-suffix="%">+0%</div>
+                    <p>Rentabilidad</p>
+                  </div>
+                  <div class="kpi-card">
+                    <div class="kpi-donut" data-pct="24"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" stroke="rgba(255,255,255,0.08)" stroke-width="14" fill="none"/><circle class="kpi-donut-fg" cx="50" cy="50" r="38" stroke="currentColor" stroke-width="14" fill="none" stroke-dasharray="238.76" stroke-dashoffset="238.76" stroke-linecap="round" transform="rotate(-90 50 50)"/></svg><span class="kpi-ring-label">24%</span></div>
+                    <p>Participación de Mercado</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.2 Seguimiento Comercial -->
+        <div class="split split-reverse">
+          <div class="split-visual">
+            <div class="dash-frame">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · SEGUIMIENTO COMERCIAL</span>
+              </div>
+              <div class="dash-frame-body sellers" id="sellersBoard">
+                <div class="seller" data-pct="95">
+                  <div class="seller-avatar" style="--c:#00d4f5">CR</div>
+                  <div class="seller-info">
+                    <div class="seller-row"><span>Carolina Ramírez</span><strong>95%</strong></div>
+                    <div class="seller-bar"><div class="seller-bar-fill" style="--c:#00d4f5"></div></div>
+                    <small class="seller-status ok">✓ Cumplimiento alto</small>
+                  </div>
+                </div>
+                <div class="seller" data-pct="67">
+                  <div class="seller-avatar" style="--c:#00b4d8">JM</div>
+                  <div class="seller-info">
+                    <div class="seller-row"><span>Juan Martínez</span><strong>67%</strong></div>
+                    <div class="seller-bar"><div class="seller-bar-fill" style="--c:#00b4d8"></div></div>
+                    <small class="seller-status warn">⚠ Necesita seguimiento</small>
+                  </div>
+                </div>
+                <div class="seller" data-pct="42">
+                  <div class="seller-avatar" style="--c:#0096b7">LP</div>
+                  <div class="seller-info">
+                    <div class="seller-row"><span>Laura Peña</span><strong>42%</strong></div>
+                    <div class="seller-bar"><div class="seller-bar-fill" style="--c:#0096b7"></div></div>
+                    <small class="seller-status low">✗ Riesgo de no cumplir</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="split-text">
+            <h3>Seguimiento Comercial con IA</h3>
+            <p>Monitorea a tu equipo en tiempo real. Detecta a quien necesita ayuda antes de que cierre el mes.</p>
+            <ul class="check-list">
+              <li>Monitoreo en tiempo real</li>
+              <li>Alertas automáticas por bajo desempeño</li>
+              <li>Reportes automatizados al cierre del día</li>
+              <li>Predicción de cierre mensual</li>
+            </ul>
+            <a href="#home" class="cta-btn" data-scroll="formulario">Agenda diagnóstico</a>
+          </div>
+        </div>
+
+        <!-- 2.3 AIMMA THINKING - Remarketing Insight -->
+        <div class="thinking-block" id="thinkingBlock">
+          <div class="thinking-header">
+            <p class="eyebrow center">— ANÁLISIS PREDICTIVO</p>
+            <h3>Tu IA detecta antes que tú lo veas</h3>
+            <p>Cruza datos del CRM, identifica fugas y genera planes de remarketing automáticos.</p>
+          </div>
+          <div class="thinking-stage">
+            <div class="thinking-terminal" id="thinkingTerminal">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · INTELIGENCIA COMERCIAL · MOTOR DE ANÁLISIS</span>
+              </div>
+              <div class="thinking-body">
+                <div class="thinking-status">
+                  <span class="thinking-orb-mini" aria-hidden="true"></span>
+                  <span class="thinking-status-text" id="thinkingStatus">AIMMA THINKING<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                </div>
+                <div class="thinking-output" id="thinkingOutput"></div>
+                <div class="thinking-file" id="thinkingFile" hidden>
+                  <div class="thinking-file-icon">PDF</div>
+                  <div class="thinking-file-info">
+                    <strong>REMARKETING_2026.pdf</strong>
+                    <small>Plan accionable + 248 contactos · 1.8 MB</small>
+                  </div>
+                  <div class="thinking-file-status">
+                    <span class="thinking-file-bar"><span class="thinking-file-bar-fill"></span></span>
+                    <small id="thinkingFileLabel">Generando informe...</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== MARKETING FINANCIERO ===== -->
+    <section id="marketing-financiero" class="tab-section" role="tabpanel" hidden>
+      <div class="container">
+        <header class="section-header">
+          <p class="eyebrow">— SERVICIOS / MARKETING FINANCIERO</p>
+          <h2 class="section-title">Pauta que se paga sola.</h2>
+          <p class="section-subtitle">Cada peso invertido en pauta debe tener un ROI proyectado. Lo demás es gasto, no inversión.</p>
+        </header>
+
+        <!-- 3.1 Ecuacion -->
+        <div class="equation-block" id="equationBlock">
+          <div class="equation" id="equation">
+            <span class="eq-term" data-i="0">PRESUPUESTO DE VENTAS</span>
+            <span class="eq-eq" data-i="1">=</span>
+            <span class="eq-term" data-i="2">RENTABILIDAD ESPERADA</span>
+            <span class="eq-eq" data-i="3">=</span>
+            <span class="eq-term highlight" data-i="4">UTILIDAD</span>
+          </div>
+        </div>
+
+        <!-- Terminal -->
+        <div class="terminal" id="terminal">
+          <div class="terminal-header">
+            <span class="dot dot-r"></span>
+            <span class="dot dot-y"></span>
+            <span class="dot dot-g"></span>
+            <span class="terminal-title">aimma_pauta@cli</span>
+          </div>
+          <pre class="terminal-body" id="terminalBody"><span class="t-prompt">aimma@analisis ~ $</span> <span class="t-cursor"></span></pre>
+        </div>
+
+        <div class="terminal-cta">
+          <a href="#home" class="cta-btn cta-btn--lg" data-scroll="formulario">Auditemos tu pauta gratis →</a>
+        </div>
+
+        <!-- 3.2 Auditoria ROAS -->
+        <div class="split">
+          <div class="kpi-vertical">
+            <h3>Auditoría con ROI medible</h3>
+            <div class="kpi-vert-card">
+              <span class="kpi-vert-num" data-target="4.8" data-suffix="x" data-decimals="1">0x</span>
+              <span class="kpi-vert-label">ROAS</span>
+            </div>
+            <div class="kpi-vert-card">
+              <span class="kpi-vert-num" data-target="38" data-prefix="↓ " data-suffix="%">↓ 0%</span>
+              <span class="kpi-vert-label">Costo por Lead</span>
+            </div>
+            <div class="kpi-vert-card">
+              <span class="kpi-vert-num" data-target="62" data-prefix="+" data-suffix="%">+0%</span>
+              <span class="kpi-vert-label">Conversión</span>
+            </div>
+          </div>
+          <div class="split-visual">
+            <div class="dash-frame">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · CAMPAÑAS · ANTES vs DESPUÉS</span>
+              </div>
+              <div class="dash-frame-body">
+                <canvas id="chartBarsAds" width="600" height="320"></canvas>
+                <div class="ads-platforms">
+                  <span>Meta</span><span>Google Ads</span><span>TikTok</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== COMPRAS & LOGÍSTICA ===== -->
+    <section id="compras-logistica" class="tab-section" role="tabpanel" hidden>
+      <div class="container">
+        <header class="section-header">
+          <p class="eyebrow">— SERVICIOS / COMPRAS &amp; LOGÍSTICA</p>
+          <h2 class="section-title">Compras inteligentes. Operación impecable.</h2>
+          <p class="section-subtitle">Cuida tu patrimonio negociando con datos, no con intuición.</p>
+        </header>
+
+        <!-- 4.1 Compras Eficientes -->
+        <div class="split">
+          <div class="split-visual">
+            <div class="dash-frame scan-frame">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · COMPRAS</span>
+              </div>
+              <div class="dash-frame-body">
+                <div class="metric-row" id="metricInventario">
+                  <span class="metric-label">INVENTARIO</span>
+                  <span class="metric-value" data-target="847500000" data-prefix="$ " data-thousands="true">$ 0</span>
+                </div>
+                <div class="metric-row" id="metricCosto">
+                  <span class="metric-label">COSTO</span>
+                  <span class="metric-value desc" data-target="12.4" data-prefix="↓ " data-suffix="%" data-decimals="1">↓ 0%</span>
+                </div>
+                <div class="metric-row" id="metricRotacion">
+                  <span class="metric-label">ÍNDICE DE ROTACIÓN</span>
+                  <span class="metric-value" data-target="2.1" data-decimals="1">0.0</span>
+                </div>
+
+                <!-- AIMMALOGISTIC writing... -->
+                <div class="logistic-block" id="logisticBlock">
+                  <div class="logistic-status">
+                    <span class="thinking-orb-mini" aria-hidden="true"></span>
+                    <span class="thinking-status-text">AIMMALOGISTIC<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                  </div>
+                  <div class="logistic-output" id="logisticOutput"></div>
+                  <div class="logistic-file" id="logisticFile" hidden>
+                    <div class="thinking-file-icon">XLS</div>
+                    <div class="thinking-file-info">
+                      <strong>INFORME_LOGISTICA.xlsx</strong>
+                      <small>58 referencias · plan de acción · 0.9 MB</small>
+                    </div>
+                    <div class="thinking-file-status">
+                      <span class="thinking-file-bar"><span class="thinking-file-bar-fill" id="logisticBarFill"></span></span>
+                      <small id="logisticFileLabel">Generando informe...</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="scan-line" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+          <div class="split-text">
+            <h3>Compras Eficientes con IA</h3>
+            <p class="text-emphasis">Las compras eficientes <strong>cuidan tu patrimonio</strong> y optimizan tus resultados.</p>
+            <ul class="check-list">
+              <li>Negociación inteligente con proveedores</li>
+              <li>Análisis de mejores precios automatizado</li>
+              <li>Optimización de pedidos por rotación</li>
+              <li>Alertas de cambios en costos</li>
+            </ul>
+            <a href="#home" class="cta-btn" data-scroll="formulario">Agenda diagnóstico</a>
+          </div>
+        </div>
+
+        <!-- 4.2 Análisis de Inventario -->
+        <div class="inventory-block">
+          <p class="quote-glow">Las rupturas de stock son ventas perdidas.</p>
+          <div class="phone-center">
+            <div class="phone" id="phoneInventario">
+              <div class="phone-notch"></div>
+              <div class="phone-screen">
+                <div class="wa-header">
+                  <span class="wa-back">←</span>
+                  <span class="wa-avatar">SR</span>
+                  <div class="wa-name"><strong>Sara · Ropa Express</strong><small class="wa-online">en línea</small></div>
+                </div>
+                <div class="wa-chat" id="waChatInventario"></div>
+              </div>
+            </div>
+          </div>
+          <ul class="check-list horizontal">
+            <li>Datos en tiempo real</li>
+            <li>Análisis de rotación</li>
+            <li>Alertas antes del quiebre</li>
+            <li>Predicción de demanda con IA</li>
+          </ul>
+        </div>
+
+        <!-- 4.3 Logística -->
+        <div class="split">
+          <div class="split-text">
+            <h3>Optimización Logística</h3>
+            <p>Trazamos las rutas más eficientes para que tu producto llegue a tiempo y al menor costo.</p>
+            <ul class="check-list">
+              <li>Optimización de rutas con IA</li>
+              <li>Reducción de tiempos de entrega</li>
+              <li>Alertas de cuellos de botella</li>
+              <li>Trazabilidad punto a punto</li>
+            </ul>
+          </div>
+          <div class="split-visual">
+            <div class="dash-frame">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · RUTAS</span>
+              </div>
+              <div class="dash-frame-body">
+                <svg id="mapRoutes" viewBox="0 0 600 320" preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0,212,245,0.06)" stroke-width="1"/>
+                    </pattern>
+                  </defs>
+                  <rect width="600" height="320" fill="url(#grid)"/>
+                  <path d="M 60 240 Q 180 80, 320 160 T 540 80" fill="none" stroke="#00d4f5" stroke-width="2.2" stroke-dasharray="6,6" class="route-path"/>
+                  <circle r="6" fill="#00d4f5" class="route-mover">
+                    <animateMotion dur="6s" repeatCount="indefinite" path="M 60 240 Q 180 80, 320 160 T 540 80"/>
+                  </circle>
+                  <g class="route-nodes">
+                    <circle cx="60" cy="240" r="8" fill="#040d1a" stroke="#00d4f5" stroke-width="2"/>
+                    <circle cx="320" cy="160" r="8" fill="#040d1a" stroke="#00d4f5" stroke-width="2"/>
+                    <circle cx="540" cy="80" r="8" fill="#040d1a" stroke="#00d4f5" stroke-width="2"/>
+                  </g>
+                  <text x="60" y="265" fill="#fff" font-family="JetBrains Mono" font-size="12">CDA</text>
+                  <text x="295" y="185" fill="#fff" font-family="JetBrains Mono" font-size="12">HUB</text>
+                  <text x="510" y="105" fill="#fff" font-family="JetBrains Mono" font-size="12">DEST</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== TECNOLOGÍA IA ===== -->
+    <section id="tecnologia-ia" class="tab-section" role="tabpanel" hidden>
+      <div class="container">
+        <header class="section-header">
+          <p class="eyebrow">— SERVICIOS / TECNOLOGÍA IA</p>
+          <h2 class="section-title">Construimos la tecnología. Tú escalas el negocio.</h2>
+          <p class="section-subtitle">Software hecho a la medida de tu operación, no al revés.</p>
+        </header>
+
+        <!-- 5.1 Scraping IA - mapa Colombia + AIMMASCRAPING -->
+        <div class="scraping-block">
+          <header class="block-header">
+            <p class="eyebrow center">— SCRAPING INTELIGENTE</p>
+            <h3>Scraping IA · Detecta tus clientes en el mapa</h3>
+            <p>La IA rastrea Google Maps, redes sociales y directorios para entregarte leads cualificados por ciudad. Tus mejores prospectos, a un click.</p>
+          </header>
+
+          <div class="scraping-stage">
+            <!-- Mapa Colombia -->
+            <div class="map-frame">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · MAPA COMERCIAL · COLOMBIA</span>
+                <span class="map-coord" id="mapCoord">11.0041° N · 74.8070° W</span>
+              </div>
+              <div class="map-body">
+                <svg id="mapColombia" viewBox="0 0 400 480" preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    <pattern id="mapGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+                      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(0,212,245,0.05)" stroke-width="1"/>
+                    </pattern>
+                    <radialGradient id="scanRadial">
+                      <stop offset="0%" stop-color="#00d4f5" stop-opacity="0.45"/>
+                      <stop offset="100%" stop-color="#00d4f5" stop-opacity="0"/>
+                    </radialGradient>
+                  </defs>
+
+                  <rect width="400" height="480" fill="url(#mapGrid)"/>
+
+                  <!-- Silueta simplificada de Colombia (mar Caribe arriba, Pacifico izq, Venezuela der, Amazonas abajo) -->
+                  <path id="colombiaPath"
+                    d="M 130 60 C 158 50, 200 50, 240 70 C 250 90, 254 110, 250 130 L 256 150 C 262 165, 270 178, 264 200 L 270 220 C 274 240, 268 258, 252 270 L 240 300 C 232 326, 224 354, 210 384 C 198 412, 182 438, 162 452 L 148 450 C 138 432, 132 414, 124 392 L 116 366 C 108 342, 100 318, 96 294 L 88 268 C 82 246, 76 226, 72 204 L 70 178 C 70 156, 76 134, 88 114 C 100 94, 116 76, 130 60 Z"
+                    fill="rgba(0, 212, 245, 0.06)"
+                    stroke="#00d4f5"
+                    stroke-width="1.5"
+                    stroke-dasharray="1800"
+                    stroke-dashoffset="1800"/>
+
+                  <!-- Ciudades principales -->
+                  <g class="map-cities" id="mapCities">
+                    <g class="map-city" transform="translate(170,90)" data-city="Cartagena"><circle r="3"/><text y="-7">CARTAGENA</text></g>
+                    <g class="map-city" transform="translate(218,168)" data-city="Cucuta"><circle r="3"/><text y="-7">CÚCUTA</text></g>
+                    <g class="map-city" transform="translate(190,200)" data-city="Bucaramanga"><circle r="3"/><text y="-7">B/MANGA</text></g>
+                    <g class="map-city" transform="translate(155,235)" data-city="Medellin"><circle r="3.5"/><text y="-7">MEDELLÍN</text></g>
+                    <g class="map-city" transform="translate(190,270)" data-city="Bogota"><circle r="4"/><text y="-7">BOGOTÁ</text></g>
+                    <g class="map-city" transform="translate(135,318)" data-city="Cali"><circle r="3"/><text y="11">CALI</text></g>
+                  </g>
+
+                  <!-- Scan que recorre el mapa (centrado y tamaño ajustado) -->
+                  <circle id="mapScan" cx="190" cy="240" r="80" fill="url(#scanRadial)" opacity="0"/>
+
+                  <!-- Marker Barranquilla (costa caribe) -->
+                  <g id="mapMarker" transform="translate(195,80)" opacity="0">
+                    <circle r="56" fill="rgba(0,212,245,0.08)" class="map-marker-pulse"/>
+                    <circle r="26" fill="rgba(0,212,245,0.20)" class="map-marker-pulse delay"/>
+                    <circle r="5" fill="#00d4f5" class="map-marker-core"/>
+                    <text class="map-marker-label" y="-22">BARRANQUILLA</text>
+                    <text class="map-marker-count" y="38">75 PROSPECTOS</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Terminal AIMMASCRAPING -->
+            <div class="scraping-terminal">
+              <div class="dash-frame-header">
+                <span class="dot dot-c"></span>
+                <span>TERMINAL · AIMMASCRAPING</span>
+              </div>
+              <div class="scraping-terminal-body">
+                <div class="thinking-status">
+                  <span class="thinking-orb-mini" aria-hidden="true"></span>
+                  <span class="thinking-status-text">AIMMASCRAPING<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                </div>
+                <div class="scraping-output" id="scrapingOutput"></div>
+                <div class="scraping-file" id="scrapingFile" hidden>
+                  <div class="thinking-file-icon">CSV</div>
+                  <div class="thinking-file-info">
+                    <strong>LEADS_BARRANQUILLA_75.csv</strong>
+                    <small>Empresa · contacto · teléfono · email · score</small>
+                  </div>
+                </div>
+                <div class="scraping-actions" id="scrapingActions" hidden>
+                  <p class="scraping-question">¿Deseas que tu agente comercial haga el primer acercamiento?</p>
+                  <div class="scraping-cta-row">
+                    <a href="#home" class="cta-btn" data-scroll="formulario">Sí, activar agente</a>
+                    <button type="button" class="cta-btn cta-btn--ghost" id="btnScrapingRestart">Volver a buscar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5.2 Páginas Web -->
+        <div class="pages-block">
+          <header class="block-header">
+            <p class="eyebrow center">— PÁGINAS WEB CON IA</p>
+            <h3>Convierte lo que ya tienes en una web que vende</h3>
+            <p>Convertimos lo que ya tienes en un sitio web que vende solo. Sin diseñador, sin agencia, sin esperar 3 meses.</p>
+          </header>
+
+          <div class="pages-grid">
+            <!-- Card 1: Catalogo PDF -> Web -->
+            <div class="page-card" id="catalogToWeb">
+              <div class="page-card-header">
+                <span class="page-tag">CATÁLOGO → PÁGINA WEB</span>
+                <h4>Convierte tus catálogos en páginas web</h4>
+                <p>Sube tu catálogo en PDF o imagen. La IA extrae productos, precios y descripciones, y los convierte en una tienda web mobile-first.</p>
+              </div>
+              <div class="page-card-stage">
+                <div class="conv-flow">
+                  <div class="conv-step conv-pdf" data-step="pdf">
+                    <div class="conv-pdf-icon">
+                      <span class="conv-pdf-tag">PDF</span>
+                      <div class="conv-pdf-page">
+                        <span></span><span class="short"></span><span></span><span class="short"></span>
+                      </div>
+                    </div>
+                    <span class="conv-step-label">CATÁLOGO</span>
+                  </div>
+                  <div class="conv-arrow"><svg viewBox="0 0 40 16" width="40" height="16"><path d="M2 8 H32 M26 3 L33 8 L26 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="conv-step conv-ai" data-step="ai">
+                    <div class="conv-ai-orb">
+                      <span class="conv-ring"></span>
+                      <span class="conv-ring"></span>
+                      <span class="conv-ai-core">IA</span>
+                    </div>
+                    <span class="conv-step-label">AIMMA IA</span>
+                  </div>
+                  <div class="conv-arrow"><svg viewBox="0 0 40 16" width="40" height="16"><path d="M2 8 H32 M26 3 L33 8 L26 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="conv-step conv-phone" data-step="phone">
+                    <div class="conv-phone">
+                      <div class="conv-phone-notch"></div>
+                      <div class="conv-phone-screen">
+                        <div class="conv-phone-header"><span></span><span></span></div>
+                        <div class="conv-phone-grid">
+                          <span></span><span></span><span></span><span></span>
+                        </div>
+                        <div class="conv-phone-cta">VER PRODUCTO</div>
+                      </div>
+                    </div>
+                    <span class="conv-step-label">PÁGINA WEB</span>
+                  </div>
+                </div>
+                <div class="conv-progress">
+                  <span class="conv-progress-step active" data-key="pdf">Procesando catálogo</span>
+                  <span class="conv-progress-step" data-key="ai">Extrayendo productos</span>
+                  <span class="conv-progress-step" data-key="phone">Sitio listo</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Instagram -> Web -->
+            <div class="page-card" id="instaToWeb">
+              <div class="page-card-header">
+                <span class="page-tag">INSTAGRAM → PÁGINA WEB</span>
+                <h4>Convierte tu Instagram profesional en una página web</h4>
+                <p>Tu feed se transforma en sitio. Importamos posts, reels, productos y bio para crear una página que convierte mejor que el perfil.</p>
+              </div>
+              <div class="page-card-stage">
+                <div class="conv-flow">
+                  <div class="conv-step conv-ig" data-step="ig">
+                    <div class="conv-ig-phone">
+                      <div class="conv-phone-notch"></div>
+                      <div class="conv-ig-screen">
+                        <div class="conv-ig-header">
+                          <span class="conv-ig-avatar"></span>
+                          <span class="conv-ig-name">@tuempresa</span>
+                        </div>
+                        <div class="conv-ig-grid">
+                          <span></span><span></span><span></span>
+                          <span></span><span></span><span></span>
+                          <span></span><span></span><span></span>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="conv-step-label">PERFIL IG</span>
+                  </div>
+                  <div class="conv-arrow"><svg viewBox="0 0 40 16" width="40" height="16"><path d="M2 8 H32 M26 3 L33 8 L26 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="conv-step conv-ai" data-step="ai">
+                    <div class="conv-ai-orb">
+                      <span class="conv-ring"></span>
+                      <span class="conv-ring"></span>
+                      <span class="conv-ai-core">IA</span>
+                    </div>
+                    <span class="conv-step-label">AIMMA IA</span>
+                  </div>
+                  <div class="conv-arrow"><svg viewBox="0 0 40 16" width="40" height="16"><path d="M2 8 H32 M26 3 L33 8 L26 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="conv-step conv-web" data-step="web">
+                    <div class="conv-phone">
+                      <div class="conv-phone-notch"></div>
+                      <div class="conv-phone-screen alt">
+                        <div class="conv-phone-hero">
+                          <div class="skel-line"></div>
+                          <div class="skel-line short"></div>
+                        </div>
+                        <div class="conv-phone-grid alt">
+                          <span></span><span></span><span></span><span></span>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="conv-step-label">SITIO WEB</span>
+                  </div>
+                </div>
+                <div class="conv-progress">
+                  <span class="conv-progress-step active" data-key="ig">Conectando Instagram</span>
+                  <span class="conv-progress-step" data-key="ai">Sincronizando posts</span>
+                  <span class="conv-progress-step" data-key="web">Página publicada</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pages-foot">
+            <ul class="check-list horizontal">
+              <li>Mobile-first &amp; responsive</li>
+              <li>Checkout WhatsApp / Pasarela</li>
+              <li>SEO técnico día uno</li>
+              <li>Integración con tu CRM</li>
+            </ul>
+            <a href="#home" class="cta-btn cta-btn--lg" data-scroll="formulario">Convierte tu negocio →</a>
+          </div>
+        </div>
+
+        <!-- 5.3 Apps & Plataformas -->
+        <div class="split split-reverse">
+          <div class="split-visual">
+            <div class="apps-mock">
+              <div class="app-phone">
+                <div class="phone-notch"></div>
+                <div class="app-phone-screen">
+                  <p class="app-line"><span>Ventas</span><strong>$12.4M</strong></p>
+                  <p class="app-line"><span>Clientes</span><strong>847</strong></p>
+                  <p class="app-line"><span>Conversión</span><strong>4.2%</strong></p>
+                  <div class="app-spark"></div>
+                </div>
+              </div>
+              <div class="app-dash">
+                <p class="app-dash-title">DASHBOARD</p>
+                <div class="app-bars">
+                  <span style="height:62%"></span><span style="height:48%"></span><span style="height:80%"></span><span style="height:55%"></span><span style="height:72%"></span><span style="height:90%"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="split-text">
+            <h3>Apps &amp; Plataformas</h3>
+            <p>Software hecho a la medida de tu operación. Sin templates genéricos. Solo lo que tu negocio realmente necesita.</p>
+            <ul class="check-list">
+              <li>Apps móviles iOS/Android</li>
+              <li>Plataformas web internas</li>
+              <li>Dashboards de gestión en vivo</li>
+              <li>Integración con tus sistemas actuales</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 5.4 AGENTE IA - LA ESTRELLA -->
+        <div class="agent-section" id="agentSection">
+          <p class="eyebrow center">— ESCUCHA A TU AGENTE</p>
+          <h3 class="agent-title">El Agente IA que tu negocio necesita</h3>
+          <div class="orb-wrapper">
+            <div class="orb" id="orb" aria-hidden="true">
+              <div class="ring ring-1"></div>
+              <div class="ring ring-2"></div>
+              <div class="ring ring-3"></div>
+              <div class="orb-core"></div>
+            </div>
+          </div>
+          <button class="cta-btn cta-btn--lg" id="btnAgentSpeak" aria-label="Reproducir voz del agente IA">
+            🔊 Escucha a tu futuro Agente IA
+          </button>
+          <button class="cta-btn cta-btn--ghost" id="btnAgentStop" hidden aria-label="Detener voz">
+            ⏸ Detener
+          </button>
+          <p class="agent-subtitle" id="agentSubtitle"></p>
+          <a href="#home" class="cta-btn cta-btn--lg" id="btnAgentCta" data-scroll="formulario" hidden>Agenda tu Diagnóstico Gratuito →</a>
+
+          <div class="agent-cases">
+            <div class="case-card">
+              <div class="case-icon">💬</div>
+              <h4>VENTAS</h4>
+              <p>WhatsApp 24/7</p>
+            </div>
+            <div class="case-card">
+              <div class="case-icon">📅</div>
+              <h4>CITAS</h4>
+              <p>Asistente Inteligente</p>
+            </div>
+            <div class="case-card">
+              <div class="case-icon">🎧</div>
+              <h4>SERVICIO</h4>
+              <p>Atención al Cliente</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5.5 WhatsApp asesor con guía -->
+        <div class="advisor-block">
+          <h3>Tu agente comparte audios, imágenes y documentos</h3>
+          <p>Igual que un asesor humano. Pero 24/7 y a escala.</p>
+          <div class="phone-center">
+            <div class="phone">
+              <div class="phone-notch"></div>
+              <div class="phone-screen">
+                <div class="wa-header">
+                  <span class="wa-back">←</span>
+                  <span class="wa-avatar">AI</span>
+                  <div class="wa-name"><strong>AIMMA Asesor</strong><small class="wa-online">en línea</small></div>
+                </div>
+                <div class="wa-chat" id="waChatAdvisor"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <div class="footer-line"></div>
+    <div class="footer-inner">
+      <div class="footer-col">
+        <div class="brand brand-footer">
+          <img src="assets/logo.svg" alt="" width="36" height="36" />
+          <span class="brand-text"><span class="brand-name">AIMMA</span><span class="brand-suffix">.COLOMBIA</span></span>
+        </div>
+        <p>Consultoría con Inteligencia Artificial enfoque financiero-comercial. Cúcuta, Norte de Santander · Colombia.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Servicios</h4>
+        <ul>
+          <li><a href="#inteligencia-comercial" data-tab="inteligencia-comercial">Inteligencia Comercial</a></li>
+          <li><a href="#marketing-financiero" data-tab="marketing-financiero">Marketing Financiero</a></li>
+          <li><a href="#compras-logistica" data-tab="compras-logistica">Compras &amp; Logística</a></li>
+          <li><a href="#tecnologia-ia" data-tab="tecnologia-ia">Tecnología IA</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contacto</h4>
+        <ul class="contact-list">
+          <li><a href="https://wa.me/573172615415" target="_blank" rel="noopener">+57 317 261 5415</a></li>
+          <li><a href="mailto:aimma.colombia@gmail.com">aimma.colombia@gmail.com</a></li>
+          <li><a href="https://instagram.com/aimma.colombia" target="_blank" rel="noopener">@aimma.colombia</a></li>
+        </ul>
+        <div class="social-icons">
+          <a href="https://instagram.com/aimma.colombia" target="_blank" rel="noopener" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.8" fill="currentColor"/></svg>
+          </a>
+          <a href="https://wa.me/573172615415" target="_blank" rel="noopener" aria-label="WhatsApp">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21l1.65-4.5A8 8 0 1 1 7.5 19.35L3 21z"/><path d="M8.5 9.5c0 4 3 6.5 6 7 .8.1 1.5-.5 1.5-1.3v-.7l-1.8-1-.7.8c-1-.4-2-.9-2.5-2l.8-.7-1-1.8h-.7c-.8 0-1.4.7-1.3 1.5z" stroke-linejoin="round"/></svg>
+          </a>
+          <a href="mailto:aimma.colombia@gmail.com" aria-label="Email">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>WWW.AIMMA.COLOMBIA · AGENDA TU DIAGNÓSTICO GRATUITO</p>
+      <p class="footer-copy">© 2025 AIMMA Colombia · Todos los derechos reservados</p>
+    </div>
+  </footer>
+
+  <!-- WhatsApp flotante -->
+  <a href="https://wa.me/573172615415?text=Hola%20AIMMA%2C%20quiero%20mi%20diagn%C3%B3stico%20gratuito" target="_blank" rel="noopener" class="wa-float" aria-label="Contactar por WhatsApp">
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.4A10 10 0 1 0 12 2zm5.4 14.3c-.2.6-1.2 1.2-1.7 1.3-.4.1-1 .1-1.6-.1-.4-.1-.9-.3-1.5-.6-2.7-1.2-4.5-3.9-4.6-4.1-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 .9-2.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5.2.5.7 1.7.7 1.8.1.1.1.3 0 .5-.1.2-.2.3-.3.5l-.4.5c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.1 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.3-.2.6-.1.3.1 1.7.8 2 1 .3.1.5.2.6.4.1.1.1.7-.1 1.2z"/></svg>
+  </a>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
