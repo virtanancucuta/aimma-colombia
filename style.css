@@ -202,6 +202,10 @@ input, textarea, select { font-family: inherit; }
 .cta-btn--block { width: 100%; }
 .cta-btn--header { animation: pulseGlow 2.6s ease-in-out infinite; }
 
+/* El atributo HTML hidden debe forzarse con !important para
+   sobrescribir display: inline-flex de .cta-btn (caso wizard paso 3) */
+[hidden] { display: none !important; }
+
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 0 1px var(--cyan), 0 8px 24px var(--cyan-glow-strong); }
   50% { box-shadow: 0 0 0 1px var(--cyan), 0 8px 36px rgba(0, 212, 245, 0.55); }
