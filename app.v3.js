@@ -376,7 +376,7 @@
     successScreen.hidden = false;
     successMsg.textContent = `Recibimos tu solicitud, ${data.nombre}. Un consultor revisará la información de ${data.empresa} y te contactará pronto.`;
     const txt = encodeURIComponent(`Hola AIMMA, soy ${data.nombre} de ${data.empresa}. Acabo de enviar mi diagnóstico gratuito desde el sitio web.`);
-    successWA.href = `https://wa.me/573172615415?text=${txt}`;
+    successWA.href = `https://wa.me/573133623071?text=${txt}`;
     successScreen.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 

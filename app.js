@@ -32,6 +32,12 @@
     navLinks.forEach(link => {
       const isActive = link.dataset.tab === tabId;
       link.classList.toggle('active', isActive);
+      // A11y: marcar tab activa para lectores de pantalla y manejar
+      // tabindex para que el orden de Tab del teclado respete la activa
+      if (link.getAttribute('role') === 'tab') {
+        link.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        link.setAttribute('tabindex', isActive ? '0' : '-1');
+      }
     });
 
     currentTab = tabId;
@@ -370,7 +376,7 @@
     successScreen.hidden = false;
     successMsg.textContent = `Recibimos tu solicitud, ${data.nombre}. Un consultor revisará la información de ${data.empresa} y te contactará pronto.`;
     const txt = encodeURIComponent(`Hola AIMMA, soy ${data.nombre} de ${data.empresa}. Acabo de enviar mi diagnóstico gratuito desde el sitio web.`);
-    successWA.href = `https://wa.me/573172615415?text=${txt}`;
+    successWA.href = `https://wa.me/573133623071?text=${txt}`;
     successScreen.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
