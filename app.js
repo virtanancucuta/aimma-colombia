@@ -250,18 +250,26 @@
       d.classList.toggle('active', k === n);
       d.classList.toggle('done', k < n);
     });
-    progressFill.style.width = `${(n / 3) * 100}%`;
+    const totalSteps = steps.length || 3;
+    progressFill.style.width = `${(n / totalSteps) * 100}%`;
     form.querySelector('.wizard-progress').setAttribute('aria-valuenow', String(n));
     btnPrev.disabled = n === 1;
 
-    // Visibilidad: paso 3 oculta "Siguiente" y muestra "Enviar".
-    // Usar style.display ademas del attr hidden por si el CSS [hidden]
-    // (display:none !important) no se ha redeployado al sitio en vivo.
-    const isLast = n === 3;
-    btnNext.hidden = isLast;
-    btnNext.style.display = isLast ? 'none' : '';
-    btnSubmit.hidden = !isLast;
-    btnSubmit.style.display = isLast ? '' : 'none';
+    // FIX duro: usar cssText con !important inline para que GANE sobre
+    // cualquier CSS (incluido display:inline-flex de .cta-btn) y sobre
+    // cualquier cache del browser/CDN.
+    const isLast = n === totalSteps;
+    if (isLast) {
+      btnNext.setAttribute('hidden', '');
+      btnNext.style.cssText = 'display: none !important;';
+      btnSubmit.removeAttribute('hidden');
+      btnSubmit.style.cssText = 'display: inline-flex !important;';
+    } else {
+      btnNext.removeAttribute('hidden');
+      btnNext.style.cssText = 'display: inline-flex !important;';
+      btnSubmit.setAttribute('hidden', '');
+      btnSubmit.style.cssText = 'display: none !important;';
+    }
   }
 
   function validateStep(n) {
