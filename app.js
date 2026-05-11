@@ -253,8 +253,15 @@
     progressFill.style.width = `${(n / 3) * 100}%`;
     form.querySelector('.wizard-progress').setAttribute('aria-valuenow', String(n));
     btnPrev.disabled = n === 1;
-    btnNext.hidden = n === 3;
-    btnSubmit.hidden = n !== 3;
+
+    // Visibilidad: paso 3 oculta "Siguiente" y muestra "Enviar".
+    // Usar style.display ademas del attr hidden por si el CSS [hidden]
+    // (display:none !important) no se ha redeployado al sitio en vivo.
+    const isLast = n === 3;
+    btnNext.hidden = isLast;
+    btnNext.style.display = isLast ? 'none' : '';
+    btnSubmit.hidden = !isLast;
+    btnSubmit.style.display = isLast ? '' : 'none';
   }
 
   function validateStep(n) {
@@ -336,11 +343,13 @@
 
   async function enviarAGoogleSheets(datos) {
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyoQcHG2GBadgcbdEtPCfM4Gt-757ZUB0v0sQNnSYFr43plNkYU3nuGSPSSeHSOw93oOA/exec';
+    // Sin Content-Type: en mode:'no-cors' el browser solo permite text/plain,
+    // form-urlencoded o multipart. Apps Script lee e.postData.contents como
+    // string y hace JSON.parse() internamente, asi que el body JSON funciona.
     try {
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos)
       });
     } catch (err) {
