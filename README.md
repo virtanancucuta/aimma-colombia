@@ -105,9 +105,11 @@ Cambia el campo `estado` (nuevo / contactado / en_proceso / ganado / perdido) pa
 
 ## Deploy en Hostinger + EasyPanel
 
+**URL en producción:** https://aimma.com.co (con SSL Let's Encrypt activo)
+
 ### Opción 1 — FTP simple
 1. Sube todos los archivos de `aimma-website/` al directorio `public_html/` (o el root de tu hosting).
-2. Asegura que el dominio `aimma.colombia.com` (o el final) apunte al hosting.
+2. Asegura que el dominio `aimma.com.co` apunte al hosting.
 3. Activa SSL (Let's Encrypt) desde el panel.
 
 ### Opción 2 — EasyPanel + GitHub (recomendado)
