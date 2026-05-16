@@ -135,8 +135,15 @@
         // Usamos UPSERT (no UPDATE) por si el trigger handle_new_user todavia
         // no termino de crear el row (race condition tipico en signup OAuth
         // rapido). Con upsert: si existe, actualiza; si no, inserta.
+        //
+        // IMPORTANTE: incluimos correo + nombre_completo aunque sean campos
+        // existentes en el row, porque Supabase genera
+        // INSERT ... ON CONFLICT DO UPDATE — el INSERT valida los NOT NULL
+        // antes del ON CONFLICT. Sin estos campos en el payload, falla con
+        // "null value column correo violates not-null constraint".
         const profileData = {
           id: user.id,
+          correo: user.email,
           nombre_completo: data.nombre_completo.trim(),
           cedula: data.cedula.trim(),
           direccion: data.direccion.trim(),
