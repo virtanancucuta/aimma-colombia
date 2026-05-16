@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Completa tu perfil · AIMMA Colombia</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+
+  <link rel="stylesheet" href="style.v3.css" />
+</head>
+<body>
+
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <!-- Loader inicial mientras validamos sesion -->
+  <div id="loader" class="auth-loader">
+    <div class="auth-loader-orb"></div>
+    <div class="auth-loader-text">Cargando…</div>
+  </div>
+
+  <div class="auth-page" id="content" hidden>
+    <header class="auth-header">
+      <a href="/" class="brand" aria-label="AIMMA Colombia - Inicio">
+        <img src="assets/logo.svg" alt="" class="brand-logo" width="36" height="36" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-suffix">.COLOMBIA</span>
+        </span>
+      </a>
+    </header>
+
+    <main class="auth-main">
+      <div class="auth-card auth-card-wide">
+        <h1 class="auth-title">Completa tu perfil</h1>
+        <p class="auth-subtitle">Necesitamos algunos datos antes de continuar</p>
+
+        <div id="alertBox" class="auth-alert auth-alert--error" hidden></div>
+
+        <form id="profileForm" class="auth-form" novalidate>
+          <div class="auth-field">
+            <label for="cp-nombre">Nombre completo <em>*</em></label>
+            <input type="text" id="cp-nombre" name="nombre_completo" autocomplete="name" maxlength="120" required />
+          </div>
+          <div class="auth-field">
+            <label for="cp-email">Correo electrónico</label>
+            <input type="email" id="cp-email" name="email" disabled />
+            <small class="auth-field-hint">No se puede modificar.</small>
+          </div>
+          <div class="auth-field">
+            <label for="cp-cedula">Cédula <em>*</em></label>
+            <input type="text" id="cp-cedula" name="cedula" inputmode="numeric" maxlength="20" required />
+          </div>
+          <div class="auth-field">
+            <label for="cp-direccion">Dirección <em>*</em></label>
+            <input type="text" id="cp-direccion" name="direccion" autocomplete="street-address" maxlength="200" required />
+          </div>
+          <div class="auth-field">
+            <label for="cp-telefono">Teléfono <em>*</em></label>
+            <input type="tel" id="cp-telefono" name="telefono" autocomplete="tel" maxlength="20" placeholder="+57 300 000 0000" required />
+          </div>
+          <div class="auth-field">
+            <label for="cp-empresa">Nombre empresa <small class="auth-field-hint">(opcional)</small></label>
+            <input type="text" id="cp-empresa" name="nombre_empresa" autocomplete="organization" maxlength="120" />
+          </div>
+          <div class="auth-field">
+            <label for="cp-web">Página web <small class="auth-field-hint">(opcional)</small></label>
+            <input type="url" id="cp-web" name="pagina_web" autocomplete="url" placeholder="https://" maxlength="200" />
+          </div>
+          <button type="submit" id="btnSave" class="auth-submit">Guardar y continuar</button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.v2.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    (async function () {
+      const supabase = window.supabaseClient;
+      const A = window.AIMMA.auth;
+      const loader = document.getElementById('loader');
+      const content = document.getElementById('content');
+      const alertBox = document.getElementById('alertBox');
+      const form = document.getElementById('profileForm');
+      const btnSave = document.getElementById('btnSave');
+
+      function showAlert(msg) { alertBox.textContent = msg; alertBox.hidden = false; }
+      function hideAlert() { alertBox.hidden = true; }
+
+      // Validar sesion sin que el helper redirija aqui mismo (evita loop)
+      const { user, profile, session } = await A.requireAuth({ skipProfileCheck: true });
+      if (!session) return; // requireAuth ya redirige a login
+
+      // Si el perfil ya esta completo, vamos directo al panel
+      if (profile && profile.perfil_completo === true) {
+        window.location.replace('/iapanel/');
+        return;
+      }
+
+      // Pre-llenar
+      const meta = user.user_metadata || {};
+      form.elements['nombre_completo'].value = profile?.nombre_completo || meta.full_name || meta.nombre_completo || meta.name || '';
+      form.elements['email'].value = user.email || '';
+      form.elements['cedula'].value = profile?.cedula || '';
+      form.elements['direccion'].value = profile?.direccion || '';
+      form.elements['telefono'].value = profile?.telefono || '';
+      form.elements['nombre_empresa'].value = profile?.nombre_empresa || '';
+      form.elements['pagina_web'].value = profile?.pagina_web || '';
+
+      loader.classList.add('hidden');
+      content.hidden = false;
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAlert();
+        const data = Object.fromEntries(new FormData(form).entries());
+        const required = ['nombre_completo','cedula','direccion','telefono'];
+        for (const k of required) {
+          if (!String(data[k] || '').trim()) { showAlert('Completa todos los campos obligatorios.'); return; }
+        }
+        btnSave.disabled = true;
+        btnSave.textContent = 'Guardando…';
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            nombre_completo: data.nombre_completo.trim(),
+            cedula: data.cedula.trim(),
+            direccion: data.direccion.trim(),
+            telefono: data.telefono.trim(),
+            nombre_empresa: data.nombre_empresa?.trim() || null,
+            pagina_web: data.pagina_web?.trim() || null,
+            perfil_completo: true,
+          })
+          .eq('id', user.id);
+        if (error) {
+          btnSave.disabled = false;
+          btnSave.textContent = 'Guardar y continuar';
+          showAlert(A.friendlyError(error));
+          return;
+        }
+        window.location.replace('/iapanel/');
+      });
+    })();
+  </script>
+</body>
+</html>

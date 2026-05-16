@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Conectando · AIMMA Colombia</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+
+  <link rel="stylesheet" href="style.v3.css" />
+</head>
+<body>
+
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <!-- Estado: loader (default) -->
+  <div id="loader" class="auth-loader">
+    <div class="auth-loader-orb"></div>
+    <div class="auth-loader-text" id="loaderText">Conectando con tu cuenta…</div>
+  </div>
+
+  <!-- Estado: error -->
+  <div class="auth-page" id="errorView" hidden>
+    <header class="auth-header">
+      <a href="/" class="brand" aria-label="AIMMA Colombia - Inicio">
+        <img src="assets/logo.svg" alt="" class="brand-logo" width="36" height="36" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-suffix">.COLOMBIA</span>
+        </span>
+      </a>
+      <a href="/" class="auth-header-back">← Volver al sitio</a>
+    </header>
+    <main class="auth-main">
+      <div class="auth-card">
+        <h1 class="auth-title">No pudimos conectarte</h1>
+        <p class="auth-subtitle" id="errorMsg">Hubo un problema al validar tu sesión.</p>
+        <a href="/login.html" class="auth-submit" style="text-decoration:none; display:inline-block; text-align:center;">Volver a intentar</a>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.v2.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    (async function () {
+      const supabase = window.supabaseClient;
+      const A = window.AIMMA.auth;
+      const loader = document.getElementById('loader');
+      const loaderText = document.getElementById('loaderText');
+      const errorView = document.getElementById('errorView');
+      const errorMsg = document.getElementById('errorMsg');
+
+      function showError(msg) {
+        loader.classList.add('hidden');
+        errorMsg.textContent = msg || 'No pudimos validar tu sesión. Intenta de nuevo desde el login.';
+        errorView.hidden = false;
+      }
+
+      try {
+        // PKCE / email confirmation flow: ?code=...
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const errParam = params.get('error_description') || params.get('error');
+        if (errParam) { showError(decodeURIComponent(errParam)); return; }
+
+        if (code) {
+          loaderText.textContent = 'Activando tu cuenta…';
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) { showError(A.friendlyError(error)); return; }
+        }
+        // OAuth implicit flow: tokens en el hash (#access_token=...) — supabase-js
+        // los procesa automaticamente al inicializar. getSession ya los recoge.
+
+        // Esperar un instante para que se asienten los tokens del hash
+        await new Promise(r => setTimeout(r, 200));
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          showError('No encontramos una sesión activa. Vuelve a intentar.');
+          return;
+        }
+
+        loaderText.textContent = 'Cargando tu perfil…';
+        const { profile } = await A.getCurrentUser();
+        if (profile && profile.perfil_completo === false) {
+          window.location.replace('/completar-perfil.html');
+        } else {
+          window.location.replace('/iapanel/');
+        }
+      } catch (err) {
+        console.error('[AIMMA callback] error:', err);
+        showError(A.friendlyError(err));
+      }
+    })();
+  </script>
+</body>
+</html>

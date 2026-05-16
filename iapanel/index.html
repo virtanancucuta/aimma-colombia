@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Tu Panel IA · AIMMA Colombia</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+
+  <link rel="stylesheet" href="/style.v3.css" />
+</head>
+<body>
+
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <!-- Loader hasta que la sesion este validada (evita flash de UI) -->
+  <div id="loader" class="auth-loader">
+    <div class="auth-loader-orb"></div>
+    <div class="auth-loader-text">Cargando tu panel…</div>
+  </div>
+
+  <div class="panel-page" id="panel">
+
+    <header class="panel-header">
+      <a href="/" class="brand" aria-label="AIMMA Colombia - Inicio">
+        <img src="/assets/logo.svg" alt="" class="brand-logo" width="38" height="38" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-tag">PANEL</span>
+        </span>
+      </a>
+      <div class="panel-user">
+        <span class="panel-user-email" id="userEmail" title="">…</span>
+        <button type="button" class="panel-logout" id="btnLogout" aria-label="Cerrar sesión">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <main class="panel-main">
+      <h1 class="panel-hello">
+        Hola, <span class="panel-hello-cyan" id="userFirstName">…</span>
+      </h1>
+      <p class="panel-sub">¿En qué módulo quieres trabajar hoy?</p>
+
+      <div class="panel-grid">
+
+        <!-- Card 1 — Dashboard AIMMA -->
+        <article class="panel-card disabled" aria-disabled="true">
+          <span class="badge-coming-soon">En desarrollo</span>
+          <div class="panel-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="20,3 35,12 35,28 20,37 5,28 5,12"/>
+              <path d="M12 24 L17 19 L21 23 L28 14 M28 14 L23 14 M28 14 L28 19"/>
+            </svg>
+          </div>
+          <h2 class="panel-card-title">DASHBOARD AIMMA</h2>
+          <p class="panel-card-desc">Indicadores financieros y comerciales en tiempo real.</p>
+        </article>
+
+        <!-- Card 2 — Comercial IA -->
+        <article class="panel-card disabled" aria-disabled="true">
+          <span class="badge-coming-soon">Próximamente</span>
+          <div class="panel-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="6" y1="32" x2="34" y2="32"/>
+              <rect x="10" y="20" width="4" height="12"/>
+              <rect x="18" y="14" width="4" height="18"/>
+              <rect x="26" y="8" width="4" height="24"/>
+              <path d="M32 10 L36 6 M32 6 L36 6 L36 10"/>
+            </svg>
+          </div>
+          <h2 class="panel-card-title">COMERCIAL IA</h2>
+          <p class="panel-card-desc">Presupuestos de venta y seguimiento comercial con IA.</p>
+        </article>
+
+        <!-- Card 3 — Marketing IA -->
+        <article class="panel-card disabled" aria-disabled="true">
+          <span class="badge-coming-soon">Próximamente</span>
+          <div class="panel-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 24 L6 16 L22 8 L28 8 L28 32 L22 32 L6 24 Z"/>
+              <path d="M10 26 L10 30 L14 30"/>
+              <path d="M32 14 C 36 16, 36 24, 32 26" stroke-dasharray="2 3"/>
+            </svg>
+          </div>
+          <h2 class="panel-card-title">MARKETING IA</h2>
+          <p class="panel-card-desc">Pauta eficiente y auditoría de campañas con ROI medible.</p>
+        </article>
+
+      </div>
+    </main>
+
+    <footer class="panel-footer">
+      <p class="panel-footer-plan">Plan actual: AIMMA PRO · Gratuito</p>
+      <p>© 2026 AIMMA Colombia · Todos los derechos reservados</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    (async function () {
+      const A = window.AIMMA.auth;
+      const loader = document.getElementById('loader');
+      const panel = document.getElementById('panel');
+      const userEmail = document.getElementById('userEmail');
+      const userFirstName = document.getElementById('userFirstName');
+      const btnLogout = document.getElementById('btnLogout');
+
+      const { user, profile, session } = await A.requireAuth();
+      if (!session) return; // requireAuth ya redirige
+
+      // Datos en header + saludo
+      userEmail.textContent = user.email || '';
+      userEmail.title = user.email || '';
+
+      const meta = user.user_metadata || {};
+      const nombre = (profile?.nombre_completo || meta.full_name || meta.nombre_completo || meta.name || user.email || '').trim();
+      const primer = (nombre.split(/\s+/)[0] || 'tú');
+      userFirstName.textContent = primer;
+
+      // Mostrar contenido
+      loader.classList.add('hidden');
+      panel.classList.add('ready');
+
+      btnLogout.addEventListener('click', async () => {
+        btnLogout.disabled = true;
+        btnLogout.textContent = 'Cerrando…';
+        await A.signOut();
+        window.location.replace('/');
+      });
+    })();
+  </script>
+</body>
+</html>

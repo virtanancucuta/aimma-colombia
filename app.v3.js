@@ -1173,4 +1173,34 @@
   // Inicializar siempre Home aunque el hash sea otro
   initSectionAnimations(currentTab);
 
+  // ===================================================
+  // 17. AUTH · cambiar boton "TU PANEL IA" segun sesion
+  // ===================================================
+  //  Sin sesion  → /login.html (default del HTML)
+  //  Con sesion  → /iapanel
+  //
+  // Usa window.supabaseClient expuesto desde supabase-config.v2.js.
+  // Reacciona en tiempo real a SIGNED_IN / SIGNED_OUT con onAuthStateChange.
+  (function initAuthButton() {
+    const btnHeader = document.getElementById('btn-panel-ia');
+    const btnDrawer = document.getElementById('btn-panel-ia-drawer');
+    if (!btnHeader && !btnDrawer) return;
+    if (!window.supabaseClient) {
+      console.warn('[AIMMA] supabaseClient no disponible — boton TU PANEL IA queda apuntando a /login.html');
+      return;
+    }
+
+    function applyHref(session) {
+      const href = session ? '/iapanel' : '/login.html';
+      if (btnHeader) btnHeader.setAttribute('href', href);
+      if (btnDrawer) btnDrawer.setAttribute('href', href);
+    }
+
+    // Estado inicial al cargar pagina
+    window.supabaseClient.auth.getSession().then(({ data }) => applyHref(data.session));
+
+    // Reaccionar en tiempo real
+    window.supabaseClient.auth.onAuthStateChange((_event, session) => applyHref(session));
+  })();
+
 })();

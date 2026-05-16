@@ -9,6 +9,17 @@ const SUPABASE_ANON_KEY = 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Exponer cliente global para que login/signup/panel puedan usarlo
+window.supabaseClient = supabaseClient;
+
+// Helper: retorna la sesion activa (o null si no hay)
+async function getSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  return session;
+}
+window.AIMMA = window.AIMMA || {};
+window.AIMMA.getSession = getSession;
+
 // Inserta un registro en la tabla diagnostico_gratuito
 async function enviarDiagnostico(formData) {
   const params = new URLSearchParams(window.location.search);
