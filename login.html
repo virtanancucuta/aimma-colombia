@@ -83,7 +83,7 @@
   <script src="supabase-config.v2.js"></script>
   <script src="auth.js"></script>
   <script>
-    (function () {
+    (async function () {
       const A = window.AIMMA.auth;
       const form = document.getElementById('loginForm');
       const btnGoogle = document.getElementById('btnGoogle');
@@ -92,7 +92,13 @@
       const alertBox = document.getElementById('alertBox');
       const loader = document.getElementById('loader');
 
-      A.requireGuest();
+      // Bloquear UI hasta validar sesion (sino race condition: user puede
+      // clickear Google/submit antes de que requireGuest resuelva).
+      btnGoogle.disabled = true;
+      btnSubmit.disabled = true;
+      await A.requireGuest();
+      btnGoogle.disabled = false;
+      btnSubmit.disabled = false;
 
       function showAlert(msg) {
         alertBox.textContent = msg;
@@ -132,7 +138,9 @@
         }
         window.location.replace('/iapanel/');
       });
-    })();
+    })().catch(err => {
+      console.error('[AIMMA login init]', err);
+    });
   </script>
 </body>
 </html>

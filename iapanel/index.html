@@ -28,7 +28,7 @@
     <div class="auth-loader-text">Cargando tu panel…</div>
   </div>
 
-  <div class="panel-page" id="panel">
+  <div class="panel-page" id="panel" hidden>
 
     <header class="panel-header">
       <a href="/" class="brand" aria-label="AIMMA Colombia - Inicio">
@@ -128,8 +128,10 @@
       const primer = (nombre.split(/\s+/)[0] || 'tú');
       userFirstName.textContent = primer;
 
-      // Mostrar contenido
+      // Mostrar contenido (remueve tanto el attr hidden HTML como dispara
+      // la visibility:visible via clase .ready en CSS — defense in depth)
       loader.classList.add('hidden');
+      panel.removeAttribute('hidden');
       panel.classList.add('ready');
 
       btnLogout.addEventListener('click', async () => {

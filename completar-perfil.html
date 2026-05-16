@@ -131,22 +131,39 @@
         }
         btnSave.disabled = true;
         btnSave.textContent = 'Guardando…';
-        const { error } = await supabase
+
+        // Usamos UPSERT (no UPDATE) por si el trigger handle_new_user todavia
+        // no termino de crear el row (race condition tipico en signup OAuth
+        // rapido). Con upsert: si existe, actualiza; si no, inserta.
+        const profileData = {
+          id: user.id,
+          nombre_completo: data.nombre_completo.trim(),
+          cedula: data.cedula.trim(),
+          direccion: data.direccion.trim(),
+          telefono: data.telefono.trim(),
+          nombre_empresa: data.nombre_empresa?.trim() || null,
+          pagina_web: data.pagina_web?.trim() || null,
+          perfil_completo: true,
+        };
+        const { data: savedRow, error } = await supabase
           .from('profiles')
-          .update({
-            nombre_completo: data.nombre_completo.trim(),
-            cedula: data.cedula.trim(),
-            direccion: data.direccion.trim(),
-            telefono: data.telefono.trim(),
-            nombre_empresa: data.nombre_empresa?.trim() || null,
-            pagina_web: data.pagina_web?.trim() || null,
-            perfil_completo: true,
-          })
-          .eq('id', user.id);
+          .upsert(profileData, { onConflict: 'id' })
+          .select()
+          .maybeSingle();
+
         if (error) {
           btnSave.disabled = false;
           btnSave.textContent = 'Guardar y continuar';
           showAlert(A.friendlyError(error));
+          return;
+        }
+        if (!savedRow) {
+          // No deberia pasar, pero por defensa: si el upsert no retorna row,
+          // RLS bloqueo el insert. Avisar al usuario en vez de redirigir
+          // como si todo estuviera bien.
+          btnSave.disabled = false;
+          btnSave.textContent = 'Guardar y continuar';
+          showAlert('No pudimos guardar tu perfil. Intenta de nuevo o contáctanos por WhatsApp.');
           return;
         }
         window.location.replace('/iapanel/');

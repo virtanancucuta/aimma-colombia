@@ -68,22 +68,50 @@
       }
 
       try {
-        // PKCE / email confirmation flow: ?code=...
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
-        const errParam = params.get('error_description') || params.get('error');
-        if (errParam) { showError(decodeURIComponent(errParam)); return; }
+        const tokenHash = params.get('token_hash');
+        const type = params.get('type');
+        const hasError = params.get('error_description') || params.get('error');
+        // Importante: NO renderizamos el valor de error_description directamente
+        // (puede usarse para phishing visual bajo el dominio aimma.com.co).
+        // Mostramos un mensaje generico fijo y logueamos el detalle en consola.
+        if (hasError) {
+          console.warn('[AIMMA callback] OAuth error:', hasError);
+          showError('Hubo un problema al autenticar con el proveedor. Intenta de nuevo.');
+          return;
+        }
 
+        // 1) PKCE flow: ?code=...
         if (code) {
           loaderText.textContent = 'Activando tu cuenta…';
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) { showError(A.friendlyError(error)); return; }
         }
-        // OAuth implicit flow: tokens en el hash (#access_token=...) — supabase-js
-        // los procesa automaticamente al inicializar. getSession ya los recoge.
-
-        // Esperar un instante para que se asienten los tokens del hash
-        await new Promise(r => setTimeout(r, 200));
+        // 2) Email confirmation legacy: ?token_hash=...&type=signup|magiclink|recovery
+        else if (tokenHash) {
+          loaderText.textContent = 'Verificando tu correo…';
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type || 'signup',
+          });
+          if (error) { showError(A.friendlyError(error)); return; }
+        }
+        // 3) OAuth implicit: tokens en hash (#access_token=...). supabase-js los
+        //    procesa automaticamente al inicializar. Esperamos al evento SIGNED_IN
+        //    en lugar de un setTimeout fragil.
+        else {
+          loaderText.textContent = 'Validando tu sesión…';
+          await new Promise((resolve) => {
+            let resolved = false;
+            const tm = setTimeout(() => { if (!resolved) { resolved = true; resolve(); } }, 3000);
+            supabase.auth.onAuthStateChange((event) => {
+              if (event === 'SIGNED_IN' && !resolved) {
+                resolved = true; clearTimeout(tm); resolve();
+              }
+            });
+          });
+        }
 
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {

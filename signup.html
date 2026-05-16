@@ -134,7 +134,7 @@
   <script src="supabase-config.v2.js"></script>
   <script src="auth.js"></script>
   <script>
-    (function () {
+    (async function () {
       const A = window.AIMMA.auth;
       const form = document.getElementById('signupForm');
       const btnGoogle = document.getElementById('btnGoogle');
@@ -146,9 +146,16 @@
       const confirmEmail = document.getElementById('confirmEmail');
       const btnResend = document.getElementById('btnResend');
       const resendAlert = document.getElementById('resendAlert');
-      let lastEmail = '';
+      // Persistir email del signup en sessionStorage para sobrevivir al
+      // browser back / bfcache (sino el reenviar falla con email vacio).
+      let lastEmail = sessionStorage.getItem('aimma_signup_email') || '';
 
-      A.requireGuest();
+      // Bloquear UI hasta validar sesion
+      btnGoogle.disabled = true;
+      btnSubmit.disabled = true;
+      await A.requireGuest();
+      btnGoogle.disabled = false;
+      btnSubmit.disabled = false;
 
       function showAlert(msg) { alertBox.textContent = msg; alertBox.hidden = false; }
       function hideAlert() { alertBox.hidden = true; }
@@ -185,29 +192,64 @@
           return;
         }
         lastEmail = data.email;
+        sessionStorage.setItem('aimma_signup_email', lastEmail);
         confirmEmail.textContent = lastEmail;
         viewForm.hidden = true;
         viewConfirm.hidden = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
 
+      // Si el usuario llega a viewConfirm via back button, restaurar el email
+      if (viewConfirm && !viewConfirm.hidden && lastEmail) {
+        confirmEmail.textContent = lastEmail;
+      }
+
+      // Cooldown 60s tras reenvio (Supabase smtp_max_frequency=60)
+      const COOLDOWN_S = 60;
+      let cooldownTimer = null;
+      function startCooldown() {
+        let s = COOLDOWN_S;
+        btnResend.disabled = true;
+        btnResend.textContent = `Reenviar correo (${s}s)`;
+        clearInterval(cooldownTimer);
+        cooldownTimer = setInterval(() => {
+          s--;
+          if (s <= 0) {
+            clearInterval(cooldownTimer);
+            btnResend.disabled = false;
+            btnResend.textContent = 'Reenviar correo';
+          } else {
+            btnResend.textContent = `Reenviar correo (${s}s)`;
+          }
+        }, 1000);
+      }
+
       btnResend.addEventListener('click', async () => {
+        if (!lastEmail) {
+          resendAlert.className = 'auth-alert auth-alert--error';
+          resendAlert.textContent = 'No se encontró el correo del registro. Vuelve al login.';
+          resendAlert.hidden = false;
+          return;
+        }
         resendAlert.hidden = true;
         btnResend.disabled = true;
         btnResend.textContent = 'Enviando…';
         const { error } = await A.resendConfirmation(lastEmail);
-        btnResend.disabled = false;
-        btnResend.textContent = 'Reenviar correo';
         if (error) {
+          btnResend.disabled = false;
+          btnResend.textContent = 'Reenviar correo';
           resendAlert.className = 'auth-alert auth-alert--error';
           resendAlert.textContent = A.friendlyError(error);
         } else {
           resendAlert.className = 'auth-alert auth-alert--info';
           resendAlert.textContent = 'Correo reenviado. Revisa tu bandeja en unos segundos.';
+          startCooldown();
         }
         resendAlert.hidden = false;
       });
-    })();
+    })().catch(err => {
+      console.error('[AIMMA signup init]', err);
+    });
   </script>
 </body>
 </html>
