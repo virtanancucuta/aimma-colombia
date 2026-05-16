@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Verificando tu correo · AIMMA Colombia</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+
+  <link rel="stylesheet" href="style.v3.css" />
+</head>
+<body>
+
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <!-- Loader inicial mientras valida token -->
+  <div id="loader" class="auth-loader" role="status" aria-live="polite">
+    <div class="auth-loader-orb"></div>
+    <div class="auth-loader-text" id="loaderText">Verificando tu correo…</div>
+  </div>
+
+  <!-- Estado: exito -->
+  <div class="auth-page" id="successView" hidden>
+    <header class="auth-header">
+      <a href="/" class="brand" aria-label="AIMMA Colombia - Inicio">
+        <img src="assets/logo.svg" alt="" class="brand-logo" width="36" height="36" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-suffix">.COLOMBIA</span>
+        </span>
+      </a>
+    </header>
+    <main class="auth-main">
+      <div class="auth-card auth-confirm">
+        <div class="auth-confirm-icon" aria-hidden="true">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h1 class="auth-title" id="successTitle">¡Correo verificado!</h1>
+        <p class="auth-subtitle" id="successMsg">Tu cuenta de AIMMA está activa. Ya puedes entrar a tu Panel IA.</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+          <a href="/iapanel/" id="btnContinuar" class="auth-submit" style="text-decoration:none; display:inline-block; text-align:center;">Entrar a mi Panel IA</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Estado: error / token invalido -->
+  <div class="auth-page" id="errorView" hidden>
+    <header class="auth-header">
+      <a href="/" class="brand" aria-label="AIMMA Colombia - Inicio">
+        <img src="assets/logo.svg" alt="" class="brand-logo" width="36" height="36" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-suffix">.COLOMBIA</span>
+        </span>
+      </a>
+      <a href="/" class="auth-header-back">← Volver al sitio</a>
+    </header>
+    <main class="auth-main">
+      <div class="auth-card">
+        <h1 class="auth-title">No pudimos verificar el enlace</h1>
+        <p class="auth-subtitle" id="errorMsg">El enlace es inválido o ya fue usado.</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+          <a href="/login.html" class="auth-submit" style="text-decoration:none; display:inline-block; text-align:center;">Iniciar sesión</a>
+          <a href="https://wa.me/573133623071?text=Hola%20AIMMA%2C%20tengo%20problemas%20para%20verificar%20mi%20correo" target="_blank" rel="noopener" class="btn-google" style="text-decoration:none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d4f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+            Hablar por WhatsApp
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.v2.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    (async function () {
+      const supabase = window.supabaseClient;
+      const A = window.AIMMA.auth;
+      const loader = document.getElementById('loader');
+      const loaderText = document.getElementById('loaderText');
+      const successView = document.getElementById('successView');
+      const successTitle = document.getElementById('successTitle');
+      const successMsg = document.getElementById('successMsg');
+      const errorView = document.getElementById('errorView');
+      const errorMsg = document.getElementById('errorMsg');
+      const btnContinuar = document.getElementById('btnContinuar');
+
+      function showError(msg) {
+        loader.classList.add('hidden');
+        errorMsg.textContent = msg || 'El enlace es inválido o ya fue usado.';
+        errorView.hidden = false;
+      }
+      function showSuccess(opts) {
+        loader.classList.add('hidden');
+        if (opts.alreadyVerified) {
+          successTitle.textContent = 'Tu correo ya estaba verificado';
+          successMsg.textContent = 'Tu cuenta está activa. Continuá al Panel IA.';
+        }
+        successView.hidden = false;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (!token) { showError('Este enlace no tiene un código de verificación.'); return; }
+
+      // Llamar RPC publica (no requiere JWT, el token es la credencial)
+      loaderText.textContent = 'Verificando token…';
+      const { data, error } = await supabase.rpc('verify_email_by_token', { p_token: token });
+      if (error) {
+        console.error('[verificar] rpc error:', error);
+        showError('No pudimos validar el enlace. Intentá de nuevo o escribinos por WhatsApp.');
+        return;
+      }
+      if (!data || !data.success) {
+        showError('El enlace es inválido o ya expiró. Iniciá sesión y pedí un nuevo correo.');
+        return;
+      }
+
+      // Disparar welcome email si el user tiene sesion en este device
+      // (sino se mandara cuando vuelva a entrar via auth-callback)
+      loaderText.textContent = 'Preparando tu cuenta…';
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await fetch(`${supabase.supabaseUrl}/functions/v1/send-welcome-email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': supabase.supabaseKey,
+            },
+          });
+          // Si esta logueado, mejor que el boton "Entrar al Panel" vaya a
+          // completar-perfil si todavia no completo, sino al panel directo.
+          const { profile } = await A.getCurrentUser();
+          if (profile && profile.perfil_completo === false) {
+            btnContinuar.setAttribute('href', '/completar-perfil.html');
+            btnContinuar.textContent = 'Continuar (1 paso final)';
+          }
+        }
+      } catch (e) {
+        console.warn('[verificar] welcome email fallo (no critico):', e);
+      }
+
+      showSuccess({ alreadyVerified: data.already_verified === true });
+    })().catch(e => {
+      console.error('[verificar init]', e);
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('errorView').hidden = false;
+    });
+  </script>
+</body>
+</html>

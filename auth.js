@@ -75,10 +75,11 @@
   }
 
   // Gateo de paginas privadas (login, signup, callback no llaman a este)
-  // Si !session    → /login.html
-  // Si profile.perfil_completo === false → /completar-perfil.html (a menos
-  //                  que skipProfileCheck=true, util para la propia pagina
-  //                  de completar-perfil para evitar loop)
+  // Si !session                                  → /login.html
+  // Si profile.email_aimma_verificado === false  → /verificar-pendiente.html
+  //                                                (a menos que skipVerifyCheck=true)
+  // Si profile.perfil_completo === false         → /completar-perfil.html
+  //                                                (a menos que skipProfileCheck=true)
   async function requireAuth(opts = {}) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -86,6 +87,10 @@
       return { user: null, profile: null, session: null };
     }
     const { user, profile } = await getCurrentUser();
+    if (!opts.skipVerifyCheck && profile && profile.email_aimma_verificado === false) {
+      window.location.replace('/verificar-pendiente.html');
+      return { user, profile, session };
+    }
     if (!opts.skipProfileCheck && profile && profile.perfil_completo === false) {
       window.location.replace('/completar-perfil.html');
       return { user, profile, session };

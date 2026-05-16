@@ -2597,6 +2597,14 @@ main { padding-top: var(--header-h); position: relative; z-index: 1; }
   word-break: break-all;
 }
 
+/* Icono de exito (check verde) usado en verificar.html */
+.auth-confirm-icon.success {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: #22c55e;
+  color: #22c55e;
+  box-shadow: 0 0 24px rgba(34, 197, 94, 0.4);
+}
+
 /* ---------- Panel privado /iapanel ---------- */
 .panel-page {
   min-height: 100vh;
