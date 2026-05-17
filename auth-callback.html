@@ -162,28 +162,6 @@
         // - Google OAuth: Google verifico el correo, pero AIMMA requiere su
         //   propio touchpoint. Disparamos verification email AIMMA y
         //   redirigimos a /verificar-pendiente hasta que clickee.
-        async function callEdgeFn(name) {
-          try {
-            const res = await fetch(`${supabase.supabaseUrl}/functions/v1/${name}`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json',
-                'apikey': supabase.supabaseKey,
-              },
-            });
-            if (!res.ok) {
-              const body = await res.text().catch(() => '');
-              console.warn(`[AIMMA callback] ${name} HTTP ${res.status}:`, body);
-              return { ok: false, status: res.status };
-            }
-            return { ok: true };
-          } catch (e) {
-            console.warn(`[AIMMA callback] ${name} fallo:`, e);
-            return { ok: false, error: e };
-          }
-        }
-
         // === REDIRECT FIRST, dispatch background (fire-and-forget) ===
         // El bug critico que veniamos arrastrando: el `await callEdgeFn`
         // bloqueaba el redirect 1-2s mientras SMTP enviaba. Durante esos
