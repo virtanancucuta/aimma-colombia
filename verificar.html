@@ -131,11 +131,14 @@
         return;
       }
 
-      // Disparar welcome email si el user tiene sesion en este device
-      // (sino se mandara cuando vuelva a entrar via auth-callback)
+      // Disparar welcome email si el user tiene sesion en este device.
+      // Si NO tiene sesion (abrio el link en otro browser/device), redirigimos
+      // a /login asi el callback dispara el welcome al loguear.
       loaderText.textContent = 'Preparando tu cuenta…';
+      let tieneSesionLocal = false;
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        tieneSesionLocal = !!session;
         if (session) {
           await fetch(`${supabase.supabaseUrl}/functions/v1/send-welcome-email`, {
             method: 'POST',
@@ -155,6 +158,14 @@
         }
       } catch (e) {
         console.warn('[verificar] welcome email fallo (no critico):', e);
+      }
+
+      // Si NO hay sesion en este device, mandar a /login.html en vez de
+      // /iapanel (sino requireAuth bota al user a login con UX confusa).
+      if (!tieneSesionLocal) {
+        btnContinuar.setAttribute('href', '/login.html');
+        btnContinuar.textContent = 'Iniciar sesión y entrar';
+        successMsg.textContent = 'Tu correo está verificado. Iniciá sesión para acceder a tu Panel IA.';
       }
 
       showSuccess({ alreadyVerified: data.already_verified === true });
