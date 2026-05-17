@@ -80,6 +80,10 @@
   //                                                (a menos que skipVerifyCheck=true)
   // Si profile.perfil_completo === false         → /completar-perfil.html
   //                                                (a menos que skipProfileCheck=true)
+  // FALLBACK welcome: si llega a esta pagina con verificado=true pero
+  // welcome_enviado_at=null, dispara welcome aqui (caso edge cuando user
+  // bypasea auth-callback, ej. cierra sesion despues de verificar y vuelve
+  // logueado con Supabase session cached).
   async function requireAuth(opts = {}) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -94,6 +98,19 @@
     if (!opts.skipProfileCheck && profile && profile.perfil_completo === false) {
       window.location.replace('/completar-perfil.html');
       return { user, profile, session };
+    }
+    // Fallback dispatch del welcome si quedo pendiente (fire-and-forget)
+    if (profile && profile.email_aimma_verificado === true && !profile.welcome_enviado_at) {
+      fetch(`${supabase.supabaseUrl || ''}/functions/v1/send-welcome-email`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey || '',
+        },
+      }).then(r => {
+        if (!r.ok) r.text().then(t => console.warn('[AIMMA welcome fallback] HTTP', r.status, t));
+      }).catch(e => console.warn('[AIMMA welcome fallback] error:', e));
     }
     return { user, profile, session };
   }
