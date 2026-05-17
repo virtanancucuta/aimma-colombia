@@ -1191,7 +1191,9 @@
     }
 
     function applyHref(session) {
-      const href = session ? '/iapanel' : '/login.html';
+      // Trailing slash en /iapanel/ para evitar redirect 301 intermedio
+      // por nginx try_files que puede perder el contexto de sesion.
+      const href = session ? '/iapanel/' : '/login.html';
       if (btnHeader) btnHeader.setAttribute('href', href);
       if (btnDrawer) btnDrawer.setAttribute('href', href);
     }

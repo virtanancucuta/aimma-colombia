@@ -120,8 +120,31 @@
         }
 
         loaderText.textContent = 'Cargando tu perfil…';
-        const { user, profile } = await A.getCurrentUser();
+        // RETRY: el trigger DB handle_new_user puede tardar 100-500ms en
+        // crear el row de profiles despues del INSERT en auth.users. Si
+        // leemos profile=null nos saltamos todo el flow y caemos al else
+        // que redirige a /iapanel/, rompiendo verification.
+        let user = null, profile = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const res = await A.getCurrentUser();
+          user = res.user;
+          profile = res.profile;
+          if (profile) break;
+          await new Promise(r => setTimeout(r, 400));
+        }
+
         const provider = user?.app_metadata?.provider || 'email';
+
+        // SAFE FALLBACK: si despues de 5 intentos sigue sin haber profile,
+        // probablemente RLS lo bloquea o trigger fallo. En vez de mandar
+        // al panel (que no va a funcionar), mandamos a /verificar-pendiente
+        // que es el estado mas seguro y desde alli el polling detectara
+        // cuando el profile se cree.
+        if (!profile) {
+          console.warn('[AIMMA callback] profile=null despues de 5 intentos. Fallback a /verificar-pendiente.html');
+          window.location.replace('/verificar-pendiente.html');
+          return;
+        }
 
         // === Lógica de email verification AIMMA ===
         // - Email/password: el usuario YA verifico via Supabase (acaba de hacer
@@ -133,7 +156,7 @@
         //   redirigimos a /verificar-pendiente hasta que clickee.
         async function callEdgeFn(name) {
           try {
-            await fetch(`${supabase.supabaseUrl}/functions/v1/${name}`, {
+            const res = await fetch(`${supabase.supabaseUrl}/functions/v1/${name}`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${session.access_token}`,
@@ -141,18 +164,26 @@
                 'apikey': supabase.supabaseKey,
               },
             });
+            if (!res.ok) {
+              const body = await res.text().catch(() => '');
+              console.warn(`[AIMMA callback] ${name} HTTP ${res.status}:`, body);
+              return { ok: false, status: res.status };
+            }
+            return { ok: true };
           } catch (e) {
-            console.warn(`[AIMMA callback] ${name} fallo (no critico):`, e);
+            console.warn(`[AIMMA callback] ${name} fallo:`, e);
+            return { ok: false, error: e };
           }
         }
 
-        if (profile && profile.email_aimma_verificado === false) {
+        if (profile.email_aimma_verificado === false) {
           if (provider === 'email') {
             // Email/password recien confirmado: marcamos verificado + welcome
             loaderText.textContent = 'Activando tu cuenta AIMMA…';
-            await supabase.from('profiles')
+            const { error: upErr } = await supabase.from('profiles')
               .update({ email_aimma_verificado: true })
               .eq('id', user.id);
+            if (upErr) console.warn('[AIMMA callback] UPDATE email_aimma_verificado fallo:', upErr);
             await callEdgeFn('send-welcome-email');
           } else {
             // OAuth (Google etc.): disparar verification email AIMMA
@@ -161,14 +192,14 @@
             window.location.replace('/verificar-pendiente.html');
             return;
           }
-        } else if (profile && profile.email_aimma_verificado === true && !profile.welcome_enviado_at) {
+        } else if (profile.email_aimma_verificado === true && !profile.welcome_enviado_at) {
           // Caso edge: ya verificado pero welcome no se mando (ej. verifico
           // en otro device sin sesion). Disparar welcome ahora.
           await callEdgeFn('send-welcome-email');
         }
 
         // Routing final
-        if (profile && profile.perfil_completo === false) {
+        if (profile.perfil_completo === false) {
           window.location.replace('/completar-perfil.html');
         } else {
           window.location.replace('/iapanel/');
