@@ -125,23 +125,31 @@
         // leemos profile=null nos saltamos todo el flow y caemos al else
         // que redirige a /iapanel/, rompiendo verification.
         let user = null, profile = null;
-        for (let attempt = 0; attempt < 5; attempt++) {
+        for (let attempt = 0; attempt < 10; attempt++) {
           const res = await A.getCurrentUser();
           user = res.user;
           profile = res.profile;
           if (profile) break;
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise(r => setTimeout(r, 500));
         }
 
         const provider = user?.app_metadata?.provider || 'email';
 
-        // SAFE FALLBACK: si despues de 5 intentos sigue sin haber profile,
-        // probablemente RLS lo bloquea o trigger fallo. En vez de mandar
-        // al panel (que no va a funcionar), mandamos a /verificar-pendiente
-        // que es el estado mas seguro y desde alli el polling detectara
-        // cuando el profile se cree.
+        // SAFE FALLBACK: si despues de 5 segundos sigue sin haber profile
+        // (10 intentos x 500ms), redirigimos a /verificar-pendiente que
+        // ahora tiene auto-dispatch del verification email al cargar.
+        // Ademas intentamos disparar el verification email aqui mismo
+        // como fire-and-forget (la EF maneja profile_not_found gracefully).
         if (!profile) {
-          console.warn('[AIMMA callback] profile=null despues de 5 intentos. Fallback a /verificar-pendiente.html');
+          console.warn('[AIMMA callback] profile=null despues de 10 intentos. Fallback a /verificar-pendiente.html');
+          fetch(`${supabase.supabaseUrl}/functions/v1/send-verification-email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': supabase.supabaseKey,
+            },
+          }).catch(e => console.warn('[callback fallback dispatch] error:', e));
           window.location.replace('/verificar-pendiente.html');
           return;
         }

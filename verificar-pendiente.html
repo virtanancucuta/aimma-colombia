@@ -102,6 +102,30 @@
       loader.classList.add('hidden');
       content.hidden = false;
 
+      // AUTO-DISPATCH: si nunca se envio el verification email (race en
+      // callback, fetch cancelado, etc), disparar aqui. Centraliza el
+      // dispatch: no importa que path tomo el user para llegar aqui,
+      // si no hay verificacion_enviado_at se manda.
+      if (profile && !profile.verificacion_enviado_at) {
+        try {
+          const res = await fetch(`${supabase.supabaseUrl}/functions/v1/send-verification-email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': supabase.supabaseKey,
+            },
+          });
+          if (res.ok) {
+            showAlert('Te enviamos un correo de verificación. Revisá tu bandeja en unos segundos.', 'info');
+          } else if (res.status !== 429) {
+            console.warn('[verificar-pendiente] auto-dispatch HTTP', res.status);
+          }
+        } catch (e) {
+          console.warn('[verificar-pendiente] auto-dispatch error:', e);
+        }
+      }
+
       function showAlert(msg, type = 'info') {
         alertBox.className = `auth-alert auth-alert--${type === 'error' ? 'error' : 'info'}`;
         alertBox.textContent = msg;
