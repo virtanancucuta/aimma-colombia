@@ -184,29 +184,58 @@
           }
         }
 
+        // === REDIRECT FIRST, dispatch background (fire-and-forget) ===
+        // El bug critico que veniamos arrastrando: el `await callEdgeFn`
+        // bloqueaba el redirect 1-2s mientras SMTP enviaba. Durante esos
+        // segundos el user veia "Cargando..." en el callback y a veces
+        // clickeaba algo (logo header → "/" home, back button, etc),
+        // saliendo del flow antes de llegar a /verificar-pendiente.
+        //
+        // Fix: NUNCA await dispatches en callback. Hacer fire-and-forget.
+        // El EF tiene rate-limit 60s (verification) + dedup welcome_enviado_at
+        // asi que NO hay riesgo de doble envio. Si el callback no llega a
+        // disparar, /verificar-pendiente.html tiene auto-dispatch + el
+        // requireAuth fallback en auth.js cubre el welcome.
+
+        function fireAndForget(name) {
+          fetch(`${supabase.supabaseUrl}/functions/v1/${name}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': supabase.supabaseKey,
+            },
+          }).then(r => {
+            if (!r.ok) r.text().then(t => console.warn(`[callback ${name}] HTTP ${r.status}:`, t)).catch(() => {});
+          }).catch(e => console.warn(`[callback ${name}] error:`, e));
+        }
+
         if (profile.email_aimma_verificado === false) {
           if (provider === 'email') {
             // Email/password recien confirmado: marcamos verificado + welcome
-            loaderText.textContent = 'Activando tu cuenta AIMMA…';
+            // El UPDATE sigue siendo await porque necesitamos que se persista
+            // antes del redirect (sino requireAuth en /iapanel detecta
+            // verificado=false y manda a /verificar-pendiente, bug).
             const { error: upErr } = await supabase.from('profiles')
               .update({ email_aimma_verificado: true })
               .eq('id', user.id);
             if (upErr) console.warn('[AIMMA callback] UPDATE email_aimma_verificado fallo:', upErr);
-            await callEdgeFn('send-welcome-email');
+            fireAndForget('send-welcome-email');
+            // continua al routing final
           } else {
-            // OAuth (Google etc.): disparar verification email AIMMA
-            loaderText.textContent = 'Enviando verificación AIMMA…';
-            await callEdgeFn('send-verification-email');
+            // OAuth (Google etc.): redirect INMEDIATO. EF fire-and-forget.
+            // /verificar-pendiente tiene auto-dispatch como red de seguridad
+            // adicional (si este fire-and-forget no llega a la red).
+            fireAndForget('send-verification-email');
             window.location.replace('/verificar-pendiente.html');
             return;
           }
         } else if (profile.email_aimma_verificado === true && !profile.welcome_enviado_at) {
-          // Caso edge: ya verificado pero welcome no se mando (ej. verifico
-          // en otro device sin sesion). Disparar welcome ahora.
-          await callEdgeFn('send-welcome-email');
+          // Caso edge: ya verificado pero welcome no se mando.
+          fireAndForget('send-welcome-email');
         }
 
-        // Routing final
+        // Routing final (instantaneo, sin await en dispatches)
         if (profile.perfil_completo === false) {
           window.location.replace('/completar-perfil.html');
         } else {
