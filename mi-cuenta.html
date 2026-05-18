@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Mi Cuenta · AIMMA Colombia</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="/style.v3.css" />
+  <style>
+    .mc-page { min-height: 100vh; display: flex; flex-direction: column; }
+    .mc-main { flex: 1; max-width: 880px; margin: 0 auto; width: 100%; padding: 40px 24px 48px; }
+    .mc-title {
+      font-family: var(--font-display); font-weight: 800; font-size: 1.9rem;
+      color: var(--white); margin: 0 0 8px; letter-spacing: 0.02em;
+    }
+    .mc-title strong { color: var(--cyan); }
+    .mc-sub { color: var(--white-70); font-size: 0.95rem; margin: 0 0 32px; }
+
+    .mc-section {
+      background: linear-gradient(180deg, var(--navy-card), var(--navy));
+      border: 1px solid var(--white-15); border-radius: var(--radius-lg);
+      padding: 28px 24px; margin-bottom: 20px;
+    }
+    .mc-section-title {
+      font-family: var(--font-mono); font-size: 0.75rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--cyan); margin: 0 0 18px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--white-15);
+    }
+    .mc-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 10px 0; gap: 16px;
+      border-bottom: 1px dashed rgba(255,255,255,0.06);
+    }
+    .mc-row:last-child { border-bottom: none; }
+    .mc-label {
+      font-family: var(--font-mono); font-size: 0.78rem;
+      color: var(--white-60); letter-spacing: 0.04em;
+      flex-shrink: 0; min-width: 140px;
+    }
+    .mc-value {
+      color: var(--white); font-size: 0.92rem; text-align: right;
+      word-break: break-word; flex: 1;
+    }
+    .mc-value.cyan { color: var(--cyan); font-weight: 600; }
+    .mc-value.warn { color: #fbbf24; }
+    .mc-value.muted { color: var(--white-60); font-style: italic; }
+
+    .mc-card-visual {
+      background: linear-gradient(135deg, #1e3a8a, #0a1726);
+      border-radius: 12px; padding: 22px; margin-bottom: 16px;
+      border: 1px solid rgba(0,212,245,0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .mc-card-brand {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 22px; min-height: 24px;
+    }
+    .mc-card-brand-name {
+      font-family: var(--font-display); font-weight: 800; font-size: 0.85rem;
+      color: var(--white); letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .mc-card-chip {
+      width: 32px; height: 24px; border-radius: 4px;
+      background: linear-gradient(135deg, #d4af37, #8b6914);
+    }
+    .mc-card-number {
+      font-family: var(--font-mono); font-size: 1.2rem;
+      color: var(--white); letter-spacing: 0.2em; margin-bottom: 18px;
+    }
+    .mc-card-holder {
+      font-family: var(--font-mono); font-size: 0.78rem;
+      color: rgba(255,255,255,0.7); letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .mc-no-card {
+      text-align: center; padding: 24px; color: var(--white-60);
+      font-size: 0.9rem; font-style: italic;
+    }
+
+    .mc-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .mc-btn {
+      flex: 1; min-width: 160px; min-height: 44px;
+      padding: 11px 18px; border-radius: 8px; cursor: pointer;
+      font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.08em; text-decoration: none; text-align: center;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.25s var(--transition); border: 1px solid;
+    }
+    .mc-btn.primary {
+      background: var(--cyan); color: var(--navy-deep); border-color: var(--cyan);
+      box-shadow: 0 0 0 1px var(--cyan), 0 4px 16px var(--cyan-glow-strong);
+    }
+    .mc-btn.primary:hover { background: #0fe1ff; }
+    .mc-btn.outline {
+      background: transparent; color: var(--cyan); border-color: var(--cyan);
+    }
+    .mc-btn.outline:hover { background: rgba(0,212,245,0.08); }
+    .mc-btn.danger {
+      background: transparent; color: #fca5a5; border-color: rgba(239,68,68,0.5);
+    }
+    .mc-btn.danger:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+    .mc-btn:disabled { opacity: 0.5; cursor: progress; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; backdrop-filter: blur(4px); }
+    .modal-overlay[hidden] { display: none; }
+    .modal-card { background: var(--navy-card); border: 1px solid var(--white-15); border-radius: var(--radius-lg); padding: 32px 28px; max-width: 460px; width: 100%; }
+    .modal-title { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: var(--white); margin: 0 0 12px; }
+    .modal-desc { color: var(--white-80); font-size: 0.95rem; line-height: 1.6; margin: 0 0 20px; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions button { flex: 1; min-height: 44px; padding: 12px; border-radius: 8px; cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; letter-spacing: 0.04em; transition: all 0.2s; }
+    .modal-cancel { background: transparent; color: var(--white-80); border: 1px solid var(--white-15); }
+    .modal-cancel:hover { border-color: var(--white-40); color: var(--white); }
+    .modal-confirm { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.5); }
+    .modal-confirm:hover { background: rgba(239,68,68,0.25); }
+    .modal-confirm:disabled { opacity: 0.5; cursor: progress; }
+
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120%);
+      min-width: 280px; max-width: 90vw; padding: 14px 20px; border-radius: 10px;
+      font-family: var(--font-mono); font-size: 0.85rem;
+      background: var(--navy-card); border: 1px solid var(--cyan);
+      color: var(--white); box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+      z-index: 200; transition: transform 0.35s var(--transition), visibility 0.35s, opacity 0.35s;
+      visibility: hidden; opacity: 0; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); visibility: visible; opacity: 1; pointer-events: auto; }
+    .toast.error { border-color: rgba(239,68,68,0.6); color: #fca5a5; }
+    .toast.success { border-color: rgba(34,197,94,0.6); color: #86efac; }
+
+    @media (max-width: 560px) {
+      .mc-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+      .mc-value { text-align: left; }
+      .mc-label { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span><span class="halo halo-2"></span><span class="halo halo-3"></span>
+  </div>
+
+  <div id="loader" class="auth-loader"><div class="auth-loader-orb"></div><div class="auth-loader-text">Cargando tu cuenta…</div></div>
+
+  <div class="mc-page" id="page" hidden>
+    <header class="panel-header">
+      <a href="/iapanel/" class="brand"><img src="/assets/logo.svg" alt="" class="brand-logo" width="38" height="38"><span class="brand-text"><span class="brand-name">AIMMA</span><span class="brand-tag">CUENTA</span></span></a>
+      <div class="panel-user">
+        <a href="/iapanel/" style="color:var(--cyan); text-decoration:none; font-size:0.9rem; font-family:var(--font-mono);">&larr; Volver al panel</a>
+      </div>
+    </header>
+
+    <main class="mc-main">
+      <h1 class="mc-title">Mi <strong>Cuenta</strong></h1>
+      <p class="mc-sub">Tus datos personales, plan y método de pago.</p>
+
+      <section class="mc-section">
+        <h2 class="mc-section-title">Datos personales</h2>
+        <div id="datosPersonales"></div>
+      </section>
+
+      <section class="mc-section">
+        <h2 class="mc-section-title">Plan y suscripción</h2>
+        <div id="planInfo"></div>
+        <div class="mc-actions" id="planActions"></div>
+      </section>
+
+      <section class="mc-section" id="sectionCard">
+        <h2 class="mc-section-title">Método de pago</h2>
+        <div id="cardInfo">
+          <div class="mc-no-card">Cargando…</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="panel-footer"><p>&copy; 2026 AIMMA Colombia &middot; Todos los derechos reservados</p></footer>
+  </div>
+
+  <div class="modal-overlay" id="modalCancelar" role="dialog" aria-modal="true" hidden>
+    <div class="modal-card">
+      <h2 class="modal-title">¿Cancelar tu Plan PRO?</h2>
+      <p class="modal-desc" id="modalDesc">Tu acceso al Dashboard AIMMA seguirá activo hasta el final del período pagado.</p>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="btnVolver">Volver</button>
+        <button class="modal-confirm" id="btnConfirmar">Sí, cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    (async function() {
+      const A = window.AIMMA.auth;
+      const supabase = window.supabaseClient;
+      const SUPA = 'https://rsmxklkxqsaptchcjszd.supabase.co';
+      const ANON = 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1';
+
+      const loader = document.getElementById('loader');
+      const page = document.getElementById('page');
+      const toast = document.getElementById('toast');
+
+      function showToast(msg, kind) {
+        toast.textContent = msg; toast.className = 'toast' + (kind ? ' ' + kind : '');
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => toast.classList.remove('show'), 5000);
+      }
+
+      function row(label, value, kind) {
+        const div = document.createElement('div'); div.className = 'mc-row';
+        const l = document.createElement('span'); l.className = 'mc-label'; l.textContent = label;
+        const v = document.createElement('span'); v.className = 'mc-value' + (kind ? ' ' + kind : '');
+        v.textContent = value || '—';
+        if (!value) v.classList.add('muted');
+        div.append(l, v); return div;
+      }
+
+      function fmtFecha(iso) {
+        if (!iso) return '';
+        return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+
+      const { user, profile, session } = await A.requireAuth();
+      if (!session) return;
+
+      // Datos personales
+      const dp = document.getElementById('datosPersonales');
+      dp.append(
+        row('Nombre', profile?.nombre_completo),
+        row('Correo', user.email),
+        row('Cédula', profile?.cedula),
+        row('Teléfono', profile?.telefono),
+        row('Dirección', profile?.direccion),
+        row('Empresa', profile?.nombre_empresa),
+        row('Web', profile?.pagina_web),
+      );
+
+      // Plan + acciones
+      const [accesoR, susR] = await Promise.all([
+        supabase.rpc('tiene_acceso_pro', { p_user_id: user.id }),
+        supabase.from('suscripciones').select('*').eq('user_id', user.id).maybeSingle(),
+      ]);
+      const acceso = accesoR.data || { pro: false, razon: 'no_subscription' };
+      const sus = susR.data;
+
+      const pi = document.getElementById('planInfo');
+      const planActions = document.getElementById('planActions');
+      const cardInfo = document.getElementById('cardInfo');
+      const sectionCard = document.getElementById('sectionCard');
+
+      if (acceso.razon === 'cortesia') {
+        pi.append(
+          row('Estado', 'CORTESÍA CEO', 'warn'),
+          row('Plan', 'AIMMA PRO permanente'),
+          row('Costo', 'Sin costo'),
+        );
+        sectionCard.style.display = 'none';
+      } else if (acceso.pro && sus && sus.mp_preapproval_id) {
+        const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual' : sus.plan_tipo === 'test_1k' ? 'AIMMA PRO TEST ($1K)' : 'AIMMA PRO Mensual';
+        pi.append(
+          row('Estado', sus.estado === 'cancelada' ? 'CANCELADO (vigente hasta fecha abajo)' : 'PRO ACTIVO', sus.estado === 'cancelada' ? 'warn' : 'cyan'),
+          row('Plan', planLabel),
+          row('Monto', '$' + Number(sus.monto || 0).toLocaleString('es-CO') + ' COP'),
+          row('Activado el', fmtFecha(sus.activada_en)),
+          row('Próxima facturación', fmtFecha(sus.proxima_facturacion), 'cyan'),
+          row('Garantía 30 días hasta', fmtFecha(sus.garantia_30_dias_hasta)),
+        );
+
+        if (sus.estado !== 'cancelada') {
+          const btnCancel = document.createElement('button');
+          btnCancel.className = 'mc-btn danger'; btnCancel.textContent = 'CANCELAR SUSCRIPCIÓN';
+          btnCancel.addEventListener('click', () => abrirModal());
+          planActions.append(btnCancel);
+        }
+        const btnMP = document.createElement('a');
+        btnMP.className = 'mc-btn outline'; btnMP.textContent = 'GESTIONAR EN MERCADO PAGO';
+        btnMP.href = 'https://www.mercadopago.com.co/subscriptions';
+        btnMP.target = '_blank'; btnMP.rel = 'noopener';
+        planActions.append(btnMP);
+
+        // Cargar info de tarjeta
+        try {
+          const res = await fetch(`${SUPA}/functions/v1/get-payment-method`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}`, 'apikey': ANON },
+          });
+          const data = await res.json();
+          if (data.has_card && data.last4) {
+            cardInfo.innerHTML = '';
+            const visual = document.createElement('div'); visual.className = 'mc-card-visual';
+            const brand = document.createElement('div'); brand.className = 'mc-card-brand';
+            const bname = document.createElement('span'); bname.className = 'mc-card-brand-name';
+            bname.textContent = (data.brand || 'tarjeta').toUpperCase();
+            const chip = document.createElement('div'); chip.className = 'mc-card-chip';
+            brand.append(bname, chip);
+            const num = document.createElement('div'); num.className = 'mc-card-number';
+            num.textContent = '•••• •••• •••• ' + data.last4;
+            const holder = document.createElement('div'); holder.className = 'mc-card-holder';
+            holder.textContent = data.card_holder || 'TITULAR';
+            visual.append(brand, num, holder);
+            cardInfo.appendChild(visual);
+
+            const det = document.createElement('div');
+            det.append(
+              row('Email en MP', data.payer_email),
+              row('Estado MP', data.status),
+            );
+            cardInfo.appendChild(det);
+          } else {
+            cardInfo.innerHTML = '<div class="mc-no-card">No pudimos obtener los datos de la tarjeta desde Mercado Pago. <br>Podés gestionar tu medio de pago en el botón "GESTIONAR EN MERCADO PAGO" arriba.</div>';
+          }
+        } catch (e) {
+          cardInfo.innerHTML = '<div class="mc-no-card">Error consultando MP. Reintentá en unos segundos.</div>';
+        }
+      } else if (sus && sus.estado === 'pendiente_pago' && sus.mp_init_point) {
+        pi.append(
+          row('Estado', 'PAGO PENDIENTE', 'warn'),
+          row('Plan', sus.plan_tipo || 'AIMMA PRO'),
+        );
+        const isValidUrl = typeof sus.mp_init_point === 'string' &&
+          (sus.mp_init_point.startsWith('https://www.mercadopago.com.co/') || sus.mp_init_point.startsWith('https://www.mercadopago.com/'));
+        if (isValidUrl) {
+          const btn = document.createElement('a');
+          btn.className = 'mc-btn primary'; btn.textContent = 'CONTINUAR PAGO';
+          btn.href = sus.mp_init_point; btn.rel = 'noopener';
+          planActions.append(btn);
+        }
+        sectionCard.style.display = 'none';
+      } else {
+        pi.append(row('Estado', 'SIN PLAN PRO', 'muted'));
+        const btn = document.createElement('a'); btn.className = 'mc-btn primary';
+        btn.textContent = 'ACTIVAR PLAN PRO'; btn.href = '/upgrade-pro.html';
+        planActions.append(btn);
+        sectionCard.style.display = 'none';
+      }
+
+      loader.classList.add('hidden');
+      page.removeAttribute('hidden');
+
+      // Modal cancelar
+      const modal = document.getElementById('modalCancelar');
+      const modalDesc = document.getElementById('modalDesc');
+      const btnVolver = document.getElementById('btnVolver');
+      const btnConfirmar = document.getElementById('btnConfirmar');
+      let lastFocused = null;
+
+      function abrirModal() {
+        lastFocused = document.activeElement;
+        if (sus && sus.proxima_facturacion) {
+          modalDesc.textContent = '';
+          modalDesc.append(document.createTextNode('Tu acceso al Dashboard AIMMA seguirá activo hasta '));
+          const strong = document.createElement('strong');
+          strong.textContent = fmtFecha(sus.proxima_facturacion);
+          modalDesc.append(strong, document.createTextNode('. No se hará ningún cobro adicional. ¿Estás seguro?'));
+        }
+        modal.removeAttribute('hidden');
+        btnVolver.focus();
+      }
+      function cerrarModal() {
+        modal.setAttribute('hidden', '');
+        if (lastFocused) lastFocused.focus();
+      }
+      btnVolver.addEventListener('click', cerrarModal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) cerrarModal(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.hasAttribute('hidden')) cerrarModal();
+        if (e.key === 'Tab' && !modal.hasAttribute('hidden')) {
+          const f = [btnVolver, btnConfirmar];
+          const i = f.indexOf(document.activeElement);
+          if (i === -1) { e.preventDefault(); f[0].focus(); return; }
+          if (e.shiftKey && i === 0) { e.preventDefault(); f[f.length - 1].focus(); }
+          else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+        }
+      });
+
+      btnConfirmar.addEventListener('click', async () => {
+        btnConfirmar.disabled = true; btnConfirmar.textContent = 'Cancelando…';
+        try {
+          const res = await fetch(`${SUPA}/functions/v1/cancelar-suscripcion`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
+            body: JSON.stringify({}),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            showToast('No pudimos cancelar: ' + (data.error || 'error'), 'error');
+            btnConfirmar.disabled = false; btnConfirmar.textContent = 'Sí, cancelar'; return;
+          }
+          cerrarModal();
+          showToast(data.message || 'Suscripción cancelada.', 'success');
+          setTimeout(() => window.location.reload(), 2200);
+        } catch (e) {
+          showToast('Sin conexión.', 'error');
+          btnConfirmar.disabled = false; btnConfirmar.textContent = 'Sí, cancelar';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

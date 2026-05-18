@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Test Pago $1.000 · AIMMA</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=JetBrains+Mono:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="/style.v3.css" />
+  <style>
+    .tp { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+    .tp-card {
+      max-width: 460px; text-align: center;
+      background: linear-gradient(180deg, var(--navy-card), var(--navy));
+      border: 1px solid #fbbf24; border-radius: var(--radius-lg);
+      padding: 48px 32px; box-shadow: 0 0 40px rgba(251,191,36,0.2);
+    }
+    .tp-card h1 { font-family: var(--font-display); color: var(--white); font-size: 1.6rem; margin: 0 0 12px; }
+    .tp-card h1 strong { color: #fbbf24; }
+    .tp-card p { color: var(--white-80); font-size: 0.95rem; line-height: 1.6; margin: 0 0 8px; }
+    .tp-monto {
+      font-size: 3rem; font-weight: 800; color: #fbbf24;
+      font-family: var(--font-display); margin: 18px 0;
+      text-shadow: 0 0 20px rgba(251,191,36,0.4);
+    }
+    .tp-btn {
+      width: 100%; padding: 16px; margin-top: 16px;
+      background: #fbbf24; color: var(--navy-deep); border: none; border-radius: 10px;
+      font-family: var(--font-display); font-weight: 800; font-size: 1rem; letter-spacing: 0.06em;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .tp-btn:hover:not(:disabled) { background: #fcd34d; transform: translateY(-2px); }
+    .tp-btn:disabled { opacity: 0.5; cursor: progress; }
+    .tp-warn {
+      background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.4);
+      padding: 12px 16px; border-radius: 8px;
+      color: #fcd34d; font-size: 0.82rem; margin: 18px 0;
+      font-family: var(--font-mono); line-height: 1.5;
+    }
+    .tp-err { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; padding: 10px 14px; border-radius: 8px; margin-top: 14px; font-size: 0.85rem; }
+    .tp-err[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div class="bg-halos" aria-hidden="true"><span class="halo halo-1"></span><span class="halo halo-2"></span></div>
+  <div id="loader" class="auth-loader"><div class="auth-loader-orb"></div><div class="auth-loader-text">Cargando…</div></div>
+  <div class="tp" id="page" hidden>
+    <div class="tp-card">
+      <h1>Validación E2E <strong>PRODUCCIÓN</strong></h1>
+      <p>Plan TEST de validación — cobro real a tu tarjeta.</p>
+      <div class="tp-monto">$1.000</div>
+      <p style="color: var(--white-60); font-size: 0.85rem;">COP / mes · cancelable cuando quieras</p>
+      <div class="tp-warn">
+        ⚠ Este botón crea una suscripción REAL en Mercado Pago.<br>
+        Vas a pagar $1.000 COP reales con tu tarjeta.<br>
+        Después validás el flujo y cancelás.
+      </div>
+      <button class="tp-btn" id="btnTest">PAGAR $1.000 COP</button>
+      <div class="tp-err" id="err" hidden></div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    (async function() {
+      const A = window.AIMMA.auth;
+      const { user, session } = await A.requireAuth();
+      if (!session) return;
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('page').removeAttribute('hidden');
+
+      const btn = document.getElementById('btnTest');
+      const err = document.getElementById('err');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Conectando con MP…'; err.hidden = true;
+        try {
+          const res = await fetch('https://rsmxklkxqsaptchcjszd.supabase.co/functions/v1/crear-preapproval', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1',
+            },
+            body: JSON.stringify({ plan_tipo: 'test_1k' }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.init_point) {
+            err.textContent = 'Error: ' + (data.error || res.status) + (data.mp ? ' · ' + JSON.stringify(data.mp).slice(0,200) : '');
+            err.hidden = false;
+            btn.disabled = false; btn.textContent = 'PAGAR $1.000 COP';
+            return;
+          }
+          window.location.href = data.init_point;
+        } catch (e) {
+          err.textContent = 'Sin conexión: ' + e.message;
+          err.hidden = false;
+          btn.disabled = false; btn.textContent = 'PAGAR $1.000 COP';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
