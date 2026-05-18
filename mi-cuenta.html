@@ -285,30 +285,49 @@
           btnCancel.addEventListener('click', () => abrirModal());
           planActions.append(btnCancel);
         } else {
-          // Boton REACTIVAR PRO cuando esta cancelada pero aun con acceso vigente
-          const btnReactivar = document.createElement('button');
-          btnReactivar.className = 'mc-btn success'; btnReactivar.textContent = 'REACTIVAR PRO';
-          btnReactivar.addEventListener('click', async () => {
-            btnReactivar.disabled = true; btnReactivar.textContent = 'Conectando con MP…';
-            try {
-              const res = await fetch(`${SUPA}/functions/v1/crear-preapproval`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
-                body: JSON.stringify({ plan_tipo: sus.plan_tipo || 'mensual' }),
-              });
-              const data = await res.json();
-              if (!res.ok || !data.init_point) {
-                showToast('No pudimos reactivar: ' + (data.error || 'error'), 'error');
-                btnReactivar.disabled = false; btnReactivar.textContent = 'REACTIVAR PRO';
-                return;
+          // Cancelada: solo permitir reactivar si ya expiro el periodo vigente
+          // MP no permite des-cancelar un preapproval, asi que reactivar antes
+          // de expirar implicaria nuevo cobro inmediato (doble cobro injusto).
+          const vigente = sus.proxima_facturacion && new Date(sus.proxima_facturacion) > new Date();
+          if (vigente) {
+            const aviso = document.createElement('div');
+            aviso.style.cssText = 'background:rgba(0,212,245,0.08); border:1px solid rgba(0,212,245,0.3); border-radius:8px; padding:14px 16px; color:var(--white-80); font-size:0.88rem; line-height:1.55; width:100%;';
+            aviso.innerHTML = '';
+            const p1 = document.createElement('p'); p1.style.cssText = 'margin:0 0 6px 0;';
+            p1.append(document.createTextNode('Tu acceso PRO sigue activo hasta '));
+            const strong = document.createElement('strong'); strong.style.color = 'var(--cyan)';
+            strong.textContent = fmtFecha(sus.proxima_facturacion);
+            p1.append(strong, document.createTextNode('. No hay cobros pendientes.'));
+            const p2 = document.createElement('p'); p2.style.cssText = 'margin:0; color:var(--white-60); font-size:0.82rem;';
+            p2.textContent = `Podrás volver a suscribirte después de esa fecha (sin doble cobro).`;
+            aviso.append(p1, p2);
+            planActions.append(aviso);
+          } else {
+            // Ya expiro: ofrecer suscribirse de nuevo (cobro inmediato legitimo)
+            const btnReactivar = document.createElement('button');
+            btnReactivar.className = 'mc-btn success'; btnReactivar.textContent = 'ACTIVAR PRO DE NUEVO';
+            btnReactivar.addEventListener('click', async () => {
+              btnReactivar.disabled = true; btnReactivar.textContent = 'Conectando con MP…';
+              try {
+                const res = await fetch(`${SUPA}/functions/v1/crear-preapproval`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
+                  body: JSON.stringify({ plan_tipo: sus.plan_tipo || 'mensual' }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.init_point) {
+                  showToast('No pudimos reactivar: ' + (data.error || 'error'), 'error');
+                  btnReactivar.disabled = false; btnReactivar.textContent = 'ACTIVAR PRO DE NUEVO';
+                  return;
+                }
+                window.location.href = data.init_point;
+              } catch (e) {
+                showToast('Sin conexión.', 'error');
+                btnReactivar.disabled = false; btnReactivar.textContent = 'ACTIVAR PRO DE NUEVO';
               }
-              window.location.href = data.init_point;
-            } catch (e) {
-              showToast('Sin conexión.', 'error');
-              btnReactivar.disabled = false; btnReactivar.textContent = 'REACTIVAR PRO';
-            }
-          });
-          planActions.append(btnReactivar);
+            });
+            planActions.append(btnReactivar);
+          }
         }
         const btnMP = document.createElement('a');
         btnMP.className = 'mc-btn outline'; btnMP.textContent = 'GESTIONAR EN MERCADO PAGO';
