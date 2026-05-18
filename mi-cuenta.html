@@ -269,7 +269,7 @@
         );
         sectionCard.style.display = 'none';
       } else if (acceso.pro && sus && sus.mp_preapproval_id) {
-        const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual' : sus.plan_tipo === 'test_1k' ? 'AIMMA PRO TEST ($1K)' : 'AIMMA PRO Mensual';
+        const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual' : 'AIMMA PRO Mensual';
         pi.append(
           row('Estado', sus.estado === 'cancelada' ? 'CANCELADO (vigente hasta fecha abajo)' : 'PRO ACTIVO', sus.estado === 'cancelada' ? 'warn' : 'cyan'),
           row('Plan', planLabel),
