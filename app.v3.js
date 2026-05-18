@@ -15,9 +15,73 @@
   let currentTab = null;
   let sectionsInitialized = new Set();
 
+  // Hoist module-scope vars usadas por funciones que pueden correr
+  // durante el handleHash() inicial (TDZ fix)
+  let heroLoopFn = null;
+  let chartLineLoopId = null;
+  let inventoryChatId = null;
+
+  // Hoist DOM refs del drawer mobile (TDZ fix: el click handler de
+  // navLinks llama closeDrawer() que accede drawer; en mobile Playwright
+  // u otros browsers rapidos podrian disparar el click antes de que
+  // la declaracion original (linea ~168) se ejecute en top-level)
+  const hamburger  = document.getElementById('hamburger');
+  const drawer     = document.getElementById('mobileDrawer');
+  const drawerClose = document.getElementById('drawerClose');
+  const backdrop   = document.getElementById('drawerBackdrop');
+
+  // ===================================================
+  // CLEANUP REGISTRY — fix memory leak en mobile
+  // ===================================================
+  // Cada tab puede acumular RAFs, setTimeouts y setIntervals que sin
+  // cleanup explicito siguen corriendo cuando user cambia de tab.
+  // En mobile despues de ~5 cambios el main thread se satura y la
+  // pagina se congela (bug reportado por Jorge).
+  // Solucion: registry global de timers/RAFs por tab + cleanup en
+  // showTab() ANTES de cambiar a otra tab.
+  const tabResources = {
+    home:                    { rafs: [], timers: [] },
+    'inteligencia-comercial': { rafs: [], timers: [] },
+    'marketing-financiero':  { rafs: [], timers: [] },
+    'compras-logistica':     { rafs: [], timers: [] },
+    'tecnologia-ia':         { rafs: [], timers: [] },
+  };
+  // Helpers para que cada initXxx() registre sus recursos
+  function trackRaf(tabId, id)   { if (tabResources[tabId]) tabResources[tabId].rafs.push(id); return id; }
+  function trackTimer(tabId, id) { if (tabResources[tabId]) tabResources[tabId].timers.push(id); return id; }
+  function cleanupTab(tabId) {
+    const r = tabResources[tabId];
+    if (!r) return;
+    r.rafs.forEach(id => { try { cancelAnimationFrame(id); } catch (_) {} });
+    r.timers.forEach(id => { try { clearTimeout(id); clearInterval(id); } catch (_) {} });
+    r.rafs.length = 0;
+    r.timers.length = 0;
+    // Cleanup especifico por tab
+    if (tabId === 'tecnologia-ia') {
+      // Cancelar voz del agente IA si esta sonando
+      try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (_) {}
+    }
+    if (tabId === 'home') {
+      // Detener loop silencioso del Panel IA si el user sale de home
+      // (no esperar al IntersectionObserver que puede no disparar con hidden)
+      if (window.AIMMA && window.AIMMA.panelIA && window.AIMMA.panelIA.stop) {
+        try { window.AIMMA.panelIA.stop(); } catch (_) {}
+      }
+    }
+    // Sacamos del Set para que restartSectionAnimations re-arranque al volver.
+    // Las funciones init estan escritas para ser idempotentes (chequean
+    // dataset.ready, etc) asi que NO duplican listeners al re-correr.
+    sectionsInitialized.delete(tabId);
+  }
+
   function showTab(tabId, opts = {}) {
     if (!TABS.includes(tabId)) tabId = 'home';
     if (currentTab === tabId && !opts.force) return;
+
+    // CLEANUP de la tab anterior ANTES de cambiar
+    if (currentTab && currentTab !== tabId) {
+      cleanupTab(currentTab);
+    }
 
     Object.entries(sections).forEach(([id, el]) => {
       if (id === tabId) {
@@ -110,10 +174,9 @@
   // ===================================================
   // 3. MOBILE DRAWER
   // ===================================================
-  const hamburger = document.getElementById('hamburger');
-  const drawer = document.getElementById('mobileDrawer');
-  const drawerClose = document.getElementById('drawerClose');
-  const backdrop = document.getElementById('drawerBackdrop');
+  // (hamburger, drawer, drawerClose, backdrop estan hoisteados al inicio
+  // del IIFE para evitar TDZ cuando closeDrawer() se invoca antes que
+  // la declaracion original llegue a ejecutar)
 
   function openDrawer() {
     drawer.classList.add('open');
@@ -154,6 +217,12 @@
     }
   }
   function restartSectionAnimations(tabId) {
+    // Tras cleanup, re-arrancar los loops continuos de cada tab
+    if (tabId === 'home') {
+      // Re-arranca el RAF del hero (initHero detecta dataset.ready y solo
+      // re-llama el loop sin re-atachar listeners)
+      initHero();
+    }
     if (tabId === 'marketing-financiero') restartEquation();
     if (tabId === 'compras-logistica') restartInventoryChat();
   }
@@ -161,9 +230,15 @@
   // ===================================================
   // 5. HERO · CANVAS PARTÍCULAS
   // ===================================================
+  // heroLoopFn está declarado más arriba (TDZ-safe hoisting)
   function initHero() {
     const canvas = document.getElementById('heroParticles');
-    if (!canvas || canvas.dataset.ready) return;
+    if (!canvas) return;
+    // Si ya estaba setup, solo re-arranca el loop (sin re-atachar listeners)
+    if (canvas.dataset.ready) {
+      if (heroLoopFn) heroLoopFn();
+      return;
+    }
     canvas.dataset.ready = '1';
 
     const ctx = canvas.getContext('2d');
@@ -222,8 +297,12 @@
           }
         }
       }
-      if (!reduced) requestAnimationFrame(loop);
+      if (!reduced) {
+        const rafId = requestAnimationFrame(loop);
+        trackRaf('home', rafId);
+      }
     }
+    heroLoopFn = loop;  // expone para re-init tras cleanup
     loop();
   }
 
@@ -458,7 +537,7 @@
   }
 
   // Chart de líneas Ventas vs Rentabilidad
-  let chartLineLoopId = null;
+  // (chartLineLoopId está declarado en la sección de hoisting al inicio)
   function animateChartLine() {
     const canvas = document.getElementById('chartVentasRent');
     const kpiGrid = document.getElementById('kpiGrid');
@@ -593,6 +672,7 @@
       if (!reduced) {
         clearTimeout(chartLineLoopId);
         chartLineLoopId = setTimeout(startCycle, 8000);
+        trackTimer('inteligencia-comercial', chartLineLoopId);
       }
     }
 
@@ -778,7 +858,7 @@
     runInventoryChat();
   }
 
-  let inventoryChatId = null;
+  // (inventoryChatId está declarado en la sección de hoisting al inicio)
   function restartInventoryChat() {
     clearTimeout(inventoryChatId);
     runInventoryChat();
@@ -799,9 +879,11 @@
     let cumulative = 0;
     sequence.forEach(s => {
       cumulative += s.delay;
-      setTimeout(s.render, cumulative);
+      const tid = setTimeout(s.render, cumulative);
+      trackTimer('compras-logistica', tid);
     });
     inventoryChatId = setTimeout(runInventoryChat, cumulative + 4000);
+    trackTimer('compras-logistica', inventoryChatId);
   }
 
   function msg(chat, side, html) {
@@ -1090,6 +1172,7 @@
       i = (i + 1) % total;
       const t = setTimeout(cycle, 2200);
       convTimers.set(card, t);
+      trackTimer('tecnologia-ia', t);  // permite cleanup al salir de tab
     };
 
     // limpiar timer previo si existiera
@@ -1552,6 +1635,17 @@
     stopVoice();
     stopSilentLoop();
   });
+
+  // Exponer al router de tabs para que pueda detener loops cuando el user
+  // cambia de tab (sin esperar al IntersectionObserver, que puede no
+  // disparar inmediatamente con display:none de tabs).
+  window.AIMMA = window.AIMMA || {};
+  window.AIMMA.panelIA = {
+    stop: () => {
+      try { stopSilentLoop(); } catch (_) {}
+      try { stopVoice(); } catch (_) {}
+    }
+  };
 })();
 
 })();
