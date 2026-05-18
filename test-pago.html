@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#040d1a" />
-  <title>Test Pago $1.000 · AIMMA</title>
+  <title>Test Pago $1.700 · AIMMA</title>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -51,14 +51,14 @@
     <div class="tp-card">
       <h1>Validación E2E <strong>PRODUCCIÓN</strong></h1>
       <p>Plan TEST de validación — cobro real a tu tarjeta.</p>
-      <div class="tp-monto">$1.000</div>
+      <div class="tp-monto">$1.700</div>
       <p style="color: var(--white-60); font-size: 0.85rem;">COP / mes · cancelable cuando quieras</p>
       <div class="tp-warn">
         ⚠ Este botón crea una suscripción REAL en Mercado Pago.<br>
-        Vas a pagar $1.000 COP reales con tu tarjeta.<br>
+        Vas a pagar $1.700 COP reales con tu tarjeta.<br>
         Después validás el flujo y cancelás.
       </div>
-      <button class="tp-btn" id="btnTest">PAGAR $1.000 COP</button>
+      <button class="tp-btn" id="btnTest">PAGAR $1.700 COP</button>
       <div class="tp-err" id="err" hidden></div>
     </div>
   </div>
@@ -91,14 +91,14 @@
           if (!res.ok || !data.init_point) {
             err.textContent = 'Error: ' + (data.error || res.status) + (data.mp ? ' · ' + JSON.stringify(data.mp).slice(0,200) : '');
             err.hidden = false;
-            btn.disabled = false; btn.textContent = 'PAGAR $1.000 COP';
+            btn.disabled = false; btn.textContent = 'PAGAR $1.700 COP';
             return;
           }
           window.location.href = data.init_point;
         } catch (e) {
           err.textContent = 'Sin conexión: ' + e.message;
           err.hidden = false;
-          btn.disabled = false; btn.textContent = 'PAGAR $1.000 COP';
+          btn.disabled = false; btn.textContent = 'PAGAR $1.700 COP';
         }
       });
     })();
