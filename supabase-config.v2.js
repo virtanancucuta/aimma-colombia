@@ -7,6 +7,18 @@
 const SUPABASE_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1';
 
+// Safety net Bug #55: si Supabase OAuth deja tokens en el hash de una pagina
+// que NO es auth-callback (porque el redirect_to no estaba en allowlist
+// o por bfcache), reubicar al callback para no dejar sesion huerfana sin
+// completar el flow de verification AIMMA. Va ANTES de createClient para
+// que supabase-js no consuma el hash y lo limpie antes de poder reubicar.
+if (typeof window !== 'undefined'
+    && window.location
+    && window.location.hash.includes('access_token=')
+    && !window.location.pathname.includes('auth-callback')) {
+  window.location.replace('/auth-callback.html' + window.location.hash);
+}
+
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Exponer cliente global para que login/signup/panel puedan usarlo
