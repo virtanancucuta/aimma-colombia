@@ -152,5 +152,25 @@
       <p>&copy; 2026 AIMMA Colombia · Todos los derechos reservados</p>
     </footer>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    (async function () {
+      // Auth guard: solo PRO o cortesía pueden ver esta página
+      const { session, user } = await window.AIMMA.auth.requireAuth();
+      if (!session) return;
+      try {
+        const { data: acceso } = await window.supabaseClient.rpc('tiene_acceso_pro', { p_user_id: user.id });
+        if (!acceso || !acceso.pro) {
+          window.location.replace('/upgrade-pro.html');
+        }
+      } catch (e) {
+        console.error('[dashboard-pro] rpc fallo:', e);
+        window.location.replace('/iapanel/');
+      }
+    })();
+  </script>
 </body>
 </html>

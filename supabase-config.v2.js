@@ -6,6 +6,9 @@
 
 const SUPABASE_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1';
+// Expuestas globalmente para evitar duplicacion hardcoded en cada HTML
+window.SUPABASE_URL_CONST = SUPABASE_URL;
+window.SUPABASE_ANON_CONST = SUPABASE_ANON_KEY;
 
 // Safety net Bug #55: si Supabase OAuth deja tokens en el hash de una pagina
 // que NO es auth-callback (porque el redirect_to no estaba en allowlist

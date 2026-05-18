@@ -108,12 +108,12 @@
       // si no hay verificacion_enviado_at se manda.
       if (profile && !profile.verificacion_enviado_at) {
         try {
-          const res = await fetch(`${supabase.supabaseUrl}/functions/v1/send-verification-email`, {
+          const res = await fetch(`${window.SUPABASE_URL_CONST}/functions/v1/send-verification-email`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
               'Content-Type': 'application/json',
-              'apikey': supabase.supabaseKey,
+              'apikey': window.SUPABASE_ANON_CONST,
             },
           });
           if (res.ok) {
@@ -157,12 +157,12 @@
         btnResend.disabled = true;
         btnResend.textContent = 'Enviando…';
         try {
-          const res = await fetch(`${supabase.supabaseUrl}/functions/v1/send-verification-email`, {
+          const res = await fetch(`${window.SUPABASE_URL_CONST}/functions/v1/send-verification-email`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
               'Content-Type': 'application/json',
-              'apikey': supabase.supabaseKey,
+              'apikey': window.SUPABASE_ANON_CONST,
             },
           });
           const data = await res.json();
@@ -196,14 +196,26 @@
         window.location.replace('/');
       });
 
-      // Polling cada 5s para detectar si el user verifico en otro tab/device
-      setInterval(async () => {
-        const { profile: p2 } = await A.getCurrentUser();
-        if (p2 && p2.email_aimma_verificado === true) {
-          if (p2.perfil_completo === false) window.location.replace('/completar-perfil.html');
-          else window.location.replace('/iapanel/');
-        }
-      }, 5000);
+      // Polling backoff exponencial 5s -> 10s -> 20s -> max 60s, pausa cuando tab oculta
+      let pollDelay = 5000; const MAX_DELAY = 60000;
+      let pollTimer = null;
+      async function poll() {
+        if (document.hidden) { pollTimer = setTimeout(poll, pollDelay); return; }
+        try {
+          const { profile: p2 } = await A.getCurrentUser();
+          if (p2 && p2.email_aimma_verificado === true) {
+            clearTimeout(pollTimer);
+            if (p2.perfil_completo === false) window.location.replace('/completar-perfil.html');
+            else window.location.replace('/iapanel/');
+            return;
+          }
+        } catch (e) { console.warn('[poll]', e); }
+        pollDelay = Math.min(pollDelay * 2, MAX_DELAY);
+        pollTimer = setTimeout(poll, pollDelay);
+      }
+      pollTimer = setTimeout(poll, pollDelay);
+      // Cleanup en unload
+      window.addEventListener('beforeunload', () => clearTimeout(pollTimer));
     })().catch(e => {
       console.error('[verificar-pendiente]', e);
       window.location.replace('/login.html');

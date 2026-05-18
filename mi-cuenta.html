@@ -320,6 +320,13 @@
                   btnReactivar.disabled = false; btnReactivar.textContent = 'ACTIVAR PRO DE NUEVO';
                   return;
                 }
+                // Defense in depth: validar URL whitelist contra open-redirect
+                if (!data.init_point.startsWith('https://www.mercadopago.com.co/')
+                    && !data.init_point.startsWith('https://www.mercadopago.com/')) {
+                  showToast('URL de pago inválida. Contactá soporte.', 'error');
+                  btnReactivar.disabled = false; btnReactivar.textContent = 'ACTIVAR PRO DE NUEVO';
+                  return;
+                }
                 window.location.href = data.init_point;
               } catch (e) {
                 showToast('Sin conexión.', 'error');

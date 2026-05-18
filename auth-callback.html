@@ -154,12 +154,12 @@
         // como fire-and-forget (la EF maneja profile_not_found gracefully).
         if (!profile) {
           console.warn('[AIMMA callback] profile=null despues de 10 intentos. Fallback a /verificar-pendiente.html');
-          fetch(`${supabase.supabaseUrl}/functions/v1/send-verification-email`, {
+          fetch(`${window.SUPABASE_URL_CONST}/functions/v1/send-verification-email`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
               'Content-Type': 'application/json',
-              'apikey': supabase.supabaseKey,
+              'apikey': window.SUPABASE_ANON_CONST,
             },
           }).catch(e => console.warn('[callback fallback dispatch] error:', e));
           window.location.replace('/verificar-pendiente.html');
@@ -188,12 +188,12 @@
         // requireAuth fallback en auth.js cubre el welcome.
 
         function fireAndForget(name) {
-          fetch(`${supabase.supabaseUrl}/functions/v1/${name}`, {
+          fetch(`${window.SUPABASE_URL_CONST}/functions/v1/${name}`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
               'Content-Type': 'application/json',
-              'apikey': supabase.supabaseKey,
+              'apikey': window.SUPABASE_ANON_CONST,
             },
           }).then(r => {
             if (!r.ok) r.text().then(t => console.warn(`[callback ${name}] HTTP ${r.status}:`, t)).catch(() => {});

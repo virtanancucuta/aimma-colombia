@@ -140,12 +140,12 @@
         const { data: { session } } = await supabase.auth.getSession();
         tieneSesionLocal = !!session;
         if (session) {
-          await fetch(`${supabase.supabaseUrl}/functions/v1/send-welcome-email`, {
+          await fetch(`${window.SUPABASE_URL_CONST}/functions/v1/send-welcome-email`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
               'Content-Type': 'application/json',
-              'apikey': supabase.supabaseKey,
+              'apikey': window.SUPABASE_ANON_CONST,
             },
           });
           // Si esta logueado, mejor que el boton "Entrar al Panel" vaya a

@@ -16,6 +16,10 @@
   const supabase = window.supabaseClient;
   const ORIGIN = window.location.origin;
   const CALLBACK_URL = `${ORIGIN}/auth-callback.html`;
+  // FIX critico: supabase-js v2 NO expone supabaseUrl/supabaseKey en la instancia.
+  // Usamos las constantes globales del config (ya cargado antes que auth.js).
+  const SUPA_URL = window.SUPABASE_URL_CONST || 'https://rsmxklkxqsaptchcjszd.supabase.co';
+  const SUPA_KEY = window.SUPABASE_ANON_CONST || 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1';
 
   async function signInWithEmail(email, password) {
     return supabase.auth.signInWithPassword({ email: (email || '').trim().toLowerCase(), password });
@@ -109,12 +113,12 @@
     }
     // Fallback dispatch del welcome si quedo pendiente (fire-and-forget)
     if (profile && profile.email_aimma_verificado === true && !profile.welcome_enviado_at) {
-      fetch(`${supabase.supabaseUrl || ''}/functions/v1/send-welcome-email`, {
+      fetch(`${SUPA_URL}/functions/v1/send-welcome-email`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey || '',
+          'apikey': SUPA_KEY,
         },
       }).then(r => {
         if (!r.ok) r.text().then(t => console.warn('[AIMMA welcome fallback] HTTP', r.status, t));
