@@ -251,30 +251,12 @@
 
       </div>
 
-      <div class="subscription-bar" id="subscriptionBar" hidden>
-        <div class="subscription-status" id="subscriptionStatus">…</div>
-        <div class="subscription-actions">
-          <button type="button" class="btn-secondary danger" id="btnCancelar" hidden>Cancelar suscripción</button>
-        </div>
-      </div>
-
     </main>
 
     <footer class="panel-footer">
       <p class="panel-footer-plan" id="planFooter">Plan actual: …</p>
       <p>&copy; 2026 AIMMA Colombia · Todos los derechos reservados</p>
     </footer>
-  </div>
-
-  <div class="modal-overlay" id="modalCancelar" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalCancelDesc" hidden>
-    <div class="modal-card">
-      <h2 class="modal-title" id="modalTitle">¿Cancelar tu Plan PRO?</h2>
-      <p class="modal-desc" id="modalCancelDesc">Tu acceso al Dashboard AIMMA seguirá activo hasta el final del período pagado. No se hará ningún cobro adicional.</p>
-      <div class="modal-actions">
-        <button type="button" class="modal-cancel" id="btnModalCancelar">Volver</button>
-        <button type="button" class="modal-confirm" id="btnModalConfirmar">Sí, cancelar</button>
-      </div>
-    </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -295,15 +277,7 @@
       const cardDashboard = document.getElementById('cardDashboard');
       let badgeDashboard = document.getElementById('badgeDashboard');
       const upgradeBanner = document.getElementById('upgradeBanner');
-      const subBar = document.getElementById('subscriptionBar');
-      const subStatus = document.getElementById('subscriptionStatus');
-      const btnCancelar = document.getElementById('btnCancelar');
       const planFooter = document.getElementById('planFooter');
-
-      const modalCancelar = document.getElementById('modalCancelar');
-      const modalCancelDesc = document.getElementById('modalCancelDesc');
-      const btnModalCancelar = document.getElementById('btnModalCancelar');
-      const btnModalConfirmar = document.getElementById('btnModalConfirmar');
       const toast = document.getElementById('toast');
 
       const SUPABASE_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co';
@@ -381,63 +355,21 @@
         if (!acceso.pro) upgradeBanner.removeAttribute('hidden');
       }
 
-      // ALTA-2 fix: usar DOM API + URL whitelist en lugar de innerHTML con datos de BD
+      // Solo footer dinamico - gestion de suscripcion vive en /mi-cuenta.html
       function configurarSubscriptionBar() {
         if (acceso.razon === 'cortesia') {
-          subBar.removeAttribute('hidden');
-          subStatus.textContent = '';
-          subStatus.appendChild(document.createTextNode('Tu cuenta es '));
-          const strong = document.createElement('strong');
-          strong.textContent = 'CORTESÍA CEO';
-          subStatus.appendChild(strong);
-          subStatus.appendChild(document.createTextNode(' — acceso PRO permanente.'));
-          btnCancelar.hidden = true;
           planFooter.textContent = 'Plan actual: AIMMA PRO · Cortesía CEO';
           return;
         }
-
         if (acceso.pro && sus && sus.mp_preapproval_id) {
-          subBar.removeAttribute('hidden');
-          const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual' : 'AIMMA PRO Mensual';
+          const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual'
+            : sus.plan_tipo === 'test_1k' ? 'AIMMA PRO TEST ($1.7K)'
+            : 'AIMMA PRO Mensual';
           if (sus.estado === 'cancelada') {
-            subStatus.classList.add('cancelada');
-            subStatus.textContent = '';
-            const strong = document.createElement('strong');
-            strong.textContent = `${planLabel} cancelado`;
-            subStatus.appendChild(strong);
-            const hasta = fmtFecha(sus.proxima_facturacion) || 'fin del periodo';
-            subStatus.appendChild(document.createTextNode(` — acceso vigente hasta ${hasta}.`));
-            btnCancelar.hidden = true;
             planFooter.textContent = `Plan actual: ${planLabel} · CANCELADO`;
           } else {
-            subStatus.textContent = '';
-            subStatus.appendChild(document.createTextNode('Plan '));
-            const strong = document.createElement('strong');
-            strong.textContent = planLabel;
-            subStatus.appendChild(strong);
-            subStatus.appendChild(document.createTextNode(` activo · Próxima renovación: ${fmtFecha(sus.proxima_facturacion) || 'pendiente'}.`));
-            btnCancelar.removeAttribute('hidden');
             planFooter.textContent = `Plan actual: ${planLabel}`;
           }
-        } else if (sus && sus.estado === 'pendiente_pago' && sus.mp_init_point) {
-          // ALTA-2 fix: validar URL whitelist + usar createElement (NO innerHTML con datos de BD)
-          const isValidMpUrl = typeof sus.mp_init_point === 'string'
-            && (sus.mp_init_point.startsWith('https://www.mercadopago.com.co/')
-                || sus.mp_init_point.startsWith('https://www.mercadopago.com/'));
-          if (isValidMpUrl) {
-            subBar.removeAttribute('hidden');
-            subStatus.textContent = 'Tenés un pago pendiente. ';
-            const link = document.createElement('a');
-            link.href = sus.mp_init_point;
-            link.style.color = 'var(--cyan)';
-            link.style.fontWeight = '700';
-            link.style.textDecoration = 'none';
-            link.textContent = 'Continuar pago →';
-            link.rel = 'noopener';
-            subStatus.appendChild(link);
-            btnCancelar.hidden = true;
-          }
-          planFooter.textContent = 'Plan actual: Sin Plan PRO';
         } else {
           planFooter.textContent = 'Plan actual: Sin Plan PRO';
         }
@@ -456,74 +388,6 @@
         btnLogout.textContent = 'Cerrando…';
         await A.signOut();
         window.location.replace('/');
-      });
-
-      // Modal a11y: focus trap, Escape, click-outside, restore focus
-      let lastFocused = null;
-      function abrirModal() {
-        lastFocused = document.activeElement;
-        if (sus && sus.proxima_facturacion) {
-          modalCancelDesc.textContent = '';
-          modalCancelDesc.appendChild(document.createTextNode('Tu acceso al Dashboard AIMMA seguirá activo hasta '));
-          const strong = document.createElement('strong');
-          strong.textContent = fmtFecha(sus.proxima_facturacion);
-          modalCancelDesc.appendChild(strong);
-          modalCancelDesc.appendChild(document.createTextNode('. No se hará ningún cobro adicional. ¿Estás seguro?'));
-        }
-        modalCancelar.removeAttribute('hidden');
-        btnModalCancelar.focus();
-      }
-      function cerrarModal() {
-        modalCancelar.setAttribute('hidden', '');
-        if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
-      }
-
-      btnCancelar.addEventListener('click', abrirModal);
-      btnModalCancelar.addEventListener('click', cerrarModal);
-      modalCancelar.addEventListener('click', (e) => {
-        if (e.target === modalCancelar) cerrarModal();
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !modalCancelar.hasAttribute('hidden')) cerrarModal();
-        // Focus trap simple entre los 2 botones del modal
-        if (e.key === 'Tab' && !modalCancelar.hasAttribute('hidden')) {
-          const focusables = [btnModalCancelar, btnModalConfirmar];
-          const idx = focusables.indexOf(document.activeElement);
-          if (idx === -1) { e.preventDefault(); focusables[0].focus(); return; }
-          if (e.shiftKey && idx === 0) { e.preventDefault(); focusables[focusables.length - 1].focus(); }
-          else if (!e.shiftKey && idx === focusables.length - 1) { e.preventDefault(); focusables[0].focus(); }
-        }
-      });
-
-      btnModalConfirmar.addEventListener('click', async () => {
-        btnModalConfirmar.disabled = true;
-        btnModalConfirmar.textContent = 'Cancelando…';
-        try {
-          const res = await fetch(`${SUPABASE_URL}/functions/v1/cancelar-suscripcion`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_ANON,
-            },
-            body: JSON.stringify({}),
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            showToast('No pudimos cancelar: ' + (data.error || 'error') + '. WhatsApp +57 313 362 3071', 'error');
-            btnModalConfirmar.disabled = false;
-            btnModalConfirmar.textContent = 'Sí, cancelar';
-            return;
-          }
-          cerrarModal();
-          showToast(data.message || 'Suscripción cancelada. Acceso vigente hasta el fin del periodo.', 'success');
-          setTimeout(() => window.location.reload(), 2200);
-        } catch (e) {
-          console.error('[panel] cancelar fallo:', e);
-          showToast('Sin conexión. Reintentá en unos segundos.', 'error');
-          btnModalConfirmar.disabled = false;
-          btnModalConfirmar.textContent = 'Sí, cancelar';
-        }
       });
     })();
   </script>
