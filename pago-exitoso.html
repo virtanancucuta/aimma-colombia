@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Pago confirmado · AIMMA Colombia</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="/style.v3.css" />
+
+  <style>
+    .result-page { min-height: 100vh; display: flex; flex-direction: column; }
+    .result-main {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 48px 24px;
+    }
+    .result-card {
+      max-width: 540px; text-align: center;
+      background: linear-gradient(180deg, var(--navy-card) 0%, var(--navy) 100%);
+      border: 1px solid rgba(34,197,94,0.4);
+      border-radius: var(--radius-lg);
+      padding: 52px 36px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 60px rgba(34,197,94,0.18);
+    }
+    .result-icon {
+      width: 96px; height: 96px; margin: 0 auto 22px;
+      border-radius: 50%; background: rgba(34,197,94,0.12);
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(34,197,94,0.6);
+      box-shadow: 0 0 32px rgba(34,197,94,0.3);
+    }
+    .result-icon svg { width: 48px; height: 48px; color: #22c55e; }
+    .result-title {
+      font-family: var(--font-display); font-weight: 800; font-size: 1.8rem;
+      color: var(--white); margin: 0 0 12px 0; letter-spacing: 0.02em;
+    }
+    .result-title strong { color: #22c55e; }
+    .result-desc { color: var(--white-80); font-size: 1rem; line-height: 1.6; margin: 0 0 28px 0; }
+    .result-status {
+      background: rgba(0,212,245,0.08); border: 1px solid var(--cyan-glow);
+      padding: 14px 18px; border-radius: 8px;
+      color: var(--cyan-soft); font-family: var(--font-mono); font-size: 0.9rem;
+      margin: 0 0 24px 0;
+      display: flex; align-items: center; gap: 10px; justify-content: center;
+    }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(0,212,245,0.3);
+      border-top-color: var(--cyan); border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result-cta {
+      display: inline-block;
+      background: var(--cyan); color: var(--navy-deep);
+      font-family: var(--font-display); font-weight: 800; font-size: 1rem;
+      letter-spacing: 0.06em; padding: 14px 32px;
+      border-radius: 10px; text-decoration: none;
+      box-shadow: 0 0 0 1px var(--cyan), 0 8px 24px var(--cyan-glow-strong);
+      transition: all 0.25s var(--transition);
+    }
+    .result-cta:hover { background: #0fe1ff; transform: translateY(-2px); }
+    .result-support { color: var(--white-60); font-size: 0.85rem; margin-top: 24px; }
+    .result-support a { color: var(--cyan); text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <div class="result-page">
+    <header class="panel-header">
+      <a href="/" class="brand" aria-label="AIMMA Colombia">
+        <img src="/assets/logo.svg" alt="" class="brand-logo" width="38" height="38" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-tag">PANEL</span>
+        </span>
+      </a>
+    </header>
+
+    <main class="result-main">
+      <div class="result-card">
+        <div class="result-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h1 class="result-title">¡Pago <strong>confirmado</strong>!</h1>
+        <p class="result-desc">Gracias por activar tu Plan AIMMA PRO. Te enviamos un correo con los detalles. Tu acceso al Dashboard AIMMA se activa automáticamente en unos segundos.</p>
+
+        <div class="result-status" id="status">
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="statusText">Activando tu plan PRO…</span>
+        </div>
+
+        <a href="/iapanel/" class="result-cta" id="ctaPanel">IR A MI PANEL</a>
+
+        <p class="result-support">¿Necesitás ayuda? <a href="https://wa.me/573133623071?text=Hola%2C+acabo+de+activar+mi+Plan+PRO+y+tengo+una+duda">WhatsApp +57 313 362 3071</a></p>
+      </div>
+    </main>
+
+    <footer class="panel-footer">
+      <p>&copy; 2026 AIMMA Colombia &middot; Todos los derechos reservados</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script>
+    (async function () {
+      const supabase = window.supabaseClient;
+      const statusEl = document.getElementById('status');
+      const statusText = document.getElementById('statusText');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        statusText.textContent = 'Iniciá sesión para acceder a tu PRO.';
+        statusEl.style.borderColor = 'rgba(251,191,36,0.4)';
+        statusEl.style.background = 'rgba(251,191,36,0.08)';
+        statusEl.style.color = '#fbbf24';
+        statusEl.querySelector('.spinner').style.display = 'none';
+        return;
+      }
+
+      // Poll RPC tiene_acceso_pro hasta que retorne pro:true (max 30s, 15 intentos cada 2s)
+      const start = Date.now();
+      const maxMs = 30000;
+      const maxIntentos = 15;
+      let activado = false;
+      let intentos = 0;
+
+      while (Date.now() - start < maxMs) {
+        intentos++;
+        statusText.textContent = `Activando tu plan PRO… (${intentos}/${maxIntentos})`;
+        try {
+          const { data: acceso } = await supabase.rpc('tiene_acceso_pro', { p_user_id: session.user.id });
+          if (acceso && acceso.pro) {
+            activado = true;
+            break;
+          }
+        } catch (e) {
+          console.warn('[pago-exitoso] RPC fallo:', e);
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      if (activado) {
+        statusEl.style.borderColor = 'rgba(34,197,94,0.5)';
+        statusEl.style.background = 'rgba(34,197,94,0.1)';
+        statusEl.style.color = '#86efac';
+        statusEl.querySelector('.spinner').style.display = 'none';
+        statusText.textContent = 'Plan PRO activo. Ya podés acceder a tu Panel.';
+      } else {
+        statusText.textContent = 'Procesando con Mercado Pago. Tu acceso se activará en unos minutos.';
+        statusEl.style.borderColor = 'rgba(251,191,36,0.4)';
+        statusEl.style.background = 'rgba(251,191,36,0.08)';
+        statusEl.style.color = '#fbbf24';
+        statusEl.querySelector('.spinner').style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>

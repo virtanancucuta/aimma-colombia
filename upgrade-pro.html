@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Activar Plan PRO · AIMMA Colombia</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="/style.v3.css" />
+
+  <style>
+    .upgrade-page { min-height: 100vh; display: flex; flex-direction: column; }
+    .upgrade-main { flex: 1; padding: 48px 24px 56px; max-width: 1100px; margin: 0 auto; width: 100%; }
+    .upgrade-hero { text-align: center; margin-bottom: 44px; }
+    .upgrade-hero h1 {
+      font-family: var(--font-display); font-weight: 800; font-size: 2.4rem;
+      color: var(--white); margin: 0 0 12px 0; letter-spacing: 0.02em;
+    }
+    .upgrade-hero h1 strong { color: var(--cyan); text-shadow: 0 0 24px var(--cyan-glow-strong); }
+    .upgrade-hero p { font-size: 1.05rem; color: var(--white-70); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .plans-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; margin-bottom: 36px; }
+    .plan-card {
+      position: relative;
+      background: linear-gradient(180deg, var(--navy-card) 0%, var(--navy) 100%);
+      border: 1px solid var(--white-15);
+      border-radius: var(--radius-lg);
+      padding: 36px 28px 28px;
+      display: flex; flex-direction: column; gap: 18px;
+      transition: all 0.3s var(--transition);
+    }
+    .plan-card.featured { border-color: var(--cyan); box-shadow: 0 0 36px var(--cyan-glow); }
+    .plan-card:hover { transform: translateY(-4px); box-shadow: 0 18px 40px rgba(0,0,0,0.4), 0 0 28px var(--cyan-glow); }
+    .plan-badge {
+      position: absolute; top: -12px; right: 24px;
+      background: var(--cyan); color: var(--navy-deep);
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.14em; padding: 6px 12px; border-radius: 6px;
+      box-shadow: 0 4px 14px var(--cyan-glow-strong);
+    }
+    .plan-name { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: var(--cyan); letter-spacing: 0.04em; }
+    .plan-price { display: flex; align-items: baseline; gap: 8px; margin: 4px 0; }
+    .plan-price-amount { font-family: var(--font-display); font-weight: 800; font-size: 2.6rem; color: var(--white); }
+    .plan-price-period { font-size: 0.95rem; color: var(--white-70); }
+    .plan-price-equivalent { font-size: 0.85rem; color: var(--cyan-soft); font-family: var(--font-mono); }
+    .plan-price-strike {
+      text-decoration: line-through; color: var(--white-40);
+      font-size: 1.2rem; font-family: var(--font-display); margin-right: 8px;
+    }
+    .cta-spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(4,13,26,0.3); border-top-color: var(--navy-deep);
+      border-radius: 50%; animation: ctaspin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    .cta-spinner[hidden] { display: none; }
+    @keyframes ctaspin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .cta-spinner { animation: none; }
+      .plan-card { transition: none !important; }
+      .plan-card:hover { transform: none !important; }
+    }
+    .trust-row {
+      display: flex; gap: 14px; align-items: center; justify-content: center;
+      flex-wrap: wrap; margin: 0 0 28px 0;
+      color: var(--white-60); font-size: 0.8rem; font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+    }
+    .trust-row svg { width: 14px; height: 14px; color: #22c55e; }
+    .plan-features { list-style: none; padding: 0; margin: 12px 0; display: flex; flex-direction: column; gap: 10px; }
+    .plan-features li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.95rem; color: var(--white-90); line-height: 1.5;
+    }
+    .plan-features li::before {
+      content: '\2713'; color: var(--cyan); font-weight: 700; flex-shrink: 0;
+      width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,212,245,0.12); border-radius: 50%; font-size: 0.75rem;
+    }
+    .plan-features li.coming::before { content: '\25cf'; color: var(--white-40); background: rgba(255,255,255,0.06); }
+    .plan-features li.coming { color: var(--white-60); }
+    .plan-cta {
+      margin-top: auto;
+      background: var(--cyan); color: var(--navy-deep);
+      font-family: var(--font-display); font-weight: 800; font-size: 1rem; letter-spacing: 0.06em;
+      padding: 14px 24px; border: none; border-radius: 10px;
+      cursor: pointer; transition: all 0.25s var(--transition);
+      box-shadow: 0 0 0 1px var(--cyan), 0 8px 24px var(--cyan-glow-strong);
+    }
+    .plan-cta:hover:not(:disabled) { background: #0fe1ff; transform: translateY(-2px); }
+    .plan-cta:disabled { opacity: 0.5; cursor: progress; }
+    .plan-cta.outline {
+      background: transparent; color: var(--cyan);
+      box-shadow: inset 0 0 0 1.5px var(--cyan);
+    }
+    .plan-cta.outline:hover:not(:disabled) { background: rgba(0,212,245,0.08); }
+
+    .guarantee-box {
+      background: rgba(34,197,94,0.08); border-left: 4px solid #22c55e;
+      padding: 18px 22px; border-radius: 10px;
+      display: flex; gap: 14px; align-items: flex-start;
+      margin-bottom: 28px;
+    }
+    .guarantee-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .guarantee-text { color: var(--white-90); font-size: 0.95rem; line-height: 1.5; }
+    .guarantee-text strong { color: #86efac; }
+
+    .upgrade-back { display: inline-flex; align-items: center; gap: 6px; color: var(--cyan); text-decoration: none; font-size: 0.9rem; font-family: var(--font-mono); }
+    .upgrade-back:hover { text-decoration: underline; }
+
+    .err-msg {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4);
+      color: #fca5a5; padding: 12px 16px; border-radius: 8px;
+      margin-bottom: 20px; font-size: 0.9rem;
+    }
+    .err-msg[hidden] { display: none; }
+
+    @media (max-width: 760px) {
+      .plans-grid { grid-template-columns: 1fr; gap: 20px; }
+      .upgrade-hero h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <div id="loader" class="auth-loader">
+    <div class="auth-loader-orb"></div>
+    <div class="auth-loader-text">Cargando…</div>
+  </div>
+
+  <div class="upgrade-page" id="page" hidden>
+
+    <header class="panel-header">
+      <a href="/iapanel/" class="brand" aria-label="Volver al Panel">
+        <img src="/assets/logo.svg" alt="" class="brand-logo" width="38" height="38" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-tag">PANEL</span>
+        </span>
+      </a>
+      <div class="panel-user">
+        <a href="/iapanel/" class="upgrade-back">&larr; Volver al panel</a>
+      </div>
+    </header>
+
+    <main class="upgrade-main">
+
+      <div class="upgrade-hero">
+        <h1>Activá tu Plan <strong>AIMMA PRO</strong></h1>
+        <p>Desbloqueá el Dashboard AIMMA con todos los indicadores financieros y comerciales de tu negocio en tiempo real.</p>
+      </div>
+
+      <!-- Garantía 30 días arriba: reducción de fricción (UI agent recomendación) -->
+      <div class="guarantee-box">
+        <div class="guarantee-icon">&#x1F49A;</div>
+        <div class="guarantee-text">
+          <strong>Garantía 30 días sin preguntas.</strong> Probá AIMMA PRO. Si en los próximos 30 días no estás 100% satisfecho, te devolvemos tu dinero. Sin trámites.
+        </div>
+      </div>
+
+      <div class="err-msg" id="errMsg" role="alert" hidden></div>
+
+      <div class="plans-grid">
+        <!-- Plan Mensual -->
+        <article class="plan-card">
+          <div class="plan-name">PRO MENSUAL</div>
+          <div class="plan-price">
+            <span class="plan-price-amount">$300.000</span>
+            <span class="plan-price-period">COP / mes</span>
+          </div>
+          <ul class="plan-features">
+            <li>Dashboard AIMMA completo</li>
+            <li>Indicadores en tiempo real</li>
+            <li>Renovación automática mensual</li>
+            <li>Cancelá cuando quieras</li>
+            <li class="coming">Próximamente: Comercial IA</li>
+            <li class="coming">Próximamente: Marketing IA</li>
+          </ul>
+          <button type="button" class="plan-cta outline" data-plan="mensual">
+            <span class="cta-spinner" hidden aria-hidden="true"></span>
+            <span class="cta-label">Suscribirme Mensual</span>
+          </button>
+        </article>
+
+        <!-- Plan Anual -->
+        <article class="plan-card featured">
+          <span class="plan-badge">AHORRA 50%</span>
+          <div class="plan-name">PRO ANUAL</div>
+          <div class="plan-price">
+            <span class="plan-price-strike" aria-label="precio normal">$3.600.000</span>
+            <span class="plan-price-amount">$1.800.000</span>
+            <span class="plan-price-period">COP / año</span>
+          </div>
+          <div class="plan-price-equivalent">Equivale a $150.000 COP / mes</div>
+          <ul class="plan-features">
+            <li>Dashboard AIMMA completo</li>
+            <li>Indicadores en tiempo real</li>
+            <li>Renovación automática anual</li>
+            <li>50% más barato vs mensual</li>
+            <li class="coming">Próximamente: Comercial IA</li>
+            <li class="coming">Próximamente: Marketing IA</li>
+          </ul>
+          <button type="button" class="plan-cta" data-plan="anual">
+            <span class="cta-spinner" hidden aria-hidden="true"></span>
+            <span class="cta-label">Suscribirme Anual</span>
+          </button>
+        </article>
+      </div>
+
+      <div class="trust-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        PAGO 100% SEGURO · SSL · PROCESADO POR MERCADO PAGO
+      </div>
+
+      <p style="text-align:center; color: var(--white-60); font-size: 0.85rem; line-height: 1.6;">
+        Pagos procesados de forma segura por Mercado Pago. Podés cancelar tu suscripción en cualquier momento desde tu Panel.<br>
+        Tu acceso continúa hasta el final del período pagado.
+      </p>
+
+    </main>
+
+    <footer class="panel-footer">
+      <p>&copy; 2026 AIMMA Colombia &middot; Todos los derechos reservados</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    (async function () {
+      const A = window.AIMMA.auth;
+      const loader = document.getElementById('loader');
+      const page = document.getElementById('page');
+      const errMsg = document.getElementById('errMsg');
+
+      const { user, session } = await A.requireAuth();
+      if (!session) return;
+
+      // Si ya es PRO o cortesia, redirigir al panel (no debe estar aqui)
+      const SUPABASE_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co';
+      try {
+        const { data: acceso } = await window.supabaseClient.rpc('tiene_acceso_pro', { p_user_id: user.id });
+        if (acceso && acceso.pro) {
+          window.location.replace('/iapanel/');
+          return;
+        }
+      } catch (e) {
+        console.warn('[upgrade] RPC fallo (continuo):', e);
+      }
+
+      loader.classList.add('hidden');
+      page.removeAttribute('hidden');
+
+      function showErr(msg) {
+        errMsg.textContent = msg;
+        errMsg.hidden = false;
+        errMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      function setLoading(btn, loading) {
+        const spinner = btn.querySelector('.cta-spinner');
+        const label = btn.querySelector('.cta-label');
+        if (loading) {
+          btn.disabled = true;
+          if (spinner) spinner.hidden = false;
+          if (label) label.textContent = 'Conectando…';
+        } else {
+          btn.disabled = false;
+          if (spinner) spinner.hidden = true;
+          if (label) label.textContent = btn.getAttribute('data-plan') === 'anual' ? 'Suscribirme Anual' : 'Suscribirme Mensual';
+        }
+      }
+
+      document.querySelectorAll('.plan-cta').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const planTipo = btn.getAttribute('data-plan');
+          errMsg.hidden = true;
+          setLoading(btn, true);
+
+          try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-preapproval`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+                'apikey': 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1',
+              },
+              body: JSON.stringify({ plan_tipo: planTipo }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+              console.error('[upgrade] crear-preapproval fallo:', data);
+              const msg = data.error === 'ya_activa'
+                ? 'Ya tenés una suscripción activa.'
+                : data.error === 'cortesia_no_paga'
+                  ? 'Tu cuenta es de cortesía, no necesitás suscribirte.'
+                  : `No pudimos crear la suscripción: ${data.error || 'error desconocido'}`;
+              showErr(msg);
+              setLoading(btn, false);
+              return;
+            }
+
+            if (!data.init_point) {
+              showErr('Mercado Pago no devolvió URL de pago. Reintentá en unos segundos.');
+              setLoading(btn, false);
+              return;
+            }
+            // Validar URL whitelist (defense in depth contra open-redirect)
+            if (!data.init_point.startsWith('https://www.mercadopago.com.co/') && !data.init_point.startsWith('https://www.mercadopago.com/')) {
+              showErr('URL de pago inválida. Contactá soporte.');
+              setLoading(btn, false);
+              return;
+            }
+            window.location.href = data.init_point;
+          } catch (e) {
+            console.error('[upgrade] error red:', e);
+            showErr('Sin conexión con el servidor. Reintentá en unos segundos.');
+            setLoading(btn, false);
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

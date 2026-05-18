@@ -15,7 +15,10 @@
   --cyan-glow: rgba(0, 212, 245, 0.18);
   --cyan-glow-strong: rgba(0, 212, 245, 0.35);
   --white: #ffffff;
+  --white-90: rgba(255, 255, 255, 0.90);
+  --white-80: rgba(255, 255, 255, 0.80);
   --white-70: rgba(255, 255, 255, 0.70);
+  --white-60: rgba(255, 255, 255, 0.60);
   --white-40: rgba(255, 255, 255, 0.40);
   --white-15: rgba(255, 255, 255, 0.07);
   --error: #ff4d6d;
