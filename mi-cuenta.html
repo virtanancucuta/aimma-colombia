@@ -105,6 +105,11 @@
       background: transparent; color: #fca5a5; border-color: rgba(239,68,68,0.5);
     }
     .mc-btn.danger:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+    .mc-btn.success {
+      background: #22c55e; color: var(--navy-deep); border-color: #22c55e;
+      box-shadow: 0 0 0 1px #22c55e, 0 4px 16px rgba(34,197,94,0.35);
+    }
+    .mc-btn.success:hover { background: #4ade80; }
     .mc-btn:disabled { opacity: 0.5; cursor: progress; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; backdrop-filter: blur(4px); }
@@ -279,6 +284,31 @@
           btnCancel.className = 'mc-btn danger'; btnCancel.textContent = 'CANCELAR SUSCRIPCIÓN';
           btnCancel.addEventListener('click', () => abrirModal());
           planActions.append(btnCancel);
+        } else {
+          // Boton REACTIVAR PRO cuando esta cancelada pero aun con acceso vigente
+          const btnReactivar = document.createElement('button');
+          btnReactivar.className = 'mc-btn success'; btnReactivar.textContent = 'REACTIVAR PRO';
+          btnReactivar.addEventListener('click', async () => {
+            btnReactivar.disabled = true; btnReactivar.textContent = 'Conectando con MP…';
+            try {
+              const res = await fetch(`${SUPA}/functions/v1/crear-preapproval`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
+                body: JSON.stringify({ plan_tipo: sus.plan_tipo || 'mensual' }),
+              });
+              const data = await res.json();
+              if (!res.ok || !data.init_point) {
+                showToast('No pudimos reactivar: ' + (data.error || 'error'), 'error');
+                btnReactivar.disabled = false; btnReactivar.textContent = 'REACTIVAR PRO';
+                return;
+              }
+              window.location.href = data.init_point;
+            } catch (e) {
+              showToast('Sin conexión.', 'error');
+              btnReactivar.disabled = false; btnReactivar.textContent = 'REACTIVAR PRO';
+            }
+          });
+          planActions.append(btnReactivar);
         }
         const btnMP = document.createElement('a');
         btnMP.className = 'mc-btn outline'; btnMP.textContent = 'GESTIONAR EN MERCADO PAGO';
