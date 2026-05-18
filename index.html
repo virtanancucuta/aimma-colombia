@@ -142,23 +142,331 @@
             <span class="line accent">que entiende de números.</span>
           </h1>
           <p class="hero-subtitle">
-            Consultoría con IA para empresas que quieren vender más, gastar mejor y operar inteligente. Cúcuta · Colombia.
+            Consultoría con IA para empresas que quieren vender más, gastar mejor y operar inteligente.
           </p>
           <div class="hero-ctas">
             <a href="#formulario" class="cta-btn cta-btn--lg" data-scroll="formulario">
               Agenda tu Diagnóstico Gratuito
             </a>
-            <a href="#servicios-grid" class="cta-btn cta-btn--outline" data-scroll="servicios-grid">
-              Ver servicios
+            <a href="#tu-panel-ia" class="cta-btn cta-btn--outline" data-scroll="tu-panel-ia">
+              Ver Demo de TU PANEL IA
             </a>
           </div>
         </div>
-        <a href="#servicios-grid" class="scroll-indicator" data-scroll="servicios-grid" aria-label="Desplazar a servicios">
+        <a href="#tu-panel-ia" class="scroll-indicator" data-scroll="tu-panel-ia" aria-label="Desplazar a demo TU PANEL IA">
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 9l6 6 6-6"/>
           </svg>
         </a>
       </div>
+
+      <!-- ============================================================
+           SECCIÓN: TU PANEL IA — Animación cinematica con voz Isbelia
+           5 escenas, 21 cue points sincronizados con audio ElevenLabs
+           ============================================================ -->
+      <section id="tu-panel-ia" class="panel-ia-section" aria-label="Demo TU PANEL IA">
+        <div class="container">
+          <header class="panel-ia-header">
+            <p class="eyebrow center">— ASÍ TRABAJA TU EQUIPO IA</p>
+            <h2 class="section-title">4 expertos sénior. Un solo Panel IA. 30 segundos.</h2>
+            <p class="section-subtitle">Mirá en vivo cómo Aimma analiza tu negocio.</p>
+          </header>
+
+          <!-- Stage de animación -->
+          <div class="panel-ia-stage" id="panelIaStage">
+
+            <!-- Botón principal Activar/Pausar voz -->
+            <div class="panel-ia-controls">
+              <button type="button" id="btnPanelIaVoice" class="cta-btn cta-btn--lg" aria-label="Activar narración con voz IA">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                </svg>
+                <span id="btnPanelIaVoiceText">Activar narración con voz IA</span>
+              </button>
+              <button type="button" id="btnPanelIaReplay" class="cta-btn cta-btn--ghost" hidden aria-label="Reiniciar demo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="1 4 1 10 7 10"/>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                </svg>
+                Reiniciar
+              </button>
+            </div>
+
+            <!-- Audio element (oculto) -->
+            <audio id="panelIaAudio" preload="metadata" crossorigin="anonymous">
+              <source src="assets/panel-ia-isbelia.mp3" type="audio/mpeg">
+            </audio>
+
+            <!-- Subtitulos opcionales (live captions del audio) -->
+            <div class="panel-ia-subtitle" id="panelIaSubtitle" aria-live="polite"></div>
+
+            <!-- Frame contenedor de las 5 escenas -->
+            <div class="panel-ia-frame">
+              <div class="panel-ia-frame-header">
+                <span class="dot dot-c"></span>
+                <span>AIMMA · PANEL IA · DEMO</span>
+                <span class="panel-ia-status" id="panelIaStatus">▶ AUTO-PLAY</span>
+              </div>
+
+              <div class="panel-ia-frame-body">
+
+                <!-- ESCENA 1: El problema -->
+                <div class="panel-ia-scene" data-scene="1">
+                  <div class="scene-chaos">
+                    <div class="chaos-excel chaos-excel-1" aria-hidden="true">
+                      <svg viewBox="0 0 60 80"><rect width="60" height="80" rx="4" fill="#1f4e3d" opacity="0.4"/><text x="30" y="45" text-anchor="middle" fill="#a7f3d0" font-family="monospace" font-size="10">XLS</text></svg>
+                    </div>
+                    <div class="chaos-excel chaos-excel-2" aria-hidden="true">
+                      <svg viewBox="0 0 60 80"><rect width="60" height="80" rx="4" fill="#1f4e3d" opacity="0.4"/><text x="30" y="45" text-anchor="middle" fill="#a7f3d0" font-family="monospace" font-size="10">XLS</text></svg>
+                    </div>
+                    <div class="chaos-excel chaos-excel-3" aria-hidden="true">
+                      <svg viewBox="0 0 60 80"><rect width="60" height="80" rx="4" fill="#1f4e3d" opacity="0.4"/><text x="30" y="45" text-anchor="middle" fill="#a7f3d0" font-family="monospace" font-size="10">XLS</text></svg>
+                    </div>
+                    <div class="chaos-q chaos-q-1" aria-hidden="true">?</div>
+                    <div class="chaos-q chaos-q-2" aria-hidden="true">?</div>
+                    <div class="chaos-q chaos-q-3" aria-hidden="true">?</div>
+                    <div class="chaos-q chaos-q-4" aria-hidden="true">?</div>
+                  </div>
+                  <div class="scene-text">
+                    <p class="scene-question">¿Excel sueltos? ¿Pedidos a ojo? ¿Cierre de mes con incertidumbre?</p>
+                    <p class="scene-headline scene-headline-fade" data-cue="presenta_aimma">Te presento <strong>TU PANEL IA</strong></p>
+                  </div>
+                </div>
+
+                <!-- ESCENA 2: 4 expertos -->
+                <div class="panel-ia-scene" data-scene="2" hidden>
+                  <p class="scene-eyebrow">— TU EQUIPO IA SÉNIOR</p>
+                  <div class="experts-grid">
+                    <article class="expert-card" data-expert="financiero">
+                      <div class="expert-icon" aria-hidden="true">
+                        <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="6" y="10" width="28" height="22" rx="2"/>
+                          <line x1="6" y1="16" x2="34" y2="16"/>
+                          <circle cx="12" cy="24" r="2"/>
+                          <line x1="18" y1="24" x2="30" y2="24"/>
+                        </svg>
+                      </div>
+                      <h3 class="expert-title">GERENTE FINANCIERO</h3>
+                      <ul class="expert-features">
+                        <li>P&amp;L en segundos</li>
+                        <li>Rentabilidad</li>
+                        <li>Costo de venta</li>
+                        <li>Utilidad</li>
+                        <li>Punto de equilibrio</li>
+                      </ul>
+                    </article>
+
+                    <article class="expert-card" data-expert="compras">
+                      <div class="expert-icon" aria-hidden="true">
+                        <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M6 10 L10 10 L13 26 L31 26 L34 14 L13 14"/>
+                          <circle cx="16" cy="32" r="2"/>
+                          <circle cx="28" cy="32" r="2"/>
+                        </svg>
+                      </div>
+                      <h3 class="expert-title">GERENTE DE COMPRAS</h3>
+                      <ul class="expert-features">
+                        <li>Cuánto comprar (cantidad + costo)</li>
+                        <li>Productos no rentables</li>
+                        <li>Resurtido inteligente</li>
+                      </ul>
+                    </article>
+
+                    <article class="expert-card" data-expert="comercial">
+                      <div class="expert-icon" aria-hidden="true">
+                        <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="6" y1="34" x2="34" y2="34"/>
+                          <rect x="10" y="22" width="4" height="12"/>
+                          <rect x="18" y="16" width="4" height="18"/>
+                          <rect x="26" y="10" width="4" height="24"/>
+                          <path d="M32 12 L36 8 M32 8 L36 8 L36 12"/>
+                        </svg>
+                      </div>
+                      <h3 class="expert-title">GERENTE COMERCIAL</h3>
+                      <ul class="expert-features">
+                        <li>Top ranking de productos</li>
+                        <li>Productos sin venta</li>
+                        <li>Presupuestos y proyecciones</li>
+                      </ul>
+                    </article>
+
+                    <article class="expert-card" data-expert="contable">
+                      <div class="expert-icon" aria-hidden="true">
+                        <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M10 6 L26 6 L32 12 L32 34 L10 34 Z"/>
+                          <path d="M26 6 L26 12 L32 12"/>
+                          <line x1="14" y1="20" x2="28" y2="20"/>
+                          <line x1="14" y1="25" x2="28" y2="25"/>
+                          <line x1="14" y1="30" x2="22" y2="30"/>
+                        </svg>
+                      </div>
+                      <h3 class="expert-title">ANALISTA CONTABLE</h3>
+                      <ul class="expert-features">
+                        <li>Conciliación de facturas</li>
+                        <li>Gastos en porcentajes (en segundos)</li>
+                      </ul>
+                    </article>
+                  </div>
+                  <p class="scene-headline scene-headline-fade" data-cue="un_solo_panel">4 gerentes corporativos sénior. Todos en un solo panel.</p>
+                </div>
+
+                <!-- ESCENA 3: Cómo funciona (drag-drop) -->
+                <div class="panel-ia-scene" data-scene="3" hidden>
+                  <p class="scene-eyebrow">— CÓMO FUNCIONA</p>
+                  <div class="dragdrop-flow">
+                    <div class="dragdrop-files">
+                      <div class="file-card file-card-1" aria-hidden="true">
+                        <span class="file-icon">XLS</span>
+                        <span class="file-name">Ventas</span>
+                      </div>
+                      <div class="file-card file-card-2" aria-hidden="true">
+                        <span class="file-icon">XLS</span>
+                        <span class="file-name">Inventario</span>
+                      </div>
+                      <div class="file-card file-card-3" aria-hidden="true">
+                        <span class="file-icon">XLS</span>
+                        <span class="file-name">Gastos</span>
+                      </div>
+                    </div>
+                    <div class="dragdrop-arrow" aria-hidden="true">
+                      <svg viewBox="0 0 40 16" width="60" height="24"><path d="M2 8 H32 M26 3 L33 8 L26 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="dragdrop-panel">
+                      <div class="dragdrop-panel-orb"></div>
+                      <span class="dragdrop-panel-label">AIMMA IA</span>
+                    </div>
+                  </div>
+                  <div class="pos-logos" aria-label="Sistemas POS compatibles">
+                    <span class="pos-logo">SIIGO</span>
+                    <span class="pos-logo">ALEGRA</span>
+                    <span class="pos-logo">WORLD OFFICE</span>
+                    <span class="pos-logo">TNS</span>
+                    <span class="pos-logo">KUBAP</span>
+                    <span class="pos-logo">HELISA</span>
+                    <span class="pos-logo">CONTAPYME</span>
+                    <span class="pos-logo">LOGGRO</span>
+                    <span class="pos-logo">SHOPIFY</span>
+                    <span class="pos-logo">SAP</span>
+                    <span class="pos-logo">EPSILON</span>
+                  </div>
+                  <p class="scene-text-center">Sin migrar nada. Sin plantillas obligatorias.</p>
+                </div>
+
+                <!-- ESCENA 4: Insights + alerta (la grande) -->
+                <div class="panel-ia-scene" data-scene="4" hidden>
+                  <p class="scene-eyebrow">— TU NEGOCIO EN VIVO</p>
+
+                  <!-- Sub-momento A: Resumen financiero -->
+                  <div class="insight-block" data-block="finance">
+                    <div class="insight-row" data-cue="ventas">
+                      <span class="insight-label">VENTAS</span>
+                      <span class="insight-value" data-target="59241336" data-prefix="$ " data-thousands="true">$ 0</span>
+                    </div>
+                    <div class="insight-row" data-cue="costo_rentabilidad">
+                      <span class="insight-label">COSTO DE VENTA</span>
+                      <span class="insight-value" data-target="32847200" data-prefix="$ " data-thousands="true">$ 0</span>
+                    </div>
+                    <div class="insight-row" data-cue="costo_rentabilidad">
+                      <span class="insight-label">RENTABILIDAD</span>
+                      <span class="insight-value insight-value-cyan" data-target="44.6" data-suffix=" %" data-decimals="1">0 %</span>
+                    </div>
+                  </div>
+
+                  <!-- Sub-momento B: IVA DIAN -->
+                  <div class="insight-block insight-block-dian" data-block="dian" data-cue="iva_dian">
+                    <div class="insight-row insight-row-small">
+                      <span class="insight-label">IVA VENDIDO</span>
+                      <span class="insight-value" data-target="11255853" data-prefix="$ " data-thousands="true">$ 0</span>
+                    </div>
+                    <div class="insight-row insight-row-small">
+                      <span class="insight-label">IVA COMPRADO</span>
+                      <span class="insight-value" data-target="6240968" data-prefix="$ " data-thousands="true">$ 0</span>
+                    </div>
+                    <div class="insight-row insight-row-saldo">
+                      <span class="insight-label">SALDO DIAN <small>(a pagar)</small></span>
+                      <span class="insight-value insight-value-warn" data-target="5014885" data-prefix="$ " data-thousands="true">$ 0</span>
+                    </div>
+                  </div>
+
+                  <!-- Sub-momento C: Operación -->
+                  <div class="insight-block" data-block="op">
+                    <div class="insight-top" data-cue="top_ventas">
+                      <span class="insight-label">TOP DE VENTAS</span>
+                      <div class="insight-top-product">
+                        <span class="insight-top-name">Blusa Dama M</span>
+                        <span class="insight-top-units"><span data-target="127">0</span> und</span>
+                        <span class="insight-top-money" data-target="4572000" data-prefix="$ " data-thousands="true">$ 0</span>
+                      </div>
+                    </div>
+                    <div class="insight-row" data-cue="sobrestock">
+                      <span class="insight-label">SOBRESTOCK</span>
+                      <span class="insight-value insight-value-warn" data-target="12847500" data-prefix="$ " data-thousands="true">$ 0</span>
+                    </div>
+                    <div class="insight-row">
+                      <span class="insight-label">PRODUCTOS SIN VENTAS</span>
+                      <span class="insight-value" data-target="34" data-suffix=" refs">0 refs</span>
+                    </div>
+                  </div>
+
+                  <!-- Sub-momento D: LA ALERTA (peak) -->
+                  <div class="insight-alert" data-cue="te_alertamos">
+                    <div class="alert-grow">
+                      <span class="alert-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 17l-4-4-4 4"/><path d="M12 13V3"/><path d="M21 21H3"/></svg>
+                      </span>
+                      <span class="alert-grow-label">ESTÁS CRECIENDO</span>
+                      <span class="alert-grow-value" data-cue="creciendo_24" data-target="24" data-prefix="+" data-suffix=" %">+0 %</span>
+                    </div>
+                    <div class="alert-warning" data-cue="4_meses_stock">
+                      <span class="alert-warn-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      </span>
+                      <strong>ALERTA: 4 MESES DE STOCK</strong>
+                      <span class="alert-recom">▸ Recomendación: bajar inventario a 30 días</span>
+                    </div>
+                    <div class="alert-capital" data-cue="capital_amarrado">
+                      <span class="alert-capital-label">CAPITAL AMARRADO</span>
+                      <span class="alert-capital-value" data-target="87500000" data-prefix="$ " data-thousands="true">$ 0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ESCENA 5: Cierre -->
+                <div class="panel-ia-scene" data-scene="5" hidden>
+                  <div class="closing-content">
+                    <div class="closing-shield" aria-hidden="true">
+                      <svg viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M40 8 L68 18 L68 38 C68 56 56 70 40 76 C24 70 12 56 12 38 L12 18 Z"/>
+                        <path d="M28 40 L36 48 L52 32" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+                      </svg>
+                    </div>
+                    <h3 class="closing-title">100% LOCAL</h3>
+                    <p class="closing-subtitle">Tus facturas nunca salen de tu PC.</p>
+                    <p class="closing-tagline">Ese es <strong>TU PANEL IA</strong>.</p>
+                    <a href="#formulario" class="cta-btn cta-btn--lg" data-scroll="formulario">
+                      Empezá gratis →
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Progress bar abajo -->
+              <div class="panel-ia-progress" aria-hidden="true">
+                <div class="panel-ia-progress-fill" id="panelIaProgressFill"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA debajo de la animacion -->
+          <div class="panel-ia-cta">
+            <a href="#formulario" class="cta-btn cta-btn--lg" data-scroll="formulario">
+              Quiero TU PANEL IA
+            </a>
+          </div>
+        </div>
+      </section>
 
       <!-- Banda servicios -->
       <div class="services-band container" id="servicios-grid">

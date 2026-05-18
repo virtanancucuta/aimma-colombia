@@ -1205,4 +1205,353 @@
     window.supabaseClient.auth.onAuthStateChange((_event, session) => applyHref(session));
   })();
 
+/* =============================================
+   18. TU PANEL IA — Controller animacion + voz Isbelia
+   ============================================= */
+//
+// Architectura:
+// - Auto-play silencioso: cuando la seccion entra en viewport
+//   (IntersectionObserver), loop continuo de las 5 escenas
+//   sin audio. Visual demo siempre activo.
+// - Click "Activar narracion": detiene loop silencioso, arranca
+//   audio MP3 Isbelia (62s, 21 cue points), sincroniza scenes
+//   y highlights con currentTime via timeupdate event.
+// - Pause/Replay disponibles.
+// - Respeta prefers-reduced-motion (sin loops infinitos visuales).
+//
+(function initPanelIA() {
+  const stage = document.getElementById('panelIaStage');
+  if (!stage) return;
+
+  const audio       = document.getElementById('panelIaAudio');
+  const btnVoice    = document.getElementById('btnPanelIaVoice');
+  const btnVoiceTxt = document.getElementById('btnPanelIaVoiceText');
+  const btnReplay   = document.getElementById('btnPanelIaReplay');
+  const status      = document.getElementById('panelIaStatus');
+  const progress    = document.getElementById('panelIaProgressFill');
+  const subtitle    = document.getElementById('panelIaSubtitle');
+  if (!audio || !btnVoice) return;
+
+  const scenes = stage.querySelectorAll('.panel-ia-scene');
+  if (!scenes.length) return;
+
+  // === Cue points sincronizados con audio MP3 Isbelia ===
+  // Generados con ElevenLabs with-timestamps API (precision por caracter).
+  // Cada cue dispara una accion visual exactamente cuando Isbelia menciona la frase.
+  const CUES = [
+    { t: 0.17,  scene: 1, action: 'showScene', sub: '¿Excel sueltos? ¿Pedidos a ojo?' },
+    { t: 13.05, scene: 1, action: 'showHeadline', target: 'presenta_aimma', sub: 'Te presento TU PANEL IA' },
+    { t: 16.76, scene: 2, action: 'showScene', sub: 'Tu equipo IA sénior' },
+    { t: 16.76, scene: 2, action: 'enterExpert', target: 'financiero' },
+    { t: 17.5,  scene: 2, action: 'enterExpert', target: 'compras' },
+    { t: 18.49, scene: 2, action: 'enterExpert', target: 'comercial' },
+    { t: 19.5,  scene: 2, action: 'enterExpert', target: 'contable' },
+    { t: 22.67, scene: 2, action: 'pulseExperts' },
+    { t: 24.48, scene: 2, action: 'showHeadline', target: 'un_solo_panel' },
+    { t: 25.90, scene: 3, action: 'showScene', sub: 'Solo subes tres archivos' },
+    { t: 27.47, scene: 3, action: 'highlightFiles' },
+    { t: 29.80, scene: 3, action: 'showPosLogos', sub: 'Compatible con todos los sistemas' },
+    { t: 35.17, scene: 4, action: 'showScene', sub: 'En menos de un minuto...' },
+    { t: 35.17, scene: 4, action: 'showInsightBlock', target: 'finance' },
+    { t: 36.32, scene: 4, action: 'animateCounter', target: 'finance' },
+    { t: 37.76, scene: 4, action: 'showInsightBlock', target: 'dian' },
+    { t: 37.76, scene: 4, action: 'animateCounter', target: 'dian' },
+    { t: 39.83, scene: 4, action: 'showInsightBlock', target: 'op' },
+    { t: 39.83, scene: 4, action: 'animateCounter', target: 'op' },
+    { t: 43.90, scene: 4, action: 'showAlert' },
+    { t: 45.78, scene: 4, action: 'animateAlertGrow' },
+    { t: 48.03, scene: 4, action: 'pulseAlertWarning' },
+    { t: 51.91, scene: 4, action: 'animateCapital' },
+    { t: 57.45, scene: 5, action: 'showScene', sub: '100% local' },
+    { t: 59.49, scene: 5, action: 'pulseShield' },
+    { t: 60.96, scene: 5, action: 'showHeadline', sub: 'Ese es TU PANEL IA' },
+  ];
+
+  // === Estado ===
+  const state = {
+    voiceActive: false,
+    silentInterval: null,
+    silentSceneIdx: 0,
+    firedCues: new Set(),
+    counterAnimated: new Set(),
+    reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  };
+
+  // === Helpers ===
+  function showScene(n) {
+    scenes.forEach(s => {
+      if (Number(s.dataset.scene) === n) s.hidden = false;
+      else s.hidden = true;
+    });
+  }
+  function enterExpert(key) {
+    const card = stage.querySelector(`.expert-card[data-expert="${key}"]`);
+    if (card) card.classList.add('enter');
+  }
+  function pulseExperts() {
+    stage.querySelectorAll('.expert-card').forEach(c => c.classList.add('pulse'));
+  }
+  function showHeadline(target) {
+    const sel = target
+      ? `.scene-headline-fade[data-cue="${target}"]`
+      : `.panel-ia-scene:not([hidden]) .scene-headline-fade`;
+    stage.querySelectorAll(sel).forEach(el => el.classList.add('show'));
+  }
+  function highlightFiles() {
+    // Los file-cards ya tienen animacion CSS, solo aseguramos que la escena este activa.
+  }
+  function showPosLogos() {
+    // Los pos-logos ya aparecen con CSS staggered (animation-delay calculados).
+    stage.querySelectorAll('.pos-logo').forEach((el, i) => {
+      el.style.animationDelay = `${i * 0.06}s`;
+    });
+  }
+  function showInsightBlock(blockId) {
+    const block = stage.querySelector(`.insight-block[data-block="${blockId}"]`);
+    if (block) block.classList.add('show');
+  }
+  function showAlert() {
+    const alert = stage.querySelector('.insight-alert');
+    if (alert) alert.classList.add('show');
+  }
+
+  // Counter animation (count-up suave)
+  function animateNumber(el) {
+    if (state.counterAnimated.has(el)) return;
+    state.counterAnimated.add(el);
+    const target = parseFloat(el.dataset.target || '0');
+    const decimals = parseInt(el.dataset.decimals || '0', 10);
+    const prefix = el.dataset.prefix || '';
+    const suffix = el.dataset.suffix || '';
+    const thousands = el.dataset.thousands === 'true';
+    const dur = state.reducedMotion ? 200 : 1100;
+    const start = performance.now();
+    function fmt(n) {
+      const fixed = n.toFixed(decimals);
+      if (thousands) {
+        const parts = fixed.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return prefix + parts.join(',') + suffix;
+      }
+      return prefix + (decimals > 0 ? fixed.replace('.', ',') : fixed) + suffix;
+    }
+    function tick(now) {
+      const t = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = fmt(target * eased);
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  function animateCounters(blockId) {
+    const block = stage.querySelector(`.insight-block[data-block="${blockId}"]`);
+    if (!block) return;
+    block.querySelectorAll('[data-target]').forEach(animateNumber);
+  }
+  function animateAlertGrow() {
+    const val = stage.querySelector('.alert-grow-value');
+    if (val) animateNumber(val);
+  }
+  function pulseAlertWarning() {
+    const w = stage.querySelector('.alert-warning');
+    if (w) w.style.transform = 'scale(1.02)';
+    setTimeout(() => { if (w) w.style.transform = ''; }, 400);
+  }
+  function animateCapital() {
+    const val = stage.querySelector('.alert-capital-value');
+    if (val) animateNumber(val);
+  }
+  function pulseShield() {
+    const s = stage.querySelector('.closing-shield');
+    if (!s) return;
+    s.classList.remove('shield-finale');
+    void s.offsetWidth;
+    s.classList.add('shield-finale');
+  }
+
+  function setSubtitle(text) {
+    if (!subtitle) return;
+    if (text) {
+      subtitle.textContent = text;
+      subtitle.classList.add('active');
+    } else {
+      subtitle.classList.remove('active');
+    }
+  }
+
+  function resetVisual() {
+    // Resetear todos los estados aplicados
+    state.firedCues.clear();
+    state.counterAnimated.clear();
+    stage.querySelectorAll('.expert-card').forEach(c => c.classList.remove('enter', 'pulse'));
+    stage.querySelectorAll('.insight-block').forEach(b => b.classList.remove('show', 'pulse'));
+    stage.querySelectorAll('.insight-alert').forEach(a => a.classList.remove('show'));
+    stage.querySelectorAll('.scene-headline-fade').forEach(h => h.classList.remove('show'));
+    stage.querySelectorAll('[data-target]').forEach(el => {
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const decimals = parseInt(el.dataset.decimals || '0', 10);
+      const zeros = decimals > 0 ? '0,' + '0'.repeat(decimals) : '0';
+      el.textContent = prefix + zeros + suffix;
+    });
+    setSubtitle('');
+  }
+
+  function runCueAction(cue) {
+    switch (cue.action) {
+      case 'showScene':         showScene(cue.scene); break;
+      case 'enterExpert':       enterExpert(cue.target); break;
+      case 'pulseExperts':      pulseExperts(); break;
+      case 'showHeadline':      showHeadline(cue.target); break;
+      case 'highlightFiles':    highlightFiles(); break;
+      case 'showPosLogos':      showPosLogos(); break;
+      case 'showInsightBlock':  showInsightBlock(cue.target); break;
+      case 'animateCounter':    animateCounters(cue.target); break;
+      case 'showAlert':         showAlert(); break;
+      case 'animateAlertGrow':  animateAlertGrow(); break;
+      case 'pulseAlertWarning': pulseAlertWarning(); break;
+      case 'animateCapital':    animateCapital(); break;
+      case 'pulseShield':       pulseShield(); break;
+    }
+    if (cue.sub) setSubtitle(cue.sub);
+  }
+
+  // === Modo silencioso: loop simple de scenes ===
+  // Sin audio, solo muestra cada scene ~4s en loop. Da preview visual.
+  const SILENT_DURATION_MS = 4500;
+  function startSilentLoop() {
+    if (state.voiceActive) return;
+    stopSilentLoop();
+    state.silentSceneIdx = 0;
+    function showNext() {
+      const idx = state.silentSceneIdx % scenes.length;
+      const sceneNum = idx + 1;
+      showScene(sceneNum);
+      // Disparar acciones simplificadas para esa escena
+      CUES.filter(c => c.scene === sceneNum && c.action !== 'showScene').forEach(c => {
+        try { runCueAction(c); } catch (_) {}
+      });
+      state.silentSceneIdx++;
+    }
+    showNext();
+    state.silentInterval = setInterval(showNext, SILENT_DURATION_MS);
+  }
+  function stopSilentLoop() {
+    if (state.silentInterval) {
+      clearInterval(state.silentInterval);
+      state.silentInterval = null;
+    }
+  }
+
+  // === Modo voz: audio con sync ===
+  function startVoice() {
+    stopSilentLoop();
+    state.voiceActive = true;
+    resetVisual();
+    showScene(1);
+    btnVoiceTxt.textContent = 'Detener narración';
+    if (btnReplay) btnReplay.hidden = true;
+    status.textContent = '▶ REPRODUCIENDO CON VOZ';
+    // Safari/Firefox fix: setear currentTime solo si readyState >= 2
+    // (HAVE_CURRENT_DATA). Sino esperar evento 'canplay' antes de seek+play.
+    function doPlay() {
+      try { audio.currentTime = 0; } catch (_) {}
+      audio.play().catch(err => {
+        console.warn('[PanelIA] no se pudo reproducir audio:', err);
+        stopVoice();
+      });
+    }
+    if (audio.readyState >= 2) {
+      doPlay();
+    } else {
+      audio.addEventListener('canplay', doPlay, { once: true });
+      audio.load();
+    }
+  }
+  function stopVoice() {
+    state.voiceActive = false;
+    audio.pause();
+    audio.currentTime = 0;
+    btnVoiceTxt.textContent = 'Activar narración con voz IA';
+    status.textContent = '▶ AUTO-PLAY';
+    if (btnReplay) btnReplay.hidden = true;
+    if (progress) progress.style.width = '0%';
+    setSubtitle('');
+    // Volver al loop silencioso
+    startSilentLoop();
+  }
+
+  // Sync via timeupdate
+  audio.addEventListener('timeupdate', () => {
+    if (!state.voiceActive) return;
+    const t = audio.currentTime;
+    // Progress bar
+    if (audio.duration && progress) {
+      const pct = (t / audio.duration) * 100;
+      progress.style.width = pct + '%';
+    }
+    // Disparar cues no firedos cuyo tiempo ya pasó
+    CUES.forEach((cue, i) => {
+      if (t >= cue.t && !state.firedCues.has(i)) {
+        state.firedCues.add(i);
+        try { runCueAction(cue); } catch (e) { console.warn('[PanelIA] cue error:', e); }
+      }
+    });
+  });
+  audio.addEventListener('ended', () => {
+    state.voiceActive = false;
+    btnVoiceTxt.textContent = 'Reproducir de nuevo';
+    status.textContent = '✓ FIN';
+    if (btnReplay) btnReplay.hidden = false;
+    // Fallback: si el user no clickea Replay en 10s, vuelve al loop
+    // silencioso (sino la seccion queda congelada en escena 5).
+    setTimeout(() => {
+      if (!state.voiceActive && !state.silentInterval) {
+        const rect = stage.getBoundingClientRect();
+        const inView = rect.top < window.innerHeight && rect.bottom > 0;
+        if (inView) startSilentLoop();
+      }
+    }, 10000);
+  });
+  audio.addEventListener('error', (e) => {
+    console.warn('[PanelIA] audio error:', e);
+    stopVoice();
+  });
+
+  // === Event handlers ===
+  btnVoice.addEventListener('click', () => {
+    if (state.voiceActive) {
+      stopVoice();
+    } else {
+      startVoice();
+    }
+  });
+  if (btnReplay) {
+    btnReplay.addEventListener('click', () => startVoice());
+  }
+
+  // === Auto-play silencioso cuando seccion entra en viewport ===
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        if (!state.voiceActive && !state.silentInterval) {
+          startSilentLoop();
+        }
+      } else {
+        // Si sale de viewport y NO esta sonando voz, pausamos el loop
+        if (!state.voiceActive) {
+          stopSilentLoop();
+        }
+      }
+    });
+  }, { threshold: 0.25 });
+  io.observe(stage);
+
+  // Cleanup al cambiar pagina
+  window.addEventListener('beforeunload', () => {
+    stopVoice();
+    stopSilentLoop();
+  });
+})();
+
 })();
