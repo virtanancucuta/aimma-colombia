@@ -135,7 +135,7 @@
     .modal-confirm:hover, .modal-confirm:focus-visible { background: rgba(239,68,68,0.25); outline: none; }
     .modal-confirm:disabled { opacity: 0.5; cursor: progress; }
 
-    /* Toast inline (reemplaza alert()) */
+    /* Toast inline (reemplaza alert()) - oculto por default, visible solo con .show */
     .toast {
       position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120%);
       min-width: 280px; max-width: 90vw;
@@ -143,9 +143,10 @@
       font-family: var(--font-mono); font-size: 0.85rem;
       background: var(--navy-card); border: 1px solid var(--cyan);
       color: var(--white); box-shadow: 0 12px 32px rgba(0,0,0,0.5), 0 0 24px var(--cyan-glow);
-      z-index: 200; transition: transform 0.35s var(--transition);
+      z-index: 200; transition: transform 0.35s var(--transition), visibility 0.35s, opacity 0.35s;
+      visibility: hidden; opacity: 0; pointer-events: none;
     }
-    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.show { transform: translateX(-50%) translateY(0); visibility: visible; opacity: 1; pointer-events: auto; }
     .toast.error { border-color: rgba(239,68,68,0.6); box-shadow: 0 12px 32px rgba(0,0,0,0.5), 0 0 24px rgba(239,68,68,0.3); color: #fca5a5; }
     .toast.success { border-color: rgba(34,197,94,0.6); box-shadow: 0 12px 32px rgba(0,0,0,0.5), 0 0 24px rgba(34,197,94,0.3); color: #86efac; }
 
@@ -358,7 +359,8 @@
           } else {
             badgeDashboard.outerHTML = '<span class="badge-pro-active" id="badgeDashboard">PRO ACTIVO</span>';
           }
-          const irPanel = () => { window.location.href = '/dashboard/'; };
+          // Abrir Dashboard AIMMA en nueva pestaña (placeholder mientras se construye)
+          const irPanel = () => { window.open('/dashboard-pro.html', '_blank', 'noopener'); };
           cardDashboard.addEventListener('click', irPanel);
           cardDashboard.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); irPanel(); }

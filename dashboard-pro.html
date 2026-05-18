@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Dashboard AIMMA · En construcción</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="/style.v3.css" />
+
+  <style>
+    .dash-page { min-height: 100vh; display: flex; flex-direction: column; }
+    .dash-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 60px 24px; }
+    .dash-card {
+      max-width: 640px; width: 100%; text-align: center;
+      background: linear-gradient(180deg, var(--navy-card) 0%, var(--navy) 100%);
+      border: 1px solid var(--cyan-glow);
+      border-radius: var(--radius-lg);
+      padding: 56px 40px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 60px var(--cyan-glow);
+    }
+    .dash-icon {
+      width: 110px; height: 110px; margin: 0 auto 24px;
+      border-radius: 50%; background: rgba(0,212,245,0.08);
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 40px var(--cyan-glow-strong);
+      animation: dashPulse 2.4s ease-in-out infinite;
+    }
+    @keyframes dashPulse {
+      0%,100% { box-shadow: 0 0 40px var(--cyan-glow-strong); }
+      50% { box-shadow: 0 0 70px var(--cyan); }
+    }
+    .dash-icon svg { width: 56px; height: 56px; color: var(--cyan); }
+    .dash-title {
+      font-family: var(--font-display); font-weight: 800; font-size: 2.2rem;
+      color: var(--white); margin: 0 0 12px 0; letter-spacing: 0.02em;
+    }
+    .dash-title strong { color: var(--cyan); }
+    .dash-tag {
+      display: inline-block; margin-bottom: 22px;
+      font-family: var(--font-mono); font-size: 0.7rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: #fbbf24; border: 1px solid rgba(251,191,36,0.5);
+      padding: 6px 12px; border-radius: 6px;
+      background: rgba(251,191,36,0.08);
+    }
+    .dash-desc {
+      color: var(--white-80); font-size: 1.05rem; line-height: 1.6;
+      margin: 0 0 32px 0;
+    }
+    .dash-features {
+      list-style: none; padding: 0; margin: 0 0 32px 0;
+      display: flex; flex-direction: column; gap: 12px;
+      text-align: left;
+    }
+    .dash-features li {
+      display: flex; align-items: flex-start; gap: 12px;
+      font-size: 0.95rem; color: var(--white-90); line-height: 1.5;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--white-15);
+      border-radius: 8px;
+    }
+    .dash-features li::before {
+      content: '\2022'; color: var(--cyan); font-weight: 700;
+      flex-shrink: 0; font-size: 1.4rem; line-height: 1;
+    }
+    .dash-cta {
+      display: inline-block;
+      background: transparent; color: var(--cyan);
+      font-family: var(--font-display); font-weight: 800; font-size: 0.95rem;
+      letter-spacing: 0.06em; padding: 12px 28px;
+      border-radius: 8px; text-decoration: none;
+      box-shadow: inset 0 0 0 1.5px var(--cyan);
+      transition: all 0.25s var(--transition);
+    }
+    .dash-cta:hover { background: rgba(0,212,245,0.08); }
+    .dash-footer-note {
+      margin-top: 28px; font-size: 0.82rem; color: var(--white-60);
+      font-family: var(--font-mono); letter-spacing: 0.04em;
+    }
+    @media (max-width: 560px) {
+      .dash-card { padding: 40px 24px; }
+      .dash-title { font-size: 1.6rem; }
+      .dash-icon { width: 88px; height: 88px; }
+      .dash-icon svg { width: 44px; height: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-halos" aria-hidden="true">
+    <span class="halo halo-1"></span>
+    <span class="halo halo-2"></span>
+    <span class="halo halo-3"></span>
+  </div>
+
+  <div class="dash-page">
+
+    <header class="panel-header">
+      <a href="/iapanel/" class="brand" aria-label="Volver al Panel">
+        <img src="/assets/logo.svg" alt="" class="brand-logo" width="38" height="38" />
+        <span class="brand-text">
+          <span class="brand-name">AIMMA</span>
+          <span class="brand-tag">DASHBOARD</span>
+        </span>
+      </a>
+      <div class="panel-user">
+        <a href="/iapanel/" style="color: var(--cyan); text-decoration: none; font-size: 0.9rem; font-family: var(--font-mono);">&larr; Volver al panel</a>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <div class="dash-card">
+        <div class="dash-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="2" x2="12" y2="6"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+            <line x1="2" y1="12" x2="6" y2="12"/>
+            <line x1="18" y1="12" x2="22" y2="12"/>
+          </svg>
+        </div>
+
+        <span class="dash-tag">EN CONSTRUCCIÓN</span>
+        <h1 class="dash-title">Dashboard <strong>AIMMA</strong></h1>
+        <p class="dash-desc">Tu Plan PRO está activo. El Dashboard AIMMA con los indicadores en tiempo real de tu negocio está siendo construido y estará disponible muy pronto.</p>
+
+        <ul class="dash-features">
+          <li><span>Ventas, gastos y utilidad del día en tiempo real</span></li>
+          <li><span>Comparativo mensual y anual de tu negocio</span></li>
+          <li><span>Top productos y clientes con mayor rentabilidad</span></li>
+          <li><span>Análisis con IA: qué está funcionando y qué no</span></li>
+          <li><span>Alertas automáticas cuando hay desvíos</span></li>
+        </ul>
+
+        <a href="/iapanel/" class="dash-cta">VOLVER AL PANEL</a>
+
+        <p class="dash-footer-note">Te avisaremos por correo cuando esté listo. Tu suscripción ya está cubriendo el desarrollo de esta herramienta.</p>
+      </div>
+    </main>
+
+    <footer class="panel-footer">
+      <p>&copy; 2026 AIMMA Colombia · Todos los derechos reservados</p>
+    </footer>
+  </div>
+</body>
+</html>
