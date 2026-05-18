@@ -125,12 +125,24 @@
         // leemos profile=null nos saltamos todo el flow y caemos al else
         // que redirige a /iapanel/, rompiendo verification.
         let user = null, profile = null;
+        let zombieDetected = false;
         for (let attempt = 0; attempt < 10; attempt++) {
           const res = await A.getCurrentUser();
           user = res.user;
           profile = res.profile;
+          // Zombie session: JWT presente pero user.id no existe en BD
+          if (!user && session) {
+            zombieDetected = true;
+            break;
+          }
           if (profile) break;
           await new Promise(r => setTimeout(r, 500));
+        }
+        if (zombieDetected) {
+          console.warn('[AIMMA callback] zombie session detectada, limpiando');
+          try { await supabase.auth.signOut(); } catch (_) {}
+          window.location.replace('/login.html?error=session_expired');
+          return;
         }
 
         const provider = user?.app_metadata?.provider || 'email';

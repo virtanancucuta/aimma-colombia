@@ -91,6 +91,14 @@
       return { user: null, profile: null, session: null };
     }
     const { user, profile } = await getCurrentUser();
+    // Zombie session fix: JWT valido pero user borrado en BD => getUser()
+    // retorna null + 403. Sin esto, el page queda cargando eterno.
+    if (!user) {
+      console.warn('[AIMMA auth] zombie session: JWT presente pero user no existe en BD');
+      try { await supabase.auth.signOut(); } catch (_) {}
+      window.location.replace('/login.html?error=session_expired');
+      return { user: null, profile: null, session: null };
+    }
     if (!opts.skipVerifyCheck && profile && profile.email_aimma_verificado === false) {
       window.location.replace('/verificar-pendiente.html');
       return { user, profile, session };
