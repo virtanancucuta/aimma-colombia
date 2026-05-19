@@ -20,6 +20,10 @@
   let heroLoopFn = null;
   let chartLineLoopId = null;
   let inventoryChatId = null;
+  let io = null;  // IntersectionObserver global (asignado linea ~469).
+                  // Sin hoist: cargar directo con #tecnologia-ia dispara
+                  // initTecnologiaIA que accede `io` antes de su asignacion,
+                  // rompiendo la IIFE entera (cascada TDZ en AGENT_TEXT etc).
 
   // Hoist DOM refs del drawer mobile (TDZ fix: el click handler de
   // navLinks llama closeDrawer() que accede drawer; en mobile Playwright
@@ -58,8 +62,10 @@
     r.timers.length = 0;
     // Cleanup especifico por tab
     if (tabId === 'tecnologia-ia') {
-      // Cancelar voz del agente IA si esta sonando
-      try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (_) {}
+      // Detener voz Isbelia del agente IA si esta sonando
+      if (window.AIMMA && window.AIMMA.agent && window.AIMMA.agent.stop) {
+        try { window.AIMMA.agent.stop(); } catch (_) {}
+      }
     }
     if (tabId === 'home') {
       // Detener loop silencioso del Panel IA si el user sale de home
@@ -153,7 +159,11 @@
   }
 
   window.addEventListener('hashchange', handleHash);
-  handleHash();
+  // Diferir el handleHash inicial a un microtask para que toda la IIFE
+  // termine de inicializar sus consts (io, AGENT_TEXT, etc.) antes de
+  // que showTab/initXxx los acceda. Carga directa con hash como
+  // #tecnologia-ia disparaba TDZ en cascada sin este diferimiento.
+  queueMicrotask(handleHash);
 
   // ===================================================
   // 2. HEADER scroll up/down
@@ -464,7 +474,8 @@
   // ===================================================
   // 7. INTERSECTION OBSERVER · contadores y barras
   // ===================================================
-  const io = new IntersectionObserver((entries) => {
+  // `io` esta hoisted al top del IIFE como `let` (TDZ fix). Aqui se asigna.
+  io = new IntersectionObserver((entries) => {
     entries.forEach(e => {
       if (e.isIntersecting) {
         const el = e.target;
@@ -923,7 +934,7 @@
     if (stage) { stage.dataset.observe = 'scraping'; io.observe(stage); }
   }
 
-  const AGENT_TEXT = 'Hola, soy tu futuro agente de inteligencia artificial. Puedo asistir como agente de ventas, atender cientos de clientes de manera simultánea, con la voz, acento y calidez que tú desees. Pero si lo deseas, como asistente de citas, puedo agendar, cancelar y optimizar tu consultorio o negocio. Y si eres un profesional de servicios, también me encantaría ser tu asistente personal. Lo que te imagines, AIMMA Colombia puede lograrlo. Espero conocerte pronto. Recuerda: tu diagnóstico es completamente gratuito.';
+  const AGENT_TEXT = 'Hola, soy tu futuro agente de inteligencia artificial. Puedo asistir como agente de ventas, atender cientos de clientes de manera simultánea, con la voz, acento y calidez que tú desees. Pero si lo deseas, como asistente de citas, puedo agendar, cancelar y optimizar tu consultorio o negocio. Y si eres un profesional de servicios, también me encantaría ser tu asistente personal. Lo que te imagines, Aimma Colombia puede lograrlo. Espero conocerte pronto. Recuerda: tu diagnóstico es completamente gratuito.';
 
   function setupAgent() {
     const orb = document.getElementById('orb');
@@ -931,92 +942,160 @@
     const btnStop = document.getElementById('btnAgentStop');
     const btnCta = document.getElementById('btnAgentCta');
     const subtitle = document.getElementById('agentSubtitle');
+    const audio = document.getElementById('agentAudio');
 
-    if (!('speechSynthesis' in window)) {
-      btnSpeak.textContent = '🔇 Tu navegador no soporta voz';
-      btnSpeak.disabled = true;
-      return;
-    }
+    if (!audio) return;
 
-    let utter = null;
-
-    function pickSpanishVoice() {
-      const voices = speechSynthesis.getVoices();
-      // preferir es-CO, luego es-MX, es-US, es-ES, cualquier es-
-      const pref = ['es-CO', 'es-MX', 'es-US', 'es-ES', 'es-AR', 'es'];
-      for (const code of pref) {
-        const v = voices.find(x => x.lang && x.lang.toLowerCase().startsWith(code.toLowerCase()));
-        if (v) return v;
-      }
-      return voices.find(x => x.lang && x.lang.startsWith('es')) || voices[0];
-    }
+    // Renderizar palabras del subtitulo y calcular tiempos por palabra desde
+    // los timestamps de ElevenLabs (with-timestamps API). Cada palabra se
+    // ilumina cuando el primer caracter no-espacio que la compone empieza
+    // a sonar. La carga de timestamps es lazy (al primer click).
+    let wordSpans = [];
+    let wordStartTimes = [];
+    let timestampsLoaded = false;
+    let lastWordIdx = -1;
 
     function buildSubtitle() {
       const words = AGENT_TEXT.split(/\s+/);
       subtitle.innerHTML = words.map(w => `<span class="word">${w}</span>`).join(' ');
-      return subtitle.querySelectorAll('.word');
+      wordSpans = Array.from(subtitle.querySelectorAll('.word'));
+    }
+
+    async function loadTimestamps() {
+      if (timestampsLoaded) return true;
+      try {
+        const res = await fetch('assets/agente-ia-isbelia-timestamps.json', { cache: 'force-cache' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const alignment = await res.json();
+        const chars = alignment.characters || [];
+        const starts = alignment.character_start_times_seconds || [];
+
+        // Mapear cada palabra del AGENT_TEXT a su tiempo de inicio:
+        // recorrer chars y, cuando aparezca el primer no-espacio tras un
+        // espacio (o el primer char), marcar inicio de palabra.
+        const starts2 = [];
+        let inWord = false;
+        for (let i = 0; i < chars.length; i++) {
+          const c = chars[i];
+          const isSpace = /\s/.test(c);
+          if (!isSpace && !inWord) {
+            starts2.push(starts[i]);
+            inWord = true;
+          } else if (isSpace) {
+            inWord = false;
+          }
+        }
+        wordStartTimes = starts2;
+        timestampsLoaded = true;
+        return true;
+      } catch (e) {
+        console.warn('[AIMMA] No se pudieron cargar timestamps:', e);
+        // Fallback: distribuir palabras linealmente sobre la duracion del audio.
+        wordStartTimes = [];
+        timestampsLoaded = true;
+        return false;
+      }
+    }
+
+    function resetWords() {
+      wordSpans.forEach(s => s.classList.remove('word-spoken'));
+      lastWordIdx = -1;
+    }
+
+    function onTimeUpdate() {
+      if (!wordStartTimes.length) {
+        // Fallback lineal: distribuir palabras sobre audio.duration
+        if (audio.duration > 0 && wordSpans.length) {
+          const idx = Math.min(
+            wordSpans.length - 1,
+            Math.floor((audio.currentTime / audio.duration) * wordSpans.length)
+          );
+          for (let i = lastWordIdx + 1; i <= idx; i++) {
+            if (wordSpans[i]) wordSpans[i].classList.add('word-spoken');
+          }
+          lastWordIdx = idx;
+        }
+        return;
+      }
+      const t = audio.currentTime;
+      // Avanzar el indice mientras el tiempo de la siguiente palabra ya paso
+      while (lastWordIdx + 1 < wordStartTimes.length && t >= wordStartTimes[lastWordIdx + 1]) {
+        lastWordIdx++;
+        if (wordSpans[lastWordIdx]) wordSpans[lastWordIdx].classList.add('word-spoken');
+      }
     }
 
     function speak() {
-      try { speechSynthesis.cancel(); } catch (_) { }
-      const wordSpans = buildSubtitle();
+      // CRITICAL: play() debe ser sincrono dentro del click handler para
+      // preservar el user-gesture. NO meter await antes de audio.play() o
+      // los browsers bloquean el playback como autoplay no autorizado.
+      buildSubtitle();
+      resetWords();
+      // Disparar carga de timestamps en background (no bloquea play)
+      if (!timestampsLoaded) loadTimestamps();
 
-      utter = new SpeechSynthesisUtterance(AGENT_TEXT);
-      utter.lang = 'es-CO';
-      utter.rate = 0.96;
-      utter.pitch = 1.0;
-      utter.volume = 1.0;
-      const voice = pickSpanishVoice();
-      if (voice) utter.voice = voice;
+      try {
+        audio.currentTime = 0;
+      } catch (_) {}
 
-      let wordIdx = 0;
-      utter.onboundary = (ev) => {
-        if (ev.name === 'word' && wordSpans[wordIdx]) {
-          wordSpans[wordIdx].classList.add('word-spoken');
-          wordIdx++;
-        }
-      };
-      utter.onstart = () => {
-        orb.classList.add('speaking');
-        btnSpeak.hidden = true;
-        btnStop.hidden = false;
-        btnCta.hidden = true;
-      };
-      utter.onend = () => {
-        orb.classList.remove('speaking');
-        btnSpeak.hidden = false;
-        btnSpeak.textContent = '🔊 Escuchar de nuevo';
-        btnStop.hidden = true;
-        btnCta.hidden = false;
-      };
-      utter.onerror = (e) => {
-        console.warn('[AIMMA] Voz error:', e);
-        orb.classList.remove('speaking');
-        btnSpeak.hidden = false;
-        btnStop.hidden = true;
-      };
-
-      speechSynthesis.speak(utter);
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((e) => {
+          console.warn('[AIMMA] No se pudo reproducir audio:', e);
+          orb.classList.remove('speaking');
+          btnSpeak.hidden = false;
+          btnStop.hidden = true;
+        });
+      }
     }
 
     function stop() {
-      try { speechSynthesis.cancel(); } catch (_) { }
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch (_) {}
       orb.classList.remove('speaking');
       btnSpeak.hidden = false;
       btnStop.hidden = true;
+      lastWordIdx = -1;
     }
+
+    // Eventos del audio
+    audio.addEventListener('play', () => {
+      orb.classList.add('speaking');
+      btnSpeak.hidden = true;
+      btnStop.hidden = false;
+      btnCta.hidden = true;
+    });
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('ended', () => {
+      orb.classList.remove('speaking');
+      btnSpeak.hidden = false;
+      btnSpeak.textContent = 'Escuchar de nuevo';
+      btnStop.hidden = true;
+      btnCta.hidden = false;
+    });
+    audio.addEventListener('error', (e) => {
+      console.warn('[AIMMA] Audio error:', e);
+      orb.classList.remove('speaking');
+      btnSpeak.hidden = false;
+      btnStop.hidden = true;
+    });
 
     btnSpeak.addEventListener('click', speak);
     btnStop.addEventListener('click', stop);
 
-    // cancelar al cambiar de tab o salir
+    // Detener al cambiar de tab o salir
     window.addEventListener('hashchange', stop);
     window.addEventListener('beforeunload', stop);
 
-    // forzar carga de voces (algunos navegadores las cargan async)
-    if (speechSynthesis.getVoices().length === 0) {
-      speechSynthesis.addEventListener('voiceschanged', () => { /* listo */ }, { once: true });
-    }
+    // Precargar timestamps en background asi al click ya estan listos
+    // (evita race con autoplay si el fetch tarda)
+    loadTimestamps();
+
+    // Exponer para cleanupTab
+    window.AIMMA = window.AIMMA || {};
+    window.AIMMA.agent = { stop };
   }
 
   function runAdvisorChat() {

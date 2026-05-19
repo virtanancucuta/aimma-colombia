@@ -1426,8 +1426,14 @@ main { padding-top: var(--header-h); position: relative; z-index: 1; }
   border-radius: var(--radius);
   padding: 28px 22px;
   transition: all var(--transition);
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: center;
 }
 .case-card:hover { border-color: var(--cyan); box-shadow: 0 0 24px var(--cyan-glow); transform: translateY(-4px); }
+.case-card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 .case-icon {
   width: 56px;
   height: 56px;
