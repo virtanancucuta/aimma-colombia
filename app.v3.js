@@ -1437,7 +1437,62 @@
     firedCues: new Set(),
     counterAnimated: new Set(),
     reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    // Si el usuario hace scroll manual durante reproduccion, respetamos su
+    // intent y NO forzamos scroll-back al cambiar de escena (UX rule
+    // motion-sensitivity, severidad alta — no secuestrar viewport).
+    userScrolled: false,
+    userScrollHandlers: null,
   };
+
+  // === Recentrado de stage en transicion escena 4 → escena 5 ===
+  // Escena 4 expande el stage (3 insight-blocks + alert con $87.5M capital).
+  // En mobile/laptops chicas el viewport queda scrolleado al final del alert.
+  // Cuando entra escena 5 ("100% local" + CTA QUIERO MI PANEL IA) el stage
+  // colapsa pero el viewport del user queda abajo: cierre invisible.
+  // Fix: scrollIntoView UNA SOLA VEZ por playback, solo si:
+  //   - voz IA activada (intent explicito)
+  //   - usuario NO hizo scroll manual durante reproduccion
+  //   - el stage no esta ya completamente visible
+  function maybeRecenterStage() {
+    if (!state.voiceActive) return;
+    if (state.userScrolled) return;
+    const rect = stage.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    // Si el stage cabe entero en viewport actual, no hace falta scroll
+    const fullyVisible = rect.top >= 0 && rect.bottom <= vh;
+    if (fullyVisible) return;
+    try {
+      stage.scrollIntoView({
+        behavior: state.reducedMotion ? 'auto' : 'smooth',
+        block: 'center',
+      });
+    } catch (_) {
+      // Fallback navegadores viejos
+      stage.scrollIntoView();
+    }
+  }
+
+  function attachUserScrollDetection() {
+    if (state.userScrollHandlers) return;
+    const onUserScroll = () => { state.userScrolled = true; };
+    const opts = { passive: true, capture: false };
+    window.addEventListener('wheel', onUserScroll, opts);
+    window.addEventListener('touchmove', onUserScroll, opts);
+    window.addEventListener('keydown', (e) => {
+      // Teclas que típicamente hacen scroll
+      if (['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(e.key)) {
+        state.userScrolled = true;
+      }
+    }, opts);
+    state.userScrollHandlers = { onUserScroll, opts };
+  }
+  function detachUserScrollDetection() {
+    if (!state.userScrollHandlers) return;
+    const { onUserScroll, opts } = state.userScrollHandlers;
+    window.removeEventListener('wheel', onUserScroll, opts);
+    window.removeEventListener('touchmove', onUserScroll, opts);
+    state.userScrollHandlers = null;
+  }
 
   // === Helpers ===
   function showScene(n) {
@@ -1561,7 +1616,12 @@
 
   function runCueAction(cue) {
     switch (cue.action) {
-      case 'showScene':         showScene(cue.scene); break;
+      case 'showScene':
+        showScene(cue.scene);
+        // Al entrar escena 5 (cierre "100% local" + CTA), recentrar stage
+        // porque escena 4 dejo el viewport scrolleado abajo del alert.
+        if (cue.scene === 5) maybeRecenterStage();
+        break;
       case 'enterExpert':       enterExpert(cue.target); break;
       case 'pulseExperts':      pulseExperts(); break;
       case 'showHeadline':      showHeadline(cue.target); break;
@@ -1609,6 +1669,8 @@
   function startVoice() {
     stopSilentLoop();
     state.voiceActive = true;
+    state.userScrolled = false;
+    attachUserScrollDetection();
     resetVisual();
     showScene(1);
     btnVoiceTxt.textContent = 'Detener narración';
@@ -1632,6 +1694,7 @@
   }
   function stopVoice() {
     state.voiceActive = false;
+    detachUserScrollDetection();
     audio.pause();
     audio.currentTime = 0;
     btnVoiceTxt.textContent = 'Activar narración con voz IA';
