@@ -1444,31 +1444,33 @@
     userScrollHandlers: null,
   };
 
-  // === Recentrado de stage en transicion escena 4 → escena 5 ===
-  // Escena 4 expande el stage (3 insight-blocks + alert con $87.5M capital).
-  // En mobile/laptops chicas el viewport queda scrolleado al final del alert.
-  // Cuando entra escena 5 ("100% local" + CTA QUIERO MI PANEL IA) el stage
-  // colapsa pero el viewport del user queda abajo: cierre invisible.
-  // Fix: scrollIntoView UNA SOLA VEZ por playback, solo si:
-  //   - voz IA activada (intent explicito)
+  // === Scrollytelling guiado durante narración con voz IA ===
+  // Cuando el usuario activa la voz, el viewport guia automaticamente:
+  // a cada nueva escena, gerente que entra, insight-block o alerta que
+  // aparece, hace scroll suave para centrarlo en pantalla. Si el target
+  // ya esta visible no scrollea (evita micro-scrolls).
+  // Patron estandar de scrollytelling (Apple/Stripe en demos de producto).
+  // Guardas (NO secuestrar viewport — UX rule motion-sensitivity, severidad alta):
+  //   - voz IA activada (intent explicito del usuario)
   //   - usuario NO hizo scroll manual durante reproduccion
-  //   - el stage no esta ya completamente visible
-  function maybeRecenterStage() {
+  //   - elemento no esta ya completamente visible
+  //   - respeta prefers-reduced-motion (instant scroll)
+  function maybeScrollTo(el, opts = {}) {
     if (!state.voiceActive) return;
     if (state.userScrolled) return;
-    const rect = stage.getBoundingClientRect();
+    if (!el || !el.getBoundingClientRect) return;
+    const rect = el.getBoundingClientRect();
     const vh = window.innerHeight || document.documentElement.clientHeight;
-    // Si el stage cabe entero en viewport actual, no hace falta scroll
-    const fullyVisible = rect.top >= 0 && rect.bottom <= vh;
+    // Si el elemento cabe entero y esta visible en viewport, skip
+    const fullyVisible = rect.top >= 0 && rect.bottom <= vh && rect.height > 0;
     if (fullyVisible) return;
     try {
-      stage.scrollIntoView({
+      el.scrollIntoView({
         behavior: state.reducedMotion ? 'auto' : 'smooth',
-        block: 'center',
+        block: opts.block || 'center',
       });
     } catch (_) {
-      // Fallback navegadores viejos
-      stage.scrollIntoView();
+      el.scrollIntoView();
     }
   }
 
@@ -1618,18 +1620,38 @@
     switch (cue.action) {
       case 'showScene':
         showScene(cue.scene);
-        // Al entrar escena 5 (cierre "100% local" + CTA), recentrar stage
-        // porque escena 4 dejo el viewport scrolleado abajo del alert.
-        if (cue.scene === 5) maybeRecenterStage();
+        // Scroll al stage al entrar cualquier escena nueva (block:center
+        // para dar respiracion visual arriba y abajo).
+        maybeScrollTo(stage, { block: 'center' });
         break;
-      case 'enterExpert':       enterExpert(cue.target); break;
+      case 'enterExpert': {
+        enterExpert(cue.target);
+        // Cada gerente que entra → scroll a su card. En mobile los 4
+        // cards estan apilados, sin esto el usuario solo ve el primero.
+        const card = stage.querySelector(`.expert-card[data-expert="${cue.target}"]`);
+        maybeScrollTo(card, { block: 'center' });
+        break;
+      }
       case 'pulseExperts':      pulseExperts(); break;
       case 'showHeadline':      showHeadline(cue.target); break;
       case 'highlightFiles':    highlightFiles(); break;
       case 'showPosLogos':      showPosLogos(); break;
-      case 'showInsightBlock':  showInsightBlock(cue.target); break;
+      case 'showInsightBlock': {
+        showInsightBlock(cue.target);
+        // Cada insight (finance, dian, op) entra progresivamente y
+        // el stage va creciendo — scroll al bloque que aparece.
+        const block = stage.querySelector(`.insight-block[data-block="${cue.target}"]`);
+        maybeScrollTo(block, { block: 'center' });
+        break;
+      }
       case 'animateCounter':    animateCounters(cue.target); break;
-      case 'showAlert':         showAlert(); break;
+      case 'showAlert': {
+        showAlert();
+        // Alert es el elemento mas grande de escena 4 ($87.5M capital amarrado).
+        const alert = stage.querySelector('.insight-alert');
+        maybeScrollTo(alert, { block: 'center' });
+        break;
+      }
       case 'animateAlertGrow':  animateAlertGrow(); break;
       case 'pulseAlertWarning': pulseAlertWarning(); break;
       case 'animateCapital':    animateCapital(); break;
