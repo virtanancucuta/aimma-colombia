@@ -1,0 +1,378 @@
+<!doctype html>
+<!-- AIMMA Contenido IA · recargas.html · v1 · 2026-05-23 -->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#040d1a" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>AIMMA · Contenido IA · Recargar tokens</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* AIMMA Contenido IA · recargas · styles internos (no dependen de estudio.css) */
+    :root {
+      --navy-deep: #040d1a;
+      --navy: #0a1929;
+      --navy-card: #0f2236;
+      --navy-card-soft: #122b44;
+      --cyan: #00d4f5;
+      --cyan-soft: #5be4f8;
+      --cyan-glow: rgba(0, 212, 245, 0.22);
+      --cyan-glow-strong: rgba(0, 212, 245, 0.45);
+      --white: #ffffff;
+      --white-90: rgba(255, 255, 255, 0.92);
+      --white-70: rgba(255, 255, 255, 0.72);
+      --white-60: rgba(255, 255, 255, 0.58);
+      --white-40: rgba(255, 255, 255, 0.40);
+      --white-15: rgba(255, 255, 255, 0.15);
+      --white-08: rgba(255, 255, 255, 0.08);
+      --danger: #ff5e6c;
+      --font-display: 'Exo 2', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --transition: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--navy-deep); color: var(--white); font-family: var(--font-display); }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(0, 212, 245, 0.06), transparent 50%),
+        radial-gradient(circle at 80% 100%, rgba(0, 212, 245, 0.04), transparent 50%),
+        var(--navy-deep);
+    }
+
+    /* Banner test mode */
+    .banner-test {
+      background: linear-gradient(90deg, rgba(0, 212, 245, 0.12), rgba(0, 212, 245, 0.05));
+      border-bottom: 1px solid rgba(0, 212, 245, 0.28);
+      color: var(--cyan-soft);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      padding: 10px 18px;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+    .banner-test strong { color: var(--cyan); font-weight: 600; }
+
+    /* Header */
+    .rec-header {
+      border-bottom: 1px solid var(--white-08);
+      background: rgba(4, 13, 26, 0.85);
+      backdrop-filter: blur(8px);
+    }
+    .rec-header__inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .rec-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--white);
+    }
+    .rec-brand__icon { color: var(--cyan); flex-shrink: 0; }
+    .rec-brand__small { display: block; font-family: var(--font-mono); font-size: 0.7rem; color: var(--white-60); letter-spacing: 0.08em; text-transform: uppercase; }
+    .rec-brand__big { display: block; font-weight: 700; font-size: 0.98rem; letter-spacing: 0.04em; }
+
+    .rec-saldo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 14px;
+      background: var(--navy-card);
+      border: 1px solid var(--white-08);
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+    .rec-saldo__label { color: var(--white-60); }
+    .rec-saldo__value { color: var(--cyan); font-weight: 600; }
+
+    /* Main */
+    .rec-main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 48px 22px 64px;
+    }
+
+    /* Loading state */
+    .state-loading {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 60vh; gap: 16px;
+    }
+    .loader-ring {
+      width: 38px; height: 38px;
+      border: 3px solid var(--white-15);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .state-loading p { color: var(--white-70); font-family: var(--font-mono); font-size: 0.9rem; }
+
+    /* Hero */
+    .rec-hero { text-align: center; margin-bottom: 40px; }
+    .rec-hero h1 {
+      font-family: var(--font-display); font-weight: 800; font-size: 2.2rem;
+      color: var(--white); margin: 0 0 12px 0; letter-spacing: 0.01em;
+    }
+    .rec-hero h1 strong { color: var(--cyan); text-shadow: 0 0 24px var(--cyan-glow-strong); }
+    .rec-hero p { font-size: 1rem; color: var(--white-70); max-width: 620px; margin: 0 auto; line-height: 1.6; }
+
+    /* Grid de paquetes */
+    .packs-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 22px;
+      margin-bottom: 36px;
+    }
+    @media (min-width: 820px) {
+      .packs-grid { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+    }
+
+    .pack-card {
+      position: relative;
+      background: linear-gradient(180deg, var(--navy-card) 0%, var(--navy) 100%);
+      border: 1px solid var(--white-15);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px 26px;
+      display: flex; flex-direction: column; gap: 16px;
+      transition: transform 0.25s var(--transition), box-shadow 0.25s var(--transition), border-color 0.25s var(--transition);
+    }
+    .pack-card:hover:not(.is-disabled) {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.4), 0 0 24px var(--cyan-glow);
+    }
+    .pack-card.is-featured {
+      border-color: var(--cyan);
+      box-shadow: 0 0 36px var(--cyan-glow);
+    }
+    .pack-card.is-featured:hover:not(.is-disabled) {
+      box-shadow: 0 18px 40px rgba(0,0,0,0.4), 0 0 44px var(--cyan-glow-strong);
+    }
+    .pack-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--cyan); color: var(--navy-deep);
+      font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.14em; padding: 6px 14px; border-radius: 6px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 14px var(--cyan-glow-strong);
+    }
+    .pack-name {
+      font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;
+      color: var(--cyan-soft); letter-spacing: 0.04em;
+    }
+    .pack-price-row { display: flex; align-items: baseline; gap: 6px; }
+    .pack-price {
+      font-family: var(--font-display); font-weight: 800; font-size: 2.4rem;
+      color: var(--white); line-height: 1;
+    }
+    .pack-currency {
+      font-family: var(--font-mono); font-size: 0.85rem; color: var(--white-60);
+      letter-spacing: 0.06em;
+    }
+    .pack-tokens {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      background: rgba(0, 212, 245, 0.10);
+      border: 1px solid rgba(0, 212, 245, 0.28);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-family: var(--font-mono); font-weight: 600; font-size: 0.95rem;
+      align-self: flex-start;
+    }
+    .pack-tokens__plus { color: var(--cyan-soft); font-weight: 700; }
+    .pack-equiv {
+      font-size: 0.8rem; color: var(--white-60); font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+    }
+    .pack-features {
+      list-style: none; padding: 0; margin: 4px 0 8px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .pack-features li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.9rem; color: var(--white-90); line-height: 1.5;
+    }
+    .pack-features li::before {
+      content: '\2713'; color: var(--cyan); font-weight: 700; flex-shrink: 0;
+      width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,212,245,0.12); border-radius: 50%; font-size: 0.7rem;
+    }
+    .pack-cta {
+      margin-top: auto;
+      background: var(--cyan); color: var(--navy-deep);
+      font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; letter-spacing: 0.05em;
+      padding: 14px 22px; border: none; border-radius: 10px;
+      cursor: pointer; transition: background 0.2s var(--transition), transform 0.2s var(--transition);
+      box-shadow: 0 0 0 1px var(--cyan), 0 8px 22px var(--cyan-glow-strong);
+      text-transform: uppercase;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .pack-cta:hover:not(:disabled) { background: #0fe1ff; transform: translateY(-2px); }
+    .pack-cta:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .pack-card.is-disabled .pack-cta { opacity: 0.45; cursor: not-allowed; }
+
+    .pack-spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(4,13,26,0.3); border-top-color: var(--navy-deep);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    .pack-spinner[hidden] { display: none; }
+
+    /* Trust row + faq */
+    .trust-row {
+      display: flex; gap: 18px; align-items: center; justify-content: center;
+      flex-wrap: wrap; margin-bottom: 36px;
+      color: var(--white-60); font-size: 0.82rem; font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+    }
+    .trust-row span { display: inline-flex; align-items: center; gap: 6px; }
+    .trust-row svg { color: var(--cyan); }
+
+    .faq {
+      max-width: 720px; margin: 0 auto;
+      background: var(--navy-card);
+      border: 1px solid var(--white-08);
+      border-radius: var(--radius-lg);
+      padding: 26px 28px;
+    }
+    .faq h2 {
+      font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;
+      color: var(--cyan); margin: 0 0 14px; letter-spacing: 0.04em;
+    }
+    .faq dl { margin: 0; }
+    .faq dt {
+      font-weight: 600; color: var(--white-90); font-size: 0.95rem;
+      margin-top: 14px;
+    }
+    .faq dt:first-of-type { margin-top: 0; }
+    .faq dd {
+      margin: 6px 0 0; color: var(--white-70); font-size: 0.9rem; line-height: 1.55;
+    }
+
+    /* Error inline */
+    .err-msg {
+      max-width: 720px; margin: 0 auto 22px;
+      padding: 14px 18px;
+      background: rgba(255, 94, 108, 0.10);
+      border: 1px solid rgba(255, 94, 108, 0.42);
+      border-radius: var(--radius-md);
+      color: var(--danger); font-size: 0.92rem;
+    }
+    .err-msg[hidden] { display: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .loader-ring, .pack-spinner { animation: none; }
+      .pack-card { transition: none !important; }
+      .pack-card:hover { transform: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Banner persistente MODO TEST -->
+  <aside id="banner-test" class="banner-test" role="status" aria-live="polite" hidden>
+    <strong>MODO TEST</strong> &middot; En esta version el cobro esta deshabilitado y los tokens son ilimitados. Las recargas seran reales cuando AIMMA active el modulo.
+  </aside>
+
+  <!-- Header -->
+  <header class="rec-header" role="banner">
+    <div class="rec-header__inner">
+      <a href="index.html" class="rec-brand" aria-label="Volver al editor">
+        <svg class="rec-brand__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M5 12L11 6L11 10L19 10L19 14L11 14L11 18L5 12Z" fill="currentColor"/>
+        </svg>
+        <span>
+          <span class="rec-brand__small">Volver al editor</span>
+          <span class="rec-brand__big">AIMMA &middot; Contenido IA</span>
+        </span>
+      </a>
+
+      <div class="rec-saldo" id="saldo-box" aria-live="polite" hidden>
+        <span class="rec-saldo__label">Saldo</span>
+        <span class="rec-saldo__value" id="saldo-value">...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="rec-main" id="app" aria-busy="true">
+
+    <!-- Cargando sesion -->
+    <section id="state-loading" class="state-loading" aria-label="Cargando">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <p>Verificando sesion...</p>
+    </section>
+
+    <!-- Contenido principal (oculto hasta que auth OK + packs cargados) -->
+    <section id="state-recargas" hidden>
+
+      <header class="rec-hero">
+        <h1>Recarga de <strong>tokens</strong></h1>
+        <p>Compra el paquete que mejor se ajuste a tu volumen. Pago seguro via Mercado Pago. Los tokens se acreditan automaticamente al confirmar el pago.</p>
+      </header>
+
+      <p id="err-msg" class="err-msg" role="alert" hidden></p>
+
+      <div class="packs-grid" id="packs-grid" aria-label="Paquetes de tokens disponibles">
+        <!-- Cards inyectadas por recargas.js -->
+      </div>
+
+      <div class="trust-row" aria-label="Garantias">
+        <span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+            <path d="M12 2L4 6V12C4 16.5 7.5 20.5 12 22C16.5 20.5 20 16.5 20 12V6L12 2Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Pago seguro Mercado Pago
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 7V13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="12" cy="16.5" r="1" fill="currentColor"/>
+          </svg>
+          Acreditacion inmediata
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+            <rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M4 10H20" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+          Sin renovacion automatica
+        </span>
+      </div>
+
+      <section class="faq" aria-labelledby="faq-title">
+        <h2 id="faq-title">Preguntas frecuentes</h2>
+        <dl>
+          <dt>Los tokens caducan?</dt>
+          <dd>No. Una vez acreditados, los tokens son tuyos hasta que los uses.</dd>
+          <dt>Necesito un Plan PRO para recargar?</dt>
+          <dd>No. Cualquier cuenta puede recargar. El Plan PRO solo suma 10 tokens gratis cada mes; las recargas son un complemento opcional.</dd>
+          <dt>Que pasa si el pago falla o queda pendiente?</dt>
+          <dd>No se descuenta nada. Solo recibis tokens cuando Mercado Pago confirma el pago aprobado.</dd>
+          <dt>Puedo recibir factura?</dt>
+          <dd>Si. Escribi a soporte con el numero de pago de Mercado Pago para emitir la factura electronica.</dd>
+        </dl>
+      </section>
+
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="recargas.js?v=1" defer></script>
+</body>
+</html>

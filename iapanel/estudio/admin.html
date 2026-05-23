@@ -1,0 +1,575 @@
+<!-- AIMMA Contenido IA · admin.html · v1 · 2026-05-23 · marker:AIMMA_CONTENIDO_IA_ADMIN_V1 -->
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#040d1a" />
+  <title>Admin · Contenido IA · AIMMA</title>
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" />
+
+  <style>
+    /* ============================
+       Variables de diseno
+       (copiadas del style.v3.css de aimma-website)
+       ============================ */
+    :root {
+      --navy-deepest: #020812;
+      --navy-deep: #040d1a;
+      --navy: #071425;
+      --navy-card: #0a1e33;
+      --navy-line: #103048;
+      --cyan: #00d4f5;
+      --cyan-soft: #00b4d8;
+      --cyan-deep: #0096b7;
+      --cyan-glow: rgba(0, 212, 245, 0.18);
+      --cyan-glow-strong: rgba(0, 212, 245, 0.35);
+      --white: #ffffff;
+      --white-90: rgba(255, 255, 255, 0.90);
+      --white-80: rgba(255, 255, 255, 0.80);
+      --white-70: rgba(255, 255, 255, 0.70);
+      --white-60: rgba(255, 255, 255, 0.60);
+      --white-40: rgba(255, 255, 255, 0.40);
+      --white-15: rgba(255, 255, 255, 0.07);
+      --error: #ff4d6d;
+
+      --font-display: 'Exo 2', system-ui, sans-serif;
+      --font-ui: 'Rajdhani', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+      --header-h: 64px;
+      --container: 1320px;
+      --radius: 14px;
+      --radius-lg: 22px;
+    }
+
+    /* ============================
+       Reset
+       ============================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: var(--font-ui);
+      background: var(--navy-deep);
+      color: var(--white);
+      line-height: 1.55;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; border: none; background: transparent; color: inherit; }
+    table { border-collapse: collapse; width: 100%; }
+
+    /* ============================
+       Header
+       ============================ */
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(4, 13, 26, 0.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--white-15);
+      height: var(--header-h);
+      display: flex; align-items: center;
+      padding: 0 24px;
+    }
+    .topbar-inner {
+      max-width: var(--container); width: 100%; margin: 0 auto;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .brand {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+      color: var(--white);
+    }
+    .brand-accent { color: var(--cyan); }
+    .topbar .meta {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      color: var(--white-60);
+      text-transform: uppercase;
+    }
+    .topbar .meta strong { color: var(--white-80); font-weight: 500; }
+    .pulse {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cyan); margin-right: 6px; vertical-align: middle;
+      box-shadow: 0 0 0 0 var(--cyan-glow-strong);
+      animation: pulse 1.8s ease-out infinite;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 var(--cyan-glow-strong); }
+      70%  { box-shadow: 0 0 0 10px rgba(0,212,245,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,212,245,0); }
+    }
+
+    /* ============================
+       Layout
+       ============================ */
+    main {
+      max-width: var(--container);
+      margin: 0 auto;
+      padding: 28px 24px 80px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.22em;
+      color: var(--white-60);
+      text-transform: uppercase;
+      margin: 32px 0 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-title:first-of-type { margin-top: 8px; }
+    .section-title .bar {
+      width: 32px; height: 2px;
+      background: var(--cyan);
+      border-radius: 2px;
+    }
+
+    /* ============================
+       KPI cards
+       ============================ */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .kpi-card {
+      background: rgba(0,212,245,0.04);
+      border: 1px solid var(--white-15);
+      border-radius: 10px;
+      padding: 18px;
+      position: relative;
+      transition: border-color 200ms ease, background 200ms ease;
+    }
+    .kpi-card:hover {
+      border-color: rgba(0,212,245,0.30);
+      background: rgba(0,212,245,0.06);
+    }
+    .kpi-value {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      color: var(--cyan);
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .kpi-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      color: var(--white-60);
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+    .kpi-sub {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--white-40);
+      margin-top: 4px;
+      letter-spacing: 0.06em;
+    }
+    @media (max-width: 800px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .kpi-value { font-size: 1.6rem; }
+    }
+
+    /* ============================
+       Card / panel comun
+       ============================ */
+    .panel {
+      background: var(--navy-card);
+      border: 1px solid var(--white-15);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--white-15);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      color: var(--white-60);
+      text-transform: uppercase;
+    }
+    .panel-head .count {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--white-40);
+      letter-spacing: 0.1em;
+    }
+
+    /* ============================
+       Tabla
+       ============================ */
+    .table-wrap { overflow-x: auto; }
+    table thead th {
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.16em;
+      color: var(--white-40);
+      text-transform: uppercase;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--white-15);
+      white-space: nowrap;
+    }
+    table tbody td {
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      color: var(--white-80);
+      border-bottom: 1px solid var(--white-15);
+      vertical-align: middle;
+    }
+    table tbody tr:hover td { background: rgba(0,212,245,0.025); }
+    table tbody tr:last-child td { border-bottom: none; }
+    td.mono, th.mono { font-family: var(--font-mono); font-size: 0.78rem; }
+    td.right, th.right { text-align: right; }
+    td.muted { color: var(--white-60); }
+    td.error { color: var(--error); font-family: var(--font-mono); font-size: 0.74rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ============================
+       Estado badges
+       ============================ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      font-weight: 500;
+    }
+    .badge.queued { color: #fbbf24; background: rgba(251,191,36,0.10); border-color: rgba(251,191,36,0.45); }
+    .badge.processing { color: var(--cyan); background: rgba(0,212,245,0.10); border-color: rgba(0,212,245,0.45); }
+    .badge.processing::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--cyan);
+      animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .badge.done { color: #4ade80; background: rgba(74,222,128,0.10); border-color: rgba(74,222,128,0.45); }
+    .badge.failed { color: var(--error); background: rgba(255,77,109,0.10); border-color: rgba(255,77,109,0.45); }
+    .badge.dead_letter { color: #fca5a5; background: rgba(127,29,29,0.40); border-color: rgba(127,29,29,0.70); }
+
+    .pill {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--white-15);
+      color: var(--white-60);
+      background: rgba(255,255,255,0.03);
+    }
+    .pill.test { color: #fbbf24; border-color: rgba(251,191,36,0.45); background: rgba(251,191,36,0.10); }
+    .pill.prod { color: #4ade80; border-color: rgba(74,222,128,0.45); background: rgba(74,222,128,0.10); }
+
+    /* ============================
+       Salud del sistema
+       ============================ */
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+    .health-item {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--white-15);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .health-item .h-label {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.16em;
+      color: var(--white-60);
+      text-transform: uppercase;
+    }
+    .health-item .h-value {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--white);
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    .health-item .h-action {
+      margin-top: 10px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: rgba(0,212,245,0.10);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      transition: background 180ms ease;
+    }
+    .btn:hover, .btn:focus-visible { background: rgba(0,212,245,0.22); outline: none; }
+    .btn.ghost { background: transparent; border-color: var(--white-15); color: var(--white-60); }
+    .btn.ghost:hover { color: var(--white); border-color: var(--white-40); }
+
+    /* ============================
+       Estado de carga / mensajes
+       ============================ */
+    .row-empty {
+      text-align: center;
+      padding: 28px 14px;
+      color: var(--white-40);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+    }
+    .gate {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 12px;
+      color: var(--white-60);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .gate .gate-bar {
+      width: 80px; height: 2px; background: var(--cyan); border-radius: 2px;
+      animation: gateBar 1.1s ease-in-out infinite;
+    }
+    @keyframes gateBar { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+    /* ============================
+       Modal
+       ============================ */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(2, 8, 18, 0.72);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      max-width: 460px; width: 100%;
+      background: var(--navy-card);
+      border: 1px solid var(--white-15);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+    .modal-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 10px;
+    }
+    .modal-card p {
+      font-family: var(--font-ui);
+      color: var(--white-70);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+    .modal-actions {
+      display: flex; justify-content: flex-end; gap: 10px;
+      margin-top: 18px;
+    }
+
+    /* ============================
+       Layout sections
+       ============================ */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 18px;
+      margin-top: 14px;
+    }
+    @media (max-width: 1000px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    /* Hide content until auth resolves */
+    .app { display: none; }
+    .app.ready { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- Gate (mientras valida sesion + admin) -->
+  <div class="gate" id="gate">
+    <div class="gate-bar"></div>
+    <div id="gateMsg">Verificando acceso admin</div>
+  </div>
+
+  <!-- App -->
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <span class="brand">AIMMA<span class="brand-accent">.</span> Contenido IA &mdash; Admin</span>
+        <div class="meta">
+          <span class="pulse"></span>
+          <span><strong id="adminCorreo">&mdash;</strong></span>
+          <span style="margin-left:14px">Last sync <strong id="lastSync">&mdash;</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+
+      <!-- ============ KPIs ============ -->
+      <h2 class="section-title"><span class="bar"></span> Metricas en vivo</h2>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiJobsHoy">&mdash;</div>
+          <div class="kpi-label">Total jobs hoy</div>
+          <div class="kpi-sub">desde 00:00 local</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiProcesando">&mdash;</div>
+          <div class="kpi-label">Procesando ahora</div>
+          <div class="kpi-sub">estado processing</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiTasaExito">&mdash;</div>
+          <div class="kpi-label">Tasa de exito 24h</div>
+          <div class="kpi-sub">done / total finalizados</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiDuracionProm">&mdash;</div>
+          <div class="kpi-label">Duracion promedio</div>
+          <div class="kpi-sub">ultimos 10 done</div>
+        </div>
+      </div>
+
+      <!-- ============ Salud sistema + Top usuarios ============ -->
+      <div class="two-col">
+
+        <!-- Ultimos jobs -->
+        <section>
+          <h2 class="section-title"><span class="bar"></span> Ultimos 20 jobs</h2>
+          <div class="panel">
+            <div class="panel-head">
+              <span>cola en tiempo real</span>
+              <span class="count" id="jobsCount">&mdash;</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Usuario</th>
+                    <th>Modelo</th>
+                    <th>Estado</th>
+                    <th class="right">Tokens</th>
+                    <th class="right">Duracion</th>
+                    <th>Error</th>
+                  </tr>
+                </thead>
+                <tbody id="tblJobs">
+                  <tr><td colspan="7" class="row-empty">Cargando&hellip;</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Top usuarios -->
+        <section>
+          <h2 class="section-title"><span class="bar"></span> Top usuarios &mdash; 7d</h2>
+          <div class="panel">
+            <div class="panel-head">
+              <span>por consumo</span>
+              <span class="count">top 10</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th class="right">Jobs</th>
+                    <th class="right">Tokens</th>
+                    <th>Ultimo job</th>
+                  </tr>
+                </thead>
+                <tbody id="tblTopUsuarios">
+                  <tr><td colspan="4" class="row-empty">Cargando&hellip;</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============ Salud del sistema ============ -->
+      <h2 class="section-title"><span class="bar"></span> Salud del sistema</h2>
+      <div class="panel">
+        <div class="health-grid">
+          <div class="health-item">
+            <div class="h-label">max_concurrent_jobs</div>
+            <div class="h-value" id="cfgMaxConc">&mdash;</div>
+          </div>
+          <div class="health-item">
+            <div class="h-label">rate_limit_per_user_minute</div>
+            <div class="h-value" id="cfgRateLimit">&mdash;</div>
+          </div>
+          <div class="health-item">
+            <div class="h-label">test_mode</div>
+            <div class="h-value"><span id="cfgTestMode" class="pill">&mdash;</span></div>
+            <div class="h-action">
+              <button class="btn" id="btnToggleTestMode">Cambiar test_mode</button>
+            </div>
+          </div>
+          <div class="health-item">
+            <div class="h-label">job_timeout_minutes</div>
+            <div class="h-value" id="cfgJobTimeout">&mdash;</div>
+          </div>
+          <div class="health-item">
+            <div class="h-label">max_intentos</div>
+            <div class="h-value" id="cfgMaxIntentos">&mdash;</div>
+          </div>
+          <div class="health-item">
+            <div class="h-label">cleanup_inputs_dias</div>
+            <div class="h-value" id="cfgCleanupDias">&mdash;</div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal confirmacion -->
+  <div class="modal-backdrop" id="modalTestMode">
+    <div class="modal-card">
+      <h3>Cambiar test_mode</h3>
+      <p id="modalTestModeBody">
+        Esto activara/desactivara el cobro real de tokens en todos los usuarios.
+      </p>
+      <div class="modal-actions">
+        <button class="btn ghost" id="modalCancel">Cancelar</button>
+        <button class="btn" id="modalConfirm">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase JS v2 (CDN oficial) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="./admin.js"></script>
+</body>
+</html>
