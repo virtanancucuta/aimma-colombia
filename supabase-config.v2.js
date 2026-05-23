@@ -15,10 +15,15 @@ window.SUPABASE_ANON_CONST = SUPABASE_ANON_KEY;
 // o por bfcache), reubicar al callback para no dejar sesion huerfana sin
 // completar el flow de verification AIMMA. Va ANTES de createClient para
 // que supabase-js no consuma el hash y lo limpie antes de poder reubicar.
+// EXCLUIR /iapanel/ y rutas internas: nunca son destino OAuth y el safety net
+// causa redirect loop si un token residual queda en el hash al navegar interno.
 if (typeof window !== 'undefined'
     && window.location
     && window.location.hash.includes('access_token=')
-    && !window.location.pathname.includes('auth-callback')) {
+    && !window.location.pathname.includes('auth-callback')
+    && !window.location.pathname.startsWith('/iapanel/')
+    && !window.location.pathname.startsWith('/mi-cuenta')
+    && !window.location.pathname.startsWith('/dashboard-pro')) {
   window.location.replace('/auth-callback.html' + window.location.hash);
 }
 

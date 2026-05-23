@@ -16,7 +16,11 @@
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   const POLL_INTERVAL_MS = 3000;
   const JOB_TIMEOUT_MS = 180000; // 3 min
-  const MODEL_COST = { 'nano-banana': 1, 'nano-banana-pro': 5 };
+  // Solo 'nano-banana-pro' funciona en KIE.ai (verificado contra API).
+  // 'nano-banana' a secas devuelve 422 model not supported.
+  // Mapeamos ambos al mismo modelo real con costo unico = 1 token.
+  const MODEL_COST = { 'nano-banana': 1, 'nano-banana-pro': 1 };
+  const MODEL_REAL = 'nano-banana-pro';
 
   // ============================================================
   // State
@@ -28,7 +32,7 @@
     selectedFile: null,
     inputPath: null,          // path inside studio-inputs once uploaded
     quickAction: null,        // 'quitar_fondo' | 'fondo_estudio' | ... | null
-    modelo: 'nano-banana',
+    modelo: 'nano-banana-pro',
     instruccion: '',
     currentJobId: null,
     realtimeSub: null,
@@ -430,9 +434,10 @@
 
       setSkeletonText('Encolando trabajo...');
 
-      // 2) Llamar edge function
+      // 2) Llamar edge function. Forzar MODEL_REAL: KIE solo acepta 'nano-banana-pro'.
+      // El radio del frontend es solo decorativo en esta iteracion (ambos = 1 token).
       const body = {
-        modelo: state.modelo,
+        modelo: MODEL_REAL,
         input_path: state.inputPath,
         instruccion: (state.instruccion && state.instruccion.trim()) || null,
         accion_rapida: state.quickAction,
