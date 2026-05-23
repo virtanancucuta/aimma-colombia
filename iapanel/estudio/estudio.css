@@ -202,6 +202,8 @@ a:hover { text-decoration: underline; }
   justify-content: center;
   gap: 22px;
 }
+.state-loading[hidden] { display: none; }
+.state-editor[hidden] { display: none; }
 .state-loading__text {
   color: var(--white-60);
   font-size: 14px;
