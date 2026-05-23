@@ -100,6 +100,16 @@
     }
     .plan-cta.outline:hover:not(:disabled) { background: rgba(0,212,245,0.08); }
 
+    .trial-box {
+      background: rgba(0,212,245,0.08); border-left: 4px solid #00d4f5;
+      padding: 18px 22px; border-radius: 10px;
+      display: flex; gap: 14px; align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .trial-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .trial-text { color: var(--white-90); font-size: 0.95rem; line-height: 1.5; }
+    .trial-text strong { color: var(--cyan); }
+
     .guarantee-box {
       background: rgba(34,197,94,0.08); border-left: 4px solid #22c55e;
       padding: 18px 22px; border-radius: 10px;
@@ -129,6 +139,7 @@
       .plan-price-strike { font-size: 1rem; }
       .plan-badge { right: 16px; font-size: 0.62rem; padding: 5px 10px; }
       .guarantee-box { padding: 14px 16px; }
+      .trial-box { padding: 14px 16px; }
       .upgrade-hero p { font-size: 0.95rem; }
     }
     @media (max-width: 380px) {
@@ -174,7 +185,15 @@
         <p>Desbloqueá el Dashboard AIMMA con todos los indicadores financieros y comerciales de tu negocio en tiempo real.</p>
       </div>
 
-      <!-- Garantía 30 días arriba: reducción de fricción (UI agent recomendación) -->
+      <!-- Trial 7 días: bloque secuencial trial -> pago -> garantía -->
+      <div class="trial-box">
+        <div class="trial-icon">&#x1F381;</div>
+        <div class="trial-text">
+          <strong>Demos 7 días gratis.</strong> Probá AIMMA PRO ahora, sin tarjeta. Al octavo día elegís tu plan. Y si después no estás conforme, dentro de los 30 días podés darte de baja y te devolvemos tu dinero.
+        </div>
+      </div>
+
+      <!-- Garantía 30 días: reducción de fricción post-pago -->
       <div class="guarantee-box">
         <div class="guarantee-icon">&#x1F49A;</div>
         <div class="guarantee-text">
