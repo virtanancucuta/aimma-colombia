@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tu cuenta fue dada de baja · AIMMA</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
+  <link rel="stylesheet" href="/style.v3.css" />
+  <style>
+    .cc-wrap {
+      min-height: 100vh; display: flex; flex-direction: column;
+      max-width: 720px; margin: 0 auto; padding: 40px 24px 40px;
+    }
+    .cc-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 32px;
+    }
+    .cc-brand { display: flex; align-items: center; gap: 12px; }
+    .cc-brand img { width: 38px; height: 38px; }
+    .cc-brand-text { display: flex; flex-direction: column; line-height: 1; }
+    .cc-brand-name { color: var(--white); font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.04em; }
+    .cc-brand-tag { color: var(--cyan); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; margin-top: 2px; }
+
+    .cc-card {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--white-15);
+      border-radius: 16px; padding: 40px 32px; text-align: center;
+      backdrop-filter: blur(6px);
+    }
+    .cc-icon {
+      font-size: 3rem; line-height: 1; margin-bottom: 16px;
+    }
+    .cc-title {
+      color: var(--white); font-family: var(--font-display); font-weight: 800;
+      font-size: 1.8rem; margin: 0 0 12px; letter-spacing: -0.01em;
+    }
+    .cc-title strong { color: var(--cyan); }
+    .cc-desc {
+      color: var(--white-80); font-size: 1rem; line-height: 1.6;
+      margin: 0 auto 28px; max-width: 520px;
+    }
+    .cc-actions {
+      display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+      margin-top: 8px;
+    }
+    .cc-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 24px; border-radius: 10px;
+      font-family: var(--font-mono); font-size: 0.88rem;
+      font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer; border: none; transition: all 0.2s;
+      text-decoration: none;
+    }
+    .cc-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .cc-btn-primary {
+      background: var(--cyan); color: var(--navy-deep);
+    }
+    .cc-btn-primary:hover:not(:disabled), .cc-btn-primary:focus-visible {
+      background: #0fe1ff; transform: translateY(-2px); outline: none;
+    }
+    .cc-btn-ghost {
+      background: transparent; color: var(--white-80);
+      border: 1px solid var(--white-15);
+    }
+    .cc-btn-ghost:hover { background: rgba(255,255,255,0.06); color: var(--white); }
+
+    .cc-info {
+      margin-top: 28px; padding: 16px 18px;
+      background: rgba(0,212,245,0.06); border: 1px solid rgba(0,212,245,0.2);
+      border-radius: 10px; color: var(--white-70); font-size: 0.86rem; line-height: 1.55;
+      text-align: left;
+    }
+    .cc-info strong { color: var(--cyan); }
+
+    .cc-footer {
+      margin-top: auto; padding-top: 32px;
+      text-align: center; color: var(--white-60); font-size: 0.82rem;
+    }
+
+    .cc-spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(4,13,26,0.3); border-top-color: var(--navy-deep);
+      border-radius: 50%; animation: ccspin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes ccspin { to { transform: rotate(360deg); } }
+
+    .cc-loader {
+      display: flex; justify-content: center; align-items: center; min-height: 60vh;
+      color: var(--white-60); font-family: var(--font-mono);
+    }
+    .cc-loader.hidden { display: none; }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.85); color: var(--white); padding: 12px 20px;
+      border-radius: 8px; font-size: 0.9rem; opacity: 0;
+      transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.success { background: rgba(34,197,94,0.95); color: var(--navy-deep); }
+    .toast.error { background: rgba(239,68,68,0.95); color: var(--white); }
+  </style>
+</head>
+<body>
+  <div id="loader" class="cc-loader">Cargando…</div>
+
+  <div class="cc-wrap" id="page" hidden>
+    <header class="cc-header">
+      <div class="cc-brand">
+        <img src="/assets/logo.svg" alt="">
+        <div class="cc-brand-text">
+          <span class="cc-brand-name">AIMMA</span>
+          <span class="cc-brand-tag">Cuenta</span>
+        </div>
+      </div>
+      <button type="button" id="btnLogout" class="cc-btn cc-btn-ghost" style="padding:8px 14px; font-size:0.75rem;">Cerrar sesión</button>
+    </header>
+
+    <main class="cc-card">
+      <div class="cc-icon">&#x1F44B;</div>
+      <h1 class="cc-title">Tu cuenta fue dada de <strong>baja</strong></h1>
+      <p class="cc-desc">
+        Vamos a extrañarte. Tu Plan PRO y tu Free Trial (si los tenías) fueron cancelados.
+        Tus datos siguen guardados con nosotros — podés volver cuando quieras con un solo click.
+      </p>
+
+      <div class="cc-actions">
+        <button type="button" id="btnReactivar" class="cc-btn cc-btn-primary">
+          <span class="cc-spinner" id="reactivarSpinner" hidden aria-hidden="true"></span>
+          <span id="reactivarLabel">Reactivar mi cuenta</span>
+        </button>
+        <a href="https://aimma.com.co" class="cc-btn cc-btn-ghost">Ir al sitio</a>
+      </div>
+
+      <div class="cc-info">
+        <strong>Si tenías Plan PRO pagado vigente</strong>, al reactivar conservás los días que te quedaban antes de la próxima facturación. <strong>Tu Free Trial</strong> ya fue consumido, así que tras la reactivación tendrías que activar Plan PRO si querés acceso al Dashboard.
+      </div>
+    </main>
+
+    <footer class="cc-footer">
+      &copy; 2026 AIMMA Colombia &middot; Si necesitás ayuda escribinos a <a href="mailto:aimma.colombia@gmail.com" style="color:var(--cyan); text-decoration:none;">aimma.colombia@gmail.com</a>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    (async function () {
+      const A = window.AIMMA.auth;
+      const supabase = window.supabaseClient;
+      const SUPA = 'https://rsmxklkxqsaptchcjszd.supabase.co';
+      const ANON = 'sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1';
+
+      const loader = document.getElementById('loader');
+      const page = document.getElementById('page');
+      const toast = document.getElementById('toast');
+      const btnReactivar = document.getElementById('btnReactivar');
+      const btnLogout = document.getElementById('btnLogout');
+      const reactivarLabel = document.getElementById('reactivarLabel');
+      const reactivarSpinner = document.getElementById('reactivarSpinner');
+
+      function showToast(msg, kind) {
+        toast.textContent = msg; toast.className = 'toast' + (kind ? ' ' + kind : '');
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => toast.classList.remove('show'), 4000);
+      }
+
+      // Importante: skipCancelledCheck=true para no entrar en loop (la pagina existe justo para cuentas canceladas).
+      const { user, profile, session } = await A.requireAuth({ skipCancelledCheck: true });
+      if (!session || !user) return;
+
+      // Si por alguna razon la cuenta NO esta cancelada, mandar al panel normal
+      if (!profile || !profile.cuenta_cancelada_at) {
+        window.location.replace('/iapanel/');
+        return;
+      }
+
+      loader.classList.add('hidden');
+      page.removeAttribute('hidden');
+
+      btnLogout.addEventListener('click', async () => {
+        try { await A.signOut(); } catch (_) {}
+        window.location.replace('/login.html');
+      });
+
+      btnReactivar.addEventListener('click', async () => {
+        btnReactivar.disabled = true;
+        if (reactivarSpinner) reactivarSpinner.hidden = false;
+        if (reactivarLabel) reactivarLabel.textContent = 'Reactivando…';
+        try {
+          const res = await fetch(`${SUPA}/functions/v1/reactivar-cuenta`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
+            body: JSON.stringify({}),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            showToast('No pudimos reactivar: ' + (data.error || 'error'), 'error');
+            btnReactivar.disabled = false;
+            if (reactivarSpinner) reactivarSpinner.hidden = true;
+            if (reactivarLabel) reactivarLabel.textContent = 'Reactivar mi cuenta';
+            return;
+          }
+          showToast(data.message || 'Cuenta reactivada. Bienvenido de vuelta.', 'success');
+          setTimeout(() => { window.location.replace('/iapanel/'); }, 1500);
+        } catch (e) {
+          showToast('Sin conexión.', 'error');
+          btnReactivar.disabled = false;
+          if (reactivarSpinner) reactivarSpinner.hidden = true;
+          if (reactivarLabel) reactivarLabel.textContent = 'Reactivar mi cuenta';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

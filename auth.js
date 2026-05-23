@@ -111,6 +111,12 @@
       window.location.replace('/completar-perfil.html');
       return { user, profile, session };
     }
+    // Soft-delete: si el usuario se dio de baja, redirigir a la pagina de reactivacion.
+    // La propia /cuenta-cancelada.html llama a requireAuth({ skipCancelledCheck: true }) para evitar loop.
+    if (!opts.skipCancelledCheck && profile && profile.cuenta_cancelada_at) {
+      window.location.replace('/cuenta-cancelada.html');
+      return { user, profile, session };
+    }
     // Fallback dispatch del welcome si quedo pendiente (fire-and-forget)
     if (profile && profile.email_aimma_verificado === true && !profile.welcome_enviado_at) {
       fetch(`${SUPA_URL}/functions/v1/send-welcome-email`, {

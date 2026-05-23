@@ -181,6 +181,15 @@
           <div class="mc-no-card">Cargando…</div>
         </div>
       </section>
+
+      <section class="mc-section" id="sectionPanelCEO" hidden>
+        <h2 class="mc-section-title">Panel CEO</h2>
+        <div id="ceoStats"></div>
+        <div class="mc-actions" id="ceoActions" style="margin-top:14px;"></div>
+        <p style="color:var(--white-60); font-size:0.82rem; margin-top:12px;">
+          Los CSV descargados quedan en tu equipo. Usalos solo para remarketing legítimo (Ley 1581/2012, Habeas Data).
+        </p>
+      </section>
     </main>
 
     <footer class="panel-footer"><p>&copy; 2026 AIMMA Colombia &middot; Todos los derechos reservados</p></footer>
@@ -193,6 +202,31 @@
       <div class="modal-actions">
         <button class="modal-cancel" id="btnVolver">Volver</button>
         <button class="modal-confirm" id="btnConfirmar">Sí, cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalCancelarCuenta" role="dialog" aria-modal="true" hidden>
+    <div class="modal-card">
+      <h2 class="modal-title">¿Dar de baja tu cuenta AIMMA?</h2>
+      <p class="modal-desc">
+        Vamos a cerrar todo en cadena: si tenés Plan PRO activo o Free Trial, los cancelamos.
+        Tus datos siguen guardados — si volvés, podés reactivar tu cuenta con un solo click.
+      </p>
+      <label for="bajaCategoria" style="display:block; color:var(--white-80); font-size:0.85rem; margin:14px 0 6px;">¿Por qué te das de baja? (opcional)</label>
+      <select id="bajaCategoria" style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.06); border:1px solid var(--white-15); border-radius:8px; color:var(--white); font-family:inherit; font-size:0.92rem;">
+        <option value="">Prefiero no decirlo</option>
+        <option value="precio">El precio es muy alto</option>
+        <option value="no_uso">No le doy mucho uso</option>
+        <option value="tecnico">Tuve problemas técnicos</option>
+        <option value="cambio_solucion">Cambié por otra herramienta</option>
+        <option value="otro">Otro motivo</option>
+      </select>
+      <label for="bajaRazon" style="display:block; color:var(--white-80); font-size:0.85rem; margin:14px 0 6px;">¿Querés contarnos más? (opcional)</label>
+      <textarea id="bajaRazon" maxlength="500" rows="3" placeholder="Nos ayuda a mejorar..." style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.06); border:1px solid var(--white-15); border-radius:8px; color:var(--white); font-family:inherit; font-size:0.92rem; resize:vertical;"></textarea>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="btnVolverCuenta">Volver</button>
+        <button class="modal-confirm" id="btnConfirmarCuenta">Sí, dar de baja mi cuenta</button>
       </div>
     </div>
   </div>
@@ -262,9 +296,19 @@
       const sectionCard = document.getElementById('sectionCard');
 
       if (acceso.razon === 'cortesia') {
+        const rolActual = profile?.rol;
+        let estadoLabel = 'CORTESÍA CEO';
+        let planLabel = 'AIMMA PRO permanente';
+        if (rolActual === 'admin') {
+          estadoLabel = 'CEO AIMMA';
+          planLabel = 'AIMMA PRO · Acceso total';
+        } else if (rolActual === 'cofounder') {
+          estadoLabel = 'CO-FOUNDER AIMMA';
+          planLabel = 'AIMMA PRO · Acceso total';
+        }
         pi.append(
-          row('Estado', 'CORTESÍA CEO', 'warn'),
-          row('Plan', 'AIMMA PRO permanente'),
+          row('Estado', estadoLabel, 'warn'),
+          row('Plan', planLabel),
           row('Costo', 'Sin costo'),
         );
         sectionCard.style.display = 'none';
@@ -453,6 +497,22 @@
         sectionCard.style.display = 'none';
       }
 
+      // Boton DAR DE BAJA MI CUENTA: visible para todos excepto admin (CEO) y cofounder.
+      // Esto cubre cortesia-cliente, PRO activo, trial vigente, pendiente_pago y sin plan.
+      const rolUsuario = profile?.rol;
+      if (rolUsuario !== 'admin' && rolUsuario !== 'cofounder') {
+        const btnBaja = document.createElement('button');
+        btnBaja.className = 'mc-btn danger-outline';
+        btnBaja.textContent = 'DAR DE BAJA MI CUENTA';
+        btnBaja.addEventListener('click', () => abrirModalCuenta());
+        planActions.append(btnBaja);
+      }
+
+      // Panel CEO: solo visible para admin. Carga metricas + descargas CSV.
+      if (rolUsuario === 'admin') {
+        setupPanelCEO();
+      }
+
       loader.classList.add('hidden');
       page.removeAttribute('hidden');
 
@@ -535,6 +595,126 @@
           btnConfirmar.disabled = false; btnConfirmar.textContent = labelOk;
         }
       });
+
+      // ===== Modal "Dar de baja la cuenta" =====
+      const modalCuenta = document.getElementById('modalCancelarCuenta');
+      const btnVolverCuenta = document.getElementById('btnVolverCuenta');
+      const btnConfirmarCuenta = document.getElementById('btnConfirmarCuenta');
+      const bajaCategoria = document.getElementById('bajaCategoria');
+      const bajaRazon = document.getElementById('bajaRazon');
+
+      function abrirModalCuenta() {
+        if (bajaCategoria) bajaCategoria.value = '';
+        if (bajaRazon) bajaRazon.value = '';
+        modalCuenta.removeAttribute('hidden');
+        btnVolverCuenta.focus();
+      }
+      function cerrarModalCuenta() {
+        modalCuenta.setAttribute('hidden', '');
+      }
+      if (btnVolverCuenta) btnVolverCuenta.addEventListener('click', cerrarModalCuenta);
+      if (modalCuenta) modalCuenta.addEventListener('click', (e) => { if (e.target === modalCuenta) cerrarModalCuenta(); });
+
+      if (btnConfirmarCuenta) {
+        btnConfirmarCuenta.addEventListener('click', async () => {
+          btnConfirmarCuenta.disabled = true;
+          btnConfirmarCuenta.textContent = 'Procesando…';
+          try {
+            const res = await fetch(`${SUPA}/functions/v1/cancelar-cuenta`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
+              body: JSON.stringify({
+                categoria: bajaCategoria.value || null,
+                razon: (bajaRazon.value || '').trim() || null,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast('No pudimos dar de baja: ' + (data.error || 'error'), 'error');
+              btnConfirmarCuenta.disabled = false;
+              btnConfirmarCuenta.textContent = 'Sí, dar de baja mi cuenta';
+              return;
+            }
+            cerrarModalCuenta();
+            showToast(data.message || 'Cuenta dada de baja. Te vamos a extrañar.', 'success');
+            // Mantengo la sesion; la pagina /cuenta-cancelada.html detecta cuenta_cancelada_at y ofrece reactivar.
+            setTimeout(() => { window.location.replace('/cuenta-cancelada.html'); }, 1500);
+          } catch (e) {
+            showToast('Sin conexión.', 'error');
+            btnConfirmarCuenta.disabled = false;
+            btnConfirmarCuenta.textContent = 'Sí, dar de baja mi cuenta';
+          }
+        });
+      }
+
+      // ===== Panel CEO: metricas + descargas CSV (solo admin) =====
+      async function setupPanelCEO() {
+        const section = document.getElementById('sectionPanelCEO');
+        if (!section) return;
+        const stats = document.getElementById('ceoStats');
+        const actions = document.getElementById('ceoActions');
+
+        try {
+          const hace30 = new Date(Date.now() - 30 * 86400000).toISOString();
+          const [r1, r2, r3] = await Promise.all([
+            supabase.from('profiles').select('id', { count: 'exact', head: true }).is('cuenta_cancelada_at', null),
+            supabase.from('profiles').select('id', { count: 'exact', head: true }).not('cuenta_cancelada_at', 'is', null),
+            supabase.from('profiles').select('id', { count: 'exact', head: true }).not('cuenta_cancelada_at', 'is', null).gte('cuenta_cancelada_at', hace30),
+          ]);
+          stats.append(
+            row('Usuarios activos', r1.count ?? 0, 'cyan'),
+            row('Cancelados (total)', r2.count ?? 0, 'warn'),
+            row('Cancelados últimos 30 días', r3.count ?? 0, 'warn'),
+          );
+        } catch (e) {
+          stats.textContent = 'No pudimos cargar las métricas.';
+        }
+
+        const btnA = document.createElement('button');
+        btnA.className = 'mc-btn primary';
+        btnA.textContent = 'DESCARGAR USUARIOS ACTIVOS (CSV)';
+        btnA.addEventListener('click', () => descargarCSV('activos', btnA));
+        actions.append(btnA);
+
+        const btnC = document.createElement('button');
+        btnC.className = 'mc-btn outline';
+        btnC.textContent = 'DESCARGAR USUARIOS CANCELADOS (CSV)';
+        btnC.addEventListener('click', () => descargarCSV('cancelados', btnC));
+        actions.append(btnC);
+
+        section.removeAttribute('hidden');
+      }
+
+      async function descargarCSV(tipo, btn) {
+        const originalText = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Generando CSV…';
+        try {
+          const res = await fetch(`${SUPA}/functions/v1/admin-export-usuarios?tipo=${encodeURIComponent(tipo)}`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}`, 'apikey': ANON },
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast('No pudimos descargar: ' + (data.error || ('HTTP ' + res.status)), 'error');
+            return;
+          }
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const cd = res.headers.get('content-disposition') || '';
+          const m = cd.match(/filename="([^"]+)"/);
+          a.download = m ? m[1] : ('aimma_usuarios_' + tipo + '.csv');
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showToast('Descarga iniciada.', 'success');
+        } catch (e) {
+          showToast('Sin conexión.', 'error');
+        } finally {
+          btn.disabled = false; btn.textContent = originalText;
+        }
+      }
     })();
   </script>
 </body>
