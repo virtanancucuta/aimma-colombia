@@ -34,7 +34,7 @@
     console.error('[recargas] supabase-js no cargado');
     return;
   }
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  const sb = window.supabaseClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
 

@@ -32,13 +32,10 @@
   const LIMIT_TOP    = 10;
 
   // ============ Init ============
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      // sin storageKey custom: comparte sesion con aimma.com.co
-    },
+  // Preferir el cliente global de supabase-config.v2.js (misma sesion que iapanel/).
+  // Fallback: crear cliente propio si no esta cargado el config.
+  const sb = window.supabaseClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     realtime: { params: { eventsPerSecond: 5 } },
   });
 

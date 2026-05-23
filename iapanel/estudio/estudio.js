@@ -88,14 +88,24 @@
     if (!window.supabase || !window.supabase.createClient) {
       throw new Error('Supabase SDK no cargo. Verifica conexion.');
     }
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-      auth: { persistSession: true, autoRefreshToken: true },
-    });
+    // Preferir el cliente global de supabase-config.v2.js (mismo storage que iapanel/).
+    // Si no esta, crear uno propio como fallback (caso edge).
+    if (window.supabaseClient) {
+      supabase = window.supabaseClient;
+    } else {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+        auth: { persistSession: true, autoRefreshToken: true },
+      });
+    }
   }
 
   async function requireAuth() {
     try {
-      const { data, error } = await supabase.auth.getSession();
+      // Timeout defensivo: si getSession se cuelga (refresh token roto), no quedar infinito.
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('getSession_timeout_8s')), 8000));
+      const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
       if (error) throw error;
       if (!data || !data.session || !data.session.user) {
         redirectToLogin();
