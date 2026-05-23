@@ -188,7 +188,7 @@
 
   <div class="modal-overlay" id="modalCancelar" role="dialog" aria-modal="true" hidden>
     <div class="modal-card">
-      <h2 class="modal-title">¿Cancelar tu Plan PRO?</h2>
+      <h2 class="modal-title" id="modalTitle">¿Cancelar tu Plan PRO?</h2>
       <p class="modal-desc" id="modalDesc">Tu acceso al Dashboard AIMMA seguirá activo hasta el final del período pagado.</p>
       <div class="modal-actions">
         <button class="modal-cancel" id="btnVolver">Volver</button>
@@ -271,7 +271,7 @@
       } else if (acceso.pro && sus && sus.mp_preapproval_id) {
         const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual' : 'AIMMA PRO Mensual';
         pi.append(
-          row('Estado', sus.estado === 'cancelada' ? 'CANCELADO (vigente hasta fecha abajo)' : 'PRO ACTIVO', sus.estado === 'cancelada' ? 'warn' : 'cyan'),
+          row('Estado', sus.estado === 'cancelada' ? 'PLAN PRO · CANCELADO (vigente hasta fecha abajo)' : 'PLAN PRO · ACTIVO', sus.estado === 'cancelada' ? 'warn' : 'cyan'),
           row('Plan', planLabel),
           row('Monto', '$' + Number(sus.monto || 0).toLocaleString('es-CO') + ' COP'),
           row('Activado el', fmtFecha(sus.activada_en)),
@@ -375,6 +375,25 @@
         } catch (e) {
           cardInfo.innerHTML = '<div class="mc-no-card">Error consultando MP. Reintentá en unos segundos.</div>';
         }
+      } else if (acceso.razon === 'trial_vigente') {
+        const diasTrial = Math.max(1, acceso.dias_restantes || 7);
+        pi.append(
+          row('Estado', 'PLAN PRO · FREE TRIAL', 'cyan'),
+          row('Días restantes', diasTrial + (diasTrial === 1 ? ' día' : ' días'), 'cyan'),
+          row('Tu Free Trial termina el', fmtFecha(acceso.trial_ends_at)),
+          row('Costo durante la prueba', 'Sin costo'),
+        );
+        const btnActivarPro = document.createElement('a');
+        btnActivarPro.className = 'mc-btn primary';
+        btnActivarPro.textContent = 'ACTIVAR PLAN PRO AHORA';
+        btnActivarPro.href = '/upgrade-pro.html';
+        planActions.append(btnActivarPro);
+        const btnCancelTrial = document.createElement('button');
+        btnCancelTrial.className = 'mc-btn danger';
+        btnCancelTrial.textContent = 'CANCELAR FREE TRIAL';
+        btnCancelTrial.addEventListener('click', () => abrirModalTrial());
+        planActions.append(btnCancelTrial);
+        sectionCard.style.display = 'none';
       } else if (sus && sus.estado === 'pendiente_pago' && sus.mp_init_point) {
         pi.append(
           row('Estado', 'PAGO PENDIENTE', 'warn'),
@@ -400,25 +419,43 @@
       loader.classList.add('hidden');
       page.removeAttribute('hidden');
 
-      // Modal cancelar
+      // Modal cancelar (dual mode: 'suscripcion' o 'trial')
       const modal = document.getElementById('modalCancelar');
+      const modalTitle = document.getElementById('modalTitle');
       const modalDesc = document.getElementById('modalDesc');
       const btnVolver = document.getElementById('btnVolver');
       const btnConfirmar = document.getElementById('btnConfirmar');
       let lastFocused = null;
+      let cancelMode = 'suscripcion';
 
       function abrirModal() {
+        cancelMode = 'suscripcion';
         lastFocused = document.activeElement;
+        modalTitle.textContent = '¿Cancelar tu Plan PRO?';
         if (sus && sus.proxima_facturacion) {
           modalDesc.textContent = '';
           modalDesc.append(document.createTextNode('Tu acceso al Dashboard AIMMA seguirá activo hasta '));
           const strong = document.createElement('strong');
           strong.textContent = fmtFecha(sus.proxima_facturacion);
           modalDesc.append(strong, document.createTextNode('. No se hará ningún cobro adicional. ¿Estás seguro?'));
+        } else {
+          modalDesc.textContent = 'Tu acceso al Dashboard AIMMA seguirá activo hasta el final del período pagado.';
         }
+        btnConfirmar.textContent = 'Sí, cancelar';
         modal.removeAttribute('hidden');
         btnVolver.focus();
       }
+
+      function abrirModalTrial() {
+        cancelMode = 'trial';
+        lastFocused = document.activeElement;
+        modalTitle.textContent = '¿Cancelar tu Free Trial?';
+        modalDesc.textContent = 'Si cancelás ahora perdés el acceso al Dashboard AIMMA de inmediato. Si volvés más adelante, podés activar tu PLAN PRO directamente, pero NO se asignará otro Free Trial.';
+        btnConfirmar.textContent = 'Sí, cancelar mi Free Trial';
+        modal.removeAttribute('hidden');
+        btnVolver.focus();
+      }
+
       function cerrarModal() {
         modal.setAttribute('hidden', '');
         if (lastFocused) lastFocused.focus();
@@ -437,9 +474,13 @@
       });
 
       btnConfirmar.addEventListener('click', async () => {
-        btnConfirmar.disabled = true; btnConfirmar.textContent = 'Cancelando…';
+        const isTrial = cancelMode === 'trial';
+        const labelOk = isTrial ? 'Sí, cancelar mi Free Trial' : 'Sí, cancelar';
+        btnConfirmar.disabled = true;
+        btnConfirmar.textContent = isTrial ? 'Cancelando Free Trial…' : 'Cancelando…';
         try {
-          const res = await fetch(`${SUPA}/functions/v1/cancelar-suscripcion`, {
+          const endpoint = isTrial ? 'cancelar-trial' : 'cancelar-suscripcion';
+          const res = await fetch(`${SUPA}/functions/v1/${endpoint}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
             body: JSON.stringify({}),
@@ -447,14 +488,14 @@
           const data = await res.json();
           if (!res.ok) {
             showToast('No pudimos cancelar: ' + (data.error || 'error'), 'error');
-            btnConfirmar.disabled = false; btnConfirmar.textContent = 'Sí, cancelar'; return;
+            btnConfirmar.disabled = false; btnConfirmar.textContent = labelOk; return;
           }
           cerrarModal();
-          showToast(data.message || 'Suscripción cancelada.', 'success');
+          showToast(data.message || (isTrial ? 'Free Trial cancelado.' : 'Suscripción cancelada.'), 'success');
           setTimeout(() => window.location.reload(), 2200);
         } catch (e) {
           showToast('Sin conexión.', 'error');
-          btnConfirmar.disabled = false; btnConfirmar.textContent = 'Sí, cancelar';
+          btnConfirmar.disabled = false; btnConfirmar.textContent = labelOk;
         }
       });
     })();

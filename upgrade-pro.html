@@ -283,11 +283,12 @@
       const { user, session } = await A.requireAuth();
       if (!session) return;
 
-      // Si ya es PRO o cortesia, redirigir al panel (no debe estar aqui)
+      // Si ya es PRO PAGADO (suscripcion activa o cortesia), redirigir al panel.
+      // EXCEPCION: users en trial_vigente DEBEN poder ver y pagar los planes desde aqui.
       const SUPABASE_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co';
       try {
         const { data: acceso } = await window.supabaseClient.rpc('tiene_acceso_pro', { p_user_id: user.id });
-        if (acceso && acceso.pro) {
+        if (acceso && acceso.pro && acceso.razon !== 'trial_vigente') {
           window.location.replace('/iapanel/');
           return;
         }

@@ -340,9 +340,9 @@
             badgeDashboard.outerHTML = '<span class="badge-pro-cortesia" id="badgeDashboard">CORTESÍA CEO</span>';
           } else if (acceso.razon === 'trial_vigente') {
             const dias = Math.max(1, acceso.dias_restantes || 7);
-            badgeDashboard.outerHTML = '<span class="badge-pro-trial" id="badgeDashboard">PRUEBA · ' + dias + (dias === 1 ? ' DÍA' : ' DÍAS') + '</span>';
+            badgeDashboard.outerHTML = '<span class="badge-pro-trial" id="badgeDashboard">FREE TRIAL · ' + dias + (dias === 1 ? ' DÍA' : ' DÍAS') + '</span>';
           } else {
-            badgeDashboard.outerHTML = '<span class="badge-pro-active" id="badgeDashboard">PRO ACTIVO</span>';
+            badgeDashboard.outerHTML = '<span class="badge-pro-active" id="badgeDashboard">PLAN PRO · ACTIVO</span>';
           }
           // Abrir Dashboard AIMMA en nueva pestaña (placeholder mientras se construye)
           const irPanel = () => { window.open('/dashboard-pro.html', '_blank', 'noopener'); };
@@ -367,13 +367,13 @@
 
         if (acceso.razon === 'trial_vigente') {
           const dias = Math.max(1, acceso.dias_restantes || 7);
-          if (titleEl) titleEl.textContent = 'Estás en tu prueba gratuita · Te quedan ' + dias + (dias === 1 ? ' día' : ' días');
+          if (titleEl) titleEl.textContent = 'Estás en tu Free Trial · Te quedan ' + dias + (dias === 1 ? ' día' : ' días');
           if (descEl)  descEl.textContent  = 'Asegurá tu Dashboard AIMMA. Si dentro de los 30 días no estás conforme, te devolvemos tu dinero.';
           upgradeBanner.removeAttribute('hidden');
           return;
         }
         if (acceso.razon === 'trial_vencido' || acceso.razon === 'trial_consumed') {
-          if (titleEl) titleEl.textContent = 'Tu prueba gratuita terminó · Activá tu Plan PRO para seguir';
+          if (titleEl) titleEl.textContent = 'Tu Free Trial terminó · Activá tu PLAN PRO para seguir';
           if (descEl)  descEl.textContent  = 'Recuperá tu acceso desde $150.000 COP/mes (plan anual) · Garantía 30 días.';
           upgradeBanner.removeAttribute('hidden');
           return;
@@ -389,11 +389,11 @@
         }
         if (acceso.razon === 'trial_vigente') {
           const dias = Math.max(1, acceso.dias_restantes || 7);
-          planFooter.textContent = 'Plan actual: Prueba gratis · Te quedan ' + dias + (dias === 1 ? ' día' : ' días');
+          planFooter.textContent = 'Plan actual: PLAN PRO · Free Trial · Te quedan ' + dias + (dias === 1 ? ' día' : ' días');
           return;
         }
         if (acceso.razon === 'trial_vencido' || acceso.razon === 'trial_consumed') {
-          planFooter.textContent = 'Plan actual: Sin Plan PRO · Prueba terminada';
+          planFooter.textContent = 'Plan actual: Free Trial terminado · Activá tu PLAN PRO';
           return;
         }
         if (acceso.pro && sus && sus.mp_preapproval_id) {
