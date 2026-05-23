@@ -268,7 +268,7 @@
           row('Costo', 'Sin costo'),
         );
         sectionCard.style.display = 'none';
-      } else if (acceso.pro && sus && sus.mp_preapproval_id) {
+      } else if ((acceso.razon === 'activa' || acceso.razon === 'cancelada_pero_vigente') && sus && sus.mp_preapproval_id && sus.activada_en) {
         const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual' : 'AIMMA PRO Mensual';
         pi.append(
           row('Estado', sus.estado === 'cancelada' ? 'PLAN PRO · CANCELADO (vigente hasta fecha abajo)' : 'PLAN PRO · ACTIVO', sus.estado === 'cancelada' ? 'warn' : 'cyan'),
@@ -383,11 +383,48 @@
           row('Tu Free Trial termina el', fmtFecha(acceso.trial_ends_at)),
           row('Costo durante la prueba', 'Sin costo'),
         );
-        const btnActivarPro = document.createElement('a');
-        btnActivarPro.className = 'mc-btn primary';
-        btnActivarPro.textContent = 'ACTIVAR PLAN PRO AHORA';
-        btnActivarPro.href = '/upgrade-pro.html';
-        planActions.append(btnActivarPro);
+
+        // Detectar intento de pago abierto (user inicio checkout pero no completo).
+        // Whitelist HTTPS MP contra open-redirect (mismo patron que rama Reactivar).
+        const initPointValido = sus && sus.estado === 'pendiente_pago' && typeof sus.mp_init_point === 'string'
+          && (sus.mp_init_point.startsWith('https://www.mercadopago.com.co/')
+              || sus.mp_init_point.startsWith('https://www.mercadopago.com/'));
+
+        if (initPointValido) {
+          const planPendienteLabel = sus.plan_tipo === 'anual' ? 'Plan PRO Anual' : 'Plan PRO Mensual';
+          const aviso = document.createElement('div');
+          aviso.style.cssText = 'background:rgba(0,212,245,0.08); border:1px solid rgba(0,212,245,0.3); border-radius:8px; padding:14px 16px; color:var(--white-80); font-size:0.88rem; line-height:1.55; width:100%;';
+          const p1 = document.createElement('p'); p1.style.cssText = 'margin:0 0 6px 0;';
+          p1.append(document.createTextNode('Dejaste un pago iniciado del '));
+          const strong = document.createElement('strong'); strong.style.color = 'var(--cyan)';
+          strong.textContent = planPendienteLabel;
+          p1.append(strong, document.createTextNode('. Podés continuarlo o cancelarlo desde acá.'));
+          aviso.append(p1);
+          planActions.append(aviso);
+
+          const btnContinuar = document.createElement('a');
+          btnContinuar.className = 'mc-btn primary';
+          btnContinuar.textContent = 'CONTINUAR PAGO';
+          btnContinuar.href = sus.mp_init_point;
+          btnContinuar.rel = 'noopener';
+          planActions.append(btnContinuar);
+        } else {
+          const btnActivarPro = document.createElement('a');
+          btnActivarPro.className = 'mc-btn primary';
+          btnActivarPro.textContent = 'ACTIVAR PLAN PRO AHORA';
+          btnActivarPro.href = '/upgrade-pro.html';
+          planActions.append(btnActivarPro);
+        }
+
+        // Boton secundario: cambiar plan (lleva al paywall para elegir otro)
+        if (initPointValido) {
+          const btnCambiarPlan = document.createElement('a');
+          btnCambiarPlan.className = 'mc-btn outline';
+          btnCambiarPlan.textContent = 'VER OTROS PLANES';
+          btnCambiarPlan.href = '/upgrade-pro.html';
+          planActions.append(btnCambiarPlan);
+        }
+
         const btnCancelTrial = document.createElement('button');
         btnCancelTrial.className = 'mc-btn danger';
         btnCancelTrial.textContent = 'CANCELAR FREE TRIAL';
