@@ -105,6 +105,12 @@
       background: transparent; color: #fca5a5; border-color: rgba(239,68,68,0.5);
     }
     .mc-btn.danger:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+    .mc-btn.danger-outline {
+      background: transparent; color: var(--white-70); border-color: var(--white-15);
+    }
+    .mc-btn.danger-outline:hover {
+      color: #fca5a5; border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.06);
+    }
     .mc-btn.success {
       background: #22c55e; color: var(--navy-deep); border-color: #22c55e;
       box-shadow: 0 0 0 1px #22c55e, 0 4px 16px rgba(34,197,94,0.35);
@@ -124,6 +130,43 @@
     .modal-confirm { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.5); }
     .modal-confirm:hover { background: rgba(239,68,68,0.25); }
     .modal-confirm:disabled { opacity: 0.5; cursor: progress; }
+
+    .modal-field-label {
+      display: block; color: var(--white-80); font-size: 0.85rem;
+      margin: 14px 0 6px; font-family: var(--font-mono);
+    }
+    .modal-select, .modal-textarea {
+      width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.06);
+      border: 1px solid var(--white-15); border-radius: 8px;
+      color: var(--white); font-family: inherit; font-size: 0.92rem;
+      box-sizing: border-box;
+    }
+    .modal-select { color-scheme: dark; }
+    .modal-select option { background: var(--navy-card); color: var(--white); }
+    .modal-textarea { resize: vertical; min-height: 80px; }
+
+    .modal-warning {
+      background: rgba(251,191,36,0.08); border-left: 4px solid #fbbf24;
+      padding: 14px 16px; border-radius: 6px; margin: 6px 0 18px;
+      color: var(--white-90); font-size: 0.88rem; line-height: 1.55;
+    }
+    .modal-warning strong { color: #fbbf24; }
+    .modal-warning a { color: #fbbf24; text-decoration: underline; }
+
+    .modal-bullets {
+      margin: 12px 0 18px; padding: 12px 16px;
+      background: rgba(0,212,245,0.04); border-left: 3px solid var(--cyan); border-radius: 4px;
+    }
+    .modal-bullets-title {
+      font-family: var(--font-mono); font-size: 0.72rem;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--cyan); margin: 0 0 6px;
+    }
+    .modal-bullets ul {
+      margin: 0; padding-left: 18px;
+      color: var(--white-80); font-size: 0.86rem; line-height: 1.55;
+    }
+    .modal-bullets li { margin: 2px 0; }
 
     .toast {
       position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120%);
@@ -206,15 +249,18 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modalCancelarCuenta" role="dialog" aria-modal="true" hidden>
+  <div class="modal-overlay" id="modalCancelarCuenta" role="dialog" aria-modal="true" aria-labelledby="modalCuentaTitle" hidden>
     <div class="modal-card">
-      <h2 class="modal-title">¿Dar de baja tu cuenta AIMMA?</h2>
-      <p class="modal-desc">
-        Vamos a cerrar todo en cadena: si tenés Plan PRO activo o Free Trial, los cancelamos.
-        Tus datos siguen guardados — si volvés, podés reactivar tu cuenta con un solo click.
+      <h2 class="modal-title" id="modalCuentaTitle">¿Dar de baja tu cuenta AIMMA?</h2>
+      <p class="modal-desc" id="modalCuentaDesc">
+        Vamos a cerrar todo en cadena. Tus datos siguen guardados — si volvés, podés reactivar tu cuenta con un solo click.
       </p>
-      <label for="bajaCategoria" style="display:block; color:var(--white-80); font-size:0.85rem; margin:14px 0 6px;">¿Por qué te das de baja? (opcional)</label>
-      <select id="bajaCategoria" style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.06); border:1px solid var(--white-15); border-radius:8px; color:var(--white); font-family:inherit; font-size:0.92rem;">
+
+      <div id="modalCuentaWarning" hidden></div>
+      <div id="modalCuentaBullets" hidden></div>
+
+      <label for="bajaCategoria" class="modal-field-label">¿Por qué te das de baja? (opcional)</label>
+      <select id="bajaCategoria" class="modal-select">
         <option value="">Prefiero no decirlo</option>
         <option value="precio">El precio es muy alto</option>
         <option value="no_uso">No le doy mucho uso</option>
@@ -222,8 +268,10 @@
         <option value="cambio_solucion">Cambié por otra herramienta</option>
         <option value="otro">Otro motivo</option>
       </select>
-      <label for="bajaRazon" style="display:block; color:var(--white-80); font-size:0.85rem; margin:14px 0 6px;">¿Querés contarnos más? (opcional)</label>
-      <textarea id="bajaRazon" maxlength="500" rows="3" placeholder="Nos ayuda a mejorar..." style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.06); border:1px solid var(--white-15); border-radius:8px; color:var(--white); font-family:inherit; font-size:0.92rem; resize:vertical;"></textarea>
+
+      <label for="bajaRazon" class="modal-field-label">¿Querés contarnos más? (opcional)</label>
+      <textarea id="bajaRazon" maxlength="500" rows="3" placeholder="Nos ayuda a mejorar..." class="modal-textarea"></textarea>
+
       <div class="modal-actions">
         <button class="modal-cancel" id="btnVolverCuenta">Volver</button>
         <button class="modal-confirm" id="btnConfirmarCuenta">Sí, dar de baja mi cuenta</button>
@@ -315,7 +363,7 @@
       } else if ((acceso.razon === 'activa' || acceso.razon === 'cancelada_pero_vigente') && sus && sus.mp_preapproval_id && sus.activada_en) {
         const planLabel = sus.plan_tipo === 'anual' ? 'AIMMA PRO Anual' : 'AIMMA PRO Mensual';
         pi.append(
-          row('Estado', sus.estado === 'cancelada' ? 'PLAN PRO · CANCELADO (vigente hasta fecha abajo)' : 'PLAN PRO · ACTIVO', sus.estado === 'cancelada' ? 'warn' : 'cyan'),
+          row('Estado', sus.estado === 'cancelada' ? 'PLAN PRO · ACTIVO (sin cobro automático)' : 'PLAN PRO · ACTIVO', 'cyan'),
           row('Plan', planLabel),
           row('Monto', '$' + Number(sus.monto || 0).toLocaleString('es-CO') + ' COP'),
           row('Activado el', fmtFecha(sus.activada_en)),
@@ -469,11 +517,8 @@
           planActions.append(btnCambiarPlan);
         }
 
-        const btnCancelTrial = document.createElement('button');
-        btnCancelTrial.className = 'mc-btn danger';
-        btnCancelTrial.textContent = 'CANCELAR FREE TRIAL';
-        btnCancelTrial.addEventListener('click', () => abrirModalTrial());
-        planActions.append(btnCancelTrial);
+        // Se elimino el boton 'CANCELAR FREE TRIAL': es equivalente a DAR DE BAJA MI CUENTA.
+        // El boton de baja (mas abajo, fuera del if/else) cubre este caso.
         sectionCard.style.display = 'none';
       } else if (sus && sus.estado === 'pendiente_pago' && sus.mp_init_point) {
         pi.append(
@@ -516,19 +561,16 @@
       loader.classList.add('hidden');
       page.removeAttribute('hidden');
 
-      // Modal cancelar (dual mode: 'suscripcion' o 'trial')
+      // Modal cancelar SUSCRIPCION (solo se abre desde la rama PRO ACTIVO).
+      // El modal de DAR DE BAJA cuenta es otro: modalCancelarCuenta.
       const modal = document.getElementById('modalCancelar');
-      const modalTitle = document.getElementById('modalTitle');
       const modalDesc = document.getElementById('modalDesc');
       const btnVolver = document.getElementById('btnVolver');
       const btnConfirmar = document.getElementById('btnConfirmar');
       let lastFocused = null;
-      let cancelMode = 'suscripcion';
 
       function abrirModal() {
-        cancelMode = 'suscripcion';
         lastFocused = document.activeElement;
-        modalTitle.textContent = '¿Cancelar tu Plan PRO?';
         if (sus && sus.proxima_facturacion) {
           modalDesc.textContent = '';
           modalDesc.append(document.createTextNode('Tu acceso al Dashboard AIMMA seguirá activo hasta '));
@@ -539,16 +581,6 @@
           modalDesc.textContent = 'Tu acceso al Dashboard AIMMA seguirá activo hasta el final del período pagado.';
         }
         btnConfirmar.textContent = 'Sí, cancelar';
-        modal.removeAttribute('hidden');
-        btnVolver.focus();
-      }
-
-      function abrirModalTrial() {
-        cancelMode = 'trial';
-        lastFocused = document.activeElement;
-        modalTitle.textContent = '¿Cancelar tu Free Trial?';
-        modalDesc.textContent = 'Si cancelás ahora perdés el acceso al Dashboard AIMMA de inmediato. Si volvés más adelante, podés activar tu PLAN PRO directamente, pero NO se asignará otro Free Trial.';
-        btnConfirmar.textContent = 'Sí, cancelar mi Free Trial';
         modal.removeAttribute('hidden');
         btnVolver.focus();
       }
@@ -571,13 +603,9 @@
       });
 
       btnConfirmar.addEventListener('click', async () => {
-        const isTrial = cancelMode === 'trial';
-        const labelOk = isTrial ? 'Sí, cancelar mi Free Trial' : 'Sí, cancelar';
-        btnConfirmar.disabled = true;
-        btnConfirmar.textContent = isTrial ? 'Cancelando Free Trial…' : 'Cancelando…';
+        btnConfirmar.disabled = true; btnConfirmar.textContent = 'Cancelando…';
         try {
-          const endpoint = isTrial ? 'cancelar-trial' : 'cancelar-suscripcion';
-          const res = await fetch(`${SUPA}/functions/v1/${endpoint}`, {
+          const res = await fetch(`${SUPA}/functions/v1/cancelar-suscripcion`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
             body: JSON.stringify({}),
@@ -585,35 +613,123 @@
           const data = await res.json();
           if (!res.ok) {
             showToast('No pudimos cancelar: ' + (data.error || 'error'), 'error');
-            btnConfirmar.disabled = false; btnConfirmar.textContent = labelOk; return;
+            btnConfirmar.disabled = false; btnConfirmar.textContent = 'Sí, cancelar'; return;
           }
           cerrarModal();
-          showToast(data.message || (isTrial ? 'Free Trial cancelado.' : 'Suscripción cancelada.'), 'success');
+          showToast(data.message || 'Suscripción cancelada.', 'success');
           setTimeout(() => window.location.reload(), 2200);
         } catch (e) {
           showToast('Sin conexión.', 'error');
-          btnConfirmar.disabled = false; btnConfirmar.textContent = labelOk;
+          btnConfirmar.disabled = false; btnConfirmar.textContent = 'Sí, cancelar';
         }
       });
 
       // ===== Modal "Dar de baja la cuenta" =====
       const modalCuenta = document.getElementById('modalCancelarCuenta');
+      const modalCuentaDesc = document.getElementById('modalCuentaDesc');
+      const modalCuentaWarning = document.getElementById('modalCuentaWarning');
+      const modalCuentaBullets = document.getElementById('modalCuentaBullets');
       const btnVolverCuenta = document.getElementById('btnVolverCuenta');
       const btnConfirmarCuenta = document.getElementById('btnConfirmarCuenta');
       const bajaCategoria = document.getElementById('bajaCategoria');
       const bajaRazon = document.getElementById('bajaRazon');
+      let lastFocusedCuenta = null;
+
+      function buildBulletsList(items) {
+        const ul = document.createElement('ul');
+        for (const it of items) {
+          const li = document.createElement('li');
+          li.textContent = it;
+          ul.appendChild(li);
+        }
+        return ul;
+      }
 
       function abrirModalCuenta() {
         if (bajaCategoria) bajaCategoria.value = '';
         if (bajaRazon) bajaRazon.value = '';
+        lastFocusedCuenta = document.activeElement;
+
+        // Contexto: detectar situacion del user y armar copy context-aware.
+        const dentroGarantia = sus && sus.garantia_30_dias_hasta && new Date(sus.garantia_30_dias_hasta) > new Date();
+        const esPRO = acceso.razon === 'activa' || acceso.razon === 'cancelada_pero_vigente';
+        const esTrial = acceso.razon === 'trial_vigente';
+
+        // Descripcion principal
+        if (esTrial) {
+          modalCuentaDesc.textContent = 'Vas a cerrar tu cuenta AIMMA. Tu Free Trial queda consumido (no se reasigna si volvés). Tus datos siguen guardados — podés reactivar la cuenta con un click cuando quieras.';
+        } else if (esPRO) {
+          modalCuentaDesc.textContent = 'Vas a cerrar tu cuenta AIMMA. Cancelamos tu Plan PRO en cadena: no habrá más cobros automáticos. Tus datos siguen guardados — podés reactivar la cuenta con un click.';
+        } else {
+          modalCuentaDesc.textContent = 'Vas a cerrar tu cuenta AIMMA. Tus datos siguen guardados — si volvés, podés activar Plan PRO directamente sin perder tu información.';
+        }
+
+        // Banner garantia 30d (legal, CRITICO si aplica)
+        modalCuentaWarning.innerHTML = '';
+        if (esPRO && dentroGarantia) {
+          modalCuentaWarning.removeAttribute('hidden');
+          const div = document.createElement('div');
+          div.className = 'modal-warning';
+          const p = document.createElement('p');
+          p.style.margin = '0';
+          p.append(document.createTextNode('Tu compra está dentro de la '));
+          const s1 = document.createElement('strong'); s1.textContent = 'garantía de 30 días';
+          p.append(s1, document.createTextNode(' (vigente hasta '));
+          const s2 = document.createElement('strong'); s2.textContent = fmtFecha(sus.garantia_30_dias_hasta);
+          p.append(s2, document.createTextNode('). Si pedís reembolso antes de dar de baja, te devolvemos tu dinero. '));
+          const a = document.createElement('a');
+          a.href = 'mailto:aimma.colombia@gmail.com?subject=Solicitud%20de%20reembolso%20-%20Garant%C3%ADa%2030%20d%C3%ADas';
+          a.textContent = 'Solicitar reembolso por mail →';
+          p.append(a);
+          div.append(p);
+          modalCuentaWarning.append(div);
+        } else {
+          modalCuentaWarning.setAttribute('hidden', '');
+        }
+
+        // Bullets: qué pierde
+        modalCuentaBullets.innerHTML = '';
+        const items = [];
+        if (esPRO || esTrial) {
+          items.push('Dashboard AIMMA y sus 5 módulos (Top de Ventas, Sobrestock, Sin Ventas, Gastos Consolidados, Pauta IA)');
+          items.push('Acceso al agente WhatsApp AIMMA');
+          items.push('Próximamente: Contenido IA (fotos, avatares, posts con IA) y Auditoría IA');
+        }
+        if (items.length > 0) {
+          modalCuentaBullets.removeAttribute('hidden');
+          const wrap = document.createElement('div');
+          wrap.className = 'modal-bullets';
+          const t = document.createElement('p');
+          t.className = 'modal-bullets-title';
+          t.textContent = 'Vas a perder acceso a:';
+          wrap.append(t, buildBulletsList(items));
+          modalCuentaBullets.append(wrap);
+        } else {
+          modalCuentaBullets.setAttribute('hidden', '');
+        }
+
         modalCuenta.removeAttribute('hidden');
         btnVolverCuenta.focus();
       }
       function cerrarModalCuenta() {
         modalCuenta.setAttribute('hidden', '');
+        if (lastFocusedCuenta) lastFocusedCuenta.focus();
       }
       if (btnVolverCuenta) btnVolverCuenta.addEventListener('click', cerrarModalCuenta);
       if (modalCuenta) modalCuenta.addEventListener('click', (e) => { if (e.target === modalCuenta) cerrarModalCuenta(); });
+
+      // Tab-trap + Escape para modalCancelarCuenta (UI-C2 fix auditoria)
+      document.addEventListener('keydown', (e) => {
+        if (!modalCuenta || modalCuenta.hasAttribute('hidden')) return;
+        if (e.key === 'Escape') { e.preventDefault(); cerrarModalCuenta(); return; }
+        if (e.key === 'Tab') {
+          const focusables = [btnVolverCuenta, bajaCategoria, bajaRazon, btnConfirmarCuenta].filter(Boolean);
+          const idx = focusables.indexOf(document.activeElement);
+          if (idx === -1) { e.preventDefault(); focusables[0].focus(); return; }
+          if (e.shiftKey && idx === 0) { e.preventDefault(); focusables[focusables.length - 1].focus(); }
+          else if (!e.shiftKey && idx === focusables.length - 1) { e.preventDefault(); focusables[0].focus(); }
+        }
+      });
 
       if (btnConfirmarCuenta) {
         btnConfirmarCuenta.addEventListener('click', async () => {

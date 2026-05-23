@@ -67,10 +67,22 @@
     .cc-info {
       margin-top: 28px; padding: 16px 18px;
       background: rgba(0,212,245,0.06); border: 1px solid rgba(0,212,245,0.2);
-      border-radius: 10px; color: var(--white-70); font-size: 0.86rem; line-height: 1.55;
+      border-radius: 10px; color: var(--white-80); font-size: 0.86rem; line-height: 1.55;
       text-align: left;
     }
-    .cc-info strong { color: var(--cyan); }
+    .cc-info strong { color: var(--white); font-weight: 700; }
+
+    .cc-contact {
+      margin-top: 16px; text-align: center;
+      color: var(--white-70); font-size: 0.85rem; line-height: 1.55;
+    }
+    .cc-contact a { color: var(--cyan); text-decoration: none; }
+    .cc-contact a:hover { text-decoration: underline; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cc-btn-primary:hover:not(:disabled), .cc-btn-primary:focus-visible { transform: none; }
+      .cc-spinner { animation: none; }
+    }
 
     .cc-footer {
       margin-top: auto; padding-top: 32px;
@@ -111,18 +123,24 @@
         <img src="/assets/logo.svg" alt="">
         <div class="cc-brand-text">
           <span class="cc-brand-name">AIMMA</span>
-          <span class="cc-brand-tag">Cuenta</span>
+          <span class="cc-brand-tag">CUENTA</span>
         </div>
       </div>
       <button type="button" id="btnLogout" class="cc-btn cc-btn-ghost" style="padding:8px 14px; font-size:0.75rem;">Cerrar sesión</button>
     </header>
 
     <main class="cc-card">
-      <div class="cc-icon">&#x1F44B;</div>
-      <h1 class="cc-title">Tu cuenta fue dada de <strong>baja</strong></h1>
+      <div class="cc-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:48px; height:48px; color: var(--cyan);">
+          <path d="M14 30 L14 14 L28 14 L28 22 L34 22 L34 30 Z"/>
+          <path d="M14 30 L34 30"/>
+          <path d="M28 14 L34 22"/>
+          <circle cx="20" cy="22" r="1.2"/>
+        </svg>
+      </div>
+      <h1 class="cc-title">Tu cuenta quedó <strong>en pausa</strong></h1>
       <p class="cc-desc">
-        Vamos a extrañarte. Tu Plan PRO y tu Free Trial (si los tenías) fueron cancelados.
-        Tus datos siguen guardados con nosotros — podés volver cuando quieras con un solo click.
+        Cerramos tu Plan PRO y tu Free Trial (si los tenías), pero tus datos siguen acá esperándote. Cuando quieras volver, reactivás todo con un solo click.
       </p>
 
       <div class="cc-actions">
@@ -134,12 +152,17 @@
       </div>
 
       <div class="cc-info">
-        <strong>Si tenías Plan PRO pagado vigente</strong>, al reactivar conservás los días que te quedaban antes de la próxima facturación. <strong>Tu Free Trial</strong> ya fue consumido, así que tras la reactivación tendrías que activar Plan PRO si querés acceso al Dashboard.
+        Si tenías Plan PRO pagado y vigente cuando te diste de baja, al reactivar conservás los días que te quedaban. Si tu Free Trial ya se había consumido, podés activar tu Plan PRO directamente desde el panel.
+      </div>
+
+      <div class="cc-contact">
+        ¿Querés contarnos algo antes de irte definitivamente?<br>
+        Escribinos a <a href="mailto:aimma.colombia@gmail.com">aimma.colombia@gmail.com</a> o por WhatsApp <a href="https://wa.me/573172615415">+57 317 261 5415</a>.
       </div>
     </main>
 
     <footer class="cc-footer">
-      &copy; 2026 AIMMA Colombia &middot; Si necesitás ayuda escribinos a <a href="mailto:aimma.colombia@gmail.com" style="color:var(--cyan); text-decoration:none;">aimma.colombia@gmail.com</a>
+      &copy; 2026 AIMMA Colombia &middot; Tu información está protegida según Ley 1581/2012 (Habeas Data).
     </footer>
   </div>
 

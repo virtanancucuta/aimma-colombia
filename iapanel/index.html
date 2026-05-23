@@ -378,6 +378,19 @@
           upgradeBanner.removeAttribute('hidden');
           return;
         }
+        // Aviso proactivo: si esta en cancelada_pero_vigente y faltan <7 dias para fin del periodo pagado,
+        // alertar al user para que active de nuevo y no pierda acceso. Transparencia operativa, no remarketing.
+        if (acceso.razon === 'cancelada_pero_vigente' && acceso.acceso_hasta) {
+          const fechaFin = new Date(acceso.acceso_hasta);
+          const dias = Math.max(0, Math.ceil((fechaFin.getTime() - Date.now()) / 86400000));
+          if (dias <= 7) {
+            const fmt = fechaFin.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+            if (titleEl) titleEl.textContent = 'Tu Plan PRO termina el ' + fmt + (dias === 0 ? ' (hoy)' : (dias === 1 ? ' (mañana)' : (' en ' + dias + ' días')));
+            if (descEl)  descEl.textContent  = 'Cancelaste el cobro automático. Reactivá tu suscripción para no perder acceso al Dashboard AIMMA.';
+            upgradeBanner.removeAttribute('hidden');
+          }
+          return;
+        }
         if (!acceso.pro) upgradeBanner.removeAttribute('hidden');
       }
 
