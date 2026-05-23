@@ -9,3 +9,8 @@ node_modules/
 .cache/
 dist/
 build/
+
+# Specs internas y prompts de trabajo (no exponer aunque el repo sea publico)
+AIMMA-prompts-trabajo.md
+e2e-tests/
+keepalive_workflow.json
