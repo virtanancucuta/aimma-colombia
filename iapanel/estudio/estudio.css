@@ -358,8 +358,11 @@ a:hover { text-decoration: underline; }
   padding: 20px;
   text-align: center;
 }
+.preview-empty[hidden] { display: none; }
 
-/* Skeleton */
+/* Skeleton — DEBE estar oculto hasta que el user de click en Generar. */
+.preview-skeleton[hidden] { display: none; }
+#preview-output[hidden] { display: none; }
 .preview-skeleton {
   position: absolute;
   inset: 0;
