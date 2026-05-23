@@ -345,13 +345,13 @@
 
       if (acceso.razon === 'cortesia') {
         const rolActual = profile?.rol;
-        let estadoLabel = 'CORTESÍA CEO';
+        let estadoLabel = 'CORTESÍA';
         let planLabel = 'AIMMA PRO permanente';
         if (rolActual === 'admin') {
-          estadoLabel = 'CEO AIMMA';
+          estadoLabel = 'CEO · FOUNDER';
           planLabel = 'AIMMA PRO · Acceso total';
         } else if (rolActual === 'cofounder') {
-          estadoLabel = 'CO-FOUNDER AIMMA';
+          estadoLabel = 'CO-FOUNDER';
           planLabel = 'AIMMA PRO · Acceso total';
         }
         pi.append(
@@ -553,8 +553,8 @@
         planActions.append(btnBaja);
       }
 
-      // Panel CEO: solo visible para admin. Carga metricas + descargas CSV.
-      if (rolUsuario === 'admin') {
+      // Panel CEO: visible para CEO (admin) y Co-Founder. Carga metricas + descargas CSV.
+      if (rolUsuario === 'admin' || rolUsuario === 'cofounder') {
         setupPanelCEO();
       }
 

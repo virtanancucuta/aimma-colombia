@@ -146,7 +146,7 @@
         redirect(PANEL_URL + '?error=admin_only');
         return null;
       }
-      if (profile.rol !== 'admin') {
+      if (profile.rol !== 'admin' && profile.rol !== 'cofounder') {
         setGateMessage('Acceso restringido - redirigiendo');
         redirect(PANEL_URL + '?error=admin_only');
         return null;

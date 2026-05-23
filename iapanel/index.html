@@ -31,6 +31,20 @@
       padding: 4px 8px; border-radius: 6px;
       background: rgba(251,191,36,0.1);
     }
+    .badge-pro-founder {
+      position: absolute; top: 16px; right: 16px;
+      font-family: var(--font-mono); font-size: 0.62rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--cyan); border: 1px solid rgba(0,212,245,0.5);
+      padding: 4px 8px; border-radius: 6px;
+      background: rgba(0,212,245,0.10);
+    }
+    .panel-role {
+      font-family: var(--font-mono); font-size: 0.72rem;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--cyan); margin: 6px 0 0; padding: 0;
+    }
+    .panel-role[hidden] { display: none; }
     .badge-pro-trial {
       position: absolute; top: 16px; right: 16px;
       font-family: var(--font-mono); font-size: 0.62rem;
@@ -199,6 +213,7 @@
       <h1 class="panel-hello">
         Hola, <span class="panel-hello-cyan" id="userFirstName">…</span>
       </h1>
+      <p class="panel-role" id="panelRole" hidden></p>
       <p class="panel-sub">¿En qué módulo quieres trabajar hoy?</p>
 
       <div class="upgrade-banner" id="upgradeBanner" hidden>
@@ -315,6 +330,20 @@
       const nombre = (profile?.nombre_completo || meta.full_name || meta.nombre_completo || meta.name || user.email || '').trim();
       userFirstName.textContent = (nombre.split(/\s+/)[0] || 'tú');
 
+      // Subtítulo de rol debajo del nombre (solo Jorge CEO / Isbelia Co-Founder)
+      const panelRole = document.getElementById('panelRole');
+      if (panelRole && profile) {
+        if (profile.rol === 'admin') {
+          panelRole.textContent = 'CEO · FOUNDER';
+          panelRole.removeAttribute('hidden');
+        } else if (profile.rol === 'cofounder') {
+          panelRole.textContent = 'CO-FOUNDER';
+          panelRole.removeAttribute('hidden');
+        } else {
+          panelRole.setAttribute('hidden', '');
+        }
+      }
+
       // Paralelizar queries (UI #6 fix)
       let acceso = { pro: false, razon: 'no_subscription' };
       let sus = null;
@@ -345,7 +374,13 @@
           cardDashboard.classList.remove('disabled', 'pro-locked');
           cardDashboard.setAttribute('aria-label', 'Abrir Dashboard AIMMA');
           if (acceso.razon === 'cortesia') {
-            badgeDashboard.outerHTML = '<span class="badge-pro-cortesia" id="badgeDashboard">CORTESÍA CEO</span>';
+            if (profile?.rol === 'admin') {
+              badgeDashboard.outerHTML = '<span class="badge-pro-founder" id="badgeDashboard">CEO</span>';
+            } else if (profile?.rol === 'cofounder') {
+              badgeDashboard.outerHTML = '<span class="badge-pro-founder" id="badgeDashboard">CO-FOUNDER</span>';
+            } else {
+              badgeDashboard.outerHTML = '<span class="badge-pro-cortesia" id="badgeDashboard">CORTESÍA</span>';
+            }
           } else if (acceso.razon === 'trial_vigente') {
             const dias = Math.max(1, acceso.dias_restantes || 7);
             badgeDashboard.outerHTML = '<span class="badge-pro-trial" id="badgeDashboard">FREE TRIAL · ' + dias + (dias === 1 ? ' DÍA' : ' DÍAS') + '</span>';
@@ -381,7 +416,13 @@
           cardContenidoIA.setAttribute('aria-label', 'Abrir Contenido IA');
           if (badgeContenidoIA) {
             if (acceso.razon === 'cortesia') {
-              badgeContenidoIA.outerHTML = '<span class="badge-pro-cortesia" id="badgeContenidoIA">CORTESÍA CEO</span>';
+              if (profile?.rol === 'admin') {
+                badgeContenidoIA.outerHTML = '<span class="badge-pro-founder" id="badgeContenidoIA">CEO</span>';
+              } else if (profile?.rol === 'cofounder') {
+                badgeContenidoIA.outerHTML = '<span class="badge-pro-founder" id="badgeContenidoIA">CO-FOUNDER</span>';
+              } else {
+                badgeContenidoIA.outerHTML = '<span class="badge-pro-cortesia" id="badgeContenidoIA">CORTESÍA</span>';
+              }
             } else if (acceso.razon === 'trial_vigente') {
               const dias = Math.max(1, acceso.dias_restantes || 7);
               badgeContenidoIA.outerHTML = '<span class="badge-pro-trial" id="badgeContenidoIA">FREE TRIAL · ' + dias + (dias === 1 ? ' DÍA' : ' DÍAS') + '</span>';
