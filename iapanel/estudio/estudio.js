@@ -129,22 +129,37 @@
   // ============================================================
   async function init() {
     cacheDom();
+    setLoadingText('Inicializando…');
     try {
       initSupabase();
     } catch (err) {
       showFatal(err.message);
       return;
     }
+
+    // Timeout global de seguridad: si init no termina en 10s, mostrar error.
+    const initTimeout = setTimeout(() => {
+      showFatal('Carga lenta. Probá recargar (Ctrl+Shift+R) o abrir en incognito.');
+    }, 10000);
+
+    setLoadingText('Verificando sesion…');
     const user = await requireAuth();
-    if (!user) return;
+    if (!user) { clearTimeout(initTimeout); return; }
     state.user = user;
 
-    // Load profile balance (best-effort; will be overridden by test_mode after first enqueue)
-    await loadBalance();
-
+    // Mostrar editor INMEDIATAMENTE. El balance se carga en background (no bloquea).
+    clearTimeout(initTimeout);
     showEditor();
     wireEvents();
     updateCtaHint();
+    loadBalance().catch(e => console.warn('[balance] background fetch error', e));
+  }
+
+  function setLoadingText(t) {
+    try {
+      const el = document.querySelector('.state-loading__text');
+      if (el) el.textContent = t;
+    } catch (_) {}
   }
 
   function showFatal(msg) {
