@@ -158,6 +158,75 @@
     wireEvents();
     updateCtaHint();
     loadBalance().catch(e => console.warn('[balance] background fetch error', e));
+    // Restaurar ultimo resultado si lo hay (sirve mucho en mobile: si el user vuelve atras
+    // tras abrir 'Ver URL' en pestana nueva, el editor restaura la imagen final).
+    restoreLastResult().catch(e => console.warn('[restore] error', e));
+  }
+
+  const LAST_RESULT_KEY = 'aimma_estudio_last_result_v1';
+
+  function saveLastResult(jobId, outputPath) {
+    try {
+      localStorage.setItem(LAST_RESULT_KEY, JSON.stringify({
+        jobId, outputPath, ts: Date.now()
+      }));
+    } catch (_) {}
+  }
+
+  async function restoreLastResult() {
+    let last;
+    try {
+      const raw = localStorage.getItem(LAST_RESULT_KEY);
+      if (!raw) return;
+      last = JSON.parse(raw);
+    } catch (_) { return; }
+    if (!last || !last.outputPath) return;
+    // Expira a las 24h
+    if (Date.now() - (last.ts || 0) > 86400000) {
+      try { localStorage.removeItem(LAST_RESULT_KEY); } catch(_) {}
+      return;
+    }
+    // Verificar que el archivo existe (signed URL)
+    try {
+      const { data: signed } = await supabase.storage.from(BUCKET_OUT).createSignedUrl(last.outputPath, 3600);
+      if (!signed || !signed.signedUrl) return;
+      dom.previewOutput.src = signed.signedUrl;
+      dom.previewOutput.hidden = false;
+      dom.previewEmpty.hidden = true;
+      dom.previewSkeleton.hidden = true;
+      dom.resultActions.hidden = false;
+      // Re-wire los botones con este path restaurado
+      state.outputPath = last.outputPath;
+      if (dom.btnViewUrl) dom.btnViewUrl.href = signed.signedUrl;
+      if (dom.btnDownload) dom.btnDownload.onclick = makeDownloadHandler(last.outputPath);
+    } catch (_) {}
+  }
+
+  function makeDownloadHandler(path) {
+    return async (ev) => {
+      ev.preventDefault();
+      const original = dom.btnDownload.innerHTML;
+      dom.btnDownload.disabled = true;
+      dom.btnDownload.textContent = 'Descargando...';
+      try {
+        const { data, error } = await supabase.storage.from(BUCKET_OUT).download(path);
+        if (error || !data) throw error || new Error('sin_blob');
+        const dlUrl = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = dlUrl;
+        a.download = 'aimma-contenido-ia-' + Date.now() + '.jpg';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(dlUrl), 1000);
+      } catch (e) {
+        console.warn('[download] fallo', e);
+        toast('No pudimos descargar. Proba "Ver URL" y guarda manual.', 'error');
+      } finally {
+        dom.btnDownload.disabled = false;
+        dom.btnDownload.innerHTML = original;
+      }
+    };
   }
 
   function setLoadingText(t) {
@@ -712,39 +781,16 @@
     dom.previewEmpty.hidden = true;
     dom.resultActions.hidden = false;
 
-    // Boton "Ver URL": abre signed URL en pestana nueva (sirve para compartir / inspeccionar)
+    // Boton "Ver URL": abre signed URL en pestana nueva.
     if (dom.btnViewUrl) dom.btnViewUrl.href = blobUrl;
 
-    // Boton "Descargar .jpg": fuerza download del archivo (sin abrir pestana).
-    // No se puede confiar en attr 'download' de <a> porque la signed URL es cross-origin
-    // (supabase.co vs aimma.com.co) -> el browser lo ignora. Hacemos download via Blob.
+    // Boton "Descargar .jpg": fuerza download via Blob (cross-origin friendly).
     state.outputPath = path;
-    if (dom.btnDownload) {
-      dom.btnDownload.onclick = async (ev) => {
-        ev.preventDefault();
-        const original = dom.btnDownload.innerHTML;
-        dom.btnDownload.disabled = true;
-        dom.btnDownload.textContent = 'Descargando...';
-        try {
-          const { data, error } = await supabase.storage.from(BUCKET_OUT).download(path);
-          if (error || !data) throw error || new Error('sin_blob');
-          const dlUrl = URL.createObjectURL(data);
-          const a = document.createElement('a');
-          a.href = dlUrl;
-          a.download = 'aimma-contenido-ia-' + Date.now() + '.jpg';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(() => URL.revokeObjectURL(dlUrl), 1000);
-        } catch (e) {
-          console.warn('[download] fallo', e);
-          toast('No pudimos descargar. Probá "Ver URL" y guardá manual.', 'error');
-        } finally {
-          dom.btnDownload.disabled = false;
-          dom.btnDownload.innerHTML = original;
-        }
-      };
-    }
+    if (dom.btnDownload) dom.btnDownload.onclick = makeDownloadHandler(path);
+
+    // Persistir en localStorage para que al volver atras en mobile, el editor restaure la imagen.
+    saveLastResult(job.id, path);
+
     toast('Imagen generada con exito.', 'success');
   }
 
