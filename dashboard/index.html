@@ -53,6 +53,66 @@
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=2026-05-21.5" />
   <link rel="stylesheet" href="charts-modal.css?v=2026-05-19.16" />
+
+  <!-- ============================================================
+       Botón "Volver al panel" inyectado 2026-05-24 — mismo look&feel
+       que el de Contenido IA (iapanel/estudio/). Lo dejamos arriba a
+       la izquierda dentro del site-header, antes del brand.
+       ============================================================ -->
+  <style>
+    .aimma-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      margin-right: 14px;
+      border: 1px solid rgba(0, 212, 245, 0.28);
+      border-radius: 8px;
+      background: rgba(0, 212, 245, 0.06);
+      color: rgba(255, 255, 255, 0.9);
+      text-decoration: none;
+      font-family: 'Rajdhani', sans-serif;
+      transition: all .2s ease;
+      flex-shrink: 0;
+    }
+    .aimma-back-btn:hover, .aimma-back-btn:focus-visible {
+      border-color: #00d4f5;
+      background: rgba(0, 212, 245, 0.14);
+      color: #fff;
+      outline: none;
+      transform: translateY(-1px);
+    }
+    .aimma-back-btn__icon {
+      color: #00d4f5;
+      flex-shrink: 0;
+    }
+    .aimma-back-btn__text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+    .aimma-back-btn__small {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 500;
+    }
+    .aimma-back-btn__big {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+    @media (max-width: 720px) {
+      .aimma-back-btn { padding: 6px 10px; margin-right: 8px; }
+      .aimma-back-btn__small { font-size: 9px; }
+      .aimma-back-btn__big { font-size: 12px; }
+    }
+    @media (max-width: 480px) {
+      .aimma-back-btn__text { display: none; }
+    }
+  </style>
 </head>
 <body>
 
@@ -68,6 +128,16 @@
     <div class="header-inner">
       <!-- Brand + accion de sesion (logo y Nuevo analisis = panel de sesion) -->
       <div class="brand-and-action">
+        <!-- Botón "Volver al panel" — mismo patrón que Contenido IA -->
+        <a href="/iapanel/" class="aimma-back-btn" aria-label="Volver al panel AIMMA">
+          <svg class="aimma-back-btn__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M5 12L11 6L11 10L19 10L19 14L11 14L11 18L5 12Z" fill="currentColor"/>
+          </svg>
+          <span class="aimma-back-btn__text">
+            <span class="aimma-back-btn__small">Volver al panel</span>
+            <span class="aimma-back-btn__big">AIMMA · Dashboard</span>
+          </span>
+        </a>
         <a href="#" class="brand">
           <img src="assets/logo.svg" alt="AIMMA" class="brand-logo" onerror="this.src='assets/logo.png'" />
           <div class="brand-text">
