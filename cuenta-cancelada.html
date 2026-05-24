@@ -220,17 +220,23 @@
             headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': ANON },
             body: JSON.stringify({}),
           });
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            showToast('No pudimos reactivar: ' + (data.error || 'error'), 'error');
+            console.error('[reactivar] HTTP', res.status, data);
+            showToast('No pudimos reactivar: ' + (data.error || ('HTTP ' + res.status)), 'error');
             btnReactivar.disabled = false;
             if (reactivarSpinner) reactivarSpinner.hidden = true;
             if (reactivarLabel) reactivarLabel.textContent = 'Reactivar mi cuenta';
             return;
           }
           showToast(data.message || 'Cuenta reactivada. Bienvenido de vuelta.', 'success');
-          setTimeout(() => { window.location.replace('/iapanel/'); }, 1500);
+          // Forzar refresh de la sesion para que el cliente lea el profile fresco
+          // (sino auth.js requireAuth puede leer cuenta_cancelada_at cacheado y reentrar al loop).
+          try { await supabase.auth.refreshSession(); } catch (e) { console.warn('[reactivar] refreshSession fallo (no critico):', e); }
+          // Cache-buster en la URL para evitar HTTP cache del browser sobre /iapanel/.
+          setTimeout(() => { window.location.replace('/iapanel/?r=' + Date.now()); }, 1500);
         } catch (e) {
+          console.error('[reactivar] fetch fallo:', e);
           showToast('Sin conexión.', 'error');
           btnReactivar.disabled = false;
           if (reactivarSpinner) reactivarSpinner.hidden = true;
