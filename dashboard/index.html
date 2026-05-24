@@ -60,47 +60,50 @@
        la izquierda dentro del site-header, antes del brand.
        ============================================================ -->
   <style>
+    /* Botón compacto: ~4× más chico que el original. Min touch-area 32px alto via padding */
     .aimma-back-btn {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 14px;
-      margin-right: 14px;
+      gap: 4px;
+      padding: 5px 9px;
+      margin-right: 8px;
       border: 1px solid rgba(0, 212, 245, 0.28);
-      border-radius: 8px;
+      border-radius: 6px;
       background: rgba(0, 212, 245, 0.06);
-      color: rgba(255, 255, 255, 0.9);
+      color: rgba(255, 255, 255, 0.85);
       text-decoration: none;
       font-family: 'Rajdhani', sans-serif;
-      transition: all .2s ease;
+      transition: background-color .2s ease, border-color .2s ease, color .2s ease;
       flex-shrink: 0;
+      line-height: 1;
+      min-height: 28px;
+      cursor: pointer;
     }
     .aimma-back-btn:hover, .aimma-back-btn:focus-visible {
       border-color: #00d4f5;
       background: rgba(0, 212, 245, 0.14);
       color: #fff;
       outline: none;
-      transform: translateY(-1px);
     }
     .aimma-back-btn__icon {
       color: #00d4f5;
       flex-shrink: 0;
+      width: 12px;
+      height: 12px;
     }
-    .aimma-back-btn__text {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.15;
-    }
+    .aimma-back-btn__text { display: inline-flex; align-items: center; }
     .aimma-back-btn__small {
-      font-size: 12px;
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgba(255, 255, 255, 0.9);
+      letter-spacing: 0.06em;
+      color: inherit;
       font-weight: 600;
+      white-space: nowrap;
     }
     @media (max-width: 720px) {
-      .aimma-back-btn { padding: 6px 10px; margin-right: 8px; }
-      .aimma-back-btn__small { font-size: 11px; }
+      .aimma-back-btn { padding: 4px 7px; margin-right: 6px; gap: 3px; }
+      .aimma-back-btn__small { font-size: 9px; }
+      .aimma-back-btn__icon { width: 11px; height: 11px; }
     }
   </style>
 </head>
@@ -121,7 +124,7 @@
         <!-- Botón "Volver a Panel IA" — único elemento de marca arriba a la izquierda.
              Se quitó el <a class="brand"> con logo+texto AIMMA (sobraba en mobile). -->
         <a href="/iapanel/" class="aimma-back-btn" aria-label="Volver a Panel IA">
-          <svg class="aimma-back-btn__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <svg class="aimma-back-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12L11 6L11 10L19 10L19 14L11 14L11 18L5 12Z" fill="currentColor"/>
           </svg>
           <span class="aimma-back-btn__text">
