@@ -100,10 +100,19 @@
       font-weight: 600;
       white-space: nowrap;
     }
-    @media (max-width: 720px) {
+    /* ≤820px: dashboard usa flex-wrap:nowrap, 1 fila apretada — mismo patron del dashboard */
+    @media (max-width: 820px) {
       .aimma-back-btn { padding: 4px 7px; margin-right: 6px; gap: 3px; }
       .aimma-back-btn__small { font-size: 9px; }
       .aimma-back-btn__icon { width: 11px; height: 11px; }
+    }
+    /* ≤480px (iPhone SE / wide-phone): solo flecha, sin texto. Libera ~50px
+       para que 'Régimen IVA' no se salga del viewport. Mismo patron que el
+       dashboard usa con .iva-toggle-hint { display: none } */
+    @media (max-width: 480px) {
+      .aimma-back-btn { padding: 5px 6px; margin-right: 5px; }
+      .aimma-back-btn__text { display: none; }
+      .aimma-back-btn__icon { width: 14px; height: 14px; }
     }
   </style>
 </head>
@@ -123,12 +132,12 @@
       <div class="brand-and-action">
         <!-- Botón "Volver a Panel IA" — único elemento de marca arriba a la izquierda.
              Se quitó el <a class="brand"> con logo+texto AIMMA (sobraba en mobile). -->
-        <a href="/iapanel/" class="aimma-back-btn" aria-label="Volver a Panel IA">
+        <a href="/iapanel/" class="aimma-back-btn" aria-label="Volver al Panel IA">
           <svg class="aimma-back-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12L11 6L11 10L19 10L19 14L11 14L11 18L5 12Z" fill="currentColor"/>
           </svg>
           <span class="aimma-back-btn__text">
-            <span class="aimma-back-btn__small">Volver a Panel IA</span>
+            <span class="aimma-back-btn__small">Volver</span>
           </span>
         </a>
         <button id="reset-btn" class="btn-ghost" title="Borrar todo y empezar de nuevo" aria-label="Nuevo análisis">
