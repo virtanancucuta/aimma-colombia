@@ -92,25 +92,15 @@
       line-height: 1.15;
     }
     .aimma-back-btn__small {
-      font-size: 10px;
+      font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: rgba(255, 255, 255, 0.6);
-      font-weight: 500;
-    }
-    .aimma-back-btn__big {
-      font-size: 13px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 600;
     }
     @media (max-width: 720px) {
       .aimma-back-btn { padding: 6px 10px; margin-right: 8px; }
-      .aimma-back-btn__small { font-size: 9px; }
-      .aimma-back-btn__big { font-size: 12px; }
-    }
-    @media (max-width: 480px) {
-      .aimma-back-btn__text { display: none; }
+      .aimma-back-btn__small { font-size: 11px; }
     }
   </style>
 </head>
@@ -128,22 +118,15 @@
     <div class="header-inner">
       <!-- Brand + accion de sesion (logo y Nuevo analisis = panel de sesion) -->
       <div class="brand-and-action">
-        <!-- Botón "Volver al panel" — mismo patrón que Contenido IA -->
-        <a href="/iapanel/" class="aimma-back-btn" aria-label="Volver al panel AIMMA">
+        <!-- Botón "Volver a Panel IA" — único elemento de marca arriba a la izquierda.
+             Se quitó el <a class="brand"> con logo+texto AIMMA (sobraba en mobile). -->
+        <a href="/iapanel/" class="aimma-back-btn" aria-label="Volver a Panel IA">
           <svg class="aimma-back-btn__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
             <path d="M5 12L11 6L11 10L19 10L19 14L11 14L11 18L5 12Z" fill="currentColor"/>
           </svg>
           <span class="aimma-back-btn__text">
-            <span class="aimma-back-btn__small">Volver al panel</span>
-            <span class="aimma-back-btn__big">AIMMA · Dashboard</span>
+            <span class="aimma-back-btn__small">Volver a Panel IA</span>
           </span>
-        </a>
-        <a href="#" class="brand">
-          <img src="assets/logo.svg" alt="AIMMA" class="brand-logo" onerror="this.src='assets/logo.png'" />
-          <div class="brand-text">
-            <span class="brand-name">AIMMA</span>
-            <span class="brand-sub">Dashboard Financiero</span>
-          </div>
         </a>
         <button id="reset-btn" class="btn-ghost" title="Borrar todo y empezar de nuevo" aria-label="Nuevo análisis">
           <span class="btn-ghost-icon">⟳</span>
