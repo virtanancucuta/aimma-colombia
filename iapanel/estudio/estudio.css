@@ -389,9 +389,19 @@ a:hover { text-decoration: underline; }
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
 }
-.preview-skeleton__status {
+.preview-skeleton__center {
   position: relative;
+  z-index: 1;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  max-width: 320px;
+  text-align: center;
+}
+.preview-skeleton__status {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
   background: rgba(4,13,26,0.85);
@@ -403,13 +413,54 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cyan);
-  z-index: 1;
+  transition: opacity .35s ease;
 }
+.preview-skeleton__status.is-fading { opacity: 0; }
 .preview-skeleton__dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--cyan);
   box-shadow: 0 0 10px var(--cyan-glow-strong);
   animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+.preview-skeleton__progress {
+  width: 100%;
+  height: 6px;
+  background: rgba(0,212,245,0.10);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(0,212,245,0.18);
+}
+.preview-skeleton__progress[hidden] { display: none; }
+.preview-skeleton__bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan), #6cf2ff);
+  border-radius: 999px;
+  box-shadow: 0 0 12px var(--cyan-glow-strong);
+  transition: width .8s ease-out;
+}
+
+.preview-skeleton__eta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--white-80);
+}
+.preview-skeleton__eta[hidden] { display: none; }
+.preview-skeleton__eta span:first-child {
+  font-family: var(--font-mono);
+  color: var(--cyan);
+  font-weight: 600;
+}
+.preview-skeleton__hint {
+  font-size: 12px;
+  color: var(--white-60);
+  font-family: var(--font-display) !important;
+  font-weight: 400 !important;
+  line-height: 1.4;
 }
 
 .preview-card__actions {
@@ -554,6 +605,17 @@ a:hover { text-decoration: underline; }
   color: var(--white-60);
   line-height: 1.45;
 }
+.level-card__speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--cyan-soft);
+}
+.level-card__speed svg { color: var(--cyan); flex-shrink: 0; }
 
 /* ---------- CTA ---------- */
 .cta-zone {

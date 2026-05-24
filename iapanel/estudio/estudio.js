@@ -15,12 +15,24 @@
   const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   const POLL_INTERVAL_MS = 3000;
-  const JOB_TIMEOUT_MS = 180000; // 3 min
-  // Solo 'nano-banana-pro' funciona en KIE.ai (verificado contra API).
-  // 'nano-banana' a secas devuelve 422 model not supported.
-  // Mapeamos ambos al mismo modelo real con costo unico = 1 token.
-  const MODEL_COST = { 'nano-banana': 1, 'nano-banana-pro': 1 };
-  const MODEL_REAL = 'nano-banana-pro';
+  const JOB_TIMEOUT_MS = 240000; // 4 min (Alta calidad puede tardar hasta ~180s)
+  // 2 niveles: economico (KIE 1K, 1 token) vs alta calidad (KIE 2K, 5 tokens).
+  // En el worker se mapea modelo BD -> resolution. KIE real solo expone 'nano-banana-pro'.
+  const MODEL_COST = { 'nano-banana': 1, 'nano-banana-pro': 5 };
+  // Tiempo estimado por modelo en milisegundos. Rango realista observado:
+  // 1K: 30-90s (mediana ~60s) / 2K: 60-180s (mediana ~120s).
+  const MODEL_ETA_MS = { 'nano-banana': 60000, 'nano-banana-pro': 120000 };
+  const MODEL_ETA_LABEL = { 'nano-banana': '~1 minuto', 'nano-banana-pro': '~2 minutos' };
+
+  // Mensajes que rotan en el loading. Cada uno se muestra hasta su pct_max.
+  const LOADING_MESSAGES = [
+    { pct: 8,  text: 'Subiendo tu foto...' },
+    { pct: 22, text: 'Analizando con IA...' },
+    { pct: 45, text: 'Aplicando tu instrucción...' },
+    { pct: 65, text: 'Refinando detalles...' },
+    { pct: 82, text: 'Optimizando colores...' },
+    { pct: 94, text: 'Casi listo...' },
+  ];
 
   // ============================================================
   // State
@@ -32,8 +44,11 @@
     selectedFile: null,
     inputPath: null,          // path inside studio-inputs once uploaded
     quickAction: null,        // 'quitar_fondo' | 'fondo_estudio' | ... | null
-    modelo: 'nano-banana-pro',
+    modelo: 'nano-banana',    // default = económico
     instruccion: '',
+    loadingTimer: null,
+    loadingStartTs: 0,
+    loadingEtaMs: 60000,
     currentJobId: null,
     realtimeSub: null,
     pollTimer: null,
@@ -65,6 +80,10 @@
     dom.previewEmpty = $('preview-empty');
     dom.previewSkeleton = $('preview-skeleton');
     dom.skeletonText = $('skeleton-text');
+    dom.skeletonProgress = $('skeleton-progress');
+    dom.skeletonBar = $('skeleton-bar');
+    dom.skeletonEta = $('skeleton-eta');
+    dom.skeletonEtaText = $('skeleton-eta-text');
     dom.btnChangeImage = $('btn-change-image');
     dom.resultActions = $('result-actions');
     dom.btnDownload = $('btn-download');
@@ -504,10 +523,10 @@
 
       setSkeletonText('Encolando trabajo...');
 
-      // 2) Llamar edge function. Forzar MODEL_REAL: KIE solo acepta 'nano-banana-pro'.
-      // El radio del frontend es solo decorativo en esta iteracion (ambos = 1 token).
+      // 2) Llamar edge function con el modelo elegido por el user.
+      // Worker v6 mapea: 'nano-banana' -> KIE resolution=1K / 'nano-banana-pro' -> 2K.
       const body = {
-        modelo: MODEL_REAL,
+        modelo: state.modelo,
         input_path: state.inputPath,
         instruccion: (state.instruccion && state.instruccion.trim()) || null,
         accion_rapida: state.quickAction,
@@ -564,12 +583,70 @@
       dom.previewSkeleton.hidden = false;
       dom.previewOutput.hidden = true;
       dom.resultActions.hidden = true;
-      setSkeletonText(skeletonText || 'Generando imagen...');
+      setSkeletonText(skeletonText || 'Subiendo tu foto...');
+      startLoadingAnimation(state.modelo);
+    } else {
+      stopLoadingAnimation();
     }
   }
 
   function setSkeletonText(text) {
-    dom.skeletonText.textContent = text;
+    // Fade out → cambiar texto → fade in (visualmente suave)
+    if (!dom.skeletonText) return;
+    const status = dom.skeletonText.parentElement;
+    if (!status) { dom.skeletonText.textContent = text; return; }
+    status.classList.add('is-fading');
+    setTimeout(() => {
+      dom.skeletonText.textContent = text;
+      status.classList.remove('is-fading');
+    }, 200);
+  }
+
+  // ============================================================
+  // Loading animation: barra + mensajes rotando + ETA
+  // ============================================================
+  function startLoadingAnimation(modelo) {
+    state.loadingEtaMs = MODEL_ETA_MS[modelo] || 60000;
+    state.loadingStartTs = Date.now();
+    const etaLabel = MODEL_ETA_LABEL[modelo] || '~1 minuto';
+
+    if (dom.skeletonEtaText) dom.skeletonEtaText.textContent = etaLabel;
+    if (dom.skeletonProgress) dom.skeletonProgress.hidden = false;
+    if (dom.skeletonEta) dom.skeletonEta.hidden = false;
+    if (dom.skeletonBar) dom.skeletonBar.style.width = '0%';
+
+    let currentMsgIdx = -1;
+
+    const tick = () => {
+      const elapsed = Date.now() - state.loadingStartTs;
+      // pct = (elapsed/eta) * 95, cap a 95%. La barra NUNCA llega al 100% hasta que el job termina.
+      let pct = (elapsed / state.loadingEtaMs) * 95;
+      if (pct > 95) pct = 95;
+      if (dom.skeletonBar) dom.skeletonBar.style.width = pct.toFixed(1) + '%';
+
+      // Buscar el mensaje correspondiente
+      let nextIdx = 0;
+      for (let i = 0; i < LOADING_MESSAGES.length; i++) {
+        if (pct >= LOADING_MESSAGES[i].pct) nextIdx = i;
+      }
+      if (nextIdx !== currentMsgIdx) {
+        currentMsgIdx = nextIdx;
+        setSkeletonText(LOADING_MESSAGES[nextIdx].text);
+      }
+    };
+
+    tick();
+    state.loadingTimer = setInterval(tick, 1000);
+  }
+
+  function stopLoadingAnimation() {
+    if (state.loadingTimer) {
+      clearInterval(state.loadingTimer);
+      state.loadingTimer = null;
+    }
+    if (dom.skeletonBar) dom.skeletonBar.style.width = '100%';
+    if (dom.skeletonProgress) dom.skeletonProgress.hidden = true;
+    if (dom.skeletonEta) dom.skeletonEta.hidden = true;
   }
 
   function buildJobErrorMsg(job) {
