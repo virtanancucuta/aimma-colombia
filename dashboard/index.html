@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#040D1A" />
+  <!-- Content Security Policy — bloquea inyecciones, demuestra al AV que el sitio está blindado.
+       Permite solo: scripts del propio origen + inline (necesario para nuestros handlers existentes),
+       fuentes Google Fonts (CSS+font files), imágenes propias + data URIs (favicon SVG inline) +
+       blob: (descargas Excel/PNG generadas in-memory). NO frames externos, NO objetos. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self'; connect-src 'self' https://rsmxklkxqsaptchcjszd.supabase.co wss://rsmxklkxqsaptchcjszd.supabase.co; object-src 'none'; base-uri 'self';" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>AIMMA · Dashboard Financiero</title>
+
+  <!-- ============================================================
+       AUTH GUARD AIMMA · acceso PRO requerido (inyectado 2026-05-24)
+       Bloquea acceso directo a /dashboard/ para users no-PRO.
+       Esconde la página hasta verificar; users PRO ven el dashboard
+       EXACTO sin diferencia visual o funcional.
+       Si auth falla → /login.html. Si no PRO → /upgrade-pro.html.
+       ============================================================ -->
+  <style id="aimma-auth-gate-style">html { visibility: hidden; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.v2.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+  (async function aimmaAuthGuard(){
+    try {
+      const A = window.AIMMA && window.AIMMA.auth;
+      if (!A) throw new Error('auth_module_missing');
+      const { user, session } = await A.requireAuth();
+      if (!session || !user) return; // requireAuth ya redirigió a login
+      const { data: acceso, error } = await window.supabaseClient.rpc('tiene_acceso_pro', { p_user_id: user.id });
+      if (error || !acceso || !acceso.pro) {
+        window.location.replace('/upgrade-pro.html');
+        return;
+      }
+      // OK → revelar el dashboard
+      const s = document.getElementById('aimma-auth-gate-style');
+      if (s) s.remove();
+    } catch (e) {
+      console.error('[auth-guard]', e);
+      window.location.replace('/login.html?next=' + encodeURIComponent('/dashboard/'));
+    }
+  })();
+  </script>
+  <!-- ============================================================ -->
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=2026-05-21.5" />
+  <link rel="stylesheet" href="charts-modal.css?v=2026-05-19.16" />
+</head>
+<body>
+
+  <!-- HALOS DE FONDO -->
+  <div class="bg-halos">
+    <div class="halo halo-1"></div>
+    <div class="halo halo-2"></div>
+    <div class="halo halo-3"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+      <!-- Brand + accion de sesion (logo y Nuevo analisis = panel de sesion) -->
+      <div class="brand-and-action">
+        <a href="#" class="brand">
+          <img src="assets/logo.svg" alt="AIMMA" class="brand-logo" onerror="this.src='assets/logo.png'" />
+          <div class="brand-text">
+            <span class="brand-name">AIMMA</span>
+            <span class="brand-sub">Dashboard Financiero</span>
+          </div>
+        </a>
+        <button id="reset-btn" class="btn-ghost" title="Borrar todo y empezar de nuevo" aria-label="Nuevo análisis">
+          <span class="btn-ghost-icon">⟳</span>
+          <span class="btn-ghost-text">Nuevo análisis</span>
+        </button>
+      </div>
+      <!-- Toggles de configuracion del negocio -->
+      <div class="header-actions">
+        <label class="iva-toggle" title="Activa si manejas stock fisico. Si vendes servicios (spa, abogado, agencia) o haces dropshipping, desactivalo.">
+          <input type="checkbox" id="inv-toggle-input" checked />
+          <span class="iva-toggle-switch"></span>
+          <span class="iva-toggle-label">
+            <span class="iva-toggle-label-main">Manejo inventario</span>
+            <small class="iva-toggle-hint">Stock físico</small>
+          </span>
+        </label>
+        <label class="iva-toggle" title="Activa si tu empresa es Responsable de IVA (régimen común)">
+          <input type="checkbox" id="iva-toggle-input" checked />
+          <span class="iva-toggle-switch"></span>
+          <span class="iva-toggle-label">
+            <span class="iva-toggle-label-main">Facturo con IVA</span>
+            <small class="iva-toggle-hint">Régimen común</small>
+          </span>
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <span class="hero-tag">Dashboard AIMMA</span>
+      <h1 class="hero-title">
+        Sube tus facturas y mira tu negocio <span class="cyan-glow">en tiempo real</span>
+      </h1>
+      <p class="hero-sub">
+        En este dashboard obtendrás un análisis <strong>financiero, contable, comercial, compras y de presupuesto de pauta</strong>.
+      </p>
+    </div>
+  </section>
+
+  <!-- AI AGENT INTRO — guia de voz "Como funciona el dashboard" -->
+  <section class="ai-intro container" id="ai-intro" aria-label="Asistente AIMMA - guia de uso">
+    <div class="ai-intro-card">
+      <!-- Avatar SVG futurista cyan -->
+      <div class="ai-avatar" aria-hidden="true">
+        <svg class="ai-avatar-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="ai-core" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#00d4f5" stop-opacity="1"/>
+              <stop offset="60%" stop-color="#0096b7" stop-opacity="0.85"/>
+              <stop offset="100%" stop-color="#0a1e33" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="ai-ring" cx="50%" cy="50%" r="50%">
+              <stop offset="80%" stop-color="transparent"/>
+              <stop offset="100%" stop-color="#00d4f5" stop-opacity="0.6"/>
+            </radialGradient>
+          </defs>
+          <!-- Anillos exteriores rotando -->
+          <circle class="ai-ring ai-ring-1" cx="60" cy="60" r="54" fill="none" stroke="#00d4f5" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="8 6"/>
+          <circle class="ai-ring ai-ring-2" cx="60" cy="60" r="46" fill="none" stroke="#00d4f5" stroke-width="1" stroke-opacity="0.5" stroke-dasharray="4 3"/>
+          <!-- Nucleo brillante -->
+          <circle cx="60" cy="60" r="38" fill="url(#ai-core)"/>
+          <!-- Brillo central -->
+          <circle cx="60" cy="60" r="14" fill="#fff" fill-opacity="0.95"/>
+          <circle cx="60" cy="60" r="8" fill="#00d4f5"/>
+        </svg>
+      </div>
+
+      <div class="ai-intro-body">
+        <div class="ai-intro-header">
+          <h2 class="ai-intro-title">Conoce a tu asistente <span class="cyan-glow">AIMMA</span></h2>
+          <button type="button" class="ai-intro-close" id="ai-intro-close" aria-label="Saltar al dashboard">Saltar →</button>
+        </div>
+        <p class="ai-intro-sub">Activa el audio y AIMMA te explicará cómo usar el dashboard en menos de 1 minuto.</p>
+
+        <div class="ai-intro-controls">
+          <button type="button" class="ai-play-btn" id="ai-play-btn" aria-label="Reproducir guia de voz">
+            <span class="ai-play-icon" id="ai-play-icon">▶</span>
+            <span class="ai-play-text" id="ai-play-text">CÓMO FUNCIONA EL DASHBOARD IA · REPRODUCIR</span>
+          </button>
+        </div>
+
+        <!-- Ondas animadas durante la voz -->
+        <div class="ai-waves" id="ai-waves" aria-hidden="true">
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+          <span class="ai-wave-bar"></span>
+        </div>
+
+        <p class="ai-intro-status" id="ai-intro-status" aria-live="polite"></p>
+
+        <!-- Audio pregrabado con voz Isbelia (ElevenLabs) -->
+        <audio id="ai-audio" preload="metadata" crossorigin="anonymous">
+          <source src="assets/aimma-voz.mp3" type="audio/mpeg" />
+        </audio>
+      </div>
+    </div>
+  </section>
+
+  <!-- UPLOAD ZONES -->
+  <section class="uploads">
+    <div class="container">
+
+      <!-- HELP BANNER -->
+      <div class="help-banner">
+        <div class="help-card help-card-pos">
+          <div class="help-icon">🏪</div>
+          <div class="help-body">
+            <h3 class="help-title">¿Usas un POS o sistema contable?</h3>
+            <p class="help-text">
+              Exporta tus ventas, inventario y gastos en Excel desde <strong>SIIGO, ALEGRA, WORLD OFFICE, TNS, LOGGRO, HELISA, CONTAPYME</strong> u otro sistema, y súbelos directo a las cajas. <strong>No necesitas plantilla</strong> — detectamos las columnas automáticamente sin importar cómo se llamen.
+            </p>
+          </div>
+        </div>
+
+        <div class="help-divider">
+          <span class="help-divider-text">o</span>
+        </div>
+
+        <div class="help-card help-card-manual">
+          <div class="help-icon">📝</div>
+          <div class="help-body">
+            <h3 class="help-title">¿Llevas tu contabilidad a mano?</h3>
+            <p class="help-text">
+              Descarga la <strong>plantilla Excel</strong> que está debajo de cada caja, llena las columnas con tus datos y súbela. También funciona si vas a pasar facturas físicas a digital.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- AVISO COLUMNAS REQUERIDAS -->
+      <div class="format-tip">
+        <span class="format-tip-icon">⚠️</span>
+        <div class="format-tip-body">
+          <strong>Ten en cuenta que tu Excel debe contener:</strong>
+          <span class="format-tip-detail">
+            <strong>VENTAS:</strong> Código o Referencia · Descripción · Cantidad vendida · Venta · IVA (si aplica).
+          </span>
+          <span class="format-tip-detail">
+            <strong>INVENTARIO:</strong> Código o Referencia · Cantidad · Costo total o Costo unitario.
+          </span>
+          <span class="format-tip-detail">
+            <strong>Muy importante:</strong> el <em>código de tu inventario</em> debe ser el mismo <em>código de tus ventas</em>. Sin estas variables el dashboard no puede dar información correcta.
+          </span>
+        </div>
+      </div>
+
+      <div class="upload-grid">
+
+        <!-- VENTAS -->
+        <div class="upload-box" data-category="ventas">
+          <div class="upload-head">
+            <div class="upload-icon icon-ventas">↗</div>
+            <div>
+              <h3 class="upload-title">Ventas</h3>
+              <p class="upload-desc">Facturas emitidas a clientes</p>
+            </div>
+          </div>
+
+          <!-- SELECTOR DE PERIODO DEL INFORME -->
+          <div class="periodo-ventas">
+            <p class="periodo-label">¿Tu informe es de qué fechas?</p>
+            <div class="periodo-inputs">
+              <label class="periodo-field">
+                <span>Desde</span>
+                <input type="date" id="ventas-fecha-desde" />
+              </label>
+              <label class="periodo-field">
+                <span>Hasta</span>
+                <input type="date" id="ventas-fecha-hasta" />
+              </label>
+            </div>
+            <div class="periodo-resultado" id="ventas-periodo-resultado">
+              <span class="periodo-empty">Selecciona ambas fechas para habilitar la carga del Excel.</span>
+            </div>
+          </div>
+
+          <label class="upload-drop" data-category="ventas">
+            <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv" data-category="ventas" hidden disabled />
+            <div class="drop-empty">
+              <div class="drop-icon">⬆</div>
+              <div class="drop-text">Arrastra <strong>PDF o Excel</strong></div>
+              <div class="drop-sub">Puedes subir varios — todos del <strong>mismo período</strong></div>
+            </div>
+            <div class="drop-filled hidden">
+              <div class="file-count"><span data-count="ventas">0</span> archivos · <span class="multi-note">multi-archivo OK</span></div>
+              <ul class="file-list" data-list="ventas"></ul>
+            </div>
+          </label>
+          <div class="upload-foot">
+            <button class="link-btn" data-template="ventas">⬇ Descargar plantilla Excel</button>
+          </div>
+        </div>
+
+        <!-- INVENTARIO -->
+        <div class="upload-box" data-category="inventario">
+          <div class="upload-head">
+            <div class="upload-icon icon-inv">▦</div>
+            <div>
+              <h3 class="upload-title">Inventario</h3>
+              <p class="upload-desc">Catálogo con costos unitarios</p>
+            </div>
+          </div>
+          <label class="upload-drop" data-category="inventario">
+            <input type="file" accept=".pdf,.xlsx,.xls,.csv" data-category="inventario" hidden />
+            <div class="drop-empty">
+              <div class="drop-icon">⬆</div>
+              <div class="drop-text">Arrastra <strong>PDF o Excel</strong></div>
+              <div class="drop-sub"><strong>Un solo archivo</strong> — la foto actual del inventario</div>
+            </div>
+            <div class="drop-filled hidden">
+              <div class="file-count"><span data-count="inventario">0</span> archivo · <span class="single-note">único</span></div>
+              <ul class="file-list" data-list="inventario"></ul>
+            </div>
+          </label>
+          <div class="upload-foot">
+            <button class="link-btn" data-template="inventario">⬇ Descargar plantilla Excel</button>
+          </div>
+        </div>
+
+        <!-- GASTOS -->
+        <div class="upload-box" data-category="gastos">
+          <div class="upload-head">
+            <div class="upload-icon icon-gastos">↘</div>
+            <div>
+              <h3 class="upload-title">Gastos</h3>
+              <p class="upload-desc">Arriendo, servicios, nómina</p>
+            </div>
+          </div>
+          <label class="upload-drop" data-category="gastos">
+            <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv" data-category="gastos" hidden />
+            <div class="drop-empty">
+              <div class="drop-icon">⬆</div>
+              <div class="drop-text">Arrastra <strong>PDF o Excel</strong></div>
+              <div class="drop-sub">Puedes subir varios — todos del <strong>mismo período</strong></div>
+            </div>
+            <div class="drop-filled hidden">
+              <div class="file-count"><span data-count="gastos">0</span> archivos · <span class="multi-note">multi-archivo OK</span></div>
+              <ul class="file-list" data-list="gastos"></ul>
+            </div>
+          </label>
+          <div class="upload-foot">
+            <button class="link-btn" data-template="gastos">⬇ Descargar plantilla Excel</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- PRIVACY NOTE -->
+      <div class="privacy-note">
+        <span class="privacy-dot"></span>
+        100% local. Tus facturas nunca salen de este computador. Funciona sin internet después de cargar.
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <main class="dashboard hidden" id="dashboard">
+    <div class="container">
+
+      <!-- KPI CARDS -->
+      <section class="dashboard-section" id="section-kpis">
+
+        <!-- Bloque INFORME (visible solo cuando dias != 30) -->
+        <div class="kpi-block hidden" id="kpi-block-informe">
+          <h2 class="section-title">
+            Resumen financiero · <span id="kpi-block-informe-dias">—</span> días vendidos
+          </h2>
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-ventas">
+              <div class="kpi-label">Ventas brutas</div>
+              <div class="kpi-value" id="kpi-inf-ventas">$0</div>
+              <div class="kpi-sub" id="kpi-inf-ventas-sub">—</div>
+            </div>
+            <div class="kpi-card kpi-cogs">
+              <div class="kpi-label">Costo de ventas (COGS)</div>
+              <div class="kpi-value" id="kpi-inf-cogs">—</div>
+              <div class="kpi-sub" id="kpi-inf-cogs-sub">Sube ventas Excel + inventario</div>
+            </div>
+            <div class="kpi-card kpi-bruta">
+              <div class="kpi-label">Utilidad bruta</div>
+              <div class="kpi-value" id="kpi-inf-bruta">—</div>
+              <div class="kpi-sub" id="kpi-inf-bruta-sub">—</div>
+            </div>
+            <div class="kpi-card kpi-margen">
+              <div class="kpi-label">Margen bruto</div>
+              <div class="kpi-value" id="kpi-inf-margen">—</div>
+              <div class="kpi-sub" id="kpi-inf-margen-sub">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque PROYECCION / o RESUMEN normal -->
+        <div class="kpi-block" id="kpi-block-proyeccion">
+          <h2 class="section-title" id="kpi-block-proy-title">Resumen financiero</h2>
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-ventas">
+              <div class="kpi-label">Ventas brutas</div>
+              <div class="kpi-value" id="kpi-ventas">$0</div>
+              <div class="kpi-sub" id="kpi-ventas-sub">—</div>
+            </div>
+            <div class="kpi-card kpi-cogs">
+              <div class="kpi-label">Costo de ventas (COGS)</div>
+              <div class="kpi-value" id="kpi-cogs">—</div>
+              <div class="kpi-sub" id="kpi-cogs-sub">Sube ventas Excel + inventario</div>
+            </div>
+            <div class="kpi-card kpi-bruta">
+              <div class="kpi-label">Utilidad bruta</div>
+              <div class="kpi-value" id="kpi-bruta">—</div>
+              <div class="kpi-sub" id="kpi-bruta-sub">—</div>
+            </div>
+            <div class="kpi-card kpi-margen">
+              <div class="kpi-label">Margen bruto</div>
+              <div class="kpi-value" id="kpi-margen">—</div>
+              <div class="kpi-sub" id="kpi-margen-sub">—</div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- P&L WATERFALL -->
+      <section class="dashboard-section" id="section-pnl">
+        <h2 class="section-title">Estado de Resultados (P&L)</h2>
+        <div class="pnl-card">
+          <div class="pnl-row pnl-positive">
+            <span class="pnl-label">+ Ingresos brutos (ventas)</span>
+            <span class="pnl-value" id="pnl-ventas">$0</span>
+          </div>
+          <div class="pnl-row pnl-negative">
+            <span class="pnl-label">− Costo de ventas (COGS)</span>
+            <span class="pnl-value" id="pnl-cogs">—</span>
+          </div>
+          <div class="pnl-row pnl-subtotal">
+            <span class="pnl-label">= Utilidad bruta</span>
+            <span class="pnl-value" id="pnl-bruta">—</span>
+          </div>
+          <div class="pnl-row pnl-negative">
+            <span class="pnl-label">− Gastos operacionales</span>
+            <span class="pnl-value" id="pnl-gastos">$0</span>
+          </div>
+          <div class="pnl-row pnl-total">
+            <span class="pnl-label">= Utilidad operacional</span>
+            <span class="pnl-value" id="pnl-operacional">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- IVA DIAN -->
+      <section class="dashboard-section" id="section-iva">
+        <h2 class="section-title">IVA DIAN</h2>
+        <div class="iva-grid">
+          <div class="iva-card iva-generado">
+            <div class="iva-label">IVA generado (ventas)</div>
+            <div class="iva-value" id="iva-generado">$0</div>
+          </div>
+          <div class="iva-card iva-descontable">
+            <div class="iva-label">IVA descontable (compras + gastos)</div>
+            <div class="iva-value" id="iva-descontable">$0</div>
+          </div>
+          <div class="iva-card iva-saldo" id="iva-saldo-card">
+            <div class="iva-label">Saldo DIAN</div>
+            <div class="iva-value" id="iva-saldo">$0</div>
+            <div class="iva-sub" id="iva-saldo-sub">—</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROTACIÓN INVENTARIO -->
+      <section class="dashboard-section hidden" id="section-rotacion">
+        <h2 class="section-title">Rotación de inventario</h2>
+        <div class="rotacion-grid">
+          <div class="rotacion-card">
+            <div class="rotacion-label">Capital en inventario</div>
+            <div class="rotacion-value" id="rotacion-capital">$0</div>
+            <div class="rotacion-sub" id="rotacion-capital-sub">a costo</div>
+          </div>
+          <div class="rotacion-card">
+            <div class="rotacion-label">Días de inventario</div>
+            <div class="rotacion-value" id="rotacion-dias">0</div>
+            <div class="rotacion-sub" id="rotacion-dias-sub">—</div>
+          </div>
+          <div class="rotacion-card">
+            <div class="rotacion-label">Rotación mensual</div>
+            <div class="rotacion-value" id="rotacion-veces">0x</div>
+            <div class="rotacion-sub">veces al mes</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANÁLISIS DE STOCK Y REORDEN -->
+      <section class="dashboard-section hidden" id="section-reorden">
+        <h2 class="section-title">Análisis de stock y reorden</h2>
+        <div class="reorden-card">
+          <div class="reorden-config">
+            <label for="dias-resurtido" class="reorden-label">
+              ¿Cuántos días de inventario deseas tener? <span class="reorden-editable-hint">Toca para editar</span>
+              <span class="reorden-hint">Óptimo entre 45 y 60 días</span>
+            </label>
+            <div class="reorden-input-wrap">
+              <input type="number" id="dias-resurtido" value="45" min="1" max="365" inputmode="numeric" />
+              <span class="reorden-unit">días</span>
+            </div>
+            <div class="reorden-presets">
+              <span class="presets-label">Sugeridos:</span>
+              <button type="button" class="preset-btn" data-preset="30">30</button>
+              <button type="button" class="preset-btn" data-preset="45">45</button>
+              <button type="button" class="preset-btn" data-preset="60">60</button>
+              <button type="button" class="preset-btn" data-preset="90">90</button>
+            </div>
+            <p class="reorden-formula">
+              Stock óptimo = (unidades vendidas del mes ÷ 30) × días deseados
+            </p>
+          </div>
+
+          <!-- BLOQUE 1: TOP DE VENTAS & RESURTIDO -->
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-resurtido">🛒</span>
+              <div>
+                <h3 class="reporte-title">Top de ventas &amp; Resurtido</h3>
+                <p class="reporte-sub" id="count-resurtido">Ordenado del más vendido al menos vendido</p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-resurtido"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-resurtido">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="top-ventas" type="button">📊 Ver gráfico</button>
+            </div>
+          </div>
+
+          <!-- BLOQUE 1.5: TOP DE PRODUCTOS MÁS RENTABLES -->
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-resurtido">💰</span>
+              <div>
+                <h3 class="reporte-title">Top de productos más rentables</h3>
+                <p class="reporte-sub" id="count-rentabilidad">Ordenado por utilidad $ descendente · <em>(si hay productos sin costo no aparecerán)</em></p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-rentabilidad"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-rentabilidad">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="top-rentabilidad" type="button">📊 Ver gráfico</button>
+            </div>
+          </div>
+
+          <!-- BLOQUE 2: SOBRESTOCK -->
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-sobrestock">📦</span>
+              <div>
+                <h3 class="reporte-title">Sobrestock</h3>
+                <p class="reporte-sub" id="count-sobrestock">Capital amarrado en inventario</p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-sobrestock"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-sobrestock">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="sobrestock" type="button">📊 Ver gráfico</button>
+            </div>
+          </div>
+
+          <!-- BLOQUE 3: SIN VENTA DEL MES -->
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-sin-venta">🚫</span>
+              <div>
+                <h3 class="reporte-title">Referencias sin venta del mes</h3>
+                <p class="reporte-sub" id="count-sin-venta">Inventario sin movimiento</p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-sin-venta"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-sin-venta">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="sin-venta" type="button">📊 Ver gráfico</button>
+            </div>
+          </div>
+
+          <!-- BLOQUE 4: VENDIDOS SIN COSTO -->
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-sin-costo">⚠️</span>
+              <div>
+                <h3 class="reporte-title">Vendidos sin costo <span class="reporte-title-hint">(posible ruptura de inventario)</span></h3>
+                <p class="reporte-sub" id="count-sin-costo">Códigos vendidos sin match en el inventario actual</p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-sin-costo"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-sin-costo">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="sin-costo" type="button">📊 Ver gráfico</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PUNTO DE EQUILIBRIO FINANCIERO -->
+      <section class="dashboard-section hidden" id="section-punto-equilibrio">
+        <h2 class="section-title">Punto de equilibrio financiero</h2>
+        <div class="reorden-card">
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-resurtido">⚖️</span>
+              <div>
+                <h3 class="reporte-title">¿Cuánto necesitas vender para no perder?</h3>
+                <p class="reporte-sub" id="count-punto-equilibrio">Ventas mínimas para cubrir gastos · recomendaciones comerciales según tu rotación</p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-punto-equilibrio"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-punto-equilibrio">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="punto-equilibrio" type="button">📊 Ver gráfico</button>
+            </div>
+          </div>
+
+          <!-- % PARTICIPACIÓN DE GASTOS -->
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-sobrestock">📊</span>
+              <div>
+                <h3 class="reporte-title">% Participación de tus gastos</h3>
+                <p class="reporte-sub" id="count-participacion-gastos">Cuánto se come cada gasto de tu utilidad bruta</p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-participacion-gastos"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-participacion-gastos">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="participacion-gastos" type="button">📊 Ver gráfico</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANÁLISIS DE MARKETING AIMMA -->
+      <section class="dashboard-section hidden" id="section-marketing">
+        <h2 class="section-title">Análisis de marketing AIMMA</h2>
+        <div class="reorden-card">
+
+          <!-- Input editable del % de utilidad bruta a invertir en marketing -->
+          <div class="reorden-config">
+            <label for="pct-marketing" class="reorden-label">
+              ¿Qué % de tu utilidad vas a invertir en marketing? <span class="reorden-editable-hint">Toca para editar</span>
+              <span class="reorden-hint">5% si estás validando · 10% para crecer · 15-20% para acelerar</span>
+            </label>
+            <div class="reorden-input-wrap">
+              <input type="number" id="pct-marketing" value="5" min="1" max="50" step="1" inputmode="numeric" />
+              <span class="reorden-unit">%</span>
+            </div>
+            <div class="reorden-presets">
+              <span class="presets-label">Sugeridos:</span>
+              <button type="button" class="preset-btn active" data-preset-mkt="5">5%</button>
+              <button type="button" class="preset-btn" data-preset-mkt="10">10%</button>
+              <button type="button" class="preset-btn" data-preset-mkt="15">15%</button>
+              <button type="button" class="preset-btn" data-preset-mkt="20">20%</button>
+            </div>
+            <p class="reorden-formula">
+              Presupuesto = Utilidad bruta × %&nbsp;·&nbsp; Se dispersa entre Meta Ads, TikTok, Google, Producción, Influencers/UGC y CRM/WhatsApp
+            </p>
+          </div>
+
+          <div class="reporte-block">
+            <div class="reporte-head">
+              <span class="reporte-icon icon-resurtido">📣</span>
+              <div>
+                <h3 class="reporte-title">Dispersión profesional del presupuesto</h3>
+                <p class="reporte-sub" id="count-marketing">Asignación por canal según mejores prácticas de mercado</p>
+              </div>
+            </div>
+            <div class="terminal" id="terminal-marketing"></div>
+            <div class="reporte-btns-row">
+              <button class="reporte-btn" id="btn-marketing">⬇ Descargar informe completo</button>
+              <button class="reporte-btn reporte-btn--chart" data-chart-id="marketing-aimma" type="button">📊 Ver gráfico</button>
+            </div>
+
+            <div class="marketing-disclaimer">
+              <strong>Cuadro informativo de referencia profesional.</strong> No aseguramos 100% de efectividad — tu pauta debe medirse <strong>diariamente y semanalmente</strong> y reorganizarse según tus retornos y datos reales. AIMMA presta servicios de <strong>consultoría y acompañamiento</strong> para optimizar tu inversión en marketing.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ALERTAS -->
+      <section class="dashboard-section" id="section-alertas">
+        <h2 class="section-title">Observaciones</h2>
+        <ul class="alerts-list" id="alerts-list">
+          <li class="alert alert-info">Sube tus archivos para ver el análisis completo.</li>
+        </ul>
+      </section>
+
+      <!-- DESCARGA CONSOLIDADA -->
+      <section class="dashboard-section hidden" id="section-descarga-todo">
+        <h2 class="section-title">Informe consolidado AIMMA</h2>
+        <div class="descarga-todo-card">
+          <div class="descarga-todo-body">
+            <span class="descarga-todo-icon">📦</span>
+            <div>
+              <h3 class="descarga-todo-title">Descarga TODO el análisis en un solo Excel</h3>
+              <p class="descarga-todo-sub">
+                Obtén un archivo con <strong>10 hojas separadas</strong>: Resumen Ejecutivo · Top Ventas &amp; Resurtido · Top Rentabilidad · Sobrestock · Sin Venta · Posible Ruptura · Devoluciones · Punto de Equilibrio · Participación de Gastos · Análisis de Marketing.
+                <br>Cada hoja con título descriptivo, listo para enviar a tu contador o equipo comercial.
+              </p>
+            </div>
+          </div>
+          <button class="reporte-btn descarga-todo-btn" id="btn-descarga-todo">⬇ Descargar informe completo</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container">
+      <p>AIMMA Financiero · MVP v0.1 · Hecho en Cúcuta para PYMEs de Colombia</p>
+    </div>
+  </footer>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- LIBRARIES (100% LOCAL — sin CDNs externos para evitar bloqueos AV corporativos) -->
+  <script src="vendor/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+    }
+  </script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="app.js?v=2026-05-21.5"></script>
+  <script src="charts-modal.js?v=2026-05-19.15" defer></script>
+
+  <!-- Modal Charts (Propuesta B) — fullscreen reusable -->
+  <div class="chart-modal" id="chart-modal" hidden aria-modal="true" role="dialog" aria-labelledby="chart-modal-title">
+    <button class="chart-modal__nav chart-modal__nav--prev" id="chart-modal-prev" aria-label="Informe anterior" type="button">‹</button>
+    <div class="chart-modal__container">
+      <header class="chart-modal__header">
+        <h2 class="chart-modal__title" id="chart-modal-title">Cargando…</h2>
+        <div class="chart-modal__controls">
+          <div class="chart-modal__topn" id="chart-modal-topn" role="radiogroup" aria-label="Cantidad de items a mostrar" hidden>
+            <span class="chart-modal__topn-label">Top:</span>
+            <button class="chart-modal__topn-btn" data-topn="10" type="button" aria-pressed="true">10</button>
+            <button class="chart-modal__topn-btn" data-topn="20" type="button" aria-pressed="false">20</button>
+            <button class="chart-modal__topn-btn" data-topn="30" type="button" aria-pressed="false">30</button>
+            <button class="chart-modal__topn-btn" data-topn="50" type="button" aria-pressed="false">50</button>
+          </div>
+          <button class="chart-modal__btn" id="chart-modal-download" aria-label="Descargar gráfico PNG" type="button">⬇ PNG</button>
+          <button class="chart-modal__btn chart-modal__btn--close" id="chart-modal-close" aria-label="Cerrar" type="button">×</button>
+        </div>
+      </header>
+      <div class="chart-modal__body">
+        <div class="chart-modal__canvas-wrap">
+          <canvas id="chart-modal-canvas" aria-label="Gráfico del informe"></canvas>
+        </div>
+      </div>
+      <footer class="chart-modal__footer">
+        <span id="chart-modal-counter">— / —</span>
+        <span class="chart-modal__keyboard-hint">
+          <kbd>Esc</kbd> cerrar · <kbd>←</kbd><kbd>→</kbd> navegar
+        </span>
+      </footer>
+    </div>
+    <button class="chart-modal__nav chart-modal__nav--next" id="chart-modal-next" aria-label="Informe siguiente" type="button">›</button>
+  </div>
+
+</body>
+</html>

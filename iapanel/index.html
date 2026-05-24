@@ -387,8 +387,8 @@
           } else {
             badgeDashboard.outerHTML = '<span class="badge-pro-active" id="badgeDashboard">PLAN PRO · ACTIVO</span>';
           }
-          // Abrir Dashboard AIMMA en nueva pestaña (placeholder mientras se construye)
-          const irPanel = () => { window.open('/dashboard-pro.html', '_blank', 'noopener'); };
+          // Abrir Dashboard AIMMA en la misma pestaña (dashboard financiero migrado)
+          const irPanel = () => { window.location.href = '/dashboard/'; };
           cardDashboard.addEventListener('click', irPanel);
           cardDashboard.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); irPanel(); }
