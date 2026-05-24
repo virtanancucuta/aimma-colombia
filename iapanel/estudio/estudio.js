@@ -15,16 +15,17 @@
   const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   const POLL_INTERVAL_MS = 3000;
-  const JOB_TIMEOUT_MS = 240000; // 4 min (Alta calidad puede tardar hasta ~180s)
-  // 2 niveles: economico (KIE 1K, 1 token) vs alta calidad (KIE 2K, 5 tokens).
-  // En el worker se mapea modelo BD -> resolution. KIE real solo expone 'nano-banana-pro'.
-  const MODEL_COST = { 'nano-banana': 1, 'nano-banana-pro': 5 };
-  // Tiempo estimado por modelo en milisegundos. Rango realista observado:
-  // 1K: 30-90s (mediana ~60s) / 2K: 60-180s (mediana ~120s).
-  const MODEL_ETA_MS = { 'nano-banana': 60000, 'nano-banana-pro': 120000 };
-  const MODEL_ETA_LABEL = { 'nano-banana': '~1 minuto', 'nano-banana-pro': '~2 minutos' };
+  const JOB_TIMEOUT_MS = 240000; // 4 min (cubre cola + procesamiento)
+  // Selector decorativo. KIE.ai solo expone 'nano-banana-pro' (Gemini 3.0 Pro Image)
+  // y siempre genera a 2K. Ambos radios cuestan 1 token y se envia 'nano-banana-pro'.
+  const MODEL_COST = { 'nano-banana': 1, 'nano-banana-pro': 1 };
+  const MODEL_REAL = 'nano-banana-pro';
+  // Tiempo estimado del job para alimentar la barra del UX loading.
+  // Mediana empirica observada: 30-90 segundos. ETA conservador = 60s.
+  const JOB_ETA_MS = 60000;
+  const JOB_ETA_LABEL = '~1 minuto';
 
-  // Mensajes que rotan en el loading. Cada uno se muestra hasta su pct_max.
+  // Mensajes que rotan en el loading. Cada uno se muestra a partir de su pct.
   const LOADING_MESSAGES = [
     { pct: 8,  text: 'Subiendo tu foto...' },
     { pct: 22, text: 'Analizando con IA...' },
@@ -44,11 +45,12 @@
     selectedFile: null,
     inputPath: null,          // path inside studio-inputs once uploaded
     quickAction: null,        // 'quitar_fondo' | 'fondo_estudio' | ... | null
-    modelo: 'nano-banana',    // default = económico
+    modelo: 'nano-banana',    // radio decorativo; siempre se envia MODEL_REAL al worker
     instruccion: '',
     loadingTimer: null,
     loadingStartTs: 0,
-    loadingEtaMs: 60000,
+    wasHiddenDuringJob: false,  // true si el user minimizo/cambio pestana durante el job
+    originalTitle: null,        // titulo de la pestana antes del flash
     currentJobId: null,
     realtimeSub: null,
     pollTimer: null,
@@ -175,6 +177,7 @@
     clearTimeout(initTimeout);
     showEditor();
     wireEvents();
+    setupNotifyListeners();
     updateCtaHint();
     loadBalance().catch(e => console.warn('[balance] background fetch error', e));
     // Restaurar ultimo resultado si lo hay (sirve mucho en mobile: si el user vuelve atras
@@ -512,6 +515,9 @@
   // ============================================================
   async function onGenerate() {
     if (!canGenerate()) return;
+    // Reset flag de visibility para este job + pedir permiso de notificaciones (user gesture).
+    state.wasHiddenDuringJob = false;
+    requestNotifyPermission();
     setGeneratingUi(true, 'Preparando imagen...');
 
     try {
@@ -523,10 +529,9 @@
 
       setSkeletonText('Encolando trabajo...');
 
-      // 2) Llamar edge function con el modelo elegido por el user.
-      // Worker v6 mapea: 'nano-banana' -> KIE resolution=1K / 'nano-banana-pro' -> 2K.
+      // 2) Llamar edge function. Selector decorativo: siempre enviar MODEL_REAL.
       const body = {
-        modelo: state.modelo,
+        modelo: MODEL_REAL,
         input_path: state.inputPath,
         instruccion: (state.instruccion && state.instruccion.trim()) || null,
         accion_rapida: state.quickAction,
@@ -584,7 +589,7 @@
       dom.previewOutput.hidden = true;
       dom.resultActions.hidden = true;
       setSkeletonText(skeletonText || 'Subiendo tu foto...');
-      startLoadingAnimation(state.modelo);
+      startLoadingAnimation();
     } else {
       stopLoadingAnimation();
     }
@@ -605,12 +610,9 @@
   // ============================================================
   // Loading animation: barra + mensajes rotando + ETA
   // ============================================================
-  function startLoadingAnimation(modelo) {
-    state.loadingEtaMs = MODEL_ETA_MS[modelo] || 60000;
+  function startLoadingAnimation() {
     state.loadingStartTs = Date.now();
-    const etaLabel = MODEL_ETA_LABEL[modelo] || '~1 minuto';
-
-    if (dom.skeletonEtaText) dom.skeletonEtaText.textContent = etaLabel;
+    if (dom.skeletonEtaText) dom.skeletonEtaText.textContent = JOB_ETA_LABEL;
     if (dom.skeletonProgress) dom.skeletonProgress.hidden = false;
     if (dom.skeletonEta) dom.skeletonEta.hidden = false;
     if (dom.skeletonBar) dom.skeletonBar.style.width = '0%';
@@ -620,7 +622,7 @@
     const tick = () => {
       const elapsed = Date.now() - state.loadingStartTs;
       // pct = (elapsed/eta) * 95, cap a 95%. La barra NUNCA llega al 100% hasta que el job termina.
-      let pct = (elapsed / state.loadingEtaMs) * 95;
+      let pct = (elapsed / JOB_ETA_MS) * 95;
       if (pct > 95) pct = 95;
       if (dom.skeletonBar) dom.skeletonBar.style.width = pct.toFixed(1) + '%';
 
@@ -647,6 +649,94 @@
     if (dom.skeletonBar) dom.skeletonBar.style.width = '100%';
     if (dom.skeletonProgress) dom.skeletonProgress.hidden = true;
     if (dom.skeletonEta) dom.skeletonEta.hidden = true;
+  }
+
+  // ============================================================
+  // Notify when job done while tab is hidden (mobile back, switched tabs)
+  // Stack: title flash + beep + Notification API + vibration.
+  // Mejor cobertura: Android Chrome (todo). iOS Safari (title + beep).
+  // ============================================================
+  function setupNotifyListeners() {
+    // Track visibility durante job (background trigger del notify)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && state.isGenerating) {
+        state.wasHiddenDuringJob = true;
+      }
+      // Si vuelve a la pestana y hay flash en el titulo, restaurarlo
+      if (!document.hidden && state.originalTitle) {
+        document.title = state.originalTitle;
+        state.originalTitle = null;
+      }
+    });
+  }
+
+  function requestNotifyPermission() {
+    // Llamado dentro del user gesture del click Generar (best practice).
+    try {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    } catch (_) { /* algunos browsers tiran error */ }
+  }
+
+  function notifyJobDone() {
+    const wasHidden = state.wasHiddenDuringJob || document.hidden;
+    if (!wasHidden) return; // user todavia esta mirando, no molestar
+
+    // 1) Title flash (works en todo lado, incluso iOS background pestanas)
+    try {
+      if (!state.originalTitle) state.originalTitle = document.title;
+      document.title = '✨ Lista! · AIMMA';
+    } catch (_) {}
+
+    // 2) Beep audio (works si el user ya interactuo - tenemos gesture del click Generar)
+    try { playBeep(); } catch (_) {}
+
+    // 3) Notification API (Android Chrome / desktop con permiso. iOS Safari ignora a menos que sea PWA instalada)
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const n = new Notification('AIMMA · Imagen lista', {
+          body: 'Tu imagen ya está lista. Toca para verla.',
+          icon: '/favicon.ico',
+          tag: 'aimma-estudio-done',
+          requireInteraction: false,
+        });
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+        // auto-cerrar despues de 12s
+        setTimeout(() => { try { n.close(); } catch(_) {} }, 12000);
+      }
+    } catch (_) {}
+
+    // 4) Vibracion (Android only; iOS ignora silenciosamente)
+    try {
+      if (navigator.vibrate) navigator.vibrate([180, 80, 180]);
+    } catch (_) {}
+  }
+
+  function playBeep() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    // Si suspended (mobile policy), intentar resume (tenemos user gesture previo)
+    if (ctx.state === 'suspended') {
+      try { ctx.resume(); } catch (_) {}
+    }
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.setValueAtTime(1175, ctx.currentTime + 0.18);
+    o.connect(g);
+    g.connect(ctx.destination);
+    g.gain.setValueAtTime(0, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.04);
+    g.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+    o.start();
+    o.stop(ctx.currentTime + 0.55);
+    setTimeout(() => { try { ctx.close(); } catch (_) {} }, 800);
   }
 
   function buildJobErrorMsg(job) {
@@ -867,6 +957,9 @@
 
     // Persistir en localStorage para que al volver atras en mobile, el editor restaure la imagen.
     saveLastResult(job.id, path);
+
+    // Avisar si el user minimizo o cambio de pestana durante el job.
+    notifyJobDone();
 
     toast('Imagen generada con exito.', 'success');
   }
