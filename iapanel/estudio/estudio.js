@@ -186,27 +186,40 @@
     restoreLastResult().catch(e => console.warn('[restore] error', e));
   }
 
-  const LAST_RESULT_KEY = 'aimma_estudio_last_result_v1';
+  // Fix #12 auditoria: namespaced por user.id para que en dispositivos compartidos
+  // (kioskos, PC del trabajo) un user no vea el ultimo resultado de otro.
+  const LAST_RESULT_KEY_PREFIX = 'aimma_estudio_last_result_v1_';
+  const LAST_RESULT_KEY_LEGACY = 'aimma_estudio_last_result_v1'; // pre-fix #12, limpiar
+  function getLastResultKey() {
+    if (!state.user || !state.user.id) return null;
+    return LAST_RESULT_KEY_PREFIX + state.user.id;
+  }
 
   function saveLastResult(jobId, outputPath) {
+    const key = getLastResultKey();
+    if (!key) return;
     try {
-      localStorage.setItem(LAST_RESULT_KEY, JSON.stringify({
+      localStorage.setItem(key, JSON.stringify({
         jobId, outputPath, ts: Date.now()
       }));
     } catch (_) {}
   }
 
   async function restoreLastResult() {
+    // Limpiar key legacy (pre-fix #12) si existe — venia sin namespace.
+    try { localStorage.removeItem(LAST_RESULT_KEY_LEGACY); } catch (_) {}
+    const key = getLastResultKey();
+    if (!key) return;
     let last;
     try {
-      const raw = localStorage.getItem(LAST_RESULT_KEY);
+      const raw = localStorage.getItem(key);
       if (!raw) return;
       last = JSON.parse(raw);
     } catch (_) { return; }
     if (!last || !last.outputPath) return;
     // Expira a las 24h
     if (Date.now() - (last.ts || 0) > 86400000) {
-      try { localStorage.removeItem(LAST_RESULT_KEY); } catch(_) {}
+      try { localStorage.removeItem(key); } catch(_) {}
       return;
     }
     // Verificar que el archivo existe (signed URL)
