@@ -49,6 +49,7 @@
     instruccion: '',
     loadingTimer: null,
     loadingStartTs: 0,
+    skeletonFadeTimer: null,    // fix HIGH: cancelable para evitar bug post-stop
     wasHiddenDuringJob: false,  // true si el user minimizo/cambio pestana durante el job
     originalTitle: null,        // titulo de la pestana antes del flash
     currentJobId: null,
@@ -515,6 +516,10 @@
   // ============================================================
   async function onGenerate() {
     if (!canGenerate()) return;
+    // Fix HIGH: setear el flag SINCRONICAMENTE antes de cualquier await
+    // para bloquear doble-click rapido (el await del NotifyPermission o uploadInput
+    // dejaba ventana de race donde un segundo click pasaba el guard de canGenerate).
+    state.isGenerating = true;
     // Reset flag de visibility para este job + pedir permiso de notificaciones (user gesture).
     state.wasHiddenDuringJob = false;
     requestNotifyPermission();
@@ -571,6 +576,13 @@
       setGeneratingUi(false);
       teardownJobListeners();
       state.currentJobId = null;
+      // Fix MEDIUM: si el titulo quedo en "Lista!" por un error en renderResult
+      // posterior al notify, restaurarlo aca. notifyJobDone() solo se llama en
+      // success path, pero defensa en profundidad por si algo cambia.
+      if (state.originalTitle) {
+        try { document.title = state.originalTitle; } catch (_) {}
+        state.originalTitle = null;
+      }
       // refrescar saldo cuando NO es modo test
       if (state.testMode === false) {
         loadBalance();
@@ -596,14 +608,21 @@
   }
 
   function setSkeletonText(text) {
-    // Fade out → cambiar texto → fade in (visualmente suave)
+    // Fade out → cambiar texto → fade in (visualmente suave).
+    // Fix HIGH: cancela el timeout previo para que el callback no se ejecute
+    // después de stopLoadingAnimation (sobreescribía textos de fases siguientes).
     if (!dom.skeletonText) return;
+    if (state.skeletonFadeTimer) {
+      clearTimeout(state.skeletonFadeTimer);
+      state.skeletonFadeTimer = null;
+    }
     const status = dom.skeletonText.parentElement;
     if (!status) { dom.skeletonText.textContent = text; return; }
     status.classList.add('is-fading');
-    setTimeout(() => {
+    state.skeletonFadeTimer = setTimeout(() => {
       dom.skeletonText.textContent = text;
       status.classList.remove('is-fading');
+      state.skeletonFadeTimer = null;
     }, 200);
   }
 
@@ -645,6 +664,12 @@
     if (state.loadingTimer) {
       clearInterval(state.loadingTimer);
       state.loadingTimer = null;
+    }
+    // Fix HIGH: cancelar el fade pendiente para que no escriba sobre el texto
+    // de "Descargando resultado..." o el resultado final.
+    if (state.skeletonFadeTimer) {
+      clearTimeout(state.skeletonFadeTimer);
+      state.skeletonFadeTimer = null;
     }
     if (dom.skeletonBar) dom.skeletonBar.style.width = '100%';
     if (dom.skeletonProgress) dom.skeletonProgress.hidden = true;

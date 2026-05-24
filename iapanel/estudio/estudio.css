@@ -605,17 +605,6 @@ a:hover { text-decoration: underline; }
   color: var(--white-60);
   line-height: 1.45;
 }
-.level-card__speed {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--cyan-soft);
-}
-.level-card__speed svg { color: var(--cyan); flex-shrink: 0; }
 
 /* ---------- CTA ---------- */
 .cta-zone {
