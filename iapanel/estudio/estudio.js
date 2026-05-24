@@ -68,6 +68,7 @@
     dom.btnChangeImage = $('btn-change-image');
     dom.resultActions = $('result-actions');
     dom.btnDownload = $('btn-download');
+    dom.btnViewUrl = $('btn-view-url');
     dom.btnEditOther = $('btn-edit-other');
     dom.quickButtons = Array.from(document.querySelectorAll('.quick-chip'));
     dom.instruccion = $('instruccion');
@@ -710,8 +711,40 @@
     dom.previewSkeleton.hidden = true;
     dom.previewEmpty.hidden = true;
     dom.resultActions.hidden = false;
-    dom.btnDownload.href = blobUrl;
-    dom.btnDownload.setAttribute('download', 'aimma-' + Date.now() + '.jpg');
+
+    // Boton "Ver URL": abre signed URL en pestana nueva (sirve para compartir / inspeccionar)
+    if (dom.btnViewUrl) dom.btnViewUrl.href = blobUrl;
+
+    // Boton "Descargar .jpg": fuerza download del archivo (sin abrir pestana).
+    // No se puede confiar en attr 'download' de <a> porque la signed URL es cross-origin
+    // (supabase.co vs aimma.com.co) -> el browser lo ignora. Hacemos download via Blob.
+    state.outputPath = path;
+    if (dom.btnDownload) {
+      dom.btnDownload.onclick = async (ev) => {
+        ev.preventDefault();
+        const original = dom.btnDownload.innerHTML;
+        dom.btnDownload.disabled = true;
+        dom.btnDownload.textContent = 'Descargando...';
+        try {
+          const { data, error } = await supabase.storage.from(BUCKET_OUT).download(path);
+          if (error || !data) throw error || new Error('sin_blob');
+          const dlUrl = URL.createObjectURL(data);
+          const a = document.createElement('a');
+          a.href = dlUrl;
+          a.download = 'aimma-contenido-ia-' + Date.now() + '.jpg';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(dlUrl), 1000);
+        } catch (e) {
+          console.warn('[download] fallo', e);
+          toast('No pudimos descargar. Probá "Ver URL" y guardá manual.', 'error');
+        } finally {
+          dom.btnDownload.disabled = false;
+          dom.btnDownload.innerHTML = original;
+        }
+      };
+    }
     toast('Imagen generada con exito.', 'success');
   }
 

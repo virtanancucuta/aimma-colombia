@@ -121,11 +121,17 @@
               <img id="preview-output" alt="Imagen generada por IA" hidden />
             </div>
             <div class="preview-card__actions" id="result-actions" hidden>
-              <a href="#" id="btn-download" class="btn btn-ghost" download="aimma-resultado.jpg">
+              <button type="button" id="btn-download" class="btn btn-ghost">
                 <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                   <path d="M12 4V14M12 14L8 10M12 14L16 10M5 18H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                 </svg>
-                Descargar
+                Descargar .jpg
+              </button>
+              <a href="#" id="btn-view-url" class="btn btn-ghost" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path d="M14 4h6v6M20 4l-9 9M10 6H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                </svg>
+                Ver URL
               </a>
               <button type="button" id="btn-edit-other" class="btn btn-ghost">Editar otra</button>
             </div>
@@ -266,6 +272,6 @@
 
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="/supabase-config.v2.js?v=2"></script>
-  <script defer src="estudio.js?v=4"></script>
+  <script defer src="estudio.js?v=5"></script>
 </body>
 </html>
