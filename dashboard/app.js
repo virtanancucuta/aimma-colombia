@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-21.1-gastos-filtro-filas-totales';
+const APP_VERSION = '2026-05-25.1-ventas-pdf-tabular-maraldo';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -616,6 +616,19 @@ async function parsePDF(file, category) {
     return await parseInventoryPDF(pdf, file.name);
   }
 
+  // Fix 2026-05-25: para PDFs de VENTAS, intentar PRIMERO el parser table-aware
+  // (reportes POS Maraldo y similares con CODIGO/DESCRIPCION/CANTIDAD/TOTAL).
+  // Si NO es tabular (factura individual), cae al parsePDFText preservando
+  // el comportamiento original. Robustez aditiva, no restrictiva.
+  if (category === 'ventas') {
+    try {
+      const rows = await parseSalesReportPDF(pdf, file.name);
+      if (rows && rows.length > 0) return rows;
+    } catch (e) {
+      console.warn('[parsePDF] sales report parser fallback to factura mode:', e && e.message);
+    }
+  }
+
   let text = '';
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -763,6 +776,149 @@ async function parseInventoryPDF(pdf, filename) {
   if (mapped.length === 0) {
     throw new Error('PDF leído pero no se extrajeron productos con código. Súbelo en Excel.');
   }
+
+  return mapped;
+}
+
+// Parsea un PDF que sea REPORTE DE VENTAS tabular (POS Maraldo y similares)
+// con header CODIGO/DESCRIPCION/CANTIDAD/VALOR/TOTAL en cada pagina. Misma
+// estrategia que parseInventoryPDF: extraer items con coordenadas (x, y, page),
+// agrupar por Y, detectar headers, mapear por posicion (numCols match) o
+// por proximidad X (fallback).
+//
+// IMPORTANTE: devuelve [] si NO detecta tabla (headerIdx === -1 o 0 mapped),
+// para que el caller (parsePDF) caiga limpiamente al parsePDFText (modo
+// factura individual). NO tira excepcion para no romper el flujo original.
+async function parseSalesReportPDF(pdf, filename) {
+  const allItems = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    content.items.forEach(item => {
+      const text = (item.str || '').trim();
+      if (!text) return;
+      allItems.push({
+        text,
+        x: Math.round(item.transform[4]),
+        y: Math.round(item.transform[5]),
+        page: i
+      });
+    });
+  }
+
+  if (allItems.length === 0) return [];
+
+  const yTolerance = 3;
+  const rowsRaw = [];
+  for (const item of allItems) {
+    const row = rowsRaw.find(r => r[0].page === item.page && Math.abs(r[0].y - item.y) <= yTolerance);
+    if (row) row.push(item);
+    else rowsRaw.push([item]);
+  }
+  rowsRaw.sort((a, b) => {
+    if (a[0].page !== b[0].page) return a[0].page - b[0].page;
+    return b[0].y - a[0].y;
+  });
+  rowsRaw.forEach(row => row.sort((a, b) => a.x - b.x));
+
+  // Detectar fila de headers — UNA sola fila con AL MENOS 4 columnas estandar
+  // (codigo + descripcion + cantidad + total + valor/precio o unidad).
+  // Threshold 4 (no 3) para evitar falsos positivos en filas de filtros como
+  // "Sucursal:... Vendedor Ref:..." (que tienen 2 partial-matches y romperian
+  // la deteccion). Reportes POS tabulares siempre tienen >=4 columnas reales.
+  const allKeywords = [];
+  Object.values(COL_MAP.ventas).forEach(arr => allKeywords.push(...arr));
+
+  let headerIdx = -1;
+  let headerNames = [];
+  let headerItems = [];
+  for (let i = 0; i < Math.min(25, rowsRaw.length); i++) {
+    const row = rowsRaw[i];
+    if (row.length < 4) continue;
+    const matches = row.filter(item => {
+      const norm = normalizeKey(item.text);
+      if (!norm) return false;
+      return allKeywords.some(k => norm === k || norm.includes(k));
+    });
+    // Mayoria de celdas deben ser keywords (50%+) — evita falsos positivos
+    // donde una fila de filtros tiene 3-4 matches por partial pero la mayoria
+    // de la fila es texto normal.
+    if (matches.length >= 4 && matches.length / row.length >= 0.5) {
+      headerIdx = i;
+      headerNames = row.map(r => r.text.trim());
+      headerItems = row.map(r => ({ name: r.text.trim(), x: r.x }));
+      break;
+    }
+  }
+
+  if (headerIdx === -1) return []; // No es tabular -> fallback parsePDFText
+  const numCols = headerNames.length;
+
+  const items = [];
+  rowsRaw.forEach((row, idx) => {
+    if (idx <= headerIdx) return;
+
+    // Skip re-headers en paginas siguientes
+    const rowKeywords = row.filter(item => {
+      const norm = normalizeKey(item.text);
+      return allKeywords.some(k => norm === k);
+    });
+    if (rowKeywords.length >= 3) return;
+
+    // Skip subheaders, metadata del reporte y fila final TOTAL VENTA DE ARTICULOS
+    const rowText = row.map(r => r.text).join(' ').trim();
+    // Headers repetidos por pagina (POS Maraldo: "MARALDO LAURELES 2026 PAG: N", "Fecha: ...", etc)
+    if (/^[A-Z][A-Z\s]{4,}\s+\d{4}\s+PAG:/i.test(rowText)) return; // "EMPRESA NOMBRE YYYY PAG:..."
+    if (/^Fecha:\s*\d/i.test(rowText)) return;
+    if (/^PAG:/i.test(rowText)) return;
+    if (/^VENTA\s+TOTAL\s+DE\s+ARTICULOS$|^VALOR\s+PROM/i.test(rowText)) return;
+    if (/^(Sucursal|Bodega|Zonas|Vendedor|Cliente|Usuario|[ÁA]rea|Linea|Clasificaci[oó]n|Centro\s+de\s+Costo|Fechas|Despachar):/i.test(rowText)) return;
+    // Fila final "TOTAL VENTA DE ARTICULOS 3,758.00 213,138,224.88" o subtotales por grupo
+    if (/^TOTAL\s+VENTA\s+DE\s+ARTICULOS|^TOTAL(ES)?\s+(GENERAL|INFORME)/i.test(rowText)) return;
+    // Primera celda empieza con TOTAL (subtotales por dia/grupo)
+    if (row[0] && /^TOTAL(ES)?\b/i.test(row[0].text.trim())) return;
+    // Re-header columna repetido en cada pagina (primera celda = "CODIGO" exact)
+    if (row[0] && /^CODIGO$/i.test(row[0].text.trim())) return;
+
+    let obj = null;
+
+    if (row.length === numCols) {
+      // Mapeo por POSICION: 1 a 1 con los headers
+      obj = {};
+      headerNames.forEach((h, i) => { obj[h] = row[i].text.trim(); });
+    } else if (row.length > 1 && row.length <= numCols + 2) {
+      // Fallback: mapeo por proximidad X (caso fila con celdas mergeadas, ej
+      // producto sin UNIDAD, descripcion multi-palabra que ocupa varios items)
+      obj = {};
+      const sortedHeaders = [...headerItems].sort((a, b) => a.x - b.x);
+      const boundaries = [];
+      for (let k = 0; k < sortedHeaders.length - 1; k++) {
+        boundaries.push((sortedHeaders[k].x + sortedHeaders[k + 1].x) / 2);
+      }
+      row.forEach(item => {
+        let colIdx = sortedHeaders.length - 1;
+        for (let k = 0; k < boundaries.length; k++) {
+          if (item.x < boundaries[k]) { colIdx = k; break; }
+        }
+        const key = sortedHeaders[colIdx].name;
+        obj[key] = obj[key] ? `${obj[key]} ${item.text}` : item.text;
+      });
+    } else {
+      return; // fila rara, descartar
+    }
+
+    items.push(obj);
+  });
+
+  // Mapear a estructura ventas usando mapVentaRow existente (mismo flujo que Excel).
+  // Filtro: requerir codigo + dato MONETARIO no-cero (subtotal o total).
+  // No usar cantidad: mapVentaRow tiene default `cantidad=1` que dispara falsos
+  // positivos en filas multi-linea donde solo aparece "CODIGO UND" sin monto
+  // (el monto real se atribuye a otra fila). Devoluciones (sub<0 o total<0)
+  // siguen pasando porque !=0 es true para negativos.
+  const mapped = items
+    .map(r => ({ ...mapVentaRow(r), archivo: filename }))
+    .filter(r => r.codigo && (r.subtotal !== 0 || r.total !== 0));
 
   return mapped;
 }
