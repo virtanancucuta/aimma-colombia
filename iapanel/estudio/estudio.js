@@ -664,7 +664,22 @@
       // Fix C: persistir antes del wait para sobrevivir reload/refresh del browser.
       saveCurrentJobId(resp.job_id);
 
-      setSkeletonText('Generando imagen...');
+      // Fase 1 paso 4 (2026-05-25): mostrar posicion en cola + ETA real al user.
+      // Si hay cola significativa (>3 jobs antes o ETA > 90s), avisar honestamente.
+      const queuePos = (typeof resp.queue_position === 'number') ? resp.queue_position : 0;
+      const etaSec = (typeof resp.eta_seconds === 'number') ? resp.eta_seconds : 0;
+      const activeWorkers = (typeof resp.queue_active_workers === 'number') ? resp.queue_active_workers : 0;
+      if (queuePos >= 3 || etaSec >= 90) {
+        const minutes = Math.floor(etaSec / 60);
+        const seconds = etaSec % 60;
+        const etaLabel = minutes > 0
+          ? `~${minutes}:${String(seconds).padStart(2, '0')} min`
+          : `~${seconds}s`;
+        if (dom.skeletonEtaText) dom.skeletonEtaText.textContent = etaLabel;
+        setSkeletonText(`Tu imagen es la #${queuePos + 1} en cola · ${activeWorkers} generándose ahora`);
+      } else {
+        setSkeletonText('Generando imagen...');
+      }
 
       // 3) Esperar job
       const job = await waitForJob(resp.job_id);
