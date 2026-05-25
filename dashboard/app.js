@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-25.2-ventas-pdf-subtotal-fix';
+const APP_VERSION = '2026-05-25.3-ventas-pdf-escalado-periodo';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -926,7 +926,7 @@ async function parseSalesReportPDF(pdf, filename) {
   // positivos en filas multi-linea donde solo aparece "CODIGO UND" sin monto
   // (el monto real se atribuye a otra fila). Devoluciones (sub<0 o total<0)
   // siguen pasando porque !=0 es true para negativos.
-  const mapped = items
+  let mapped = items
     .map(r => {
       const v = mapVentaRow(r);
       // Fix 2026-05-25: reporte POS sin SUBTOTAL/BASE explicita -> subtotal=total
@@ -938,6 +938,23 @@ async function parseSalesReportPDF(pdf, filename) {
       return { ...v, archivo: filename };
     })
     .filter(r => r.codigo && (r.subtotal !== 0 || r.total !== 0));
+
+  // PROYECCION A 30 DIAS: identico a parseExcel linea 597-607.
+  // Sin esto, el dashboard divide el raw por factor en el bloque "informe"
+  // (mostrando $163M en vez de $213M para 23 dias) y el bloque "proyeccion"
+  // muestra el raw (interpretandolo como ya escalado). Resultado: valor real
+  // del PDF aparece en "proyeccion 30 dias" y valor reducido en "informe 23 dias".
+  if (state.ventasPeriodoFactor && Math.abs(state.ventasPeriodoFactor - 1) >= 0.001) {
+    const f = state.ventasPeriodoFactor;
+    mapped = mapped.map(v => ({
+      ...v,
+      cantidad: Math.round((v.cantidad || 0) * f),
+      subtotal: (v.subtotal || 0) * f,
+      iva: (v.iva || 0) * f,
+      total: (v.total || 0) * f
+      // precio (unitario) no se escala porque no depende del periodo
+    }));
+  }
 
   return mapped;
 }
