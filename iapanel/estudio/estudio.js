@@ -16,10 +16,10 @@
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   const POLL_INTERVAL_MS = 3000;
   const JOB_TIMEOUT_MS = 240000; // 4 min (cubre cola + procesamiento)
-  // Selector decorativo. KIE.ai solo expone 'nano-banana-pro' (Gemini 3.0 Pro Image)
-  // y siempre genera a 2K. Ambos radios cuestan 1 token y se envia 'nano-banana-pro'.
-  const MODEL_COST = { 'nano-banana': 1, 'nano-banana-pro': 1 };
-  const MODEL_REAL = 'nano-banana-pro';
+  // 2026-05-25: solo 'nano-banana' (Gemini 2.5 Flash via KIE slug google/nano-banana).
+  // Pro desactivado por costos. 1 token por imagen.
+  const MODEL_COST = { 'nano-banana': 1 };
+  const MODEL_REAL = 'nano-banana';
   // Tiempo estimado del job para alimentar la barra del UX loading.
   // Mediana empirica observada: 30-90 segundos. ETA conservador = 60s.
   const JOB_ETA_MS = 60000;
@@ -45,7 +45,7 @@
     selectedFile: null,
     inputPath: null,          // path inside studio-inputs once uploaded
     quickAction: null,        // 'quitar_fondo' | 'fondo_estudio' | ... | null
-    modelo: 'nano-banana',    // radio decorativo; siempre se envia MODEL_REAL al worker
+    modelo: 'nano-banana',    // unico modelo activo (Pro deshabilitado 2026-05-25)
     instruccion: '',
     loadingTimer: null,
     loadingStartTs: 0,
