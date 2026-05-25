@@ -15,15 +15,21 @@
   const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   const POLL_INTERVAL_MS = 3000;
-  const JOB_TIMEOUT_MS = 240000; // 4 min (cubre cola + procesamiento)
-  // 2026-05-25: solo 'nano-banana' (Gemini 2.5 Flash via KIE slug google/nano-banana).
-  // Pro desactivado por costos. 1 token por imagen.
+  // Fix B 2026-05-25: 4 min era muy corto; KIE outliers tardan hasta 9-10 min.
+  // 12 min cubre el peor caso observado + margen.
+  const JOB_TIMEOUT_MS = 720000; // 12 min (era 4 min)
+  // 2026-05-25: solo 'nano-banana' (mapeado a seedream/4.5-edit en worker v11).
+  // 1 token por imagen.
   const MODEL_COST = { 'nano-banana': 1 };
   const MODEL_REAL = 'nano-banana';
   // Tiempo estimado del job para alimentar la barra del UX loading.
   // Mediana empirica observada: 30-90 segundos. ETA conservador = 60s.
   const JOB_ETA_MS = 60000;
   const JOB_ETA_LABEL = '~1 minuto';
+  // Fix D 2026-05-25: tras este umbral el job se considera "tardando", el
+  // mensaje cambia para no quedar "Casi listo..." mintiendo indefinidamente.
+  const LATE_MESSAGE_AT_MS = 90000; // 90 segundos
+  const LATE_MESSAGE_TEXT = 'Está tomando un poco más de lo habitual, ya casi termina...';
 
   // Mensajes que rotan en el loading. Cada uno se muestra a partir de su pct.
   const LOADING_MESSAGES = [
@@ -34,6 +40,10 @@
     { pct: 82, text: 'Optimizando colores...' },
     { pct: 94, text: 'Casi listo...' },
   ];
+
+  // Fix C 2026-05-25: namespace por user.id para resucitar polling tras
+  // recargar la pagina (mobile back, refresh) mientras un job sigue en cola.
+  const CURRENT_JOB_KEY_PREFIX = 'aimma_estudio_current_job_v1_';
 
   // ============================================================
   // State
@@ -184,6 +194,9 @@
     // Restaurar ultimo resultado si lo hay (sirve mucho en mobile: si el user vuelve atras
     // tras abrir 'Ver URL' en pestana nueva, el editor restaura la imagen final).
     restoreLastResult().catch(e => console.warn('[restore] error', e));
+    // Fix C 2026-05-25: si habia un job en curso cuando el user recargo/cerro,
+    // reanudar polling y mostrar la imagen cuando termine.
+    resumeIfPendingJob().catch(e => console.warn('[resume] error', e));
   }
 
   // Fix #12 auditoria: namespaced por user.id para que en dispositivos compartidos
@@ -203,6 +216,89 @@
         jobId, outputPath, ts: Date.now()
       }));
     } catch (_) {}
+  }
+
+  // Fix C 2026-05-25: persistir el job_id activo desde el momento del enqueue
+  // (no esperar al done). Si el user recarga, navega atras, o cierra y vuelve,
+  // resumeIfPendingJob() en init() lo recoge y reanuda polling sin perder el resultado.
+  function getCurrentJobKey() {
+    if (!state.user || !state.user.id) return null;
+    return CURRENT_JOB_KEY_PREFIX + state.user.id;
+  }
+  function saveCurrentJobId(jobId) {
+    const key = getCurrentJobKey();
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify({ jobId, ts: Date.now() }));
+    } catch (_) {}
+  }
+  function clearCurrentJobId() {
+    const key = getCurrentJobKey();
+    if (!key) return;
+    try { localStorage.removeItem(key); } catch (_) {}
+  }
+  async function resumeIfPendingJob() {
+    const key = getCurrentJobKey();
+    if (!key) return;
+    let entry;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      entry = JSON.parse(raw);
+    } catch (_) { return; }
+    if (!entry || !entry.jobId) return;
+    // Expira a las 30 min — mas que JOB_TIMEOUT_MS (12 min) por margen.
+    if (Date.now() - (entry.ts || 0) > 1800000) {
+      clearCurrentJobId();
+      return;
+    }
+    // Ver estado actual del job en BD
+    let row;
+    try {
+      const { data } = await supabase
+        .from('image_jobs')
+        .select('id, estado, output_url, error, finalizado_at')
+        .eq('id', entry.jobId)
+        .maybeSingle();
+      row = data;
+    } catch (_) { clearCurrentJobId(); return; }
+    if (!row) { clearCurrentJobId(); return; }
+
+    if (row.estado === 'done') {
+      // El job termino mientras el user no estaba — renderizar.
+      try { await renderResult(row); } catch (e) { console.warn('[resume] renderResult fail', e); }
+      clearCurrentJobId();
+      return;
+    }
+    if (row.estado === 'failed' || row.estado === 'dead_letter') {
+      // No mostrar modal de error en init — el job es viejo, ya el user vio el flujo original.
+      clearCurrentJobId();
+      return;
+    }
+    // estado queued o processing: reanudar UI loading + polling
+    state.currentJobId = entry.jobId;
+    state.isGenerating = true;
+    state.wasHiddenDuringJob = true; // probable que el user haya cambiado pestana
+    setGeneratingUi(true, 'Reanudando tu trabajo en curso...');
+    try {
+      const job = await waitForJob(entry.jobId);
+      if (job.estado === 'done') {
+        await renderResult(job);
+      } else {
+        openErrorModal(buildJobErrorMsg(job));
+        dom.previewSkeleton.hidden = true;
+        dom.previewEmpty.hidden = false;
+      }
+    } catch (err) {
+      openErrorModal((err && err.message) || 'Error inesperado.');
+      dom.previewSkeleton.hidden = true;
+      dom.previewEmpty.hidden = false;
+    } finally {
+      setGeneratingUi(false);
+      teardownJobListeners();
+      state.currentJobId = null;
+      clearCurrentJobId();
+    }
   }
 
   async function restoreLastResult() {
@@ -565,6 +661,8 @@
         renderBalance();
       }
       state.currentJobId = resp.job_id;
+      // Fix C: persistir antes del wait para sobrevivir reload/refresh del browser.
+      saveCurrentJobId(resp.job_id);
 
       setSkeletonText('Generando imagen...');
 
@@ -589,6 +687,8 @@
       setGeneratingUi(false);
       teardownJobListeners();
       state.currentJobId = null;
+      // Fix C: limpiar el job_id persistido — ya terminado, no hay que reanudar nada.
+      clearCurrentJobId();
       // Fix MEDIUM: si el titulo quedo en "Lista!" por un error en renderResult
       // posterior al notify, restaurarlo aca. notifyJobDone() solo se llama en
       // success path, pero defensa en profundidad por si algo cambia.
@@ -651,6 +751,8 @@
 
     let currentMsgIdx = -1;
 
+    let lateShown = false;
+
     const tick = () => {
       const elapsed = Date.now() - state.loadingStartTs;
       // pct = (elapsed/eta) * 95, cap a 95%. La barra NUNCA llega al 100% hasta que el job termina.
@@ -658,7 +760,17 @@
       if (pct > 95) pct = 95;
       if (dom.skeletonBar) dom.skeletonBar.style.width = pct.toFixed(1) + '%';
 
-      // Buscar el mensaje correspondiente
+      // Fix D: tras LATE_MESSAGE_AT_MS, mensaje honesto en vez de "Casi listo..." pegado.
+      if (elapsed >= LATE_MESSAGE_AT_MS) {
+        if (!lateShown) {
+          lateShown = true;
+          setSkeletonText(LATE_MESSAGE_TEXT);
+          if (dom.skeletonEtaText) dom.skeletonEtaText.textContent = 'puede tardar unos minutos';
+        }
+        return;
+      }
+
+      // Buscar el mensaje correspondiente (antes del umbral)
       let nextIdx = 0;
       for (let i = 0; i < LOADING_MESSAGES.length; i++) {
         if (pct >= LOADING_MESSAGES[i].pct) nextIdx = i;
@@ -931,9 +1043,24 @@
       poll();
       state.pollTimer = setInterval(poll, POLL_INTERVAL_MS);
 
-      // Timeout
-      state.jobTimeoutTimer = setTimeout(() => {
-        finishErr(new Error('La generacion esta tardando mas de lo normal. Volve a intentar en unos minutos.'));
+      // Timeout — Fix A: ultima poll antes de dar por perdido.
+      // Si KIE termino el job mientras corria el timer, renderizar OK en vez de mostrar error.
+      state.jobTimeoutTimer = setTimeout(async () => {
+        if (settled) return;
+        try {
+          const { data } = await supabase
+            .from('image_jobs')
+            .select('id, estado, output_url, error, finalizado_at')
+            .eq('id', jobId)
+            .maybeSingle();
+          if (data && isTerminal(data)) {
+            finishOk(data);
+            return;
+          }
+        } catch (e) {
+          console.warn('[timeout-last-poll] exception', e);
+        }
+        finishErr(new Error('La generación está tomando más tiempo del normal. Tu imagen sigue procesándose — vuelve en unos minutos y la encontrarás lista.'));
       }, JOB_TIMEOUT_MS);
     });
   }
