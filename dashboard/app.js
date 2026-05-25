@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-25.1-ventas-pdf-tabular-maraldo';
+const APP_VERSION = '2026-05-25.2-ventas-pdf-subtotal-fix';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -910,6 +910,16 @@ async function parseSalesReportPDF(pdf, filename) {
     items.push(obj);
   });
 
+  // Detectar si el PDF tiene columna SUBTOTAL/BASE explicita.
+  // Reportes POS retail Col (Maraldo) solo tienen CODIGO/DESC/UNIDAD/CANT/VALOR PROM/TOTAL,
+  // sin separar IVA por linea. mapVentaRow puede mapear erroneamente VALOR PROM.
+  // a 'subtotal' via partial-match 'valor' (keyword incluido en COL_MAP.ventas.subtotal),
+  // resultando en subtotal = precio promedio (no el total real).
+  // Si NO hay header subtotal/base explicito, forzamos subtotal = total.
+  // El dashboard luego separa IVA dividiendo /1.19 si toggle 'Facturo con IVA' ON.
+  const SUBTOTAL_HEADER_KEYS = ['subtotal', 'base', 'valorbase', 'baseimponible', 'totalsiniva', 'subt'];
+  const hasSubtotalHeader = headerNames.some(h => SUBTOTAL_HEADER_KEYS.includes(normalizeKey(h)));
+
   // Mapear a estructura ventas usando mapVentaRow existente (mismo flujo que Excel).
   // Filtro: requerir codigo + dato MONETARIO no-cero (subtotal o total).
   // No usar cantidad: mapVentaRow tiene default `cantidad=1` que dispara falsos
@@ -917,7 +927,16 @@ async function parseSalesReportPDF(pdf, filename) {
   // (el monto real se atribuye a otra fila). Devoluciones (sub<0 o total<0)
   // siguen pasando porque !=0 es true para negativos.
   const mapped = items
-    .map(r => ({ ...mapVentaRow(r), archivo: filename }))
+    .map(r => {
+      const v = mapVentaRow(r);
+      // Fix 2026-05-25: reporte POS sin SUBTOTAL/BASE explicita -> subtotal=total
+      // para no contaminar KPI "Ventas (base sin IVA)" con suma de precios promedio.
+      if (!hasSubtotalHeader && v.total) {
+        v.subtotal = v.total;
+        v.iva = 0;
+      }
+      return { ...v, archivo: filename };
+    })
     .filter(r => r.codigo && (r.subtotal !== 0 || r.total !== 0));
 
   return mapped;
