@@ -330,20 +330,6 @@
       const nombre = (profile?.nombre_completo || meta.full_name || meta.nombre_completo || meta.name || user.email || '').trim();
       userFirstName.textContent = (nombre.split(/\s+/)[0] || 'tú');
 
-      // Subtítulo de rol debajo del nombre (solo Jorge CEO / Isbelia Co-Founder)
-      const panelRole = document.getElementById('panelRole');
-      if (panelRole && profile) {
-        if (profile.rol === 'admin') {
-          panelRole.textContent = 'CEO · FOUNDER';
-          panelRole.removeAttribute('hidden');
-        } else if (profile.rol === 'cofounder') {
-          panelRole.textContent = 'CO-FOUNDER';
-          panelRole.removeAttribute('hidden');
-        } else {
-          panelRole.setAttribute('hidden', '');
-        }
-      }
-
       // Paralelizar queries (UI #6 fix)
       let acceso = { pro: false, razon: 'no_subscription' };
       let sus = null;
@@ -356,6 +342,24 @@
         sus = susRes.data;
       } catch (e) {
         console.warn('[panel] queries fallaron:', e);
+      }
+
+      // Subtitulo de rol debajo del nombre. Prioridad: admin > cofounder > cortesia VIP.
+      // cortesia_razon='vip_amigo_jorge' identifica a un VIP otorgado manualmente por Jorge.
+      const panelRole = document.getElementById('panelRole');
+      if (panelRole && profile) {
+        if (profile.rol === 'admin') {
+          panelRole.textContent = 'CEO · FOUNDER';
+          panelRole.removeAttribute('hidden');
+        } else if (profile.rol === 'cofounder') {
+          panelRole.textContent = 'CO-FOUNDER';
+          panelRole.removeAttribute('hidden');
+        } else if (acceso.razon === 'cortesia' && acceso.cortesia_razon === 'vip_amigo_jorge') {
+          panelRole.textContent = 'VIP · ERES AMIGO DE JORGE';
+          panelRole.removeAttribute('hidden');
+        } else {
+          panelRole.setAttribute('hidden', '');
+        }
       }
 
       function fmtFecha(iso) {
@@ -378,6 +382,8 @@
               badgeDashboard.outerHTML = '<span class="badge-pro-founder" id="badgeDashboard">CEO</span>';
             } else if (profile?.rol === 'cofounder') {
               badgeDashboard.outerHTML = '<span class="badge-pro-founder" id="badgeDashboard">CO-FOUNDER</span>';
+            } else if (acceso.cortesia_razon === 'vip_amigo_jorge') {
+              badgeDashboard.outerHTML = '<span class="badge-pro-founder" id="badgeDashboard">VIP</span>';
             } else {
               badgeDashboard.outerHTML = '<span class="badge-pro-cortesia" id="badgeDashboard">CORTESÍA</span>';
             }
@@ -420,6 +426,8 @@
                 badgeContenidoIA.outerHTML = '<span class="badge-pro-founder" id="badgeContenidoIA">CEO</span>';
               } else if (profile?.rol === 'cofounder') {
                 badgeContenidoIA.outerHTML = '<span class="badge-pro-founder" id="badgeContenidoIA">CO-FOUNDER</span>';
+              } else if (acceso.cortesia_razon === 'vip_amigo_jorge') {
+                badgeContenidoIA.outerHTML = '<span class="badge-pro-founder" id="badgeContenidoIA">VIP</span>';
               } else {
                 badgeContenidoIA.outerHTML = '<span class="badge-pro-cortesia" id="badgeContenidoIA">CORTESÍA</span>';
               }
@@ -482,7 +490,13 @@
       // Solo footer dinamico - gestion de suscripcion vive en /mi-cuenta.html
       function configurarSubscriptionBar() {
         if (acceso.razon === 'cortesia') {
-          planFooter.textContent = 'Plan actual: AIMMA PRO · Cortesía CEO';
+          if (acceso.cortesia_razon === 'vip_amigo_jorge') {
+            planFooter.textContent = 'Plan actual: AIMMA PRO · Cortesía VIP';
+          } else if (profile?.rol === 'admin' || profile?.rol === 'cofounder') {
+            planFooter.textContent = 'Plan actual: AIMMA PRO · Cortesía CEO';
+          } else {
+            planFooter.textContent = 'Plan actual: AIMMA PRO · Cortesía';
+          }
           return;
         }
         if (acceso.razon === 'trial_vigente') {
