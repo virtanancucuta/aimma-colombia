@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-27.3-fix-pdf-mapeo-sin-unidad';
+const APP_VERSION = '2026-05-27.4-fix-inventario-footer-fantasma';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -500,16 +500,28 @@ function esFilaTotalKubap(rawObj, parsed, category, rawRow) {
 
   // Filtro 3: anonymous total row — sin identificadores principales + monto alto.
   // Adaptado por category porque cada tipo tiene identificadores distintos:
-  //   ventas/inventario → codigo + descripcion
-  //   gastos            → proveedor + factura + concepto
+  //   ventas       → codigo + descripcion + subtotal/total
+  //   inventario   → codigo + nombre + costoUnitario/stockActual
+  //   gastos       → proveedor + factura + concepto + subtotal/total
+  //
+  // Fix 2026-05-27 (Maraldo COGS $953M fantasma): la rama 'else' anterior
+  // chequeaba parsed.subtotal/parsed.total que SON undefined para mapInventarioRow,
+  // asi que el filtro nunca se aplicaba a inventario. Footer R944 con
+  // (null,null,null,null,null,36728820,422455230) entraba como producto fantasma
+  // con codigo='' y costoUnitario=$36.7M, inflando el COGS.
   if (category === 'gastos') {
     if (!parsed.proveedor && !parsed.factura && !parsed.concepto
-        && (Math.abs(parsed.subtotal) > 1000 || Math.abs(parsed.total) > 1000)) {
+        && (Math.abs(parsed.subtotal || 0) > 1000 || Math.abs(parsed.total || 0) > 1000)) {
+      return true;
+    }
+  } else if (category === 'inventario') {
+    if (!parsed.codigo && !parsed.nombre
+        && (Math.abs(parsed.costoUnitario || 0) > 1000 || Math.abs(parsed.stockActual || 0) > 1000)) {
       return true;
     }
   } else {
     if (!parsed.codigo && !parsed.descripcion
-        && (Math.abs(parsed.subtotal) > 1000 || Math.abs(parsed.total) > 1000)) {
+        && (Math.abs(parsed.subtotal || 0) > 1000 || Math.abs(parsed.total || 0) > 1000)) {
       return true;
     }
   }
