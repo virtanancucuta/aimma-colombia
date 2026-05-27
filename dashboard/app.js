@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-27.2-fix-pdf-descripcion-multipalabra';
+const APP_VERSION = '2026-05-27.3-fix-pdf-mapeo-sin-unidad';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -893,11 +893,64 @@ async function parseSalesReportPDF(pdf, filename) {
     if (row[0] && /^TOTAL(ES)?\b/i.test(row[0].text.trim())) return;
     // Re-header columna repetido en cada pagina (primera celda = "CODIGO" exact)
     if (row[0] && /^CODIGO$/i.test(row[0].text.trim())) return;
+    // Fix 2026-05-27 (Maraldo VENTA ABRIL bug $132K extra): "Grupo:" no estaba
+    // en el regex de metadata superior, asi que filas tipo "Grupo: TODOS Fecha:..."
+    // se procesaban como producto. Agregamos cobertura defensiva.
+    if (/^Grupo:/i.test(rowText)) return;
 
     let obj = null;
 
-    if (row.length === numCols) {
-      // Mapeo por POSICION: 1 a 1 con los headers
+    // === MAPEO UNIDAD-AWARE (Fix 2026-05-27 $669K perdidos Maraldo) ===
+    // Cuando el PDF tiene columna UNIDAD, usar el token UND/PAR/BLS/KIT/CJA/etc
+    // como ancla para detectar donde empiezan las columnas posteriores
+    // (CANTIDAD, VALOR_VENTA, etc). Esto corrige 2 casos comunes:
+    //
+    // 1) Descripcion multi-palabra (ej "BL047007 ROSADO CUERO UND 2.00 ..."):
+    //    row.length = numCols pero "CUERO" cae en UNIDAD y desplaza todo.
+    //    Mapeo 1:1 posicional leeria 2.00 en VALOR_VENTA -> $2 en vez de $109,243.
+    //
+    // 2) Fila sin UND/PAR (ej "BLS1908 NEGRO 4.00 283,626.29 ..."): row.length
+    //    = numCols-1. Saltar la columna UNIDAD para que CANTIDAD/VALOR_VENTA
+    //    se mapeen correctamente.
+    const unidadHeaderIdx = headerNames.findIndex(h => /^UNIDAD$|^UND$|^UM$/i.test(h.trim()));
+    const TOKENS_UNIDAD_RE = /^(UND|PAR|BLS|KIT|CJA|BOL|PQT|PIE|LTS|MTS|BL|LIT|MT|UN)$/i;
+    const unidadRowIdx = row.findIndex(it => TOKENS_UNIDAD_RE.test(it.text.trim()));
+
+    if (row.length === numCols && unidadHeaderIdx >= 0 && unidadRowIdx === unidadHeaderIdx) {
+      // Caso ideal: UND/PAR esta exactamente donde el header dice UNIDAD -> mapeo 1:1
+      obj = {};
+      headerNames.forEach((h, i) => { obj[h] = row[i].text.trim(); });
+    } else if (unidadHeaderIdx >= 0 && unidadRowIdx > 0) {
+      // UND/PAR existe pero en posicion distinta a la esperada -> SHIFT
+      // Items entre [1, unidadRowIdx-1] son DESCRIPCION multi-palabra.
+      // Items desde unidadRowIdx+1 mapean a las columnas posteriores a UNIDAD.
+      obj = {};
+      obj[headerNames[0]] = row[0].text.trim(); // CODIGO
+      const descParts = [];
+      for (let i = 1; i < unidadRowIdx; i++) descParts.push(row[i].text.trim());
+      obj[headerNames[1]] = descParts.join(' '); // DESCRIPCION combinada
+      // Llenar columnas intermedias entre 1 y unidadHeaderIdx con '' (no aplica)
+      for (let k = 2; k < unidadHeaderIdx; k++) obj[headerNames[k]] = '';
+      obj[headerNames[unidadHeaderIdx]] = row[unidadRowIdx].text.trim();
+      let headerCursor = unidadHeaderIdx + 1;
+      for (let i = unidadRowIdx + 1; i < row.length && headerCursor < headerNames.length; i++) {
+        obj[headerNames[headerCursor]] = row[i].text.trim();
+        headerCursor++;
+      }
+    } else if (row.length === numCols - 1 && unidadHeaderIdx >= 0 && unidadRowIdx === -1) {
+      // No hay UND/PAR en la fila (POS lo omitio para este producto). Mapear
+      // posicional saltando la columna UNIDAD.
+      obj = {};
+      let rowIdx = 0;
+      headerNames.forEach((h, i) => {
+        if (i === unidadHeaderIdx) { obj[h] = ''; return; }
+        if (rowIdx < row.length) {
+          obj[h] = row[rowIdx].text.trim();
+          rowIdx++;
+        }
+      });
+    } else if (row.length === numCols) {
+      // PDF sin columna UNIDAD (otros formatos POS): mapeo 1:1 directo
       obj = {};
       headerNames.forEach((h, i) => { obj[h] = row[i].text.trim(); });
     } else if (row.length > 1 && row.length <= numCols * 2) {
