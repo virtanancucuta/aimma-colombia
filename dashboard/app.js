@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-27.1-fix-doble-conteo-total-venta-articulos';
+const APP_VERSION = '2026-05-27.2-fix-pdf-descripcion-multipalabra';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -900,9 +900,19 @@ async function parseSalesReportPDF(pdf, filename) {
       // Mapeo por POSICION: 1 a 1 con los headers
       obj = {};
       headerNames.forEach((h, i) => { obj[h] = row[i].text.trim(); });
-    } else if (row.length > 1 && row.length <= numCols + 2) {
+    } else if (row.length > 1 && row.length <= numCols * 2) {
       // Fallback: mapeo por proximidad X (caso fila con celdas mergeadas, ej
-      // producto sin UNIDAD, descripcion multi-palabra que ocupa varios items)
+      // producto sin UNIDAD, descripcion multi-palabra que ocupa varios items).
+      //
+      // Threshold ampliado 2026-05-27 de numCols+2 a numCols*2 para soportar
+      // descripciones con muchas palabras. Bug reportado: VENTA ABRIL.pdf de
+      // Maraldo Laureles tenia items tipo "BODY AMANDA CAFE COPA 34" (5 palabras
+      // de descripcion -> row.length=12 con numCols=8). Con threshold viejo
+      // numCols+2=10 estas filas se descartaban como "fila rara" -> dashboard
+      // perdia $669,806 vs ground truth POS de $255,433,091.
+      // Los filtros previos (lineas 880-895) ya excluyen metadata/headers/
+      // totales/subtotales antes de llegar aqui, asi que ampliar el threshold
+      // no introduce falsos positivos.
       obj = {};
       const sortedHeaders = [...headerItems].sort((a, b) => a.x - b.x);
       const boundaries = [];
