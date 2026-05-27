@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-27.4-fix-inventario-footer-fantasma';
+const APP_VERSION = '2026-05-27.5-fix-proximidad-x-colisiones';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -932,23 +932,66 @@ async function parseSalesReportPDF(pdf, filename) {
       // Caso ideal: UND/PAR esta exactamente donde el header dice UNIDAD -> mapeo 1:1
       obj = {};
       headerNames.forEach((h, i) => { obj[h] = row[i].text.trim(); });
-    } else if (unidadHeaderIdx >= 0 && unidadRowIdx > 0) {
-      // UND/PAR existe pero en posicion distinta a la esperada -> SHIFT
-      // Items entre [1, unidadRowIdx-1] son DESCRIPCION multi-palabra.
-      // Items desde unidadRowIdx+1 mapean a las columnas posteriores a UNIDAD.
+    } else if (unidadHeaderIdx >= 0 && unidadRowIdx >= 0) {
+      // UND/PAR identificado en la fila. Mapeo robusto en 2 partes:
+      //  - Lado IZQUIERDO (CODIGO + DESCRIPCION): combinar items [1, unidadRowIdx-1] como DESCRIPCION
+      //  - Lado DERECHO (post-UNIDAD): mapear cada item por PROXIMIDAD X al header correspondiente
+      //
+      // Fix 2026-05-27 (Maraldo COGS bug): productos del PDF Maraldo omiten
+      // columnas distintas segun el caso (PLTF948001 omite CANTIDAD, 0001
+      // DOMICILIOS omite COSTO). No hay heuristica universal de "que columna
+      // falta", pero los X de los items siguen aproximadamente las posiciones
+      // de los headers. Usar proximidad X resuelve ambos casos correctamente.
       obj = {};
       obj[headerNames[0]] = row[0].text.trim(); // CODIGO
       const descParts = [];
       for (let i = 1; i < unidadRowIdx; i++) descParts.push(row[i].text.trim());
-      obj[headerNames[1]] = descParts.join(' '); // DESCRIPCION combinada
-      // Llenar columnas intermedias entre 1 y unidadHeaderIdx con '' (no aplica)
+      obj[headerNames[1]] = descParts.join(' ');
       for (let k = 2; k < unidadHeaderIdx; k++) obj[headerNames[k]] = '';
       obj[headerNames[unidadHeaderIdx]] = row[unidadRowIdx].text.trim();
-      let headerCursor = unidadHeaderIdx + 1;
-      for (let i = unidadRowIdx + 1; i < row.length && headerCursor < headerNames.length; i++) {
-        obj[headerNames[headerCursor]] = row[i].text.trim();
-        headerCursor++;
+      // Lado derecho: mapear cada item por proximidad X + resolver colisiones
+      // Cuando 2+ items caen en la misma columna (caso DOMICILIOS donde "3.00"
+      // y "49,000.00" ambos caen en VALOR_VENTA por estar cerca del boundary),
+      // mover el item con MENOR X a la columna anterior si esta vacia.
+      const headersDerechaItems = headerItems.slice(unidadHeaderIdx + 1);
+      headersDerechaItems.forEach(h => { obj[h.name] = ''; });
+      const itemsPorCol = new Map(); // colIdx -> [item, item, ...]
+      for (let i = unidadRowIdx + 1; i < row.length; i++) {
+        const item = row[i];
+        let bestIdx = 0;
+        let bestDist = Math.abs(item.x - headersDerechaItems[0].x);
+        for (let k = 1; k < headersDerechaItems.length; k++) {
+          const dist = Math.abs(item.x - headersDerechaItems[k].x);
+          if (dist < bestDist) { bestIdx = k; bestDist = dist; }
+        }
+        if (!itemsPorCol.has(bestIdx)) itemsPorCol.set(bestIdx, []);
+        itemsPorCol.get(bestIdx).push(item);
       }
+      // Resolver colisiones: si col k tiene 2+ items y col k-1 esta vacia,
+      // mover el item con MENOR X (mas a la izquierda) a k-1. Repetir si necesario.
+      let resolved = false;
+      let iterations = 0;
+      while (!resolved && iterations < 5) {
+        resolved = true;
+        const cols = Array.from(itemsPorCol.keys()).sort((a, b) => a - b);
+        for (const col of cols) {
+          const its = itemsPorCol.get(col);
+          if (its.length > 1 && col > 0 && !itemsPorCol.has(col - 1)) {
+            its.sort((a, b) => a.x - b.x);
+            const moved = its.shift();
+            itemsPorCol.set(col - 1, [moved]);
+            resolved = false;
+            break;
+          }
+        }
+        iterations++;
+      }
+      // Asignar a obj
+      itemsPorCol.forEach((its, idx) => {
+        its.sort((a, b) => a.x - b.x);
+        const key = headersDerechaItems[idx].name;
+        obj[key] = its.map(it => it.text.trim()).join(' ');
+      });
     } else if (row.length === numCols - 1 && unidadHeaderIdx >= 0 && unidadRowIdx === -1) {
       // No hay UND/PAR en la fila (POS lo omitio para este producto). Mapear
       // posicional saltando la columna UNIDAD.
