@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-25.3-ventas-pdf-escalado-periodo';
+const APP_VERSION = '2026-05-27.1-fix-doble-conteo-total-venta-articulos';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -454,8 +454,11 @@ function resolveColumnOffsets(headers, dataRows) {
 // Recibe rawObj (mapeado por headers), parsed (post-mapper), category, y
 // rawRow (array completo de cells del raw, no solo las mapeadas).
 function esFilaTotalKubap(rawObj, parsed, category, rawRow) {
-  // Filtro 1: header repetido (KUBAP imprime headers cada N filas)
-  const valoresHeaderRepetido = ['CODIGO','PRODUCTO','TOTAL INFORME','TOTAL INFORME :','NOMBRE DEL PRODUCTO','CANTIDAD','SUBTOTAL','I.V.A.','REFERENCIA','FACTURA','NOMBRE DEL TERCERO'];
+  // Filtro 1: header repetido (KUBAP imprime headers cada N filas) + footers de
+  // reportes de ventas POS (Maraldo Laureles imprime "TOTAL VENTA DE ARTICULOS"
+  // al final del Excel, otros POS imprimen variantes).
+  const valoresHeaderRepetido = ['CODIGO','PRODUCTO','TOTAL INFORME','TOTAL INFORME :','NOMBRE DEL PRODUCTO','CANTIDAD','SUBTOTAL','I.V.A.','REFERENCIA','FACTURA','NOMBRE DEL TERCERO',
+    'TOTAL VENTA DE ARTICULOS','TOTAL VENTA DE ARTÍCULOS','TOTAL VENTAS','TOTAL VENTA','TOTAL DE VENTAS','GRAN TOTAL','GRAN TOTAL VENTAS'];
   const codeUpper = String(parsed.codigo || '').trim().toUpperCase();
   const descUpper = String(parsed.descripcion || '').trim().toUpperCase();
   const provUpper = String(parsed.proveedor || '').trim().toUpperCase();
@@ -479,6 +482,17 @@ function esFilaTotalKubap(rawObj, parsed, category, rawRow) {
     if (!upper) continue;
     // "TOTAL INFORME" / "TOTAL GENERAL" — siempre footers, sin falso positivo posible.
     if (upper.includes('TOTAL INFORME') || upper.includes('TOTAL GENERAL')) return true;
+    // "TOTAL VENTA DE ARTICULOS" / "GRAN TOTAL VENTAS" — footers de POS Maraldo
+    // y reportes de ventas tabulares en general. Siempre footers, sin falso
+    // positivo posible (productos legitimos no contienen estas frases en desc).
+    if (upper.includes('TOTAL VENTA DE ARTICULOS') || upper.includes('TOTAL VENTA DE ARTÍCULOS')) return true;
+    if (upper.includes('GRAN TOTAL VENTA') || upper.includes('TOTAL DE VENTAS')) return true;
+    // Patron generico para reportes de ventas: fila SIN codigo y desc empieza
+    // por "TOTAL " y tiene monto > 0 -> casi seguro footer. Solo aplica a
+    // ventas/inventario (gastos usa cross-check con tieneDatosReales).
+    if (category !== 'gastos' && !parsed.codigo
+        && /^TOTAL\s+/.test(upper)
+        && (Math.abs(parsed.subtotal || 0) > 0 || Math.abs(parsed.total || 0) > 0)) return true;
     // "TOTAL 901579796 - VIKATS S.A.S" (TOTAL + NIT 6+ digits) — solo descartar
     // si la fila NO tiene factura+monto reales (cross-check con tieneDatosReales).
     if (!tieneDatosReales && /^TOTAL\s+\d{6,}/.test(upper)) return true;
