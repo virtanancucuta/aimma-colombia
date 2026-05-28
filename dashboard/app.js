@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-27.5-fix-proximidad-x-colisiones';
+const APP_VERSION = '2026-05-28.1-hardening-multihoja-warnings-filtros';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -315,7 +315,13 @@ function findCol(row, options) {
 
 function mapVentaRow(row) {
   const subtotal = parseNumber(findCol(row, COL_MAP.ventas.subtotal));
-  const cantidad = parseNumber(findCol(row, COL_MAP.ventas.cantidad)) || 1;
+  // Fix #5 2026-05-28: distinguir "celda ausente" (default 1 unidad) vs "celda con
+  // 0 explicito" (devolucion a cantidad cero, mantener 0 para no inflar COGS).
+  const rawCantidad = findCol(row, COL_MAP.ventas.cantidad);
+  const cantidadParsed = parseNumber(rawCantidad);
+  const cantidad = (cantidadParsed === 0 && (rawCantidad === '' || rawCantidad === null || rawCantidad === undefined))
+    ? 1
+    : cantidadParsed;
   const precio = parseNumber(findCol(row, COL_MAP.ventas.precio));
   const iva = parseNumber(findCol(row, COL_MAP.ventas.iva));
   const total = parseNumber(findCol(row, COL_MAP.ventas.total));
@@ -509,18 +515,22 @@ function esFilaTotalKubap(rawObj, parsed, category, rawRow) {
   // asi que el filtro nunca se aplicaba a inventario. Footer R944 con
   // (null,null,null,null,null,36728820,422455230) entraba como producto fantasma
   // con codigo='' y costoUnitario=$36.7M, inflando el COGS.
+  // Fix #13 2026-05-28: codigo='0' (cero como string) es truthy en JS pero
+  // algunos POS lo exportan como default cuando no hay codigo real. Tratarlo
+  // como ausente para que no se cuele un footer/fantasma con codigo '0'.
+  const codigoVacio = !parsed.codigo || parsed.codigo === '0';
   if (category === 'gastos') {
     if (!parsed.proveedor && !parsed.factura && !parsed.concepto
         && (Math.abs(parsed.subtotal || 0) > 1000 || Math.abs(parsed.total || 0) > 1000)) {
       return true;
     }
   } else if (category === 'inventario') {
-    if (!parsed.codigo && !parsed.nombre
+    if (codigoVacio && !parsed.nombre
         && (Math.abs(parsed.costoUnitario || 0) > 1000 || Math.abs(parsed.stockActual || 0) > 1000)) {
       return true;
     }
   } else {
-    if (!parsed.codigo && !parsed.descripcion
+    if (codigoVacio && !parsed.descripcion
         && (Math.abs(parsed.subtotal || 0) > 1000 || Math.abs(parsed.total || 0) > 1000)) {
       return true;
     }
@@ -542,6 +552,22 @@ function esFilaTotalKubap(rawObj, parsed, category, rawRow) {
   // dash + nombre con letra (espacios obligatorios para distinguir de facturas
   // legitimas "1234567-001"). Cross-check con falta de datos reales.
   if (!tieneDatosReales && /^\d{6,}\s+-\s+[A-ZÁÉÍÓÚÑ]/.test(factUpper)) return true;
+
+  // Fix #9 2026-05-28: filtro plan de cuentas contable Maraldo (DATOS MARALDO.xlsx).
+  // Codigos tipo "00.", "01.01.", "01.01.12" con descripcion = nombre de grupo
+  // contable (SERVICIOS, INVENTARIO, GIRLS, GRUPO MAYOR) son agrupadores, no
+  // productos reales. Si la fila parece producto pero el codigo es plan de
+  // cuentas Y la descripcion es nombre de grupo conocido -> filtrar.
+  const PATRON_PLAN_CUENTAS = /^\d{1,3}(\.\d{1,3}){1,3}\.?$/;
+  const GRUPOS_CONTABLES_CONOCIDOS = new Set([
+    'SERVICIOS','INVENTARIO','MARALDO','GIRLS','DEPORTIVO','PLATAFORMA','TACON',
+    'PLANA','VALETA','MB','PANTALON','USA','COTIZA','INVENTARIO GENERAL',
+    'SIN GRUPO CONTABLE','ARTICULO UNICO','GRUPO MAYOR','GRUPO','SUBGRUPO',
+    'NOM. GRUPO CONTABLE','COD. GRUPO CONTABLE'
+  ]);
+  if (category !== 'gastos' && PATRON_PLAN_CUENTAS.test(codeUpper) && GRUPOS_CONTABLES_CONOCIDOS.has(descUpper)) {
+    return true;
+  }
 
   // Filtro 5 (solo gastos): filas de subtotal/total intercaladas. POS que agrupan
   // por dia o proveedor intercalan estas filas (ej "RESUMEN DE COMPRAS" de Maraldo:
@@ -582,6 +608,22 @@ async function parseExcel(file, category) {
     // probablemente este sheet es portada/resumen — saltar.
     const headersNoVacios = headers.filter(h => h && h.trim() !== '').length;
     if (headersNoVacios < 2) continue;
+
+    // Fix #1 2026-05-28: Excel multi-hoja con tipos mezclados. Si el libro tiene
+    // hoja INVENTARIO + hoja VENTAS y el cliente sube como "ventas", el parser
+    // antiguo iteraba TODAS y la hoja INVENTARIO contaminaba (caso DATA ABRIL
+    // CIERRE LAURELES: suma fantasma $573M). Skip hojas cuyos headers EXCLUSIVOS
+    // son del tipo opuesto al esperado.
+    const headerKeysHoja = headers.map(h => normalizeKey(h));
+    const EXCLUSIVE_INVENTARIO = ['existencias','existencia','vrparcial','costopromedio','stockactual','costoparcial','vrunitario'];
+    const EXCLUSIVE_VENTAS = ['valorventa','vrutilid','utilid','margen','cantidadvendida','rentabilidad','valorprom'];
+    const EXCLUSIVE_GASTOS = ['nombreproveedor','razonsocial','nombredelproveedor'];
+    const matchInv = headerKeysHoja.filter(h => h && EXCLUSIVE_INVENTARIO.some(k => h.includes(k))).length;
+    const matchVen = headerKeysHoja.filter(h => h && EXCLUSIVE_VENTAS.some(k => h.includes(k))).length;
+    const matchGas = headerKeysHoja.filter(h => h && EXCLUSIVE_GASTOS.some(k => h.includes(k))).length;
+    if (category === 'ventas' && matchInv >= 2 && matchVen === 0) continue;
+    if (category === 'inventario' && matchVen >= 2 && matchInv === 0) continue;
+    if (category === 'gastos' && (matchInv >= 2 || matchVen >= 2) && matchGas === 0) continue;
 
     // Detector de offset por columna (FIX KUBAP merged cells)
     const dataSlice = rows2D.slice(headerIdx + 1);
@@ -932,7 +974,11 @@ async function parseSalesReportPDF(pdf, filename) {
       // Caso ideal: UND/PAR esta exactamente donde el header dice UNIDAD -> mapeo 1:1
       obj = {};
       headerNames.forEach((h, i) => { obj[h] = row[i].text.trim(); });
-    } else if (unidadHeaderIdx >= 0 && unidadRowIdx >= 0) {
+    } else if (unidadHeaderIdx >= 0 && unidadRowIdx > 0) {
+      // Fix #6 2026-05-28: requerir unidadRowIdx > 0 (no >= 0). Si UND/PAR esta
+      // en posicion 0 (caso muy raro), row[0] se usaria como CODIGO Y UNIDAD a
+      // la vez, perdiendo el producto. Mejor caer al fallback de proximidad X.
+      //
       // UND/PAR identificado en la fila. Mapeo robusto en 2 partes:
       //  - Lado IZQUIERDO (CODIGO + DESCRIPCION): combinar items [1, unidadRowIdx-1] como DESCRIPCION
       //  - Lado DERECHO (post-UNIDAD): mapear cada item por PROXIMIDAD X al header correspondiente
@@ -987,10 +1033,19 @@ async function parseSalesReportPDF(pdf, filename) {
         iterations++;
       }
       // Asignar a obj
+      // Fix #7 2026-05-28: si tras el loop quedan 2+ items en misma columna
+      // (caso que el resolver de colisiones no logro deshacer en 5 iter),
+      // preferir el item con MAYOR X (es el dato monetario mas a la derecha
+      // de la columna). Concatenar daria un parseNumber bug (ej "3.00 49000"
+      // se parsea como 3.0 perdiendo el valor real).
       itemsPorCol.forEach((its, idx) => {
         its.sort((a, b) => a.x - b.x);
         const key = headersDerechaItems[idx].name;
-        obj[key] = its.map(it => it.text.trim()).join(' ');
+        if (its.length > 1) {
+          obj[key] = its[its.length - 1].text.trim();
+        } else {
+          obj[key] = its[0].text.trim();
+        }
       });
     } else if (row.length === numCols - 1 && unidadHeaderIdx >= 0 && unidadRowIdx === -1) {
       // No hay UND/PAR en la fila (POS lo omitio para este producto). Mapear
@@ -1826,6 +1881,24 @@ async function handleFiles(files, category) {
       meta.status = 'ok';
       meta.rows = rows.length;
       toast(`✓ ${file.name}: ${rows.length} ${category === 'inventario' ? 'productos' : 'registros'}`, 'success');
+      // Fix #2 2026-05-28: detectar reporte "por cliente" cuando >80% filas
+      // tienen codigo='' Y >80% tienen cantidad=1 default. Caso 2025 mayoristas.xlsx
+      // con headers "Cliente|Total Factura": pasa el parser pero no es por producto.
+      if (category === 'ventas' && rows.length >= 20) {
+        const sinCodigo = rows.filter(r => !r.codigo || r.codigo === '').length;
+        const cantUno = rows.filter(r => r.cantidad === 1).length;
+        if (sinCodigo / rows.length > 0.8 && cantUno / rows.length > 0.8) {
+          toast(`⚠ ${file.name}: parece reporte por cliente (no por producto). Top Ventas y rotación pueden salir incorrectos.`, 'error');
+        }
+      }
+      // Fix #10 2026-05-28: warning si hay items con stock negativo (cuadre POS pendiente).
+      // Genera rotacion infinita en informes; alertar sin bloquear.
+      if (category === 'inventario') {
+        const stockNeg = rows.filter(r => typeof r.stockActual === 'number' && r.stockActual < 0).length;
+        if (stockNeg > 0) {
+          toast(`⚠ ${stockNeg} producto(s) con stock negativo (POS desincronizado). Pueden inflar la rotación.`, 'info');
+        }
+      }
     } catch (err) {
       meta.status = 'error';
       meta.error = err.message;
@@ -1916,7 +1989,11 @@ function loadState() {
     state.ventasFechaDesde = data.ventasFechaDesde || null;
     state.ventasFechaHasta = data.ventasFechaHasta || null;
     state.ventasPeriodoDias = data.ventasPeriodoDias || null;
-    state.ventasPeriodoFactor = data.ventasPeriodoFactor || null;
+    // Fix #12 2026-05-28: validar que el factor sea numero finito > 0. Si esta
+    // corrupto en localStorage (NaN, Infinity, negativo), todas las cantidades
+    // escaladas se vuelven Infinity y el COGS explota.
+    const rawFactor = data.ventasPeriodoFactor;
+    state.ventasPeriodoFactor = (typeof rawFactor === 'number' && Number.isFinite(rawFactor) && rawFactor > 0) ? rawFactor : null;
     ['ventas', 'inventario', 'gastos'].forEach(renderFileList);
   } catch (e) {
     console.warn('No se pudo cargar de localStorage:', e);
