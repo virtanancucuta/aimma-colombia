@@ -1,5 +1,9 @@
-/* AIMMA · Tienda IA · views/productos.js · v2 · 2026-05-29
+/* AIMMA · Tienda IA · views/productos.js · v3 · 2026-05-29
    Fase 3.3a (lista) + 3.3b (crear/editar form basico).
+   v3 (2026-05-29 post-feedback Jorge): el warn de dirty al click en sidebar
+   no disparaba porque el listener hashchange directo era removido por el
+   cleanupCurrentView de admin.js antes de poder chequear. Migrado a la nueva
+   API T.registerNavGuard() de admin.js v4 que evalua guards ANTES del cleanup.
    v2 (2026-05-29 post-audit): 2 HIGH + 3 MEDIUM fixes:
    - BUG #1 HIGH: sanitizar caracteres especiales en busqueda para evitar
      inyeccion de filtro PostgREST (RLS limita blast radius pero igual).
@@ -388,26 +392,19 @@
     };
     window.addEventListener('beforeunload', warnFn);
 
-    // v2 BUG #4 fix: warn hashchange si dirty (navegacion interna SPA).
-    // beforeunload no protege contra cambios de hash (sidebar click, link interno).
-    let lastHash = window.location.hash;
-    const hashFn = (ev) => {
-      if (formState.dirty && lastHash !== window.location.hash) {
-        const confirmar = window.confirm('Tienes cambios sin guardar en este producto. ¿Salir de todos modos?');
-        if (!confirmar) {
-          // Revertir el cambio de hash
-          history.replaceState(null, '', lastHash);
-          return;
-        }
-        formState.dirty = false; // user confirmo salir
-      }
-      lastHash = window.location.hash;
-    };
-    window.addEventListener('hashchange', hashFn);
+    // v3 (post-feedback Jorge): registrar nav guard via admin.js API. El listener
+    // hashchange directo de v2 NO funcionaba porque admin.js dispatch primero y
+    // ya habia llamado cleanupCurrentView() que removia el listener antes de que
+    // pudiera chequear dirty. Ahora admin.js evalua guards ANTES del cleanup.
+    T.registerNavGuard(() => {
+      if (!formState.dirty) return true;
+      const confirmar = window.confirm('Tienes cambios sin guardar en este producto. ¿Salir de todos modos?');
+      if (confirmar) formState.dirty = false; // marcar como ya confirmado para no repetir
+      return confirmar;
+    });
 
     T.registerCleanup(() => {
       window.removeEventListener('beforeunload', warnFn);
-      window.removeEventListener('hashchange', hashFn);
     });
   }
 

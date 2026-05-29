@@ -1,5 +1,10 @@
-/* AIMMA · Tienda IA · admin.js · v3 · 2026-05-29 · Panel Admin SPA */
-/* v3 (2026-05-29): Fase 3.2 - API registerView() para vistas modulares.
+/* AIMMA · Tienda IA · admin.js · v4 · 2026-05-29 · Panel Admin SPA */
+/* v4 (2026-05-29): API registerNavGuard() - las views pueden interceptar
+   hashchange ANTES del cleanup para confirmar/cancelar navegacion (ej. form
+   con cambios sin guardar). El listener nativo de productos.js no funcionaba
+   porque admin.js dispatch hashchange primero y llama cleanupCurrentView()
+   que remueve el listener antes de que pueda chequear dirty.
+   v3 (2026-05-29): Fase 3.2 - API registerView() para vistas modulares.
    v2 (2026-05-29 post-audit code-reviewer agent):
    - Fix HIGH: requireAuth() valida con getUser() server-side.
    - Fix HIGH: btnSidebarToggle guard dom.sidebar.
@@ -33,6 +38,11 @@
     currentRouteParams: null,   // ej {id: 'uuid'} para productos/:id
     // Cleanup registry: cada view puede registrar funciones de limpieza al cambiar route.
     viewCleanup: [],
+    // v4 (Fase 3.3): nav guards - cada view puede registrar fn() => boolean que
+    // se evaluan ANTES del cleanup. Si alguno devuelve false, la navegacion se
+    // cancela y el hash vuelve al anterior.
+    viewNavGuards: [],
+    _lastHash: '',              // ultimo hash aceptado, para rollback en nav cancel
   };
 
   // ============================================================
@@ -210,10 +220,18 @@
       const fn = state.viewCleanup.pop();
       try { fn(); } catch (e) { console.warn('[cleanup] error', e); }
     }
+    // v4: reset nav guards al cambiar de view (la nueva view registra los suyos)
+    state.viewNavGuards = [];
   }
 
   function registerCleanup(fn) {
     if (typeof fn === 'function') state.viewCleanup.push(fn);
+  }
+
+  // v4: las views registran un guard que retorna true (permitir nav) o false
+  // (cancelar). El dispatcher de hashchange evalua todos los guards primero.
+  function registerNavGuard(fn) {
+    if (typeof fn === 'function') state.viewNavGuards.push(fn);
   }
 
   function setActiveNav(route) {
@@ -224,6 +242,22 @@
   }
 
   function handleHashChange() {
+    // v4: evaluar nav guards ANTES de cambiar nada. Si alguno cancela, revertir.
+    if (state.viewNavGuards.length > 0) {
+      for (const guard of state.viewNavGuards) {
+        let proceed = true;
+        try { proceed = guard() !== false; } catch (e) { console.warn('[navGuard] error', e); }
+        if (!proceed) {
+          // Revertir hash al ultimo aceptado. Como hashchange ya disparo, debemos
+          // setear el hash de vuelta. replaceState evita re-dispatch del listener.
+          if (state._lastHash !== window.location.hash) {
+            history.replaceState(null, '', state._lastHash || '#/');
+          }
+          return;
+        }
+      }
+    }
+
     const { route, paramId } = parseHash();
     if (!ROUTES.includes(route)) {
       navigateTo(DEFAULT_ROUTE);
@@ -231,6 +265,7 @@
     }
     state.currentRoute = route;
     state.currentRouteParams = paramId ? { id: paramId } : null;
+    state._lastHash = window.location.hash;
 
     cleanupCurrentView();
     setActiveNav(route);
@@ -333,6 +368,7 @@
     navigateTo,
     registerCleanup,
     registerView,
+    registerNavGuard,  // v4 (Fase 3.3): cancelar navegacion si dirty form
     escapeHtml,
   };
 
