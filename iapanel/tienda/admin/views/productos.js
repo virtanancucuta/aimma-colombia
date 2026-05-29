@@ -1,5 +1,20 @@
-/* AIMMA · Tienda IA · views/productos.js · v5 · 2026-05-29
-   Fase 3.3a (lista) + 3.3b (form) + 3.3c (matriz variantes color x talla).
+/* AIMMA · Tienda IA · views/productos.js · v7 · 2026-05-29
+   Fase 3.3a (lista) + 3.3b (form) + 3.3c (matriz variantes) + 3.3c.2 (unificado).
+   v7 (2026-05-29 post-audit del v6): 2 HIGH + 2 MEDIUM fixes
+   - BUG #1 HIGH: input stock llamaba formState.producto.referencia con null en crear
+     -> TypeError. Migrado a obtenerReferenciaLive (data loss silencioso).
+   - BUG #2 HIGH: rerenderVariantes con !formState.producto en guard hacia full
+     re-render perdiendo foco y acumulando listeners de beforeunload/navGuard.
+   - BUG #3 MEDIUM: variantesState.dirty se reseteaba incondicional. Ahora solo
+     si !variantesWarning (mantiene dirty si variantes fallaron, navGuard avisa).
+   - BUG #4 MEDIUM: subtitulo en CREAR decia "variantes se agregan despues de
+     guardar" - obsoleto en v6. Actualizado: "puedes agregar variantes antes".
+   v6 (2026-05-29 post-feedback Jorge): unificar form crear+variantes.
+   - Seccion Variantes ahora aparece desde #/productos/nuevo (antes solo edicion).
+   - SKU reactive al campo Referencia (input listener regenera matriz).
+   - handleSubmit: si producto nuevo Y hay variantes definidas, INSERT producto
+     + INSERT variantes en secuencia. Si producto OK pero variantes fallan,
+     queda producto creado con toast warning explicito (editable para reintentar).
    v5 (2026-05-29 post-audit 3.3c): 3 HIGH + 1 MEDIUM fixes
    - BUG #1 HIGH: id="variantes-seccion" en lugar de selector :last-of-type fragil.
    - BUG #2 HIGH: sanitizar "__" en input de color/talla para no romper keys de matriz.
@@ -334,8 +349,8 @@
         '<h1 class="ta-section-title" style="margin-top:8px;">' + (esEdicion ? 'Editar producto' : 'Nuevo producto') + '</h1>' +
         '<p class="ta-section-sub">' +
           (esEdicion
-            ? 'Editando "' + T.escapeHtml(p.nombre) + '". Las variantes (color, talla, stock) se gestionan en la sub-fase 3.3c.'
-            : 'Datos basicos del producto. Variantes y fotos se agregan despues de guardar.') +
+            ? 'Editando "' + T.escapeHtml(p.nombre) + '". Las variantes (color, talla, stock) se gestionan abajo.'
+            : 'Datos basicos del producto. Puedes agregar variantes (color, talla, stock) antes de guardar, abajo.') +
         '</p>' +
       '</header>' +
 
@@ -410,8 +425,10 @@
 
       '</form>' +
 
-      // v4 (Fase 3.3c): seccion Variantes solo en edicion
-      (esEdicion ? renderVariantesSeccion(p) : '');
+      // v6: seccion Variantes desde crear (no solo edicion).
+      // En crear: las variantes se guardan junto con el producto en handleSubmit.
+      // En edicion: boton "Guardar variantes" separado del producto.
+      renderVariantesSeccion(p);
   }
 
   // ============================================================
@@ -448,9 +465,9 @@
 
   function renderVariantesSeccion(producto) {
     const T = window.TiendaIA;
+    const esEdicion = !!producto;  // v6: null = crear nuevo
 
-    // Estado A: producto sin variantes y editor NO activo - mostrar CTA
-    // v4 BUG #1 fix: id="variantes-seccion" para selector robusto en rerender.
+    // Estado A: editor NO activo - mostrar CTA
     if (!variantesState.activo) {
       return '' +
         '<section id="variantes-seccion" class="ta-card" style="max-width:760px;margin-top:24px;">' +
@@ -509,11 +526,15 @@
 
         matrizHtml +
 
-        (variantesState.colores.length > 0 || variantesState.tallas.length > 0 ? '' +
+        // v6: boton "Guardar variantes" solo en EDICION. En CREAR, las variantes
+        // se guardan automaticamente con el boton "Crear producto" arriba.
+        (esEdicion && (variantesState.colores.length > 0 || variantesState.tallas.length > 0) ? '' +
           '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--ta-border);">' +
             '<button type="button" id="btn-guardar-variantes" class="ta-btn ta-btn--primary">Guardar variantes</button>' +
           '</div>'
-        : '') +
+        : (!esEdicion && (variantesState.colores.length > 0 || variantesState.tallas.length > 0)
+          ? '<p style="margin-top:16px;padding-top:12px;border-top:1px solid var(--ta-border);color:var(--ta-text-mut);font-size:13px;text-align:right;">Las variantes se guardaran junto con el producto al hacer click en <strong>Crear producto</strong> arriba.</p>'
+          : '')) +
       '</section>';
   }
 
@@ -526,6 +547,11 @@
       return '<p style="color:var(--ta-text-mut);font-size:13px;margin-top:16px;">Agrega al menos un color y una talla para ver la matriz de variantes.</p>';
     }
 
+    // v6: en CREAR, leer la referencia del input del form (live) en vez del producto
+    // guardado. Si esta vacia, mostrar placeholder.
+    const refLive = obtenerReferenciaLive(producto);
+    const refValida = !!refLive;
+
     let thead = '<tr><th style="width:140px;">Color \\ Talla</th>';
     for (const t of tallas) thead += '<th>' + T.escapeHtml(t) + '</th>';
     thead += '</tr>';
@@ -535,13 +561,14 @@
       tbody += '<tr><th style="text-align:left;background:var(--ta-bg-soft);">' + T.escapeHtml(color) + '</th>';
       for (const talla of tallas) {
         const celda = getMatrizCelda(color, talla);
-        const sku = celda?.sku || generarSku(producto.referencia, color, talla);
+        const sku = celda?.sku || (refValida ? generarSku(refLive, color, talla) : '(llena la referencia arriba)');
         const stock = celda?.stock != null ? celda.stock : '';
         const reservadoStr = celda?.reservado > 0 ? '<span style="color:var(--ta-warn);font-size:11px;">(reserv: ' + celda.reservado + ')</span>' : '';
+        const skuStyle = refValida ? 'color:var(--ta-text-mut);' : 'color:var(--ta-warn);font-style:italic;';
         tbody += '' +
           '<td>' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
-              '<code style="font-size:11px;color:var(--ta-text-mut);">' + T.escapeHtml(sku) + '</code>' +
+              '<code style="font-size:11px;' + skuStyle + '">' + T.escapeHtml(sku) + '</code>' +
               '<input type="number" min="0" step="1" placeholder="Stock" value="' + T.escapeHtml(String(stock)) + '" ' +
                 'data-celda-color="' + T.escapeHtml(color) + '" data-celda-talla="' + T.escapeHtml(talla) + '" ' +
                 'class="ta-input ta-input--stock" style="padding:6px 8px;font-size:13px;">' +
@@ -559,6 +586,14 @@
           '<tbody>' + tbody + '</tbody>' +
         '</table>' +
       '</div>';
+  }
+
+  // v6: lee la referencia "live" desde el input del form si estamos creando,
+  // o desde el producto guardado si estamos editando.
+  function obtenerReferenciaLive(producto) {
+    if (producto && producto.referencia) return producto.referencia;
+    const input = document.getElementById('f-referencia');
+    return input ? String(input.value || '').trim() : '';
   }
 
   function wireFormEvents() {
@@ -613,9 +648,26 @@
       window.removeEventListener('beforeunload', warnFn);
     });
 
-    // v4 (Fase 3.3c): wire variantes events si producto en edicion
-    if (formState.producto) {
-      wireVariantesEvents();
+    // v6: wire variantes events SIEMPRE (crear o edicion).
+    wireVariantesEvents();
+
+    // v6: listener reactivo al campo Referencia para regenerar SKUs en la matriz
+    // mientras el user escribe la referencia del producto (solo en CREAR).
+    if (!formState.producto) {
+      const inputRef = view.querySelector('#f-referencia');
+      if (inputRef) {
+        let refTimer = null;
+        inputRef.addEventListener('input', () => {
+          clearTimeout(refTimer);
+          refTimer = setTimeout(() => {
+            // Solo re-renderear si hay variantes activas con colores+tallas
+            if (variantesState.activo && variantesState.colores.length > 0 && variantesState.tallas.length > 0) {
+              rerenderVariantes();
+            }
+          }, 250);
+        });
+        T.registerCleanup(() => clearTimeout(refTimer));
+      }
     }
   }
 
@@ -691,10 +743,12 @@
         const stockRaw = e.target.value;
         const stock = stockRaw === '' ? null : Math.max(0, parseInt(stockRaw, 10) || 0);
         const existente = getMatrizCelda(color, talla) || {};
+        // v6 BUG #1 fix: usar obtenerReferenciaLive que maneja crear (producto null).
+        const ref = obtenerReferenciaLive(formState.producto);
         setMatrizCelda(color, talla, {
           ...existente,
           color, talla,
-          sku: existente.sku || generarSku(formState.producto.referencia, color, talla),
+          sku: existente.sku || (ref ? generarSku(ref, color, talla) : null),
           stock,
         });
         variantesState.dirty = true;
@@ -747,10 +801,13 @@
 
   function rerenderVariantes() {
     // v4 BUG #1 fix: usar id explicito en vez de selector :last-of-type fragil.
+    // v6 BUG #2 fix: NO incluir !formState.producto en el guard; en crear es null
+    // y el fallback full re-render perdia foco + acumulaba listeners en cada
+    // interaccion (input/agregar/quitar tag).
     const T = window.TiendaIA;
     const seccionVieja = T.dom.mainView.querySelector('#variantes-seccion');
-    if (!seccionVieja || !formState.producto) {
-      // Fallback: re-render full
+    if (!seccionVieja) {
+      // Fallback: re-render full (caso muy edge, no deberia pasar)
       T.dom.mainView.innerHTML = renderFormHTML();
       wireFormEvents();
       return;
@@ -936,8 +993,56 @@
         return;
       }
 
+      // v6: si CREAR y hay variantes definidas, insertar variantes en bulk.
+      // El producto ya quedo creado; si las variantes fallan, no rollback del
+      // producto - el user editable lo retoma para reintentar.
+      const esCreacion = !formState.producto;
+      let variantesWarning = null;
+      if (esCreacion && result.data && variantesState.activo &&
+          variantesState.colores.length > 0 && variantesState.tallas.length > 0) {
+        const productoCreado = result.data;
+        const variantesAInsertar = [];
+        for (const color of variantesState.colores) {
+          for (const talla of variantesState.tallas) {
+            const celda = getMatrizCelda(color, talla);
+            const stock = celda?.stock;
+            if (stock == null) continue; // celdas vacias se ignoran
+            variantesAInsertar.push({
+              producto_id: productoCreado.id,
+              color, talla,
+              sku: generarSku(productoCreado.referencia, color, talla),
+              stock,
+            });
+          }
+        }
+        if (variantesAInsertar.length > 0) {
+          const vRes = await sb.from('producto_variantes').insert(variantesAInsertar);
+          if (vRes.error) {
+            console.error('[prod-form] variantes insert error', vRes.error);
+            if (vRes.error.code === '23505') {
+              variantesWarning = 'Producto creado, pero algun SKU de variante ya existe. Edita el producto para revisar.';
+            } else {
+              variantesWarning = 'Producto creado, pero las variantes tuvieron error: ' + (vRes.error.message || 'desconocido') + '. Edita el producto para reintentar.';
+            }
+          }
+        }
+      }
+
       formState.dirty = false;
-      T.toast(formState.producto ? 'Producto actualizado' : 'Producto creado', 'success');
+      // v6 BUG #3 fix: solo resetear variantesState.dirty si las variantes
+      // tambien se guardaron OK. Si producto OK + variantes fallaron, dejamos
+      // dirty=true para que el navGuard avise al salir.
+      if (!variantesWarning) variantesState.dirty = false;
+      if (variantesWarning) {
+        T.toast(variantesWarning, 'error');
+      } else {
+        const okMsg = esCreacion
+          ? (variantesState.activo && variantesState.colores.length > 0
+              ? 'Producto creado con sus variantes'
+              : 'Producto creado')
+          : 'Producto actualizado';
+        T.toast(okMsg, 'success');
+      }
       window.location.hash = '#/productos';
     } catch (e) {
       console.error('[prod-form] exception', e);
