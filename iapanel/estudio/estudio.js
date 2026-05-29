@@ -45,6 +45,14 @@
   // recargar la pagina (mobile back, refresh) mientras un job sigue en cola.
   const CURRENT_JOB_KEY_PREFIX = 'aimma_estudio_current_job_v1_';
 
+  // Fase 0 Tienda IA (2026-05-29): el editor es cross-modulo. Cuando se abre
+  // con ?source=tienda_producto&return_to=...&producto_id=...&campo=... el
+  // resultado final aplica al producto y redirige al panel de Tienda IA.
+  // Sin params, comportamiento IDENTICO al de Contenido IA.
+  const VALID_SOURCES = new Set(['contenido_ia', 'tienda_producto']);
+  const VALID_TARGET_CAMPO = /^(foto_principal|foto_galeria_[0-3]|foto_color_[a-z0-9_-]{1,32})$/;
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   // ============================================================
   // State
   // ============================================================
@@ -68,6 +76,8 @@
     jobTimeoutTimer: null,
     isGenerating: false,
     lastFocused: null,
+    // Fase 0 Tienda IA: bundle cross-modulo. NULL si no aplica.
+    crossModulo: null,          // { source, returnTo, productoId, campo } | null
   };
 
   // ============================================================
@@ -164,8 +174,45 @@
   // ============================================================
   // Init
   // ============================================================
+  // Fase 0 Tienda IA: parsea URLSearchParams para detectar origen cross-modulo.
+  // Returns null si no aplica (caso normal Contenido IA).
+  // Returns { source, returnTo, productoId, campo } si bundle valido.
+  // Si bundle invalido (params parciales o malformados): null + warn console.
+  function parseCrossModuloParams() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const source = (params.get('source') || '').trim();
+      if (!source || source === 'contenido_ia') return null;
+      if (!VALID_SOURCES.has(source)) {
+        console.warn('[estudio] source desconocido:', source, '- ignorado');
+        return null;
+      }
+      const returnTo = (params.get('return_to') || '').trim();
+      const productoId = (params.get('producto_id') || '').trim();
+      const campo = (params.get('campo') || '').trim();
+      if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//')) {
+        console.warn('[estudio] return_to invalido, bundle cross-modulo ignorado');
+        return null;
+      }
+      if (!UUID_REGEX.test(productoId)) {
+        console.warn('[estudio] producto_id no es UUID, bundle ignorado');
+        return null;
+      }
+      if (!VALID_TARGET_CAMPO.test(campo)) {
+        console.warn('[estudio] campo invalido, bundle ignorado');
+        return null;
+      }
+      return { source, returnTo, productoId, campo };
+    } catch (e) {
+      console.warn('[estudio] parse URLSearchParams fallo:', e);
+      return null;
+    }
+  }
+
   async function init() {
     cacheDom();
+    // Fase 0 Tienda IA: leer bundle cross-modulo ANTES de Supabase (no toca red).
+    state.crossModulo = parseCrossModuloParams();
     setLoadingText('Inicializando…');
     try {
       initSupabase();
@@ -650,6 +697,15 @@
         instruccion: (state.instruccion && state.instruccion.trim()) || null,
         accion_rapida: state.quickAction,
       };
+      // Fase 0 Tienda IA: si venimos del panel de Tienda IA, inyectamos el
+      // bundle cross-modulo para que el worker sepa que aplicar el resultado
+      // al producto X campo Y al terminar.
+      if (state.crossModulo) {
+        body.source = state.crossModulo.source;
+        body.return_to = state.crossModulo.returnTo;
+        body.target_producto_id = state.crossModulo.productoId;
+        body.target_campo = state.crossModulo.campo;
+      }
       const resp = await callEnqueue(body);
       if (!resp || !resp.success || !resp.job_id) {
         const msg = (resp && resp.message) ? resp.message : 'No se pudo encolar el trabajo.';
