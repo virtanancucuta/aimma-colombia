@@ -1,4 +1,9 @@
-/* AIMMA · Tienda IA · admin.js · v1 · 2026-05-29 · Panel Admin SPA */
+/* AIMMA · Tienda IA · admin.js · v2 · 2026-05-29 · Panel Admin SPA */
+/* v2 (2026-05-29 post-audit code-reviewer agent):
+   - Fix HIGH: requireAuth() no detectaba sesion expirada con refresh fallido.
+     Ahora valida con getUser() server-side, redirige a login si JWT vencio.
+   - Fix HIGH: btnSidebarToggle sin guard si dom.sidebar es null. Agregado guard.
+*/
 
 (function () {
   'use strict';
@@ -101,7 +106,18 @@
       window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname + window.location.hash);
       return null;
     }
-    return session.user;
+    // v2: validar JWT con server (getUser hace fetch a /auth/v1/user) para
+    // detectar tokens vencidos cuyo refresh fallo. getSession solo lee
+    // localStorage sin validar contra el server.
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
+      // JWT expirado o usuario revocado -> redirige a login en vez de mostrar
+      // error confuso "JWT expired" al hacer queries despues.
+      await supabase.auth.signOut().catch(() => {});
+      window.location.href = LOGIN_URL + '?next=' + encodeURIComponent(window.location.pathname + window.location.hash);
+      return null;
+    }
+    return user;
   }
 
   async function loadProfileAndTienda(userId) {
@@ -281,7 +297,7 @@
   function wireGlobalEvents() {
     if (dom.btnSidebarToggle) {
       dom.btnSidebarToggle.addEventListener('click', () => {
-        dom.sidebar.classList.toggle('is-open');
+        if (dom.sidebar) dom.sidebar.classList.toggle('is-open');
       });
     }
     if (dom.btnLogout) {
