@@ -1,6 +1,7 @@
-/* AIMMA · Tienda IA · admin.css · v2 · 2026-05-29 */
-/* v2: fix critico [hidden] - el display:flex de los estados anulaba el atributo HTML hidden,
-   provocando que se rendericen los 5 estados apilados verticalmente. */
+/* AIMMA · Tienda IA · admin.css · v3 · 2026-05-29 */
+/* v3 (2026-05-29): Fase 3.2 - estilos vista Inicio (pills, acciones list, code).
+   v2: fix [hidden] anulado por display:flex en estados.
+*/
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -400,6 +401,61 @@ a:hover { text-decoration: underline; }
   background: var(--ta-bg-soft);
 }
 .ta-table tr:hover { background: var(--ta-surface-2); }
+
+/* ============================ Pills (estado tienda, pedido, etc) ============================ */
+.ta-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.ta-pill--ok    { background: rgba(46,204,113,.16); color: var(--ta-success); border: 1px solid rgba(46,204,113,.35); }
+.ta-pill--warn  { background: rgba(255,170,60,.16); color: var(--ta-warn);    border: 1px solid rgba(255,170,60,.35); }
+.ta-pill--info  { background: rgba(77,142,255,.16); color: var(--ta-accent);  border: 1px solid rgba(77,142,255,.35); }
+.ta-pill--danger{ background: rgba(255,93,108,.16); color: var(--ta-danger);  border: 1px solid rgba(255,93,108,.35); }
+
+/* ============================ Acciones recomendadas ============================ */
+.ta-acciones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ta-accion {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--ta-surface);
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius);
+  color: var(--ta-text);
+  text-decoration: none;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.ta-accion:hover {
+  background: var(--ta-surface-2);
+  border-color: var(--ta-accent);
+  text-decoration: none;
+  transform: translateX(2px);
+}
+.ta-accion__icon { font-size: 22px; line-height: 1; }
+.ta-accion__body { display: flex; flex-direction: column; flex: 1; gap: 2px; }
+.ta-accion__title { font-weight: 600; font-size: 15px; }
+.ta-accion__desc { font-size: 13px; color: var(--ta-text-soft); }
+.ta-accion__cta { font-size: 13px; color: var(--ta-accent); white-space: nowrap; font-weight: 600; }
+
+/* ============================ code inline ============================ */
+code {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.9em;
+  color: var(--ta-accent-2);
+}
 
 /* ============================ Responsive ============================ */
 @media (max-width: 760px) {

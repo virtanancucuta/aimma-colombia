@@ -1,8 +1,8 @@
-/* AIMMA · Tienda IA · admin.js · v2 · 2026-05-29 · Panel Admin SPA */
-/* v2 (2026-05-29 post-audit code-reviewer agent):
-   - Fix HIGH: requireAuth() no detectaba sesion expirada con refresh fallido.
-     Ahora valida con getUser() server-side, redirige a login si JWT vencio.
-   - Fix HIGH: btnSidebarToggle sin guard si dom.sidebar es null. Agregado guard.
+/* AIMMA · Tienda IA · admin.js · v3 · 2026-05-29 · Panel Admin SPA */
+/* v3 (2026-05-29): Fase 3.2 - API registerView() para vistas modulares.
+   v2 (2026-05-29 post-audit code-reviewer agent):
+   - Fix HIGH: requireAuth() valida con getUser() server-side.
+   - Fix HIGH: btnSidebarToggle guard dom.sidebar.
 */
 
 (function () {
@@ -311,6 +311,19 @@
     window.addEventListener('hashchange', handleHashChange);
   }
 
+  // v2.1 (2026-05-29): API registerView() para que cada Fase 3.X registre su
+  // vista en su propio archivo views/<route>.js sin tocar admin.js core.
+  function registerView(route, renderFn) {
+    if (typeof renderFn !== 'function') return;
+    VIEWS[route] = renderFn;
+    // Si el user esta en esa ruta ahora mismo, re-renderizar inmediatamente
+    // (caso: script de la view cargo despues que el router despacho la default).
+    if (state.currentRoute === route) {
+      cleanupCurrentView();
+      try { renderFn(); } catch (e) { console.error('[registerView] re-render error', e); }
+    }
+  }
+
   // Expose helpers para las views futuras (Fase 3.2+)
   window.TiendaIA = {
     state,
@@ -319,6 +332,7 @@
     toast,
     navigateTo,
     registerCleanup,
+    registerView,
     escapeHtml,
   };
 
