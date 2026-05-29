@@ -1,5 +1,27 @@
-/* AIMMA · Tienda IA · views/productos.js · v7 · 2026-05-29
-   Fase 3.3a (lista) + 3.3b (form) + 3.3c (matriz variantes) + 3.3c.2 (unificado).
+/* AIMMA · Tienda IA · views/productos.js · v9 · 2026-05-29
+   Fase 3.3a (lista) + 3.3b (form) + 3.3c (matriz) + 3.3c.2 (unificado) + 3.3d (fotos).
+   v9 (2026-05-29 post-audit 3.3d): 2 HIGH + 3 MEDIUM + 1 LOW fixes
+   - BUG #1 HIGH: recargarProductoYRender hacia full re-render+wireFormEvents
+     en cada upload/eliminacion acumulando listeners. Migrado a refrescar SOLO
+     #fotos-seccion (recargarProductoYRefrescarFotos).
+   - BUG #2 HIGH: race condition en galeria - leer fresh galeria de BD justo
+     antes del UPDATE (no usar formState.producto). Tambien serializar uploads
+     con flag uploadingFoto.
+   - BUG #3 MEDIUM: eliminarFoto dejaba huerfanos en Storage. Ahora extrae
+     path del URL publico y llama storage.remove antes del UPDATE NULL.
+   - BUG #4 MEDIUM: safeImgUrl() valida protocol https?:/ antes de interpolar
+     URL en src para prevenir javascript:/data: si alguien escribe a BD.
+   - BUG #5 MEDIUM: whitelist ALLOWED_EXTS para extension en lugar de file.name
+     crudo (path traversal mitigado).
+   - BUG #6 LOW: persistirUrlFoto ahora retorna el error y subirFoto/eliminarFoto
+     lo propagan al toast.
+   v8 (2026-05-29): Fase 3.3d - upload fotos + cross-modulo Estudio Visual.
+   - Bucket tienda-productos publico con RLS por path <tienda_id>/<producto_id>/.
+   - Slots: foto principal (1) + galeria (4) + foto por color (N segun colores).
+   - Botones: Subir, Editar con IA (abre Estudio Visual con bundle cross-modulo),
+     Reemplazar, Eliminar.
+   - URL persistida en productos.foto_principal_url / fotos_galeria (jsonb)
+     / producto_variantes.foto_color_url.
    v7 (2026-05-29 post-audit del v6): 2 HIGH + 2 MEDIUM fixes
    - BUG #1 HIGH: input stock llamaba formState.producto.referencia con null en crear
      -> TypeError. Migrado a obtenerReferenciaLive (data loss silencioso).
@@ -425,10 +447,344 @@
 
       '</form>' +
 
+      // v7 (Fase 3.3d): seccion Fotos solo en EDICION (necesita producto_id para
+      // path de Storage y URLs de retorno cross-modulo).
+      (esEdicion ? renderFotosSeccion(p) : '') +
+
       // v6: seccion Variantes desde crear (no solo edicion).
-      // En crear: las variantes se guardan junto con el producto en handleSubmit.
-      // En edicion: boton "Guardar variantes" separado del producto.
       renderVariantesSeccion(p);
+  }
+
+  // ============================================================
+  // FOTOS (Fase 3.3d)
+  // ============================================================
+  const MAX_GALERIA = 4;       // 4 fotos en galeria
+  const MAX_MB = 5;
+  const ALLOWED_TYPES = ['image/jpeg','image/jpg','image/png','image/webp'];
+  const ALLOWED_EXTS = ['jpg','jpeg','png','webp'];
+  let uploadingFoto = false;   // v8 BUG #2 fix: serializar uploads de galeria
+
+  // v8 BUG #4 fix: solo permitir https/http en src de img para prevenir
+  // javascript:/data: URLs maliciosas si alguien escribe directo en BD.
+  function safeImgUrl(url) {
+    if (!url) return null;
+    try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? url : null; }
+    catch { return null; }
+  }
+
+  function renderFotosSeccion(producto) {
+    const T = window.TiendaIA;
+    const galeria = Array.isArray(producto.fotos_galeria) ? producto.fotos_galeria : [];
+
+    // Slots de galeria (4 fijos)
+    const slotsGaleria = [];
+    for (let i = 0; i < MAX_GALERIA; i++) {
+      slotsGaleria.push(renderSlotFoto({
+        url: galeria[i] || null,
+        label: 'Foto ' + (i + 2),
+        campo: 'foto_galeria_' + i,
+        size: 'sm',
+        producto,
+      }));
+    }
+
+    // Slots por color (solo si hay variantes con colores)
+    let slotsColores = '';
+    if (variantesState.colores.length > 0) {
+      const items = variantesState.colores.map(color => {
+        // Buscar primera variante con este color en la matriz para sacar URL existente
+        let urlColor = null;
+        for (const talla of variantesState.tallas) {
+          const celda = getMatrizCelda(color, talla);
+          if (celda?.foto_color_url) { urlColor = celda.foto_color_url; break; }
+        }
+        return renderSlotFoto({
+          url: urlColor,
+          label: color,
+          campo: 'foto_color_' + slugify(color),
+          size: 'sm',
+          producto,
+          colorRef: color,
+        });
+      }).join('');
+      slotsColores = '' +
+        '<div style="margin-top:24px;">' +
+          '<h3 style="font-size:14px;margin:0 0 12px;color:var(--ta-text-soft);">Foto por color</h3>' +
+          '<div class="ta-fotos-grid">' + items + '</div>' +
+        '</div>';
+    }
+
+    return '' +
+      '<section id="fotos-seccion" class="ta-card" style="max-width:1100px;margin-top:24px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap;">' +
+          '<div>' +
+            '<h2 style="margin:0 0 4px;font-size:20px;">Fotos</h2>' +
+            '<p style="margin:0;color:var(--ta-text-soft);font-size:13px;">' +
+              'Foto principal + hasta ' + MAX_GALERIA + ' fotos de galeria. Tambien podes editar con IA usando el Estudio Visual.' +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="display:grid;grid-template-columns:auto 1fr;gap:20px;margin-top:20px;align-items:start;">' +
+          // Foto principal (slot grande izq)
+          '<div>' +
+            '<h3 style="font-size:14px;margin:0 0 8px;color:var(--ta-text-soft);">Principal</h3>' +
+            renderSlotFoto({
+              url: producto.foto_principal_url,
+              label: '',
+              campo: 'foto_principal',
+              size: 'lg',
+              producto,
+            }) +
+          '</div>' +
+          // Galeria (4 slots derecha)
+          '<div>' +
+            '<h3 style="font-size:14px;margin:0 0 8px;color:var(--ta-text-soft);">Galería</h3>' +
+            '<div class="ta-fotos-grid">' + slotsGaleria.join('') + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        slotsColores +
+      '</section>';
+  }
+
+  function renderSlotFoto({ url, label, campo, size, producto, colorRef }) {
+    const T = window.TiendaIA;
+    const sizeClass = size === 'lg' ? 'ta-foto-slot--lg' : 'ta-foto-slot--sm';
+    const empty = !url;
+    const labelHtml = label ? '<div class="ta-foto-slot__label">' + T.escapeHtml(label) + '</div>' : '';
+
+    const imgOrPlaceholder = empty
+      ? '<div class="ta-foto-slot__empty">📷</div>'
+      : (safeImgUrl(url) ? '<img src="' + T.escapeHtml(url) + '" alt="" class="ta-foto-slot__img">' : '<div class="ta-foto-slot__empty">⚠️</div>');
+
+    const acciones = empty
+      ? '<button type="button" class="ta-btn ta-foto-slot__btn" data-foto-accion="upload" data-foto-campo="' + T.escapeHtml(campo) + '"' +
+          (colorRef ? ' data-foto-color="' + T.escapeHtml(colorRef) + '"' : '') + '>Subir foto</button>'
+      : '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+          '<button type="button" class="ta-btn ta-btn--xs" data-foto-accion="ia" data-foto-campo="' + T.escapeHtml(campo) + '">✨ Editar con IA</button>' +
+          '<button type="button" class="ta-btn ta-btn--xs" data-foto-accion="replace" data-foto-campo="' + T.escapeHtml(campo) + '"' +
+            (colorRef ? ' data-foto-color="' + T.escapeHtml(colorRef) + '"' : '') + '>Reemplazar</button>' +
+          '<button type="button" class="ta-btn ta-btn--xs ta-btn--danger" data-foto-accion="delete" data-foto-campo="' + T.escapeHtml(campo) + '"' +
+            (colorRef ? ' data-foto-color="' + T.escapeHtml(colorRef) + '"' : '') + '>×</button>' +
+        '</div>';
+
+    return '' +
+      '<div class="ta-foto-slot ' + sizeClass + '">' +
+        labelHtml +
+        '<div class="ta-foto-slot__media">' + imgOrPlaceholder + '</div>' +
+        '<div class="ta-foto-slot__acciones">' + acciones + '</div>' +
+      '</div>';
+  }
+
+  // ============================================================
+  // Fotos: handlers
+  // ============================================================
+  function wireFotosEvents() {
+    const T = window.TiendaIA;
+    const view = T.dom.mainView;
+
+    view.querySelectorAll('[data-foto-accion]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const accion = btn.getAttribute('data-foto-accion');
+        const campo = btn.getAttribute('data-foto-campo');
+        const colorRef = btn.getAttribute('data-foto-color');
+        if (accion === 'upload' || accion === 'replace') {
+          abrirSelectorArchivo(campo, colorRef);
+        } else if (accion === 'ia') {
+          abrirEstudioVisual(campo);
+        } else if (accion === 'delete') {
+          await eliminarFoto(campo, colorRef);
+        }
+      });
+    });
+  }
+
+  function abrirSelectorArchivo(campo, colorRef) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = ALLOWED_TYPES.join(',');
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await subirFoto(file, campo, colorRef);
+    };
+    input.click();
+  }
+
+  async function subirFoto(file, campo, colorRef) {
+    const T = window.TiendaIA;
+    const sb = T.supabase();
+    const tienda = T.state.tienda;
+    const producto = formState.producto;
+    if (!producto) { T.toast('Guarda el producto primero', 'error'); return; }
+
+    // v8 BUG #2 fix: serializar uploads para evitar race condition en galeria
+    if (uploadingFoto) { T.toast('Espera a que termine la subida actual', 'error'); return; }
+
+    // Validacion cliente
+    if (!ALLOWED_TYPES.includes(file.type)) { T.toast('Solo JPG, PNG o WebP', 'error'); return; }
+    if (file.size > MAX_MB * 1024 * 1024) { T.toast('Maximo ' + MAX_MB + 'MB por foto', 'error'); return; }
+
+    uploadingFoto = true;
+    T.toast('Subiendo foto...', null);
+
+    try {
+      // v8 BUG #5 fix: whitelist de extensiones (no usar file.name crudo en path)
+      const rawExt = (file.name.split('.').pop() || '').toLowerCase();
+      const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : 'jpg';
+      const ts = Date.now();
+      const path = tienda.id + '/' + producto.id + '/' + campo + '-' + ts + '.' + ext;
+      const up = await sb.storage.from('tienda-productos').upload(path, file, { upsert: true, cacheControl: '3600' });
+      if (up.error) {
+        T.toast('Error al subir: ' + up.error.message, 'error');
+        return;
+      }
+      const { data: pub } = sb.storage.from('tienda-productos').getPublicUrl(path);
+      const publicUrl = pub.publicUrl;
+
+      // v8 BUG #6 fix: persistirUrlFoto ahora propaga errores
+      const persistErr = await persistirUrlFoto(campo, publicUrl, colorRef);
+      if (persistErr) {
+        T.toast('Foto subida pero no se pudo asociar: ' + persistErr.message, 'error');
+        return;
+      }
+      T.toast('Foto subida', 'success');
+      // Recargar producto y variantes y re-render solo seccion fotos
+      await recargarProductoYRefrescarFotos(producto.id);
+    } catch (e) {
+      console.error('[subirFoto] exception', e);
+      T.toast('Error: ' + (e.message || e), 'error');
+    } finally {
+      uploadingFoto = false;
+    }
+  }
+
+  // v8 BUG #2+#6 fix: SELECT fresco antes de UPDATE de galeria (evita race) +
+  // propagar errores al caller para que muestre toast correcto.
+  async function persistirUrlFoto(campo, url, colorRef) {
+    const sb = window.TiendaIA.supabase();
+    const tienda = window.TiendaIA.state.tienda;
+    const producto = formState.producto;
+
+    if (campo === 'foto_principal') {
+      const { error } = await sb.from('productos').update({ foto_principal_url: url })
+        .eq('id', producto.id).eq('tienda_id', tienda.id);
+      return error || null;
+    }
+
+    if (campo.startsWith('foto_galeria_')) {
+      const idx = parseInt(campo.slice('foto_galeria_'.length), 10);
+      // v8 BUG #2 fix: re-leer galeria actual de BD justo antes del UPDATE para
+      // evitar race si el user sube dos slots distintos rapido.
+      const { data: prodFresco, error: selErr } = await sb.from('productos')
+        .select('fotos_galeria').eq('id', producto.id).eq('tienda_id', tienda.id).maybeSingle();
+      if (selErr) return selErr;
+      const actual = Array.isArray(prodFresco?.fotos_galeria) ? [...prodFresco.fotos_galeria] : [];
+      while (actual.length <= idx) actual.push(null);
+      actual[idx] = url;
+      while (actual.length && actual[actual.length - 1] == null) actual.pop();
+      const { error } = await sb.from('productos').update({ fotos_galeria: actual })
+        .eq('id', producto.id).eq('tienda_id', tienda.id);
+      return error || null;
+    }
+
+    if (campo.startsWith('foto_color_') && colorRef) {
+      const variantesDelColor = variantesState.original.filter(v => v.color === colorRef);
+      if (variantesDelColor.length === 0) return null;
+      const ids = variantesDelColor.map(v => v.id);
+      const { error } = await sb.from('producto_variantes').update({ foto_color_url: url }).in('id', ids);
+      return error || null;
+    }
+    return null;
+  }
+
+  // v8 BUG #3 fix: extraer paths de Storage del URL publico y borrar archivos
+  // huerfanos antes de hacer NULL en BD.
+  function extraerPathDeUrl(url) {
+    if (!url) return null;
+    // URL pattern: https://<supa>/storage/v1/object/public/tienda-productos/<path>
+    const marker = '/storage/v1/object/public/tienda-productos/';
+    const idx = url.indexOf(marker);
+    if (idx < 0) return null;
+    return url.slice(idx + marker.length);
+  }
+
+  async function eliminarFoto(campo, colorRef) {
+    const T = window.TiendaIA;
+    if (!window.confirm('¿Eliminar esta foto?')) return;
+    const sb = T.supabase();
+    const producto = formState.producto;
+    try {
+      // v8 BUG #3 fix: averiguar la URL actual del slot para borrar el archivo
+      // de Storage. Si no se puede borrar (RLS, network), continuar igual con
+      // el NULL en BD para mantener UI consistente.
+      let urlActual = null;
+      if (campo === 'foto_principal') {
+        urlActual = producto.foto_principal_url;
+      } else if (campo.startsWith('foto_galeria_')) {
+        const idx = parseInt(campo.slice('foto_galeria_'.length), 10);
+        urlActual = (producto.fotos_galeria || [])[idx] || null;
+      } else if (campo.startsWith('foto_color_') && colorRef) {
+        const v = variantesState.original.find(x => x.color === colorRef);
+        urlActual = v?.foto_color_url || null;
+      }
+      const path = extraerPathDeUrl(urlActual);
+      if (path) {
+        const rm = await sb.storage.from('tienda-productos').remove([path]);
+        if (rm.error) console.warn('[eliminarFoto] storage remove fallo (huerfana queda):', rm.error.message);
+      }
+
+      const persistErr = await persistirUrlFoto(campo, null, colorRef);
+      if (persistErr) {
+        T.toast('No se pudo desasociar la foto: ' + persistErr.message, 'error');
+        return;
+      }
+      T.toast('Foto eliminada', 'success');
+      await recargarProductoYRefrescarFotos(producto.id);
+    } catch (e) {
+      T.toast('Error: ' + (e.message || e), 'error');
+    }
+  }
+
+  function abrirEstudioVisual(campo) {
+    const producto = formState.producto;
+    if (!producto) return;
+    // return_to viene url-encoded para que el editor sepa adonde volver
+    const returnTo = '/iapanel/tienda/admin/#/productos/' + producto.id;
+    const params = new URLSearchParams({
+      source: 'tienda_producto',
+      return_to: returnTo,
+      producto_id: producto.id,
+      campo,
+    });
+    window.open('/iapanel/estudio/?' + params.toString(), '_blank', 'noopener');
+  }
+
+  // v8 BUG #1 fix: reemplazar SOLO la seccion #fotos-seccion (mismo patron que
+  // rerenderVariantes) para NO acumular listeners de beforeunload/navGuard en
+  // cada upload o eliminacion.
+  async function recargarProductoYRefrescarFotos(productoId) {
+    const T = window.TiendaIA;
+    const sb = T.supabase();
+    const tienda = T.state.tienda;
+    const { data, error } = await sb.from('productos').select('*').eq('id', productoId).eq('tienda_id', tienda.id).maybeSingle();
+    if (error || !data) return;
+    formState.producto = data;
+    await cargarVariantes(productoId);
+    // Reemplazar solo la seccion de fotos
+    const seccionVieja = T.dom.mainView.querySelector('#fotos-seccion');
+    if (seccionVieja) {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderFotosSeccion(formState.producto);
+      const nueva = wrapper.firstElementChild;
+      seccionVieja.replaceWith(nueva);
+      wireFotosEvents();
+    } else {
+      // Fallback inicial: re-render completo si no encontramos la seccion
+      T.dom.mainView.innerHTML = renderFormHTML();
+      wireFormEvents();
+    }
   }
 
   // ============================================================
@@ -650,6 +1006,8 @@
 
     // v6: wire variantes events SIEMPRE (crear o edicion).
     wireVariantesEvents();
+    // v7 (Fase 3.3d): wire fotos events solo en edicion (la seccion existe solo ahi)
+    if (formState.producto) wireFotosEvents();
 
     // v6: listener reactivo al campo Referencia para regenerar SKUs en la matriz
     // mientras el user escribe la referencia del producto (solo en CREAR).
