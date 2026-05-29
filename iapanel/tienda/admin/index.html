@@ -1,0 +1,135 @@
+<!doctype html>
+<!-- AIMMA · Tienda IA · Panel Admin · v1 · 2026-05-29 -->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#040d1a" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>AIMMA · Tienda IA · Panel</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="admin.css?v=1" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+</head>
+<body class="ta-body">
+
+  <!-- Estado: cargando (auth + tienda) -->
+  <section id="state-loading" class="ta-state-loading" aria-label="Cargando">
+    <div class="ta-loader" aria-hidden="true"></div>
+    <p class="ta-state-loading__text">Cargando tu tienda...</p>
+  </section>
+
+  <!-- Estado: sin acceso / sin tienda -->
+  <section id="state-noaccess" class="ta-state-fatal" hidden>
+    <h1 class="ta-state-fatal__title">Esta seccion esta reservada para clientes con Tienda IA activa</h1>
+    <p class="ta-state-fatal__text" id="noaccess-text">
+      Tu plan actual no incluye el modulo Tienda IA. Contacta a tu asesor AIMMA para activarlo.
+    </p>
+    <a href="/iapanel/" class="ta-btn ta-btn--primary">Volver al Panel IA</a>
+  </section>
+
+  <!-- Estado: error fatal -->
+  <section id="state-error" class="ta-state-fatal" hidden>
+    <h1 class="ta-state-fatal__title">Algo no salio bien</h1>
+    <p class="ta-state-fatal__text" id="error-text">Recarga la pagina (Ctrl+Shift+R).</p>
+    <a href="/iapanel/" class="ta-btn">Volver al Panel IA</a>
+  </section>
+
+  <!-- Estado: wizard onboarding (Fase 3.4) -->
+  <section id="state-wizard" class="ta-state-wizard" hidden>
+    <div class="ta-wizard__shell">
+      <h1 class="ta-wizard__title">Vamos a armar tu tienda</h1>
+      <p class="ta-wizard__step-indicator">Paso <span id="wizard-step">1</span> de 3</p>
+      <div id="wizard-body"></div>
+    </div>
+  </section>
+
+  <!-- Estado: app principal -->
+  <div id="state-app" class="ta-app" hidden>
+
+    <!-- Header superior -->
+    <header class="ta-topbar" role="banner">
+      <div class="ta-topbar__inner">
+        <button id="btn-sidebar-toggle" class="ta-icon-btn ta-icon-btn--menu" aria-label="Abrir menu lateral" aria-controls="sidebar">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <a href="/iapanel/" class="ta-brand" aria-label="Volver al Panel IA">
+          <svg class="ta-brand__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M5 12L11 6L11 10L19 10L19 14L11 14L11 18L5 12Z" fill="currentColor"/>
+          </svg>
+          <span class="ta-brand__txt">
+            <span class="ta-brand__small">Volver al Panel IA</span>
+            <span class="ta-brand__big">AIMMA · Tienda IA</span>
+          </span>
+        </a>
+
+        <div class="ta-topbar__right">
+          <span class="ta-plan-badge" id="plan-badge" hidden></span>
+          <a id="link-storefront" class="ta-topbar__link" target="_blank" rel="noopener" hidden>
+            Ver tienda
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div class="ta-shell">
+      <!-- Sidebar navegacion -->
+      <nav id="sidebar" class="ta-sidebar" aria-label="Navegacion del panel">
+        <div class="ta-sidebar__inner">
+          <a href="#/" class="ta-nav-link" data-route="">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 12L12 3l9 9M5 10v10h14V10" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Inicio</span>
+          </a>
+          <a href="#/productos" class="ta-nav-link" data-route="productos">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 7h18l-2 13H5L3 7zm5-3h8v3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Productos</span>
+          </a>
+          <a href="#/categorias" class="ta-nav-link" data-route="categorias">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 6h7v6H3zM14 6h7v4h-7zM14 14h7v6h-7zM3 16h7v4H3z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Categorias</span>
+          </a>
+          <a href="#/pedidos" class="ta-nav-link" data-route="pedidos">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 7h14l-1 13H6L5 7zm3-3h8v3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Pedidos</span>
+            <span class="ta-nav-badge" id="badge-pedidos" hidden>0</span>
+          </a>
+          <a href="#/configuracion" class="ta-nav-link" data-route="configuracion">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19 12l2 2-2 2-2-1M5 12l-2 2 2 2 2-1M12 5V3M12 21v-2" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Configuracion</span>
+          </a>
+          <a href="#/legales" class="ta-nav-link" data-route="legales">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 3h10l3 3v15H4V3zM9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Legales</span>
+          </a>
+
+          <div class="ta-sidebar__sep" role="separator"></div>
+
+          <button id="btn-logout" class="ta-nav-link ta-nav-link--ghost" type="button">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 4h5v16h-5M9 12h12M14 7l5 5-5 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Cerrar sesion</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Main content area: aqui se renderiza la view actual -->
+      <main class="ta-main" id="main-view" aria-live="polite">
+        <!-- view-inicio, view-productos, etc se inyectan aca -->
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast / notificacion no bloqueante -->
+  <div id="toast" class="ta-toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="admin.js?v=1"></script>
+</body>
+</html>
