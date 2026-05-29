@@ -1,6 +1,9 @@
-/* AIMMA · Tienda IA · admin.css · v1 · 2026-05-29 */
+/* AIMMA · Tienda IA · admin.css · v2 · 2026-05-29 */
+/* v2: fix critico [hidden] - el display:flex de los estados anulaba el atributo HTML hidden,
+   provocando que se rendericen los 5 estados apilados verticalmente. */
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 :root {
   --ta-bg: #040d1a;
