@@ -1,9 +1,16 @@
-/* AIMMA · Tienda IA · views/productos.js · v3 · 2026-05-29
-   Fase 3.3a (lista) + 3.3b (crear/editar form basico).
-   v3 (2026-05-29 post-feedback Jorge): el warn de dirty al click en sidebar
-   no disparaba porque el listener hashchange directo era removido por el
-   cleanupCurrentView de admin.js antes de poder chequear. Migrado a la nueva
-   API T.registerNavGuard() de admin.js v4 que evalua guards ANTES del cleanup.
+/* AIMMA · Tienda IA · views/productos.js · v5 · 2026-05-29
+   Fase 3.3a (lista) + 3.3b (form) + 3.3c (matriz variantes color x talla).
+   v5 (2026-05-29 post-audit 3.3c): 3 HIGH + 1 MEDIUM fixes
+   - BUG #1 HIGH: id="variantes-seccion" en lugar de selector :last-of-type fragil.
+   - BUG #2 HIGH: sanitizar "__" en input de color/talla para no romper keys de matriz.
+   - BUG #3 HIGH: capturar check_violation 23514 (stock < reservado) con mensaje claro.
+   - BUG #4 MEDIUM: regex diacriticos via new RegExp con ̀-ͯ para no depender del encoding.
+   v4 (2026-05-29): Fase 3.3c - matriz combinatoria color x talla con stock
+   por SKU. Solo aparece en edicion (necesita producto guardado). SKU auto
+   generado de <ref>-<color-slug>-<talla-slug>. Guard de reservas activas
+   en eliminacion. Diff con upsert (insert nuevas + update existentes +
+   delete removidas).
+   v3 (2026-05-29 post-feedback Jorge): API registerNavGuard.
    v2 (2026-05-29 post-audit): 2 HIGH + 3 MEDIUM fixes:
    - BUG #1 HIGH: sanitizar caracteres especiales en busqueda para evitar
      inyeccion de filtro PostgREST (RLS limita blast radius pero igual).
@@ -244,6 +251,15 @@
   // VISTA FORM (crear / editar)
   // ============================================================
   let formState = { producto: null, categorias: [], dirty: false };
+  // v4 (Fase 3.3c): editor matriz color x talla
+  let variantesState = {
+    activo: false,        // true cuando el user clickea "Agregar variantes" o ya hay variantes
+    colores: [],          // ej. ['Rojo', 'Negro']
+    tallas: [],           // ej. ['S', 'M', 'L']
+    matriz: {},           // mapa "<color>__<talla>" -> { id, stock, precio_override, sku, reservado }
+    original: [],         // snapshot de la DB para diff al guardar
+    dirty: false,
+  };
 
   async function renderForm(id) {
     const T = window.TiendaIA;
@@ -261,8 +277,44 @@
     }
 
     formState = { producto: prodRes.data || null, categorias: catRes.data || [], dirty: false };
+    // v4: si producto existe, cargar variantes en paralelo
+    if (formState.producto) {
+      await cargarVariantes(formState.producto.id);
+    } else {
+      variantesState = { activo: false, colores: [], tallas: [], matriz: {}, original: [], dirty: false };
+    }
     T.dom.mainView.innerHTML = renderFormHTML();
     wireFormEvents();
+  }
+
+  // v4: carga variantes desde DB y reconstruye matriz para el editor
+  async function cargarVariantes(productoId) {
+    const sb = window.TiendaIA.supabase();
+    const { data, error } = await sb.from('producto_variantes')
+      .select('id, color, talla, sku, stock, reservado, precio_override')
+      .eq('producto_id', productoId);
+    if (error) {
+      console.error('[cargarVariantes] error', error);
+      variantesState = { activo: false, colores: [], tallas: [], matriz: {}, original: [], dirty: false };
+      return;
+    }
+    const lista = data || [];
+    const colores = Array.from(new Set(lista.map(v => v.color).filter(Boolean)));
+    const tallas = Array.from(new Set(lista.map(v => v.talla).filter(Boolean)));
+    const matriz = {};
+    for (const v of lista) {
+      const k = (v.color || '') + '__' + (v.talla || '');
+      matriz[k] = {
+        id: v.id, sku: v.sku, stock: v.stock, reservado: v.reservado || 0,
+        precio_override: v.precio_override, color: v.color, talla: v.talla,
+      };
+    }
+    variantesState = {
+      activo: lista.length > 0,
+      colores, tallas, matriz,
+      original: lista.map(v => ({ id: v.id, color: v.color, talla: v.talla, sku: v.sku, stock: v.stock, reservado: v.reservado, precio_override: v.precio_override })),
+      dirty: false,
+    };
   }
 
   function renderFormHTML() {
@@ -356,7 +408,157 @@
           '</div>' +
         '</div>' +
 
-      '</form>';
+      '</form>' +
+
+      // v4 (Fase 3.3c): seccion Variantes solo en edicion
+      (esEdicion ? renderVariantesSeccion(p) : '');
+  }
+
+  // ============================================================
+  // VARIANTES (Fase 3.3c)
+  // ============================================================
+  // v4 BUG #4 fix: construir el regex con escapes Unicode via new RegExp para
+  // no depender del encoding del archivo fuente. El rango ̀-ͯ cubre
+  // Combining Diacritical Marks (tildes, dieresis, etc).
+  const RE_DIACRITICS = new RegExp('[\\u0300-\\u036f]', 'g');
+  function slugify(s) {
+    return String(s || '').toLowerCase()
+      .normalize('NFD').replace(RE_DIACRITICS, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 32);
+  }
+
+  function generarSku(referenciaProd, color, talla) {
+    const ref = slugify(referenciaProd) || 'sku';
+    const c = color ? slugify(color) : '';
+    const t = talla ? slugify(talla) : '';
+    return [ref, c, t].filter(Boolean).join('-').slice(0, 60);
+  }
+
+  function getMatrizCelda(color, talla) {
+    return variantesState.matriz[(color || '') + '__' + (talla || '')] || null;
+  }
+  function setMatrizCelda(color, talla, payload) {
+    variantesState.matriz[(color || '') + '__' + (talla || '')] = payload;
+  }
+  function delMatrizCelda(color, talla) {
+    delete variantesState.matriz[(color || '') + '__' + (talla || '')];
+  }
+
+  function renderVariantesSeccion(producto) {
+    const T = window.TiendaIA;
+
+    // Estado A: producto sin variantes y editor NO activo - mostrar CTA
+    // v4 BUG #1 fix: id="variantes-seccion" para selector robusto en rerender.
+    if (!variantesState.activo) {
+      return '' +
+        '<section id="variantes-seccion" class="ta-card" style="max-width:760px;margin-top:24px;">' +
+          '<h2 style="margin:0 0 8px;font-size:20px;">Variantes</h2>' +
+          '<p style="color:var(--ta-text-soft);margin:0 0 16px;font-size:14px;">' +
+            'Si tu producto se vende en varios colores o tallas, agrega variantes. ' +
+            'Cada combinacion color × talla tiene su propio stock y SKU. ' +
+            'Si vendes solo una version, no necesitas variantes.' +
+          '</p>' +
+          '<button type="button" id="btn-activar-variantes" class="ta-btn ta-btn--primary">+ Agregar variantes</button>' +
+        '</section>';
+    }
+
+    // Estado B: editor activo
+    const tagsColores = variantesState.colores.map(c =>
+      '<span class="ta-tag">' + T.escapeHtml(c) +
+        ' <button type="button" class="ta-tag__x" data-tag-tipo="color" data-tag-valor="' + T.escapeHtml(c) + '" aria-label="Quitar color">×</button>' +
+      '</span>'
+    ).join('');
+    const tagsTallas = variantesState.tallas.map(t =>
+      '<span class="ta-tag">' + T.escapeHtml(t) +
+        ' <button type="button" class="ta-tag__x" data-tag-tipo="talla" data-tag-valor="' + T.escapeHtml(t) + '" aria-label="Quitar talla">×</button>' +
+      '</span>'
+    ).join('');
+
+    const matrizHtml = renderMatrizTabla(producto);
+
+    return '' +
+      '<section id="variantes-seccion" class="ta-card" style="max-width:1100px;margin-top:24px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap;">' +
+          '<div>' +
+            '<h2 style="margin:0 0 4px;font-size:20px;">Variantes</h2>' +
+            '<p style="margin:0;color:var(--ta-text-soft);font-size:13px;">' +
+              'Agrega colores y tallas. La matriz combinatoria genera un SKU + stock por celda.' +
+            '</p>' +
+          '</div>' +
+          (variantesState.colores.length || variantesState.tallas.length
+            ? '<button type="button" id="btn-cancelar-variantes" class="ta-btn">Quitar todas las variantes</button>'
+            : '') +
+        '</div>' +
+
+        '<div style="margin-top:20px;">' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label">Colores</label>' +
+            '<div class="ta-tags-row">' + tagsColores +
+              '<input id="input-color" type="text" placeholder="Escribe un color y enter" maxlength="40" class="ta-tag-input">' +
+            '</div>' +
+          '</div>' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label">Tallas</label>' +
+            '<div class="ta-tags-row">' + tagsTallas +
+              '<input id="input-talla" type="text" placeholder="Escribe una talla y enter" maxlength="40" class="ta-tag-input">' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        matrizHtml +
+
+        (variantesState.colores.length > 0 || variantesState.tallas.length > 0 ? '' +
+          '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--ta-border);">' +
+            '<button type="button" id="btn-guardar-variantes" class="ta-btn ta-btn--primary">Guardar variantes</button>' +
+          '</div>'
+        : '') +
+      '</section>';
+  }
+
+  function renderMatrizTabla(producto) {
+    const T = window.TiendaIA;
+    const colores = variantesState.colores;
+    const tallas = variantesState.tallas;
+
+    if (colores.length === 0 || tallas.length === 0) {
+      return '<p style="color:var(--ta-text-mut);font-size:13px;margin-top:16px;">Agrega al menos un color y una talla para ver la matriz de variantes.</p>';
+    }
+
+    let thead = '<tr><th style="width:140px;">Color \\ Talla</th>';
+    for (const t of tallas) thead += '<th>' + T.escapeHtml(t) + '</th>';
+    thead += '</tr>';
+
+    let tbody = '';
+    for (const color of colores) {
+      tbody += '<tr><th style="text-align:left;background:var(--ta-bg-soft);">' + T.escapeHtml(color) + '</th>';
+      for (const talla of tallas) {
+        const celda = getMatrizCelda(color, talla);
+        const sku = celda?.sku || generarSku(producto.referencia, color, talla);
+        const stock = celda?.stock != null ? celda.stock : '';
+        const reservadoStr = celda?.reservado > 0 ? '<span style="color:var(--ta-warn);font-size:11px;">(reserv: ' + celda.reservado + ')</span>' : '';
+        tbody += '' +
+          '<td>' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+              '<code style="font-size:11px;color:var(--ta-text-mut);">' + T.escapeHtml(sku) + '</code>' +
+              '<input type="number" min="0" step="1" placeholder="Stock" value="' + T.escapeHtml(String(stock)) + '" ' +
+                'data-celda-color="' + T.escapeHtml(color) + '" data-celda-talla="' + T.escapeHtml(talla) + '" ' +
+                'class="ta-input ta-input--stock" style="padding:6px 8px;font-size:13px;">' +
+              reservadoStr +
+            '</div>' +
+          '</td>';
+      }
+      tbody += '</tr>';
+    }
+
+    return '' +
+      '<div style="margin-top:20px;overflow-x:auto;">' +
+        '<table class="ta-table" style="font-size:13px;">' +
+          '<thead>' + thead + '</thead>' +
+          '<tbody>' + tbody + '</tbody>' +
+        '</table>' +
+      '</div>';
   }
 
   function wireFormEvents() {
@@ -397,15 +599,281 @@
     // ya habia llamado cleanupCurrentView() que removia el listener antes de que
     // pudiera chequear dirty. Ahora admin.js evalua guards ANTES del cleanup.
     T.registerNavGuard(() => {
-      if (!formState.dirty) return true;
-      const confirmar = window.confirm('Tienes cambios sin guardar en este producto. ¿Salir de todos modos?');
-      if (confirmar) formState.dirty = false; // marcar como ya confirmado para no repetir
+      // v4: incluir variantes dirty en el guard
+      if (!formState.dirty && !variantesState.dirty) return true;
+      const confirmar = window.confirm('Tienes cambios sin guardar en este producto o sus variantes. ¿Salir de todos modos?');
+      if (confirmar) {
+        formState.dirty = false;
+        variantesState.dirty = false;
+      }
       return confirmar;
     });
 
     T.registerCleanup(() => {
       window.removeEventListener('beforeunload', warnFn);
     });
+
+    // v4 (Fase 3.3c): wire variantes events si producto en edicion
+    if (formState.producto) {
+      wireVariantesEvents();
+    }
+  }
+
+  // ============================================================
+  // Variantes: event handlers
+  // ============================================================
+  function wireVariantesEvents() {
+    const T = window.TiendaIA;
+    const view = T.dom.mainView;
+
+    // Activar editor
+    const btnActivar = view.querySelector('#btn-activar-variantes');
+    if (btnActivar) {
+      btnActivar.addEventListener('click', () => {
+        variantesState.activo = true;
+        rerenderVariantes();
+      });
+    }
+
+    // Cancelar/quitar todas las variantes
+    const btnCancelar = view.querySelector('#btn-cancelar-variantes');
+    if (btnCancelar) {
+      btnCancelar.addEventListener('click', () => {
+        const hayDatos = Object.keys(variantesState.matriz).length > 0;
+        if (hayDatos && !window.confirm('Quitar TODAS las variantes. Esto eliminara los SKUs y stock asociados. ¿Continuar?')) return;
+        variantesState.colores = [];
+        variantesState.tallas = [];
+        variantesState.matriz = {};
+        variantesState.activo = false;
+        variantesState.dirty = true;
+        rerenderVariantes();
+      });
+    }
+
+    // Agregar color (Enter)
+    const inputColor = view.querySelector('#input-color');
+    if (inputColor) {
+      inputColor.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          agregarTag('color', e.target.value);
+          e.target.value = '';
+        }
+      });
+    }
+
+    // Agregar talla (Enter)
+    const inputTalla = view.querySelector('#input-talla');
+    if (inputTalla) {
+      inputTalla.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          agregarTag('talla', e.target.value);
+          e.target.value = '';
+        }
+      });
+    }
+
+    // Quitar tag (color o talla)
+    view.querySelectorAll('.ta-tag__x').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tipo = btn.getAttribute('data-tag-tipo');
+        const valor = btn.getAttribute('data-tag-valor');
+        quitarTag(tipo, valor);
+      });
+    });
+
+    // Cambios en stock de cada celda
+    view.querySelectorAll('.ta-input--stock').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const color = e.target.getAttribute('data-celda-color');
+        const talla = e.target.getAttribute('data-celda-talla');
+        const stockRaw = e.target.value;
+        const stock = stockRaw === '' ? null : Math.max(0, parseInt(stockRaw, 10) || 0);
+        const existente = getMatrizCelda(color, talla) || {};
+        setMatrizCelda(color, talla, {
+          ...existente,
+          color, talla,
+          sku: existente.sku || generarSku(formState.producto.referencia, color, talla),
+          stock,
+        });
+        variantesState.dirty = true;
+      });
+    });
+
+    // Guardar variantes
+    const btnGuardarV = view.querySelector('#btn-guardar-variantes');
+    if (btnGuardarV) {
+      btnGuardarV.addEventListener('click', () => guardarVariantes(btnGuardarV));
+    }
+  }
+
+  function agregarTag(tipo, valor) {
+    // v4 BUG #2 fix: sanitizar input para evitar colision con el separador
+    // "__" usado en las keys de matriz. Reemplazar cualquier "__" por "_".
+    let v = String(valor || '').trim().replace(/_{2,}/g, '_');
+    if (!v) return;
+    if (v.length > 40) { window.TiendaIA.toast('Maximo 40 caracteres', 'error'); return; }
+    const lista = tipo === 'color' ? variantesState.colores : variantesState.tallas;
+    if (lista.some(x => x.toLowerCase() === v.toLowerCase())) {
+      window.TiendaIA.toast('Ya existe ese ' + tipo, 'error');
+      return;
+    }
+    if (lista.length >= 20) { window.TiendaIA.toast('Maximo 20 ' + tipo + 's por producto', 'error'); return; }
+    lista.push(v);
+    variantesState.dirty = true;
+    rerenderVariantes();
+  }
+
+  function quitarTag(tipo, valor) {
+    // Si hay datos guardados en alguna celda con este valor, pedir confirmacion.
+    const matrizKeys = Object.keys(variantesState.matriz);
+    const afectadas = matrizKeys.filter(k => {
+      const [c, t] = k.split('__');
+      return (tipo === 'color' && c === valor) || (tipo === 'talla' && t === valor);
+    });
+    const conStock = afectadas.some(k => (variantesState.matriz[k]?.stock || 0) > 0 || variantesState.matriz[k]?.id);
+    if (conStock && !window.confirm('Hay variantes con stock o ya guardadas en BD que se eliminaran. ¿Continuar?')) return;
+
+    if (tipo === 'color') variantesState.colores = variantesState.colores.filter(c => c !== valor);
+    else variantesState.tallas = variantesState.tallas.filter(t => t !== valor);
+
+    // Limpiar matriz de las celdas afectadas
+    for (const k of afectadas) delete variantesState.matriz[k];
+
+    variantesState.dirty = true;
+    rerenderVariantes();
+  }
+
+  function rerenderVariantes() {
+    // v4 BUG #1 fix: usar id explicito en vez de selector :last-of-type fragil.
+    const T = window.TiendaIA;
+    const seccionVieja = T.dom.mainView.querySelector('#variantes-seccion');
+    if (!seccionVieja || !formState.producto) {
+      // Fallback: re-render full
+      T.dom.mainView.innerHTML = renderFormHTML();
+      wireFormEvents();
+      return;
+    }
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = renderVariantesSeccion(formState.producto);
+    const nueva = wrapper.firstElementChild;
+    seccionVieja.replaceWith(nueva);
+    wireVariantesEvents();
+  }
+
+  // Guardar variantes: diff vs original + insert/update/delete
+  async function guardarVariantes(btn) {
+    const T = window.TiendaIA;
+    const sb = T.supabase();
+    const producto = formState.producto;
+    if (!producto) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+    // Construir lista de variantes actuales desde la matriz (solo celdas con stock definido)
+    const actuales = [];
+    for (const color of variantesState.colores) {
+      for (const talla of variantesState.tallas) {
+        const celda = getMatrizCelda(color, talla);
+        const stock = celda?.stock;
+        if (stock == null) continue; // celdas vacias se ignoran
+        actuales.push({
+          id: celda?.id,
+          color, talla,
+          sku: celda?.sku || generarSku(producto.referencia, color, talla),
+          stock,
+          precio_override: celda?.precio_override || null,
+        });
+      }
+    }
+
+    // Diff vs original
+    const idsActuales = new Set(actuales.filter(v => v.id).map(v => v.id));
+    const eliminadas = variantesState.original.filter(o => !idsActuales.has(o.id));
+
+    // Guard: no eliminar variantes con reservas activas
+    const conReservas = eliminadas.filter(v => (v.reservado || 0) > 0);
+    if (conReservas.length > 0) {
+      const skus = conReservas.map(v => v.sku).join(', ');
+      T.toast('No se puede eliminar variantes con reservas activas: ' + skus, 'error');
+      restoreVariantesBtn(btn);
+      return;
+    }
+
+    try {
+      // INSERTS (sin id)
+      const nuevas = actuales.filter(v => !v.id).map(v => ({
+        producto_id: producto.id,
+        color: v.color, talla: v.talla,
+        sku: v.sku, stock: v.stock,
+        precio_override: v.precio_override,
+      }));
+      if (nuevas.length > 0) {
+        const r = await sb.from('producto_variantes').insert(nuevas);
+        if (r.error) {
+          if (r.error.code === '23505') {
+            T.toast('Algun SKU ya existe en otro producto. Cambia la referencia base del producto y vuelve a intentar.', 'error');
+          } else {
+            T.toast('Error al crear variantes: ' + r.error.message, 'error');
+          }
+          restoreVariantesBtn(btn);
+          return;
+        }
+      }
+
+      // UPDATES (con id)
+      const existentes = actuales.filter(v => v.id);
+      for (const v of existentes) {
+        const patch = { color: v.color, talla: v.talla, stock: v.stock, precio_override: v.precio_override };
+        const r = await sb.from('producto_variantes').update(patch).eq('id', v.id);
+        if (r.error) {
+          // v4 BUG #3 fix: capturar check_violation (23514) que dispara cuando
+          // el nuevo stock es < reservado. Mensaje claro al usuario.
+          if (r.error.code === '23514') {
+            // Buscar la variante original para mostrar el reservado actual
+            const orig = variantesState.original.find(o => o.id === v.id);
+            const reservado = orig?.reservado ?? '?';
+            T.toast('SKU "' + v.sku + '": el stock no puede ser menor al reservado (' + reservado + ' en pedidos pendientes)', 'error');
+          } else if (r.error.code === '23505') {
+            T.toast('Conflicto de SKU "' + v.sku + '". Cambia la referencia base del producto.', 'error');
+          } else {
+            T.toast('Error al actualizar variante "' + v.sku + '": ' + r.error.message, 'error');
+          }
+          restoreVariantesBtn(btn);
+          return;
+        }
+      }
+
+      // DELETES
+      if (eliminadas.length > 0) {
+        const ids = eliminadas.map(e => e.id);
+        const r = await sb.from('producto_variantes').delete().in('id', ids);
+        if (r.error) {
+          T.toast('Error al eliminar variantes: ' + r.error.message, 'error');
+          restoreVariantesBtn(btn);
+          return;
+        }
+      }
+
+      // Recargar desde BD para refrescar ids y reservado
+      await cargarVariantes(producto.id);
+      rerenderVariantes();
+      T.toast('Variantes guardadas (' + actuales.length + ' SKUs)', 'success');
+    } catch (e) {
+      console.error('[guardarVariantes] exception', e);
+      T.toast('Error: ' + (e.message || e), 'error');
+      restoreVariantesBtn(btn);
+    }
+  }
+
+  function restoreVariantesBtn(btn) {
+    if (!btn || !btn.isConnected) {
+      btn = window.TiendaIA.dom.mainView.querySelector('#btn-guardar-variantes');
+    }
+    if (!btn) return;
+    btn.disabled = false;
+    btn.textContent = 'Guardar variantes';
   }
 
   async function handleSubmit(form) {

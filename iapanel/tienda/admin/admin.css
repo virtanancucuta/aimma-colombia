@@ -1,5 +1,6 @@
-/* AIMMA · Tienda IA · admin.css · v3 · 2026-05-29 */
-/* v3 (2026-05-29): Fase 3.2 - estilos vista Inicio (pills, acciones list, code).
+/* AIMMA · Tienda IA · admin.css · v4 · 2026-05-29 */
+/* v4 (2026-05-29): Fase 3.3c - tags row, tag input, matriz variantes.
+   v3 (2026-05-29): Fase 3.2 - estilos vista Inicio (pills, acciones list, code).
    v2: fix [hidden] anulado por display:flex en estados.
 */
 
@@ -449,6 +450,61 @@ a:hover { text-decoration: underline; }
 .ta-accion__title { font-weight: 600; font-size: 15px; }
 .ta-accion__desc { font-size: 13px; color: var(--ta-text-soft); }
 .ta-accion__cta { font-size: 13px; color: var(--ta-accent); white-space: nowrap; font-weight: 600; }
+
+/* ============================ Tags (variantes) ============================ */
+.ta-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: var(--ta-bg-soft);
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius-sm);
+  align-items: center;
+  min-height: 44px;
+}
+.ta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 10px;
+  background: var(--ta-surface-2);
+  border: 1px solid var(--ta-border-strong);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ta-text);
+}
+.ta-tag__x {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  color: var(--ta-text-soft);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+.ta-tag__x:hover { background: rgba(255,93,108,.18); color: var(--ta-danger); }
+.ta-tag-input {
+  background: transparent;
+  border: 0;
+  color: var(--ta-text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  min-width: 150px;
+  flex: 1;
+  outline: none;
+}
+.ta-tag-input::placeholder { color: var(--ta-text-mut); }
+
+.ta-input--stock { max-width: 100px; }
 
 /* ============================ code inline ============================ */
 code {
