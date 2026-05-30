@@ -1,5 +1,9 @@
-/* AIMMA · Tienda IA · admin.js · v5 · 2026-05-30 · Panel Admin SPA */
-/* v5 (2026-05-30): Fase 3.4 - delegar la pantalla del wizard a views/wizard.js
+/* AIMMA · Tienda IA · admin.js · v6 · 2026-05-30 · Panel Admin SPA */
+/* v6 (2026-05-30): Fase 3.4b - boton "Ver tienda" del topbar redirige a
+   #/vista-previa (mockup interno) en vez del subdominio publico que no tiene
+   cert SSL todavia. Sera revertido cuando Fase 4 entregue automatizacion SSL.
+   Ruta 'vista-previa' agregada a ROUTES.
+   v5 (2026-05-30): Fase 3.4 - delegar la pantalla del wizard a views/wizard.js
    via window.TiendaIA.startWizard. Cambio de logica: el wizard se activa si
    plantilla_id IS NULL (sin chequear cortesia_razon). Razon: pilotos como
    Maraldo+Dimac tampoco tienen plantilla -> tampoco pueden publicar sin
@@ -27,7 +31,7 @@
   const PANEL_URL = '/iapanel/';
   const STOREFRONT_HOST = 'tienda.aimma.com.co'; // <slug>.tienda.aimma.com.co
 
-  const ROUTES = ['', 'productos', 'categorias', 'pedidos', 'configuracion', 'legales'];
+  const ROUTES = ['', 'productos', 'categorias', 'pedidos', 'configuracion', 'legales', 'vista-previa'];
   const DEFAULT_ROUTE = '';
 
   // ============================================================
@@ -192,9 +196,14 @@
     dom.planBadge.className = 'ta-plan-badge' + (kind ? ' ta-plan-badge--' + kind : '');
     dom.planBadge.hidden = false;
 
-    // Storefront link (solo si publicada)
-    if (state.tienda.estado === 'publicada') {
-      dom.linkStorefront.href = 'https://' + state.tienda.slug + '.' + STOREFRONT_HOST + '/';
+    // v5 (Fase 3.4b): el botón "Ver tienda" apunta al mockup interno
+    // (#/vista-previa) hasta que Fase 4 entregue el storefront real con cert
+    // SSL automatico para cada subdominio. Esto evita el error
+    // ERR_CERT_AUTHORITY_INVALID del navegador al ir al subdominio sin cert.
+    if (state.tienda.estado === 'publicada' && state.tienda.plantilla_id) {
+      dom.linkStorefront.href = '#/vista-previa';
+      dom.linkStorefront.removeAttribute('target');
+      dom.linkStorefront.firstChild && (dom.linkStorefront.childNodes[0].nodeValue = 'Vista previa ');
       dom.linkStorefront.hidden = false;
     } else {
       dom.linkStorefront.hidden = true;

@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="admin.css?v=7" />
+  <link rel="stylesheet" href="admin.css?v=8" />
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 </head>
@@ -110,6 +110,10 @@
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 3h10l3 3v15H4V3zM9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
             <span>Legales</span>
           </a>
+          <a href="#/vista-previa" class="ta-nav-link" data-route="vista-previa">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>Vista previa</span>
+          </a>
 
           <div class="ta-sidebar__sep" role="separator"></div>
 
@@ -130,9 +134,10 @@
   <!-- Toast / notificacion no bloqueante -->
   <div id="toast" class="ta-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="admin.js?v=5"></script>
+  <script src="admin.js?v=6"></script>
   <script src="views/inicio.js?v=2"></script>
   <script src="views/productos.js?v=10"></script>
   <script src="views/wizard.js?v=2"></script>
+  <script src="views/vista-previa.js?v=1"></script>
 </body>
 </html>
