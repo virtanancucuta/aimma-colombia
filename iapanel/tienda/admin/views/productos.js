@@ -1,4 +1,16 @@
-/* AIMMA · Tienda IA · views/productos.js · v13 · 2026-05-30
+/* AIMMA · Tienda IA · views/productos.js · v14 · 2026-05-30
+   v14 (Fase 3.5.d): variantes flexibles. Editor con 2 bloques (VARIANTE +
+   SUBVARIANTE opcional). Cada bloque tiene dropdown de tipo (Color, Tamaño,
+   Talla, Textura, Material, ✨ Crear variante - input libre). Tabla resultante:
+   - Solo Variante: tabla 2 cols (Valor | SKU | Stock).
+   - Solo Subvariante: idem para tallas.
+   - Variante + Sub: matriz N×M como antes.
+   Migration tiendas + columnas variante_tipo_1/2 TEXT NULL. BD columnas
+   color/talla en producto_variantes mantienen nombre por compat - semantica
+   nueva: color = valor 1, talla = valor 2.
+   Eliminar default variant al activar variantes en edicion (sin reservas).
+   Botones "+ Agregar subvariante" / "Quitar subvariante" para mover entre
+   modos 1 dim y 2 dims.
    v13 (fix bug CRITICO Jorge): producto sin variantes no tenia donde
    ingresar inventario. Ahora si NO hay colores/tallas activos, aparece
    campo "Stock disponible" simple. Al guardar crea/actualiza una variante
@@ -374,16 +386,25 @@
   let formState = { producto: null, categorias: [], dirty: false };
   // v4 (Fase 3.3c): editor matriz color x talla
   // v12: defaultVariant + stockSimple para producto SIN variantes (patron Shopify)
+  // v13 (Fase 3.5.d): variantes flexibles. tipoVariante1/2 son las etiquetas
+  // semanticas (Color, Tamaño, Talla, Textura, Material, custom). Los arrays
+  // colores/tallas mantienen su nombre por compat - internamente representan
+  // valores1/valores2.
   let variantesState = {
     activo: false,
-    colores: [],
-    tallas: [],
+    tipoVariante1: 'Color',     // default 'Color' al activar variantes por primera vez
+    tipoVariante2: '',           // '' = no hay subvariante (NULL en BD)
+    colores: [],                 // valores del atributo 1 (independiente de su tipo)
+    tallas: [],                  // valores del atributo 2 (NULL si no hay subvariante)
     matriz: {},
     original: [],
     dirty: false,
-    defaultVariant: null,  // variante con color=null AND talla=null (representa producto simple)
-    stockSimple: 0,        // valor del campo "Stock disponible" cuando NO hay variantes
+    defaultVariant: null,
+    stockSimple: 0,
   };
+
+  // v13: opciones del dropdown de tipo de variante. La ultima es input libre.
+  const TIPOS_VARIANTE = ['Color', 'Tamaño', 'Talla', 'Textura', 'Material'];
 
   async function renderForm(id) {
     const T = window.TiendaIA;
@@ -405,7 +426,13 @@
     if (formState.producto) {
       await cargarVariantes(formState.producto.id);
     } else {
-      variantesState = { activo: false, colores: [], tallas: [], matriz: {}, original: [], dirty: false, defaultVariant: null, stockSimple: 0 };
+      variantesState = {
+        activo: false,
+        tipoVariante1: 'Color',
+        tipoVariante2: '',
+        colores: [], tallas: [], matriz: {}, original: [], dirty: false,
+        defaultVariant: null, stockSimple: 0,
+      };
     }
     T.dom.mainView.innerHTML = renderFormHTML();
     wireFormEvents();
@@ -438,13 +465,23 @@
         precio_override: v.precio_override, color: v.color, talla: v.talla,
       };
     }
+    // v13/v14: leer tipos desde el producto. Si NULL pero hay variantes, asumir
+    // 'Color' para variante1 y 'Talla' para variante2 (backward compat con
+    // datos creados antes de la migration). Si producto NO tiene tipos guardados
+    // ni variantes reales, tipoVariante1='Color' como default al activar editor.
+    const p = formState.producto;
+    const tipoVariante1 = (p && p.variante_tipo_1) || 'Color';
+    const tipoVariante2 = (p && p.variante_tipo_2) || (tallas.length > 0 ? 'Talla' : '');
+
     variantesState = {
-      activo: variantesReales.length > 0,  // false si solo hay default
+      activo: variantesReales.length > 0,
+      tipoVariante1,
+      tipoVariante2,
       colores, tallas, matriz,
       original: lista.map(v => ({ id: v.id, color: v.color, talla: v.talla, sku: v.sku, stock: v.stock, reservado: v.reservado, precio_override: v.precio_override })),
       dirty: false,
-      defaultVariant: defaultVariant || null,  // variante simple para producto sin variantes
-      stockSimple: defaultVariant ? defaultVariant.stock : 0,  // valor del campo "Stock disponible"
+      defaultVariant: defaultVariant || null,
+      stockSimple: defaultVariant ? defaultVariant.stock : 0,
     };
   }
 
@@ -972,14 +1009,17 @@
     }
 
     // Estado B: editor activo
+    // v13: dropdowns de TIPO + valores con label dinamico segun tipo elegido.
+    const tipo1 = variantesState.tipoVariante1 || 'Color';
+    const tipo2 = variantesState.tipoVariante2 || '';
     const tagsColores = variantesState.colores.map(c =>
       '<span class="ta-tag">' + T.escapeHtml(c) +
-        ' <button type="button" class="ta-tag__x" data-tag-tipo="color" data-tag-valor="' + T.escapeHtml(c) + '" aria-label="Quitar color">×</button>' +
+        ' <button type="button" class="ta-tag__x" data-tag-tipo="color" data-tag-valor="' + T.escapeHtml(c) + '" aria-label="Quitar valor">×</button>' +
       '</span>'
     ).join('');
     const tagsTallas = variantesState.tallas.map(t =>
       '<span class="ta-tag">' + T.escapeHtml(t) +
-        ' <button type="button" class="ta-tag__x" data-tag-tipo="talla" data-tag-valor="' + T.escapeHtml(t) + '" aria-label="Quitar talla">×</button>' +
+        ' <button type="button" class="ta-tag__x" data-tag-tipo="talla" data-tag-valor="' + T.escapeHtml(t) + '" aria-label="Quitar valor">×</button>' +
       '</span>'
     ).join('');
 
@@ -991,7 +1031,7 @@
           '<div>' +
             '<h2 style="margin:0 0 4px;font-size:20px;">Variantes</h2>' +
             '<p style="margin:0;color:var(--ta-text-soft);font-size:13px;">' +
-              'Agrega colores y tallas. La matriz combinatoria genera un SKU + stock por celda.' +
+              'Define hasta 2 atributos (ej. Color + Talla, o solo Tamaño). Genera SKU + stock por cada combinacion.' +
             '</p>' +
           '</div>' +
           (variantesState.colores.length || variantesState.tallas.length
@@ -999,19 +1039,39 @@
             : '') +
         '</div>' +
 
-        '<div style="margin-top:20px;">' +
+        // BLOQUE VARIANTE 1
+        '<div style="margin-top:20px;padding:16px;background:var(--ta-bg-soft);border-radius:var(--ta-radius-sm);">' +
+          '<h3 style="margin:0 0 12px;font-size:14px;font-weight:700;color:var(--ta-accent);">VARIANTE</h3>' +
+          '<div class="ta-field" style="margin-bottom:8px;">' +
+            '<label class="ta-field__label">Tipo</label>' +
+            renderTipoSelector('1', tipo1) +
+          '</div>' +
           '<div class="ta-field">' +
-            '<label class="ta-field__label">Colores</label>' +
+            '<label class="ta-field__label">Valores de ' + T.escapeHtml(tipo1) + '</label>' +
             '<div class="ta-tags-row">' + tagsColores +
-              '<input id="input-color" type="text" placeholder="Escribe un color y enter" maxlength="40" class="ta-tag-input">' +
+              '<input id="input-color" type="text" placeholder="Escribe un valor y enter" maxlength="40" class="ta-tag-input">' +
             '</div>' +
           '</div>' +
-          '<div class="ta-field">' +
-            '<label class="ta-field__label">Tallas</label>' +
-            '<div class="ta-tags-row">' + tagsTallas +
-              '<input id="input-talla" type="text" placeholder="Escribe una talla y enter" maxlength="40" class="ta-tag-input">' +
-            '</div>' +
-          '</div>' +
+        '</div>' +
+
+        // BLOQUE VARIANTE 2 (opcional)
+        '<div style="margin-top:14px;padding:16px;background:var(--ta-bg-soft);border-radius:var(--ta-radius-sm);">' +
+          '<h3 style="margin:0 0 12px;font-size:14px;font-weight:700;color:var(--ta-accent-2);">' +
+            'SUBVARIANTE <span style="font-weight:400;color:var(--ta-text-mut);font-size:12px;">(opcional)</span>' +
+          '</h3>' +
+          (tipo2
+            ? '<div class="ta-field" style="margin-bottom:8px;">' +
+                '<label class="ta-field__label">Tipo</label>' +
+                renderTipoSelector('2', tipo2) +
+                '<button type="button" id="btn-quitar-sub" class="ta-btn" style="margin-top:8px;font-size:11px;padding:4px 10px;">Quitar subvariante</button>' +
+              '</div>' +
+              '<div class="ta-field">' +
+                '<label class="ta-field__label">Valores de ' + T.escapeHtml(tipo2) + '</label>' +
+                '<div class="ta-tags-row">' + tagsTallas +
+                  '<input id="input-talla" type="text" placeholder="Escribe un valor y enter" maxlength="40" class="ta-tag-input">' +
+                '</div>' +
+              '</div>'
+            : '<button type="button" id="btn-add-sub" class="ta-btn ta-btn--primary" style="font-size:12px;">+ Agregar subvariante</button>') +
         '</div>' +
 
         matrizHtml +
@@ -1028,23 +1088,37 @@
       '</section>';
   }
 
-  // v10 (Fase 3.3.e post-feedback Jorge): identifica celdas sin stock cuando
-  // hay colores+tallas definidos. Return { vacias: [{color, talla}], total: N }.
+  // v10 (Fase 3.3.e post-feedback Jorge): identifica celdas sin stock.
+  // v13: soporta 1 dimension (solo variante o solo subvariante) o matriz N×M.
   function validarMatrizStocks() {
     const colores = variantesState.colores;
     const tallas = variantesState.tallas;
-    if (colores.length === 0 || tallas.length === 0) {
-      return { vacias: [], total: 0, requiereStock: false };
-    }
+    const hasVal1 = colores.length > 0;
+    const hasVal2 = tallas.length > 0;
+    if (!hasVal1 && !hasVal2) return { vacias: [], total: 0, requiereStock: false };
+
     const vacias = [];
     let total = 0;
-    for (const color of colores) {
-      for (const talla of tallas) {
+    if (hasVal1 && hasVal2) {
+      // matriz combinatoria
+      for (const color of colores) for (const talla of tallas) {
         total++;
         const celda = getMatrizCelda(color, talla);
-        if (celda == null || celda.stock == null) {
-          vacias.push({ color, talla });
-        }
+        if (celda == null || celda.stock == null) vacias.push({ color, talla });
+      }
+    } else if (hasVal1) {
+      // solo variante 1 -> 1 fila por color, talla=''
+      for (const color of colores) {
+        total++;
+        const celda = getMatrizCelda(color, '');
+        if (celda == null || celda.stock == null) vacias.push({ color, talla: '' });
+      }
+    } else {
+      // solo variante 2 -> 1 fila por talla, color=''
+      for (const talla of tallas) {
+        total++;
+        const celda = getMatrizCelda('', talla);
+        if (celda == null || celda.stock == null) vacias.push({ color: '', talla });
       }
     }
     return { vacias, total, requiereStock: vacias.length > 0 };
@@ -1068,14 +1142,42 @@
     }
   }
 
+  // v13: dropdown de tipo de variante. Si el tipo no esta en la lista fija,
+  // muestra "Crear variante" como opcion seleccionada con input libre.
+  function renderTipoSelector(num, valorActual) {
+    const T = window.TiendaIA;
+    const esCustom = !TIPOS_VARIANTE.includes(valorActual);
+    const options = TIPOS_VARIANTE.map(t =>
+      '<option value="' + T.escapeHtml(t) + '"' + (t === valorActual ? ' selected' : '') + '>' + T.escapeHtml(t) + '</option>'
+    ).join('') +
+    '<option value="__custom__"' + (esCustom ? ' selected' : '') + '>✨ Crear variante (escribir nombre)</option>';
+    const customInput = esCustom
+      ? '<input id="tipo-' + num + '-custom" type="text" class="ta-input" style="margin-top:6px;max-width:280px;" maxlength="40" placeholder="ej. Sabor, Aroma, Capacidad..." value="' + T.escapeHtml(valorActual) + '">'
+      : '';
+    return '<select id="tipo-' + num + '" class="ta-select" style="max-width:280px;">' + options + '</select>' + customInput;
+  }
+
   function renderMatrizTabla(producto) {
     const T = window.TiendaIA;
     const colores = variantesState.colores;
     const tallas = variantesState.tallas;
+    const tipo1 = variantesState.tipoVariante1 || 'Color';
+    const tipo2 = variantesState.tipoVariante2 || '';
+    const hasVal1 = colores.length > 0;
+    const hasVal2 = tallas.length > 0;
 
-    if (colores.length === 0 || tallas.length === 0) {
-      return '<p style="color:var(--ta-text-mut);font-size:13px;margin-top:16px;">Agrega al menos un color y una talla para ver la matriz de variantes.</p>';
+    if (!hasVal1 && !hasVal2) {
+      return '<p style="color:var(--ta-text-mut);font-size:13px;margin-top:16px;">Agrega al menos un valor para ver la tabla de stock.</p>';
     }
+
+    // v13: tabla 1 columna si solo hay una variante (sin subvariante).
+    if (hasVal1 && !hasVal2) {
+      return renderTablaUnaColumna(producto, colores, tipo1, 'color');
+    }
+    if (!hasVal1 && hasVal2) {
+      return renderTablaUnaColumna(producto, tallas, tipo2, 'talla');
+    }
+    // Ambos -> matriz combinatoria (logica existente)
 
     // v6: en CREAR, leer la referencia del input del form (live) en vez del producto
     // guardado. Si esta vacia, mostrar placeholder.
@@ -1114,6 +1216,47 @@
         '<table class="ta-table" style="font-size:13px;">' +
           '<thead>' + thead + '</thead>' +
           '<tbody>' + tbody + '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
+  // v13: tabla de 1 columna para producto con solo Variante (sin Subvariante).
+  // dimension = 'color' o 'talla' (indica que campo se llena en producto_variantes).
+  function renderTablaUnaColumna(producto, valores, tipoLabel, dimension) {
+    const T = window.TiendaIA;
+    const refLive = obtenerReferenciaLive(producto);
+    const refValida = !!refLive;
+
+    const rows = valores.map(val => {
+      const celda = dimension === 'color' ? getMatrizCelda(val, '') : getMatrizCelda('', val);
+      const sku = celda?.sku || (refValida ? generarSku(refLive, dimension === 'color' ? val : '', dimension === 'talla' ? val : '') : '(llena la referencia arriba)');
+      const stock = celda?.stock != null ? celda.stock : '';
+      const reservadoStr = celda?.reservado > 0
+        ? '<span style="color:var(--ta-warn);font-size:11px;">(reserv: ' + celda.reservado + ')</span>' : '';
+      const skuStyle = refValida ? 'color:var(--ta-text-mut);' : 'color:var(--ta-warn);font-style:italic;';
+      const colorAttr = dimension === 'color' ? T.escapeHtml(val) : '';
+      const tallaAttr = dimension === 'talla' ? T.escapeHtml(val) : '';
+      return '<tr>' +
+        '<th style="text-align:left;background:var(--ta-bg-soft);padding:10px 14px;">' + T.escapeHtml(val) + '</th>' +
+        '<td style="padding:10px 14px;"><code style="font-size:11px;' + skuStyle + '">' + T.escapeHtml(sku) + '</code></td>' +
+        '<td style="padding:10px 14px;">' +
+          '<input type="number" min="0" step="1" placeholder="Stock" value="' + T.escapeHtml(String(stock)) + '" ' +
+            'data-celda-color="' + colorAttr + '" data-celda-talla="' + tallaAttr + '" ' +
+            'class="ta-input ta-input--stock" style="padding:6px 8px;font-size:13px;max-width:120px;">' +
+          ' ' + reservadoStr +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '' +
+      '<div style="margin-top:20px;overflow-x:auto;">' +
+        '<table class="ta-table" style="font-size:13px;">' +
+          '<thead><tr>' +
+            '<th style="text-align:left;width:200px;">' + T.escapeHtml(tipoLabel) + '</th>' +
+            '<th style="text-align:left;">SKU</th>' +
+            '<th style="text-align:left;">Stock</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
         '</table>' +
       '</div>';
   }
@@ -1222,11 +1365,68 @@
     const T = window.TiendaIA;
     const view = T.dom.mainView;
 
+    // v13: dropdowns de tipo (Variante 1 y 2) + input custom + agregar/quitar sub
+    ['1', '2'].forEach(num => {
+      const sel = view.querySelector('#tipo-' + num);
+      const input = view.querySelector('#tipo-' + num + '-custom');
+      const aplicar = (nuevo) => {
+        if (num === '1') variantesState.tipoVariante1 = nuevo;
+        else variantesState.tipoVariante2 = nuevo;
+        variantesState.dirty = true;
+      };
+      if (sel) sel.addEventListener('change', () => {
+        const v = sel.value;
+        if (v === '__custom__') {
+          // Pasar a modo custom con valor vacio para que el user escriba
+          aplicar('');
+          rerenderVariantes();
+        } else {
+          aplicar(v);
+          rerenderVariantes();
+        }
+      });
+      if (input) input.addEventListener('input', () => {
+        aplicar(input.value.trim());
+        // No re-render para no perder foco
+      });
+    });
+
+    // v13: agregar subvariante (cuando aun no hay)
+    const btnAddSub = view.querySelector('#btn-add-sub');
+    if (btnAddSub) {
+      btnAddSub.addEventListener('click', () => {
+        variantesState.tipoVariante2 = 'Talla';  // default al agregar
+        variantesState.dirty = true;
+        rerenderVariantes();
+      });
+    }
+    // v13: quitar subvariante
+    const btnQuitarSub = view.querySelector('#btn-quitar-sub');
+    if (btnQuitarSub) {
+      btnQuitarSub.addEventListener('click', () => {
+        const hayValores = variantesState.tallas.length > 0;
+        if (hayValores && !window.confirm('Quitar la subvariante eliminara sus valores y la matriz combinatoria. ¿Continuar?')) return;
+        variantesState.tipoVariante2 = '';
+        variantesState.tallas = [];
+        // Limpiar celdas que tenian talla
+        const matrizLimpia = {};
+        for (const k of Object.keys(variantesState.matriz)) {
+          const [c, t] = k.split('__');
+          if (!t) matrizLimpia[k] = variantesState.matriz[k];
+        }
+        variantesState.matriz = matrizLimpia;
+        variantesState.dirty = true;
+        rerenderVariantes();
+      });
+    }
+
     // Activar editor
     const btnActivar = view.querySelector('#btn-activar-variantes');
     if (btnActivar) {
       btnActivar.addEventListener('click', () => {
         variantesState.activo = true;
+        // v13: default a Color para tipo1 si no esta seteado
+        if (!variantesState.tipoVariante1) variantesState.tipoVariante1 = 'Color';
         rerenderVariantes();
       });
     }
@@ -1385,19 +1585,56 @@
 
     if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
-    // Construir lista de variantes actuales desde la matriz (solo celdas con stock definido)
+    // v14 BUG #1 fix: si el UPDATE de tipos falla, ABORTAR con error visible.
+    // Antes solo console.warn dejaba inconsistencia (tipos viejos + variantes nuevas).
+    const tipo1Persist = variantesState.tipoVariante1 || null;
+    const tipo2Persist = variantesState.tipoVariante2 || null;
+    const tipoUpd = await sb.from('productos').update({
+      variante_tipo_1: tipo1Persist,
+      variante_tipo_2: tipo2Persist,
+    }).eq('id', producto.id).eq('tienda_id', T.state.tienda.id);
+    if (tipoUpd.error) {
+      console.error('[guardarVariantes] no se pudo actualizar tipos:', tipoUpd.error);
+      T.toast('No pudimos guardar los tipos de variante. Intenta de nuevo.', 'error');
+      restoreVariantesBtn(btn);
+      return;
+    }
+
+    // v13: construir lista soportando 1 dimension o matriz N×M
     const actuales = [];
-    for (const color of variantesState.colores) {
-      for (const talla of variantesState.tallas) {
+    const colores = variantesState.colores;
+    const tallas = variantesState.tallas;
+    if (colores.length > 0 && tallas.length > 0) {
+      for (const color of colores) for (const talla of tallas) {
         const celda = getMatrizCelda(color, talla);
         const stock = celda?.stock;
-        if (stock == null) continue; // celdas vacias se ignoran
+        if (stock == null) continue;
         actuales.push({
-          id: celda?.id,
-          color, talla,
+          id: celda?.id, color, talla,
           sku: celda?.sku || generarSku(producto.referencia, color, talla),
-          stock,
-          precio_override: celda?.precio_override || null,
+          stock, precio_override: celda?.precio_override || null,
+        });
+      }
+    } else if (colores.length > 0) {
+      for (const color of colores) {
+        const celda = getMatrizCelda(color, '');
+        const stock = celda?.stock;
+        if (stock == null) continue;
+        actuales.push({
+          id: celda?.id, color, talla: null,
+          sku: celda?.sku || generarSku(producto.referencia, color, ''),
+          stock, precio_override: celda?.precio_override || null,
+        });
+      }
+    } else if (tallas.length > 0) {
+      for (const talla of tallas) {
+        const celda = getMatrizCelda('', talla);
+        const stock = celda?.stock;
+        if (stock == null) continue;
+        actuales.push({
+          id: celda?.id, color: null, talla,
+          sku: celda?.sku || generarSku(producto.referencia, '', talla),
+          stock, precio_override: celda?.precio_override || null,
         });
       }
     }
@@ -1544,11 +1781,17 @@
     const subVal = subEl ? subEl.value : '';
     const finalCategoriaId = subVal || padreVal || null;
 
+    // v13: persistir tipos de variante. Si NO hay variantes activas, NULL ambos.
+    const variante_tipo_1 = variantesState.activo ? (variantesState.tipoVariante1 || 'Color') : null;
+    const variante_tipo_2 = variantesState.activo && variantesState.tipoVariante2 ? variantesState.tipoVariante2 : null;
+
     const payload = {
       tienda_id: tienda.id,
       nombre: String(fd.get('nombre') || '').trim(),
       referencia: String(fd.get('referencia') || '').trim(),
       categoria_id: finalCategoriaId,
+      variante_tipo_1,
+      variante_tipo_2,
       descripcion: String(fd.get('descripcion') || '').trim() || null,
       precio_venta: Number(fd.get('precio_venta')) || 0,
       costo: fd.get('costo') ? Number(fd.get('costo')) : null,
@@ -1566,9 +1809,20 @@
       T.toast('El precio promo debe ser menor al precio de venta', 'error'); restoreBtn(btnGuardar); return;
     }
 
-    // v10 fix Jorge: si crear con variantes activas, validar stocks ANTES del INSERT producto
+    // v14 BUG #3 fix: en EDICION, si user activa variantes pero la defaultVariant
+    // existente tiene reservas, ABORTAR antes de insertar nada para evitar estado
+    // mixto (default + variantes reales coexistiendo con stocks distintos).
+    if (formState.producto && variantesState.activo && variantesState.defaultVariant
+        && (variantesState.defaultVariant.reservado || 0) > 0) {
+      T.toast('No puedes activar variantes mientras el producto tenga ' + variantesState.defaultVariant.reservado + ' unidad(es) reservadas. Confirma o cancela los pedidos pendientes primero.', 'error');
+      restoreBtn(btnGuardar);
+      return;
+    }
+
+    // v10 fix Jorge: si crear con variantes activas, validar stocks ANTES del INSERT producto.
+    // v13: ahora vale si hay solo variante 1 O solo variante 2 (no requiere ambas).
     const esCreacionConVariantes = !formState.producto && variantesState.activo &&
-      variantesState.colores.length > 0 && variantesState.tallas.length > 0;
+      (variantesState.colores.length > 0 || variantesState.tallas.length > 0);
     if (esCreacionConVariantes) {
       const validacion = validarMatrizStocks();
       if (validacion.requiereStock) {
@@ -1611,24 +1865,46 @@
       }
 
       // v6: si CREAR y hay variantes definidas, insertar variantes en bulk.
-      // El producto ya quedo creado; si las variantes fallan, no rollback del
-      // producto - el user editable lo retoma para reintentar.
+      // v13: soporta solo variante 1 O solo variante 2 (sin matriz combinatoria).
       const esCreacion = !formState.producto;
       let variantesWarning = null;
       if (esCreacion && result.data && variantesState.activo &&
-          variantesState.colores.length > 0 && variantesState.tallas.length > 0) {
+          (variantesState.colores.length > 0 || variantesState.tallas.length > 0)) {
         const productoCreado = result.data;
         const variantesAInsertar = [];
-        for (const color of variantesState.colores) {
-          for (const talla of variantesState.tallas) {
+        const colores = variantesState.colores;
+        const tallas = variantesState.tallas;
+        if (colores.length > 0 && tallas.length > 0) {
+          // matriz combinatoria
+          for (const color of colores) for (const talla of tallas) {
             const celda = getMatrizCelda(color, talla);
             const stock = celda?.stock;
-            if (stock == null) continue; // celdas vacias se ignoran
+            if (stock == null) continue;
             variantesAInsertar.push({
               producto_id: productoCreado.id,
-              color, talla,
-              sku: generarSku(productoCreado.referencia, color, talla),
-              stock,
+              color, talla, sku: generarSku(productoCreado.referencia, color, talla), stock,
+            });
+          }
+        } else if (colores.length > 0) {
+          // solo variante 1 (talla=null)
+          for (const color of colores) {
+            const celda = getMatrizCelda(color, '');
+            const stock = celda?.stock;
+            if (stock == null) continue;
+            variantesAInsertar.push({
+              producto_id: productoCreado.id,
+              color, talla: null, sku: generarSku(productoCreado.referencia, color, ''), stock,
+            });
+          }
+        } else {
+          // solo variante 2 (color=null)
+          for (const talla of tallas) {
+            const celda = getMatrizCelda('', talla);
+            const stock = celda?.stock;
+            if (stock == null) continue;
+            variantesAInsertar.push({
+              producto_id: productoCreado.id,
+              color: null, talla, sku: generarSku(productoCreado.referencia, '', talla), stock,
             });
           }
         }
@@ -1642,6 +1918,18 @@
               variantesWarning = 'Producto creado, pero las variantes tuvieron error: ' + (vRes.error.message || 'desconocido') + '. Edita el producto para reintentar.';
             }
           }
+        }
+      }
+
+      // v13/v14: si edicion + variantes activadas + existia defaultVariant SIN reservas
+      // (las CON reservas ya abortaron arriba con BUG #3 fix), eliminarla.
+      if (!esCreacion && variantesState.activo && variantesState.defaultVariant) {
+        const dv = variantesState.defaultVariant;
+        const delRes = await sb.from('producto_variantes').delete().eq('id', dv.id);
+        if (delRes.error) {
+          console.warn('[prod-form] no se pudo eliminar default variant:', delRes.error);
+        } else {
+          variantesState.defaultVariant = null;
         }
       }
 
