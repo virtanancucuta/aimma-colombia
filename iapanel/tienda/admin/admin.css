@@ -1,5 +1,6 @@
-/* AIMMA · Tienda IA · admin.css · v8 · 2026-05-30 */
-/* v8 (2026-05-30): Fase 3.4c - modo editor (contenteditable outline naranja
+/* AIMMA · Tienda IA · admin.css · v9 · 2026-05-30 */
+/* v9 (2026-05-30): Fase 3.5 - tree categorias + modal form.
+   v8 (2026-05-30): Fase 3.4c - modo editor (contenteditable outline naranja
    dashed + CTA URL editor + hover/focus states).
    v7 (2026-05-30): Fase 3.4b - mockup vista previa storefront (frame estilo
    browser + 3 estilos de plantilla bold/clean/artesanal).
@@ -457,6 +458,114 @@ a:hover { text-decoration: underline; }
 .ta-accion__title { font-weight: 600; font-size: 15px; }
 .ta-accion__desc { font-size: 13px; color: var(--ta-text-soft); }
 .ta-accion__cta { font-size: 13px; color: var(--ta-accent); white-space: nowrap; font-weight: 600; }
+
+/* ============================ Tree categorias (Fase 3.5) ============================ */
+.ta-cat-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ta-cat-tree--hijos {
+  padding-left: 28px;
+  background: var(--ta-bg-soft);
+}
+.ta-cat-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ta-border);
+  flex-wrap: wrap;
+}
+.ta-cat-item:last-child { border-bottom: 0; }
+.ta-cat-item--hijo { padding-left: 14px; font-size: 13px; }
+.ta-cat-item__icon { font-size: 18px; opacity: .75; }
+.ta-cat-item--hijo .ta-cat-item__icon { font-size: 14px; color: var(--ta-text-mut); }
+.ta-cat-item__nombre { font-weight: 600; flex: 1; min-width: 120px; }
+.ta-cat-item--hijo .ta-cat-item__nombre { font-weight: 500; }
+.ta-cat-item__slug {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--ta-text-mut);
+  background: var(--ta-bg-soft);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.ta-cat-item--hijo .ta-cat-item__slug { background: var(--ta-bg); }
+.ta-cat-item__count {
+  font-size: 11px;
+  color: var(--ta-text-soft);
+  background: rgba(77,142,255,.1);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ta-cat-item__acciones { display: flex; gap: 4px; margin-left: auto; }
+.ta-cat-add-sub {
+  padding: 8px 28px;
+  background: var(--ta-bg-soft);
+  border-bottom: 1px solid var(--ta-border);
+}
+.ta-cat-add-sub button {
+  background: transparent;
+  border: 1px dashed var(--ta-border-strong);
+  color: var(--ta-text-soft);
+  padding: 6px 12px;
+  border-radius: var(--ta-radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ta-cat-add-sub button:hover {
+  border-color: var(--ta-accent);
+  color: var(--ta-accent);
+}
+
+/* ============================ Modal genérico ============================ */
+.ta-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+  animation: ta-fade-in .15s ease-out;
+}
+@keyframes ta-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.ta-modal {
+  background: var(--ta-surface);
+  border: 1px solid var(--ta-border-strong);
+  border-radius: var(--ta-radius);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+  padding: 20px;
+}
+.ta-modal__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ta-border);
+}
+.ta-modal__head h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.ta-modal__close {
+  background: transparent;
+  border: 0;
+  color: var(--ta-text-mut);
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+}
+.ta-modal__close:hover { background: var(--ta-surface-2); color: var(--ta-text); }
 
 /* ============================ Vista previa mockup (Fase 3.4b) ============================ */
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
