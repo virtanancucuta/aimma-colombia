@@ -1,9 +1,10 @@
-/* AIMMA · Tienda IA · views/vista-previa.js · v1 · 2026-05-30
-   Fase 3.4b - Mockup interactivo del storefront dentro del Panel.
-   Renderiza una preview con datos reales de la tienda + paleta + plantilla
-   + productos. NO es el storefront publico real (eso es Fase 4) sino una
-   simulacion fiel para que el cliente vea como se ve antes de tener
-   subdominio con cert. */
+/* AIMMA · Tienda IA · views/vista-previa.js · v2 · 2026-05-30
+   v2 (Fase 3.4c): MVP Modo Editor minimal. Cliente puede editar inline:
+   - hero_title, hero_subtitle, cta_text, cta_url, footer_text.
+   Toggle 'Modo editor' habilita contenteditable. 'Guardar y publicar'
+   persiste en tiendas.personalizaciones (jsonb). Restaurar default por campo.
+   Editor full Webflow-style = feature PRO-MAX (post-MVP, ver memoria).
+   Fase 3.4b - Mockup interactivo del storefront dentro del Panel. */
 
 (function () {
   'use strict';
@@ -24,12 +25,31 @@
   function safeColor(v, fallback) {
     return (typeof v === 'string' && HEX_COLOR_RE.test(v.trim())) ? v.trim() : (fallback || '#888');
   }
-  // Validar URL https/http
+  // Validar URL https/http o anchor interno
   function safeImgUrl(url) {
     if (!url) return null;
     try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? url : null; }
     catch { return null; }
   }
+  // v2: validar URL para boton CTA (acepta https?:// o #)
+  function safeCtaUrl(url) {
+    if (!url) return '#';
+    const trimmed = String(url).trim();
+    if (trimmed === '' || trimmed === '#' || trimmed.startsWith('#')) return trimmed || '#';
+    try { const u = new URL(trimmed); return /^https?:$/.test(u.protocol) ? trimmed : '#'; }
+    catch { return '#'; }
+  }
+
+  // v2: estado del editor
+  const PERSONALIZABLES = ['hero_title', 'hero_subtitle', 'cta_text', 'cta_url', 'footer_text'];
+  const MAX_LEN = 200;
+  const estate = {
+    editing: false,        // true cuando "Modo editor" esta activo
+    dirty: false,          // hay cambios no guardados
+    personalizaciones: {}, // datos actuales (de BD + cambios locales)
+    defaults: {},          // valores default segun plantilla (no se persisten)
+    guardando: false,
+  };
 
   async function renderVistaPrevia() {
     const T = window.TiendaIA;
@@ -52,8 +72,13 @@
 
     try {
       const data = await cargarData(T.supabase(), tienda);
+      // v2: setear personalizaciones desde BD y calcular defaults
+      estate.personalizaciones = Object.assign({}, tienda.personalizaciones || {});
+      estate.defaults = calcularDefaults(tienda, data.plantilla);
+      estate.editing = false;
+      estate.dirty = false;
       view.innerHTML = renderHeader() + renderMockup(data, tienda);
-      wireInteracciones();
+      wireInteracciones(data, tienda);
     } catch (e) {
       console.error('[vista-previa] error', e);
       view.innerHTML = '<div class="ta-card"><div class="ta-empty"><h2 class="ta-empty__title">No pudimos cargar la preview</h2><p class="ta-empty__text">' + T.escapeHtml(e.message || String(e)) + '</p></div></div>';
@@ -79,13 +104,52 @@
   }
 
   function renderHeader() {
+    const labelToggle = estate.editing ? '✓ Salir del modo editor' : '✏️ Modo editor';
+    const guardandoTxt = estate.guardando ? 'Guardando...' : 'Guardar y publicar';
+    const saveBtn = estate.editing
+      ? '<button type="button" id="vp-guardar" class="ta-btn ta-btn--primary" ' +
+          (estate.dirty && !estate.guardando ? '' : 'disabled') + '>' + guardandoTxt + '</button>'
+      : '';
     return '' +
-      '<header style="margin-bottom:20px;">' +
-        '<h1 class="ta-section-title">Vista previa de tu tienda</h1>' +
-        '<p class="ta-section-sub">' +
-          'Asi se vera tu tienda online cuando este publica. Esta es una <strong>simulacion fiel</strong> dentro del panel para que veas como queda con tu paleta, plantilla y catalogo. La tienda publica real estara en la siguiente fase del modulo.' +
-        '</p>' +
+      '<header style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<h1 class="ta-section-title">Vista previa de tu tienda</h1>' +
+          '<p class="ta-section-sub">' +
+            (estate.editing
+              ? 'Estas en <strong>modo editor</strong>. Click sobre cualquier texto resaltado para editarlo. Al terminar, <strong>Guardar y publicar</strong>.'
+              : 'Asi se vera tu tienda. Esta es una <strong>simulacion fiel</strong> dentro del panel. La tienda publica real con dominio propio estara en la siguiente fase.') +
+          '</p>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button type="button" id="vp-toggle-editor" class="ta-btn' + (estate.editing ? ' ta-btn--primary' : '') + '">' + labelToggle + '</button>' +
+          saveBtn +
+        '</div>' +
       '</header>';
+  }
+
+  // Calcula los valores DEFAULT segun la plantilla. Si el usuario no edita
+  // hero_title/hero_subtitle/cta_text/footer_text, se muestran estos.
+  function calcularDefaults(tienda, plantilla) {
+    const slug = plantilla?.slug || 'industrial_clean';
+    const nombre = tienda.nombre_negocio || 'Tu marca';
+    let heroSub = 'Calidad y estilo en cada pieza.';
+    let cta = 'Ver coleccion';
+    if (slug === 'industrial_clean') { heroSub = 'Soluciones profesionales para tu negocio.'; cta = 'Conoce mas'; }
+    if (slug === 'minimal_artesanal') { heroSub = 'Hecho a mano, con dedicacion.'; cta = ''; /* sin CTA por defecto */ }
+    return {
+      hero_title: nombre,
+      hero_subtitle: heroSub,
+      cta_text: cta,
+      cta_url: '#',
+      footer_text: nombre,
+    };
+  }
+
+  // Obtiene el valor efectivo (personalizado o default) de un campo.
+  function getValor(campo) {
+    const v = estate.personalizaciones[campo];
+    if (v == null || v === '') return estate.defaults[campo] || '';
+    return v;
   }
 
   function renderMockup(data, tienda) {
@@ -153,7 +217,7 @@
           '</section>' +
 
           '<footer class="preview-footer">' +
-            '<div>' + T.escapeHtml(tienda.nombre_negocio || tienda.slug) + '</div>' +
+            '<div class="editable" data-campo="footer_text"' + (estate.editing ? ' contenteditable="true" spellcheck="false"' : '') + '>' + T.escapeHtml(getValor('footer_text')) + '</div>' +
             '<div class="preview-footer__links">' +
               '<a href="#" onclick="return false;">Garantias</a>' +
               '<a href="#" onclick="return false;">Tratamiento de datos</a>' +
@@ -207,20 +271,41 @@
       '</article>';
   }
 
-  // Estilo segun plantilla: font, hero block
-  function estiloPlantilla(slug) {
+  // v2: hero usa getValor() y agrega contenteditable attributes en modo editor.
+  function renderHeroEditable(variantClass) {
     const T = window.TiendaIA;
+    const heroTitle = getValor('hero_title');
+    const heroSub = getValor('hero_subtitle');
+    const ctaText = getValor('cta_text');
+    const ctaUrl = safeCtaUrl(getValor('cta_url'));
+    const editableAttr = estate.editing ? ' contenteditable="true" spellcheck="false"' : '';
+    const editableCls = estate.editing ? ' editable' : '';
+    const ctaBlock = ctaText
+      ? '<a href="' + T.escapeHtml(ctaUrl) + '" class="preview-hero__cta' + editableCls + '" data-campo="cta_text"' + editableAttr +
+          (estate.editing ? ' onclick="event.preventDefault();return false;"' : ' target="_blank" rel="noopener"') + '>' +
+          T.escapeHtml(ctaText) +
+        '</a>'
+      : (estate.editing ? '<button type="button" class="preview-hero__cta editable" data-campo="cta_text" contenteditable="true" spellcheck="false">Agregar boton</button>' : '');
+    const ctaUrlEditor = estate.editing && ctaText
+      ? '<div class="preview-cta-url-editor"><label>URL del boton:</label><input type="url" id="vp-cta-url" value="' + T.escapeHtml(ctaUrl) + '" placeholder="https://..." maxlength="500"></div>'
+      : '';
+    return '' +
+      '<section class="preview-hero ' + variantClass + '">' +
+        '<h1 class="editable" data-campo="hero_title"' + editableAttr + '>' + T.escapeHtml(heroTitle) + '</h1>' +
+        '<p class="editable" data-campo="hero_subtitle"' + editableAttr + '>' + T.escapeHtml(heroSub) + '</p>' +
+        ctaBlock +
+        ctaUrlEditor +
+      '</section>';
+  }
+
+  // Estilo segun plantilla: font, hero variant class
+  function estiloPlantilla(slug) {
     if (slug === 'fashion_bold') {
       return {
         cssClass: 'preview-plantilla--bold',
         font: "'Inter', 'Exo 2', system-ui, sans-serif",
         fontH: "'Inter', 'Exo 2', system-ui, sans-serif",
-        hero: (tienda) => '' +
-          '<section class="preview-hero preview-hero--bold">' +
-            '<h1>' + T.escapeHtml(tienda.nombre_negocio || 'Tu marca') + '</h1>' +
-            '<p>Calidad y estilo en cada pieza.</p>' +
-            '<button type="button" class="preview-hero__cta" onclick="return false;">Ver coleccion</button>' +
-          '</section>',
+        hero: () => renderHeroEditable('preview-hero--bold'),
       };
     }
     if (slug === 'minimal_artesanal') {
@@ -228,28 +313,175 @@
         cssClass: 'preview-plantilla--artesanal',
         font: "'Lora', Georgia, serif",
         fontH: "'Lora', Georgia, serif",
-        hero: (tienda) => '' +
-          '<section class="preview-hero preview-hero--artesanal">' +
-            '<h1>' + T.escapeHtml(tienda.nombre_negocio || 'Tu marca') + '</h1>' +
-            '<p>Hecho a mano, con dedicacion.</p>' +
-          '</section>',
+        hero: () => renderHeroEditable('preview-hero--artesanal'),
       };
     }
-    // industrial_clean (default)
     return {
       cssClass: 'preview-plantilla--clean',
       font: "'Inter', 'Exo 2', system-ui, sans-serif",
       fontH: "'Inter', 'Exo 2', system-ui, sans-serif",
-      hero: (tienda) => '' +
-        '<section class="preview-hero preview-hero--clean">' +
-          '<h1>' + T.escapeHtml(tienda.nombre_negocio || 'Tu marca') + '</h1>' +
-          '<p>Soluciones profesionales para tu negocio.</p>' +
-          '<button type="button" class="preview-hero__cta" onclick="return false;">Conoce mas</button>' +
-        '</section>',
+      hero: () => renderHeroEditable('preview-hero--clean'),
     };
   }
 
-  function wireInteracciones() {
-    // Por ahora los buttons son demo (onclick return false) - nada que hacer
+  function wireInteracciones(data, tienda) {
+    const T = window.TiendaIA;
+
+    // v2 BUG #1 fix: reset navGuards de esta view en cada wire para no acumular.
+    // El toggle llama renderVistaPrevia que llama wireInteracciones de nuevo;
+    // sin este reset, cada toggle agregaba un guard nuevo (despues de 5 toggles,
+    // 5 confirm() apilados al navegar).
+    if (T.state && Array.isArray(T.state.viewNavGuards)) T.state.viewNavGuards = [];
+
+    // Toggle modo editor
+    const btnToggle = document.getElementById('vp-toggle-editor');
+    if (btnToggle) {
+      btnToggle.addEventListener('click', async () => {
+        // v2 BUG #2 fix: deshabilitar al inicio para evitar double-click race.
+        // El boton sera reemplazado por innerHTML del re-render, no requiere re-habilitar.
+        if (btnToggle.disabled) return;
+        btnToggle.disabled = true;
+        if (estate.editing && estate.dirty) {
+          if (!window.confirm('Tienes cambios sin guardar. ¿Salir sin guardar?')) {
+            btnToggle.disabled = false;
+            return;
+          }
+          estate.personalizaciones = Object.assign({}, tienda.personalizaciones || {});
+          estate.dirty = false;
+        }
+        estate.editing = !estate.editing;
+        await renderVistaPrevia();
+      });
+    }
+
+    // Boton Guardar y publicar (solo visible en modo editor)
+    const btnGuardar = document.getElementById('vp-guardar');
+    if (btnGuardar) {
+      btnGuardar.addEventListener('click', () => guardarPersonalizaciones(tienda));
+    }
+
+    if (!estate.editing) return;
+
+    // Listeners para cada campo editable (contenteditable)
+    document.querySelectorAll('.editable[data-campo]').forEach(el => {
+      el.addEventListener('input', () => {
+        const campo = el.getAttribute('data-campo');
+        if (!PERSONALIZABLES.includes(campo)) return;
+        let valor = (el.textContent || '').trim();
+        if (valor.length > MAX_LEN) {
+          valor = valor.slice(0, MAX_LEN);
+          el.textContent = valor;
+          // Mover cursor al final
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        // Si vuelve al default, eliminar la personalizacion (limpia el JSON)
+        if (valor === estate.defaults[campo]) {
+          delete estate.personalizaciones[campo];
+        } else {
+          estate.personalizaciones[campo] = valor;
+        }
+        estate.dirty = true;
+        actualizarBotonGuardar();
+      });
+      // Permitir blur con Escape (cancela edicion del input actual)
+      el.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' && el.tagName !== 'P') {
+          ev.preventDefault();
+          el.blur();
+        }
+      });
+    });
+
+    // Input para URL del CTA
+    const inputCtaUrl = document.getElementById('vp-cta-url');
+    if (inputCtaUrl) {
+      inputCtaUrl.addEventListener('input', () => {
+        const valor = inputCtaUrl.value.trim();
+        if (valor.length > 500) return;
+        if (valor === estate.defaults.cta_url || valor === '') {
+          delete estate.personalizaciones.cta_url;
+        } else {
+          estate.personalizaciones.cta_url = valor;
+        }
+        estate.dirty = true;
+        actualizarBotonGuardar();
+      });
+    }
+
+    // navGuard si dirty
+    T.registerNavGuard(() => {
+      if (!estate.editing || !estate.dirty) return true;
+      return window.confirm('Tienes cambios sin guardar en la vista previa. ¿Salir de todos modos?');
+    });
+  }
+
+  function actualizarBotonGuardar() {
+    const btn = document.getElementById('vp-guardar');
+    if (!btn) return;
+    btn.disabled = !(estate.dirty && !estate.guardando);
+    btn.textContent = estate.guardando ? 'Guardando...' : 'Guardar y publicar';
+  }
+
+  async function guardarPersonalizaciones(tienda) {
+    const T = window.TiendaIA;
+    const sb = T.supabase();
+    if (estate.guardando) return;
+
+    // Limpiar valores invalidos (definensa): truncar y validar URL
+    const limpio = {};
+    for (const k of PERSONALIZABLES) {
+      const v = estate.personalizaciones[k];
+      if (v == null || v === '') continue;
+      if (k === 'cta_url') {
+        const valid = safeCtaUrl(v);
+        if (valid && valid !== '#') limpio[k] = valid;
+      } else {
+        const trimmed = String(v).trim().slice(0, MAX_LEN);
+        if (trimmed) limpio[k] = trimmed;
+      }
+    }
+
+    estate.guardando = true;
+    actualizarBotonGuardar();
+
+    try {
+      const { data, error } = await sb.from('tiendas')
+        .update({ personalizaciones: limpio })
+        .eq('id', tienda.id)
+        .select('personalizaciones')
+        .maybeSingle();
+      if (error) {
+        T.toast('Error al guardar: ' + (error.message || 'desconocido'), 'error');
+        estate.guardando = false;
+        actualizarBotonGuardar();
+        return;
+      }
+      if (!data) {
+        T.toast('No se pudo actualizar. Refresca e intenta de nuevo.', 'error');
+        estate.guardando = false;
+        actualizarBotonGuardar();
+        return;
+      }
+      // Persistir en el state global de la tienda tambien
+      tienda.personalizaciones = data.personalizaciones || {};
+      T.state.tienda.personalizaciones = tienda.personalizaciones;
+      estate.personalizaciones = Object.assign({}, tienda.personalizaciones);
+      estate.dirty = false;
+      estate.guardando = false;
+      T.toast('Cambios guardados ✓', 'success');
+      // Salir de modo editor y re-render
+      estate.editing = false;
+      await renderVistaPrevia();
+    } catch (e) {
+      console.error('[vista-previa guardar] exception', e);
+      T.toast('Error: ' + (e.message || e), 'error');
+      estate.guardando = false;
+      actualizarBotonGuardar();
+    }
   }
 })();

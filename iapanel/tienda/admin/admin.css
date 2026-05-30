@@ -1,5 +1,7 @@
-/* AIMMA · Tienda IA · admin.css · v7 · 2026-05-30 */
-/* v7 (2026-05-30): Fase 3.4b - mockup vista previa storefront (frame estilo
+/* AIMMA · Tienda IA · admin.css · v8 · 2026-05-30 */
+/* v8 (2026-05-30): Fase 3.4c - modo editor (contenteditable outline naranja
+   dashed + CTA URL editor + hover/focus states).
+   v7 (2026-05-30): Fase 3.4b - mockup vista previa storefront (frame estilo
    browser + 3 estilos de plantilla bold/clean/artesanal).
    v6 (2026-05-30): Fase 3.4 - estilos wizard (h3, hints, error/ok, slug row,
    cards plantilla, swatches paleta, nav).
@@ -624,6 +626,48 @@ a:hover { text-decoration: underline; }
 .preview-footer__links a { color: var(--bb); opacity: .85; text-decoration: none; font-size: 12px; }
 .preview-footer__links a:hover { opacity: 1; text-decoration: underline; }
 .preview-footer__credit { font-size: 11px; opacity: .55; margin-top: 4px; }
+
+/* Modo editor (Fase 3.4c) */
+.preview-mockup .editable { transition: outline .12s, background-color .12s; }
+.preview-mockup [contenteditable="true"].editable {
+  outline: 2px dashed rgba(255,170,60,.7);
+  outline-offset: 3px;
+  background-color: rgba(255,170,60,.05);
+  cursor: text;
+  border-radius: 2px;
+}
+.preview-mockup [contenteditable="true"].editable:hover {
+  background-color: rgba(255,170,60,.12);
+}
+.preview-mockup [contenteditable="true"].editable:focus {
+  outline-color: var(--ta-warn);
+  background-color: rgba(255,170,60,.15);
+}
+.preview-cta-url-editor {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,.08);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--bb);
+}
+.preview-cta-url-editor label { font-weight: 600; opacity: .85; }
+.preview-cta-url-editor input {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.12);
+  color: var(--bb);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+.preview-cta-url-editor input::placeholder { color: rgba(255,255,255,.55); }
 
 /* ============================ Wizard onboarding (Fase 3.4) ============================ */
 .ta-wizard__h3 { font-size: 18px; font-weight: 600; margin: 0 0 6px; }
