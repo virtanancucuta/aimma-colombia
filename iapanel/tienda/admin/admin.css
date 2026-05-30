@@ -1,5 +1,7 @@
-/* AIMMA · Tienda IA · admin.css · v9 · 2026-05-30 */
-/* v9 (2026-05-30): Fase 3.5 - tree categorias + modal form.
+/* AIMMA · Tienda IA · admin.css · v10 · 2026-05-30 */
+/* v10 (2026-05-30): Fase 3.6 - configuracion (grid 2 cols, logo preview,
+   swatches paleta, estado cards, save bar sticky).
+   v9 (2026-05-30): Fase 3.5 - tree categorias + modal form.
    v8 (2026-05-30): Fase 3.4c - modo editor (contenteditable outline naranja
    dashed + CTA URL editor + hover/focus states).
    v7 (2026-05-30): Fase 3.4b - mockup vista previa storefront (frame estilo
@@ -458,6 +460,100 @@ a:hover { text-decoration: underline; }
 .ta-accion__title { font-weight: 600; font-size: 15px; }
 .ta-accion__desc { font-size: 13px; color: var(--ta-text-soft); }
 .ta-accion__cta { font-size: 13px; color: var(--ta-accent); white-space: nowrap; font-weight: 600; }
+
+/* ============================ Configuracion (Fase 3.6) ============================ */
+.ta-cfg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 16px;
+  margin-bottom: 80px;
+}
+.ta-cfg-section { padding: 22px 24px; }
+.ta-cfg-section__h { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+.ta-cfg-section__desc { font-size: 13px; color: var(--ta-text-soft); margin: 0 0 16px; }
+
+.ta-cfg-logo-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--ta-border);
+}
+.ta-cfg-logo-preview {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--ta-radius-sm);
+  background: var(--ta-bg-soft);
+  border: 1px solid var(--ta-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.ta-cfg-logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ta-cfg-logo-empty { font-size: 36px; opacity: .4; }
+
+.ta-cfg-swatches {
+  display: flex;
+  gap: 0;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+  max-width: 200px;
+}
+.ta-cfg-swatches > span { flex: 1; height: 100%; }
+
+.ta-cfg-estados {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.ta-cfg-estado {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--ta-bg-soft);
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius-sm);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.ta-cfg-estado:hover { border-color: var(--ta-border-strong); }
+.ta-cfg-estado.is-active {
+  border-color: var(--ta-accent);
+  background: rgba(77,142,255,.08);
+}
+.ta-cfg-estado input[type="radio"] { display: none; }
+.ta-cfg-estado__head { display: flex; align-items: center; gap: 8px; }
+.ta-cfg-estado__desc { font-size: 12px; color: var(--ta-text-soft); }
+
+.ta-cfg-save-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ta-surface);
+  border: 1px solid var(--ta-border-strong);
+  border-radius: var(--ta-radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  z-index: 90;
+  max-width: 92vw;
+  flex-wrap: wrap;
+  animation: ta-fade-in .15s ease-out;
+}
+.ta-cfg-save-bar__msg {
+  font-size: 13px;
+  color: var(--ta-warn);
+  font-weight: 600;
+}
 
 /* ============================ Tree categorias (Fase 3.5) ============================ */
 .ta-cat-tree {
