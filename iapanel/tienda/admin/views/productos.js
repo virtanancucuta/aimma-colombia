@@ -1,4 +1,16 @@
-/* AIMMA · Tienda IA · views/productos.js · v11 · 2026-05-30
+/* AIMMA · Tienda IA · views/productos.js · v13 · 2026-05-30
+   v13 (fix bug CRITICO Jorge): producto sin variantes no tenia donde
+   ingresar inventario. Ahora si NO hay colores/tallas activos, aparece
+   campo "Stock disponible" simple. Al guardar crea/actualiza una variante
+   "default" (color=NULL, talla=NULL) con ese stock. Patron Shopify: cada
+   producto siempre tiene >=1 variante en BD. Permite migrar transparente
+   a variantes color/talla despues sin perder stock.
+   v12 (Fase 3.5.c feedback Jorge): tabla productos ahora muestra Foto +
+   Nombre + Referencia + Descripcion (60 chars) + Categoria + Subcategoria +
+   Precio + Costo + Estado + Editar. Filtros: Categoria (solo padres) +
+   Subcategoria (cascade hijos del padre) + Estado. Resolucion padre/sub
+   en cliente desde lista plana (resolverCategoria helper) en vez de join
+   doble PostgREST.
    v11 (Fase 3.5.b feedback Jorge): dropdown unico de Categoria reemplazado
    por 2 dropdowns en cascada Categoria + Subcategoria. UX: el cliente
    elige primero el padre (Calzado), despues el dropdown subcategoria muestra
@@ -119,9 +131,11 @@
   // ============================================================
   let listaState = {
     filtroBusqueda: '',
-    filtroCategoria: '',  // '' = todas
-    filtroEstado: '',     // '' = todos | 'activo' | 'inactivo'
+    filtroCategoria: '',     // id de la categoria PADRE seleccionada
+    filtroSubcategoria: '',  // id de la subcategoria (cascade)
+    filtroEstado: '',        // '' = todos | 'activo' | 'inactivo'
     pagina: 0,
+    categorias: [],          // cache lista plana para resolver padre/sub
   };
   const POR_PAGINA = 50;
 
@@ -135,38 +149,55 @@
     const desde = listaState.pagina * POR_PAGINA;
     const hasta = desde + POR_PAGINA - 1;
 
+    // v12: cargar categorias primero para poder armar filtros cascade
+    const catRes = await sb.from('categorias').select('id, nombre, parent_id').eq('tienda_id', tienda.id).order('nombre');
+    const categorias = catRes.data || [];
+    listaState.categorias = categorias;
+
     let prodQuery = sb.from('productos')
-      .select('id, referencia, nombre, precio_venta, precio_promo, foto_principal_url, estado, categoria_id, created_at, categorias(nombre)', { count: 'exact' })
+      .select('id, referencia, nombre, descripcion, costo, precio_venta, precio_promo, foto_principal_url, estado, categoria_id, created_at', { count: 'exact' })
       .eq('tienda_id', tienda.id);
 
     if (listaState.filtroBusqueda) {
-      // v2 BUG #1 fix: sanitizar caracteres que rompen el parsing del filtro
-      // PostgREST (coma, parentesis, comilla) + escapar wildcards SQL (%, _)
-      // para que el usuario no obtenga matches accidentales.
+      // v2 BUG #1 fix: sanitizar caracteres que rompen el parsing del filtro PostgREST
       const q = listaState.filtroBusqueda.trim()
-        .replace(/[,()'"\\]/g, '')   // chars que rompen parsing
-        .replace(/[%_]/g, '\\$&')    // wildcards SQL escapados
-        .slice(0, 100);              // tope de longitud razonable
+        .replace(/[,()'"\\]/g, '')
+        .replace(/[%_]/g, '\\$&')
+        .slice(0, 100);
       if (q) {
         prodQuery = prodQuery.or('nombre.ilike.%' + q + '%,referencia.ilike.%' + q + '%');
       }
     }
-    if (listaState.filtroCategoria) prodQuery = prodQuery.eq('categoria_id', listaState.filtroCategoria);
+    // v12 (Fase 3.5.c): filtro cascade Categoria + Subcategoria.
+    // Si filtroSubcategoria: match exacto. Sino, si filtroCategoria (padre):
+    // match productos cuya categoria sea el padre O cualquiera de sus hijos.
+    if (listaState.filtroSubcategoria) {
+      prodQuery = prodQuery.eq('categoria_id', listaState.filtroSubcategoria);
+    } else if (listaState.filtroCategoria) {
+      const subIds = categorias.filter(c => c.parent_id === listaState.filtroCategoria).map(c => c.id);
+      const idsValidos = [listaState.filtroCategoria].concat(subIds);
+      prodQuery = prodQuery.in('categoria_id', idsValidos);
+    }
     if (listaState.filtroEstado) prodQuery = prodQuery.eq('estado', listaState.filtroEstado);
 
     prodQuery = prodQuery.order('created_at', { ascending: false }).range(desde, hasta);
 
-    const [prodRes, catRes] = await Promise.all([
-      prodQuery,
-      sb.from('categorias').select('id, nombre, parent_id').eq('tienda_id', tienda.id).order('nombre'),
-    ]);
-
+    const prodRes = await prodQuery;
     const productos = prodRes.data || [];
     const totalCount = prodRes.count || 0;
-    const categorias = catRes.data || [];
 
     view.innerHTML = renderListaHTML(productos, totalCount, categorias);
     wireListaEvents();
+  }
+
+  // v12 helper: resolver padre + sub desde la lista plana de categorias
+  function resolverCategoria(catId, categorias) {
+    if (!catId) return { padre: null, sub: null };
+    const cat = categorias.find(c => c.id === catId);
+    if (!cat) return { padre: null, sub: null };
+    if (!cat.parent_id) return { padre: cat, sub: null };
+    const padre = categorias.find(c => c.id === cat.parent_id);
+    return { padre: padre || null, sub: cat };
   }
 
   function renderListaHTML(productos, totalCount, categorias) {
@@ -174,13 +205,21 @@
     const totalPaginas = Math.max(1, Math.ceil(totalCount / POR_PAGINA));
     const paginaActual = listaState.pagina + 1;
 
+    // v12: filtros cascade - solo padres en el dropdown Categoria
+    const padresFiltro = categorias.filter(c => !c.parent_id);
     const opcionesCategorias = '<option value="">Todas las categorias</option>' +
-      categorias.map(c => '<option value="' + T.escapeHtml(c.id) + '"' + (listaState.filtroCategoria === c.id ? ' selected' : '') + '>' + T.escapeHtml(c.nombre) + '</option>').join('');
+      padresFiltro.map(c => '<option value="' + T.escapeHtml(c.id) + '"' + (listaState.filtroCategoria === c.id ? ' selected' : '') + '>' + T.escapeHtml(c.nombre) + '</option>').join('');
+    // Subcategorias del padre seleccionado en filtro
+    const subsFiltro = listaState.filtroCategoria
+      ? categorias.filter(c => c.parent_id === listaState.filtroCategoria) : [];
+    const opcionesSubs = '<option value="">Todas las subcategorias</option>' +
+      subsFiltro.map(c => '<option value="' + T.escapeHtml(c.id) + '"' + (listaState.filtroSubcategoria === c.id ? ' selected' : '') + '>' + T.escapeHtml(c.nombre) + '</option>').join('');
 
+    const COL_COUNT = 9;
     let tbody = '';
     if (productos.length === 0) {
-      tbody = '<tr><td colspan="6"><div class="ta-empty" style="padding:32px 16px;">' +
-        '<h2 class="ta-empty__title">' + (totalCount === 0 && !listaState.filtroBusqueda && !listaState.filtroCategoria && !listaState.filtroEstado ? 'No tienes productos cargados todavia' : 'Sin resultados con esos filtros') + '</h2>' +
+      tbody = '<tr><td colspan="' + COL_COUNT + '"><div class="ta-empty" style="padding:32px 16px;">' +
+        '<h2 class="ta-empty__title">' + (totalCount === 0 && !listaState.filtroBusqueda && !listaState.filtroCategoria && !listaState.filtroSubcategoria && !listaState.filtroEstado ? 'No tienes productos cargados todavia' : 'Sin resultados con esos filtros') + '</h2>' +
         '<p class="ta-empty__text">' + (totalCount === 0 ? 'Empieza creando tu primer producto.' : 'Prueba ajustar los filtros o limpiarlos.') + '</p>' +
         (totalCount === 0 ? '<a href="#/productos/nuevo" class="ta-btn ta-btn--primary">Crear primer producto</a>' : '') +
         '</div></td></tr>';
@@ -189,42 +228,57 @@
         const foto = p.foto_principal_url
           ? '<img src="' + T.escapeHtml(p.foto_principal_url) + '" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--ta-border);">'
           : '<div style="width:40px;height:40px;border-radius:6px;background:var(--ta-bg-soft);display:flex;align-items:center;justify-content:center;color:var(--ta-text-mut);font-size:18px;">📦</div>';
-        const categoriaNom = (p.categorias && p.categorias.nombre) ? T.escapeHtml(p.categorias.nombre) : '<span style="color:var(--ta-text-mut);">Sin categoria</span>';
+        // v12: resolver padre/sub desde lista plana
+        const { padre, sub } = resolverCategoria(p.categoria_id, categorias);
+        const categoriaNom = padre ? T.escapeHtml(padre.nombre) : '<span style="color:var(--ta-text-mut);">—</span>';
+        const subNom = sub ? T.escapeHtml(sub.nombre) : '<span style="color:var(--ta-text-mut);">—</span>';
         const estadoPill = p.estado === 'activo'
           ? '<span class="ta-pill ta-pill--ok" style="margin-left:0;">Activo</span>'
           : '<span class="ta-pill ta-pill--warn" style="margin-left:0;">Inactivo</span>';
         const precio = fmtCOP(Number(p.precio_venta || 0));
         const precioPromo = p.precio_promo ? '<br><span style="color:var(--ta-success);font-size:11px;">Promo ' + fmtCOP(Number(p.precio_promo)) + '</span>' : '';
+        const costo = p.costo != null ? fmtCOP(Number(p.costo)) : '<span style="color:var(--ta-text-mut);">—</span>';
+        // Descripcion truncada
+        const descrip = p.descripcion
+          ? T.escapeHtml(String(p.descripcion).slice(0, 60)) + (p.descripcion.length > 60 ? '…' : '')
+          : '<span style="color:var(--ta-text-mut);">—</span>';
         return '<tr data-id="' + T.escapeHtml(p.id) + '" style="cursor:pointer;">' +
           '<td>' + foto + '</td>' +
-          '<td><strong>' + T.escapeHtml(p.nombre) + '</strong><br><code style="font-size:11px;">' + T.escapeHtml(p.referencia) + '</code></td>' +
+          '<td><strong>' + T.escapeHtml(p.nombre) + '</strong></td>' +
+          '<td><code style="font-size:11px;">' + T.escapeHtml(p.referencia) + '</code></td>' +
+          '<td style="font-size:12px;color:var(--ta-text-soft);max-width:180px;">' + descrip + '</td>' +
           '<td>' + categoriaNom + '</td>' +
+          '<td>' + subNom + '</td>' +
           '<td style="text-align:right;">' + precio + precioPromo + '</td>' +
+          '<td style="text-align:right;color:var(--ta-text-soft);">' + costo + '</td>' +
           '<td>' + estadoPill + '</td>' +
           '<td style="text-align:right;"><a href="#/productos/' + T.escapeHtml(p.id) + '" class="ta-btn" style="padding:6px 12px;font-size:12px;">Editar</a></td>' +
         '</tr>';
       }).join('');
     }
 
+    const subDisabled = !listaState.filtroCategoria;
+
     return '' +
       '<header style="display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:20px;flex-wrap:wrap;">' +
         '<div>' +
           '<h1 class="ta-section-title">Productos</h1>' +
-          '<p class="ta-section-sub">' + totalCount + ' producto(s) en tu catalogo. Cada producto puede tener variantes (color, talla) en la sub-fase 3.3c.</p>' +
+          '<p class="ta-section-sub">' + totalCount + ' producto(s) en tu catalogo. Cada producto puede tener variantes (color, talla) y fotos por color.</p>' +
         '</div>' +
         '<a href="#/productos/nuevo" class="ta-btn ta-btn--primary">+ Crear producto</a>' +
       '</header>' +
 
       '<div class="ta-card" style="padding:14px 16px;margin-bottom:20px;">' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">' +
-          '<input id="lista-buscar" class="ta-input" type="text" placeholder="Buscar por nombre o referencia..." value="' + T.escapeHtml(listaState.filtroBusqueda) + '" style="flex:1;min-width:200px;">' +
-          '<select id="lista-categoria" class="ta-select" style="max-width:220px;">' + opcionesCategorias + '</select>' +
+          '<input id="lista-buscar" class="ta-input" type="text" placeholder="Buscar por nombre o referencia..." value="' + T.escapeHtml(listaState.filtroBusqueda) + '" style="flex:1;min-width:220px;">' +
+          '<select id="lista-categoria" class="ta-select" style="max-width:200px;">' + opcionesCategorias + '</select>' +
+          '<select id="lista-subcategoria" class="ta-select" style="max-width:200px;"' + (subDisabled ? ' disabled' : '') + '>' + opcionesSubs + '</select>' +
           '<select id="lista-estado" class="ta-select" style="max-width:160px;">' +
             '<option value=""' + (listaState.filtroEstado === '' ? ' selected' : '') + '>Todos los estados</option>' +
             '<option value="activo"' + (listaState.filtroEstado === 'activo' ? ' selected' : '') + '>Activo</option>' +
             '<option value="inactivo"' + (listaState.filtroEstado === 'inactivo' ? ' selected' : '') + '>Inactivo</option>' +
           '</select>' +
-          (listaState.filtroBusqueda || listaState.filtroCategoria || listaState.filtroEstado
+          (listaState.filtroBusqueda || listaState.filtroCategoria || listaState.filtroSubcategoria || listaState.filtroEstado
             ? '<button id="lista-limpiar" class="ta-btn" style="white-space:nowrap;">Limpiar</button>'
             : '') +
         '</div>' +
@@ -236,8 +290,12 @@
             '<thead><tr>' +
               '<th style="width:60px;">Foto</th>' +
               '<th>Producto</th>' +
+              '<th>Referencia</th>' +
+              '<th>Descripcion</th>' +
               '<th>Categoria</th>' +
+              '<th>Subcategoria</th>' +
               '<th style="text-align:right;">Precio</th>' +
+              '<th style="text-align:right;">Costo</th>' +
               '<th>Estado</th>' +
               '<th style="text-align:right;width:80px;"></th>' +
             '</tr></thead>' +
@@ -273,11 +331,26 @@
       });
     }
     const cat = view.querySelector('#lista-categoria');
-    if (cat) cat.addEventListener('change', (e) => { listaState.filtroCategoria = e.target.value; listaState.pagina = 0; renderLista().catch(err => console.error(err)); });
+    if (cat) cat.addEventListener('change', (e) => {
+      listaState.filtroCategoria = e.target.value;
+      // v12: al cambiar la categoria padre, resetear subcategoria
+      listaState.filtroSubcategoria = '';
+      listaState.pagina = 0;
+      renderLista().catch(err => console.error(err));
+    });
+    const sub = view.querySelector('#lista-subcategoria');
+    if (sub) sub.addEventListener('change', (e) => {
+      listaState.filtroSubcategoria = e.target.value;
+      listaState.pagina = 0;
+      renderLista().catch(err => console.error(err));
+    });
     const est = view.querySelector('#lista-estado');
     if (est) est.addEventListener('change', (e) => { listaState.filtroEstado = e.target.value; listaState.pagina = 0; renderLista().catch(err => console.error(err)); });
     const limpiar = view.querySelector('#lista-limpiar');
-    if (limpiar) limpiar.addEventListener('click', () => { listaState = { filtroBusqueda: '', filtroCategoria: '', filtroEstado: '', pagina: 0 }; renderLista().catch(err => console.error(err)); });
+    if (limpiar) limpiar.addEventListener('click', () => {
+      listaState = { filtroBusqueda: '', filtroCategoria: '', filtroSubcategoria: '', filtroEstado: '', pagina: 0, categorias: listaState.categorias };
+      renderLista().catch(err => console.error(err));
+    });
     const prev = view.querySelector('#lista-prev');
     if (prev) prev.addEventListener('click', () => { listaState.pagina = Math.max(0, listaState.pagina - 1); renderLista().catch(err => console.error(err)); });
     const next = view.querySelector('#lista-next');
@@ -300,13 +373,16 @@
   // ============================================================
   let formState = { producto: null, categorias: [], dirty: false };
   // v4 (Fase 3.3c): editor matriz color x talla
+  // v12: defaultVariant + stockSimple para producto SIN variantes (patron Shopify)
   let variantesState = {
-    activo: false,        // true cuando el user clickea "Agregar variantes" o ya hay variantes
-    colores: [],          // ej. ['Rojo', 'Negro']
-    tallas: [],           // ej. ['S', 'M', 'L']
-    matriz: {},           // mapa "<color>__<talla>" -> { id, stock, precio_override, sku, reservado }
-    original: [],         // snapshot de la DB para diff al guardar
+    activo: false,
+    colores: [],
+    tallas: [],
+    matriz: {},
+    original: [],
     dirty: false,
+    defaultVariant: null,  // variante con color=null AND talla=null (representa producto simple)
+    stockSimple: 0,        // valor del campo "Stock disponible" cuando NO hay variantes
   };
 
   async function renderForm(id) {
@@ -329,7 +405,7 @@
     if (formState.producto) {
       await cargarVariantes(formState.producto.id);
     } else {
-      variantesState = { activo: false, colores: [], tallas: [], matriz: {}, original: [], dirty: false };
+      variantesState = { activo: false, colores: [], tallas: [], matriz: {}, original: [], dirty: false, defaultVariant: null, stockSimple: 0 };
     }
     T.dom.mainView.innerHTML = renderFormHTML();
     wireFormEvents();
@@ -347,10 +423,15 @@
       return;
     }
     const lista = data || [];
-    const colores = Array.from(new Set(lista.map(v => v.color).filter(Boolean)));
-    const tallas = Array.from(new Set(lista.map(v => v.talla).filter(Boolean)));
+    // v12 (fix bug Jorge): detectar variante "default" (sin color ni talla).
+    // Producto SIMPLE: 0 variantes O 1 variante con color=null AND talla=null.
+    // Esa variante representa el stock del producto base, NO se muestra como matriz.
+    const defaultVariant = lista.find(v => !v.color && !v.talla);
+    const variantesReales = lista.filter(v => v.color || v.talla);
+    const colores = Array.from(new Set(variantesReales.map(v => v.color).filter(Boolean)));
+    const tallas = Array.from(new Set(variantesReales.map(v => v.talla).filter(Boolean)));
     const matriz = {};
-    for (const v of lista) {
+    for (const v of variantesReales) {
       const k = (v.color || '') + '__' + (v.talla || '');
       matriz[k] = {
         id: v.id, sku: v.sku, stock: v.stock, reservado: v.reservado || 0,
@@ -358,10 +439,12 @@
       };
     }
     variantesState = {
-      activo: lista.length > 0,
+      activo: variantesReales.length > 0,  // false si solo hay default
       colores, tallas, matriz,
       original: lista.map(v => ({ id: v.id, color: v.color, talla: v.talla, sku: v.sku, stock: v.stock, reservado: v.reservado, precio_override: v.precio_override })),
       dirty: false,
+      defaultVariant: defaultVariant || null,  // variante simple para producto sin variantes
+      stockSimple: defaultVariant ? defaultVariant.stock : 0,  // valor del campo "Stock disponible"
     };
   }
 
@@ -477,6 +560,16 @@
             '<option value="inactivo"' + (p && p.estado === 'inactivo' ? ' selected' : '') + '>Inactivo (oculto)</option>' +
           '</select>' +
         '</div>' +
+
+        // v12 (fix bug Jorge): campo "Stock disponible" SOLO si el producto no
+        // tiene variantes activadas. Si user despues agrega colores/tallas, este
+        // campo se oculta y la matriz toma control. Stock 0 = agotado.
+        (variantesState.activo ? '' :
+          '<div class="ta-field" id="f-stock-simple-wrap">' +
+            '<label class="ta-field__label" for="f-stock-simple">Stock disponible</label>' +
+            '<input id="f-stock-simple" type="number" class="ta-input" min="0" step="1" style="max-width:200px;" value="' + (variantesState.stockSimple != null ? variantesState.stockSimple : 0) + '">' +
+            '<span class="ta-field__hint">Cantidad de unidades disponibles. Si manejas variantes (color, talla), activalas abajo y este campo se ocultara.</span>' +
+          '</div>') +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--ta-border);">' +
           (esEdicion ? '<button type="button" id="btn-eliminar" class="ta-btn ta-btn--danger">Eliminar producto</button>' : '<span></span>') +
@@ -1085,6 +1178,16 @@
       window.removeEventListener('beforeunload', warnFn);
     });
 
+    // v12: wire del stock simple (solo si NO hay variantes activas)
+    const stockSimpleInput = view.querySelector('#f-stock-simple');
+    if (stockSimpleInput) {
+      stockSimpleInput.addEventListener('input', () => {
+        const v = stockSimpleInput.value === '' ? 0 : Math.max(0, parseInt(stockSimpleInput.value, 10) || 0);
+        variantesState.stockSimple = v;
+        formState.dirty = true;
+      });
+    }
+
     // v6: wire variantes events SIEMPRE (crear o edicion).
     wireVariantesEvents();
     // v7 (Fase 3.3d): wire fotos events solo en edicion (la seccion existe solo ahi)
@@ -1538,6 +1641,54 @@
             } else {
               variantesWarning = 'Producto creado, pero las variantes tuvieron error: ' + (vRes.error.message || 'desconocido') + '. Edita el producto para reintentar.';
             }
+          }
+        }
+      }
+
+      // v12 (fix bug Jorge): producto SIN variantes -> crear/actualizar default variant.
+      // Patron Shopify: cada producto siempre tiene >=1 variante en BD. Si no hay
+      // colores/tallas, la variante "default" almacena el stock simple del producto.
+      if (result.data && !variantesState.activo) {
+        const productoFinal = result.data;
+        const stockSimple = variantesState.stockSimple != null ? Math.max(0, parseInt(variantesState.stockSimple, 10) || 0) : 0;
+        const skuSimple = generarSku(productoFinal.referencia, '', '') || productoFinal.referencia;
+
+        if (esCreacion) {
+          // Crear nueva default variant
+          const vRes = await sb.from('producto_variantes').insert({
+            producto_id: productoFinal.id,
+            color: null, talla: null,
+            sku: skuSimple,
+            stock: stockSimple,
+          });
+          if (vRes.error && vRes.error.code !== '23505') {
+            console.error('[prod-form] default variant insert error', vRes.error);
+            variantesWarning = 'Producto creado, pero no se pudo guardar el stock: ' + (vRes.error.message || '');
+          }
+        } else if (variantesState.defaultVariant) {
+          // Update existing default variant
+          const vRes = await sb.from('producto_variantes')
+            .update({ stock: stockSimple })
+            .eq('id', variantesState.defaultVariant.id);
+          if (vRes.error) {
+            console.error('[prod-form] default variant update error', vRes.error);
+            if (vRes.error.code === '23514') {
+              variantesWarning = 'No pudimos actualizar el stock: hay ' + (variantesState.defaultVariant.reservado || 0) + ' unidades reservadas en pedidos pendientes.';
+            } else {
+              variantesWarning = 'No pudimos actualizar el stock.';
+            }
+          }
+        } else {
+          // Edicion, no habia default variant - crear una ahora
+          const vRes = await sb.from('producto_variantes').insert({
+            producto_id: productoFinal.id,
+            color: null, talla: null,
+            sku: skuSimple,
+            stock: stockSimple,
+          });
+          if (vRes.error && vRes.error.code !== '23505') {
+            console.error('[prod-form] default variant insert (edit) error', vRes.error);
+            variantesWarning = 'No pudimos guardar el stock: ' + (vRes.error.message || '');
           }
         }
       }
