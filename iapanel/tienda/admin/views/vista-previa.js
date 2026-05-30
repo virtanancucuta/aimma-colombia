@@ -1,4 +1,9 @@
-/* AIMMA · Tienda IA · views/vista-previa.js · v3 · 2026-05-30
+/* AIMMA · Tienda IA · views/vista-previa.js · v4 · 2026-05-30
+   v4 (fix Jorge): el editor de URL estaba oculto si no habia ctaText (caso
+   minimal_artesanal default). Sacamos AMBOS inputs del hero a un panel
+   separado "Editor del boton" siempre visible en modo editor con sugerencias
+   de URL (WhatsApp, Instagram, catalogo). Re-render reactivo del mockup
+   cuando user cambia texto del CTA (debounce 600ms) preservando foco.
    v3 (fix Jorge): toggle de modo editor disparaba "Cargando..." y reseteaba
    estate.editing=false porque renderVistaPrevia hacia queries + reset estado
    en cada llamada. Fix: cache de data+tienda + rerenderMockup() que solo
@@ -244,6 +249,9 @@
         '</div>' +
       '</div>' +
 
+      // v4: panel separado para editar texto + URL del CTA (siempre visible en modo editor)
+      renderCtaEditorPanel() +
+
       '<div style="margin-top:20px;display:flex;gap:8px;align-items:center;color:var(--ta-text-soft);font-size:13px;flex-wrap:wrap;">' +
         '<span>Plantilla: <strong>' + T.escapeHtml(plantilla.nombre || '-') + '</strong></span>' +
         '<span>·</span>' +
@@ -286,7 +294,9 @@
       '</article>';
   }
 
-  // v2: hero usa getValor() y agrega contenteditable attributes en modo editor.
+  // v4: hero usa getValor() y agrega contenteditable attributes en modo editor.
+  // El editor del CTA (texto + URL) va FUERA del hero en un panel separado
+  // visible para que se vea siempre en modo editor, no solo si hay texto.
   function renderHeroEditable(variantClass) {
     const T = window.TiendaIA;
     const heroTitle = getValor('hero_title');
@@ -295,22 +305,58 @@
     const ctaUrl = safeCtaUrl(getValor('cta_url'));
     const editableAttr = estate.editing ? ' contenteditable="true" spellcheck="false"' : '';
     const editableCls = estate.editing ? ' editable' : '';
+    // El boton en modo editor SOLO se muestra si ctaText tiene contenido.
+    // El editor de URL ahora va fuera del hero (renderCtaEditor).
     const ctaBlock = ctaText
       ? '<a href="' + T.escapeHtml(ctaUrl) + '" class="preview-hero__cta' + editableCls + '" data-campo="cta_text"' + editableAttr +
           (estate.editing ? ' onclick="event.preventDefault();return false;"' : ' target="_blank" rel="noopener"') + '>' +
           T.escapeHtml(ctaText) +
         '</a>'
-      : (estate.editing ? '<button type="button" class="preview-hero__cta editable" data-campo="cta_text" contenteditable="true" spellcheck="false">Agregar boton</button>' : '');
-    const ctaUrlEditor = estate.editing && ctaText
-      ? '<div class="preview-cta-url-editor"><label>URL del boton:</label><input type="url" id="vp-cta-url" value="' + T.escapeHtml(ctaUrl) + '" placeholder="https://..." maxlength="500"></div>'
       : '';
     return '' +
       '<section class="preview-hero ' + variantClass + '">' +
         '<h1 class="editable" data-campo="hero_title"' + editableAttr + '>' + T.escapeHtml(heroTitle) + '</h1>' +
         '<p class="editable" data-campo="hero_subtitle"' + editableAttr + '>' + T.escapeHtml(heroSub) + '</p>' +
         ctaBlock +
-        ctaUrlEditor +
       '</section>';
+  }
+
+  // v4: panel separado de edicion del CTA. Siempre visible en modo editor,
+  // con AMBOS inputs (texto + URL) y sugerencias claras.
+  function renderCtaEditorPanel() {
+    if (!estate.editing) return '';
+    const T = window.TiendaIA;
+    const ctaText = estate.personalizaciones.cta_text != null
+      ? estate.personalizaciones.cta_text
+      : (estate.defaults.cta_text || '');
+    const ctaUrl = estate.personalizaciones.cta_url != null
+      ? estate.personalizaciones.cta_url
+      : (estate.defaults.cta_url || '');
+    return '' +
+      '<div class="preview-cta-editor-panel">' +
+        '<div class="preview-cta-editor-panel__head">' +
+          '<span class="preview-cta-editor-panel__icon">🔗</span>' +
+          '<div>' +
+            '<h3>Boton del hero (call to action)</h3>' +
+            '<p>Agrega un boton que lleve a tus clientes a WhatsApp, Instagram, un catalogo o cualquier link. Si dejas el texto vacio, no se muestra boton.</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="preview-cta-editor-panel__grid">' +
+          '<label>' +
+            '<span>Texto del boton</span>' +
+            '<input type="text" id="vp-cta-text" value="' + T.escapeHtml(ctaText) + '" placeholder="ej. Contactanos por WhatsApp" maxlength="60">' +
+          '</label>' +
+          '<label>' +
+            '<span>URL del boton (a donde lleva)</span>' +
+            '<input type="url" id="vp-cta-url" value="' + T.escapeHtml(ctaUrl) + '" placeholder="https://..." maxlength="500">' +
+            '<small class="preview-cta-editor-panel__hint">Ejemplos: ' +
+              '<code>https://wa.me/573001234567</code> · ' +
+              '<code>https://instagram.com/tu-tienda</code> · ' +
+              '<code>https://catalogo.com/promo</code>' +
+            '</small>' +
+          '</label>' +
+        '</div>' +
+      '</div>';
   }
 
   // Estilo segun plantilla: font, hero variant class
@@ -416,13 +462,48 @@
       });
     });
 
-    // Input para URL del CTA
+    // v4: input dedicado para TEXTO del CTA (panel separado) - reactivo:
+    // al cambiar el texto, regenera el mockup para que el boton aparezca/desaparezca.
+    const inputCtaText = document.getElementById('vp-cta-text');
+    if (inputCtaText) {
+      let textTimer = null;
+      inputCtaText.addEventListener('input', () => {
+        const valor = inputCtaText.value.slice(0, 60).trim();
+        if (valor === '' || valor === estate.defaults.cta_text) {
+          delete estate.personalizaciones.cta_text;
+        } else {
+          estate.personalizaciones.cta_text = valor;
+        }
+        estate.dirty = true;
+        actualizarBotonGuardar();
+        // Re-render para que el boton aparezca o desaparezca segun valor.
+        // Debounce para no re-render en cada keystroke.
+        clearTimeout(textTimer);
+        textTimer = setTimeout(() => {
+          if (!estate.editing) return;
+          const focusedId = document.activeElement && document.activeElement.id;
+          rerenderMockup();
+          if (focusedId) {
+            const el = document.getElementById(focusedId);
+            if (el && typeof el.focus === 'function') {
+              el.focus();
+              if (el.setSelectionRange && typeof el.value === 'string') {
+                const end = el.value.length;
+                el.setSelectionRange(end, end);
+              }
+            }
+          }
+        }, 600);
+      });
+    }
+
+    // v4: input dedicado para URL del CTA (panel separado)
     const inputCtaUrl = document.getElementById('vp-cta-url');
     if (inputCtaUrl) {
       inputCtaUrl.addEventListener('input', () => {
         const valor = inputCtaUrl.value.trim();
         if (valor.length > 500) return;
-        if (valor === estate.defaults.cta_url || valor === '') {
+        if (valor === '' || valor === estate.defaults.cta_url) {
           delete estate.personalizaciones.cta_url;
         } else {
           estate.personalizaciones.cta_url = valor;

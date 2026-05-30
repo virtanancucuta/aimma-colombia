@@ -669,6 +669,68 @@ a:hover { text-decoration: underline; }
 }
 .preview-cta-url-editor input::placeholder { color: rgba(255,255,255,.55); }
 
+/* v4: panel separado para editor del CTA (texto + URL) */
+.preview-cta-editor-panel {
+  margin-top: 16px;
+  padding: 18px 20px;
+  background: var(--ta-surface);
+  border: 1px solid var(--ta-warn);
+  border-left: 4px solid var(--ta-warn);
+  border-radius: var(--ta-radius);
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+.preview-cta-editor-panel__head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.preview-cta-editor-panel__icon { font-size: 26px; line-height: 1; }
+.preview-cta-editor-panel__head h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--ta-text); }
+.preview-cta-editor-panel__head p { margin: 0; font-size: 13px; color: var(--ta-text-soft); line-height: 1.4; }
+.preview-cta-editor-panel__grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 14px;
+}
+@media (max-width: 720px) { .preview-cta-editor-panel__grid { grid-template-columns: 1fr; } }
+.preview-cta-editor-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ta-text-soft);
+}
+.preview-cta-editor-panel input {
+  padding: 9px 12px;
+  border-radius: var(--ta-radius-sm);
+  border: 1px solid var(--ta-border);
+  background: var(--ta-bg-soft);
+  color: var(--ta-text);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+}
+.preview-cta-editor-panel input:focus {
+  outline: none;
+  border-color: var(--ta-warn);
+  box-shadow: 0 0 0 3px rgba(255,170,60,.18);
+}
+.preview-cta-editor-panel__hint {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--ta-text-mut);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.preview-cta-editor-panel__hint code {
+  background: var(--ta-bg-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 /* ============================ Wizard onboarding (Fase 3.4) ============================ */
 .ta-wizard__h3 { font-size: 18px; font-weight: 600; margin: 0 0 6px; }
 .ta-wizard__hint { color: var(--ta-text-soft); font-size: 13px; margin: 0 0 20px; }
