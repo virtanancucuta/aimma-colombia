@@ -1,5 +1,10 @@
-/* AIMMA · Tienda IA · views/productos.js · v9 · 2026-05-29
-   Fase 3.3a (lista) + 3.3b (form) + 3.3c (matriz) + 3.3c.2 (unificado) + 3.3d (fotos).
+/* AIMMA · Tienda IA · views/productos.js · v10 · 2026-05-29
+   Fase 3.3 COMPLETA + fix Jorge: validacion bloqueante de stocks faltantes.
+   v10 (2026-05-29 post-feedback Jorge): validarMatrizStocks + highlight visual.
+   Si user agrega color/talla pero deja celdas sin stock, al click Guardar
+   variantes o Crear producto el guardado se bloquea con toast claro + las
+   celdas vacias se resaltan en naranja con pulse animation. Forza decision
+   explicita (0 = agotado, N = en stock) vs autollenar silenciosamente.
    v9 (2026-05-29 post-audit 3.3d): 2 HIGH + 3 MEDIUM + 1 LOW fixes
    - BUG #1 HIGH: recargarProductoYRender hacia full re-render+wireFormEvents
      en cada upload/eliminacion acumulando listeners. Migrado a refrescar SOLO
@@ -894,6 +899,46 @@
       '</section>';
   }
 
+  // v10 (Fase 3.3.e post-feedback Jorge): identifica celdas sin stock cuando
+  // hay colores+tallas definidos. Return { vacias: [{color, talla}], total: N }.
+  function validarMatrizStocks() {
+    const colores = variantesState.colores;
+    const tallas = variantesState.tallas;
+    if (colores.length === 0 || tallas.length === 0) {
+      return { vacias: [], total: 0, requiereStock: false };
+    }
+    const vacias = [];
+    let total = 0;
+    for (const color of colores) {
+      for (const talla of tallas) {
+        total++;
+        const celda = getMatrizCelda(color, talla);
+        if (celda == null || celda.stock == null) {
+          vacias.push({ color, talla });
+        }
+      }
+    }
+    return { vacias, total, requiereStock: vacias.length > 0 };
+  }
+
+  // Marca visualmente las celdas vacias con highlight naranja y muestra toast.
+  function highlightCeldasVacias(vacias) {
+    const view = window.TiendaIA.dom.mainView;
+    if (!view) return;
+    // Limpiar marks anteriores
+    view.querySelectorAll('.ta-input--stock').forEach(i => i.classList.remove('ta-input--stock-empty'));
+    // Marcar las vacias
+    for (const { color, talla } of vacias) {
+      const sel = '.ta-input--stock[data-celda-color="' + CSS.escape(color) + '"][data-celda-talla="' + CSS.escape(talla) + '"]';
+      const el = view.querySelector(sel);
+      if (el) {
+        el.classList.add('ta-input--stock-empty');
+        el.focus();  // foco al primer empty para que el user vea donde escribir
+        return;       // solo focusear el primero
+      }
+    }
+  }
+
   function renderMatrizTabla(producto) {
     const T = window.TiendaIA;
     const colores = variantesState.colores;
@@ -1109,6 +1154,8 @@
           sku: existente.sku || (ref ? generarSku(ref, color, talla) : null),
           stock,
         });
+        // v10: quitar highlight de empty al escribir
+        if (stockRaw !== '') e.target.classList.remove('ta-input--stock-empty');
         variantesState.dirty = true;
       });
     });
@@ -1183,6 +1230,17 @@
     const sb = T.supabase();
     const producto = formState.producto;
     if (!producto) return;
+
+    // v10 fix Jorge: validar que TODAS las celdas tengan stock antes de guardar.
+    // No guardar silenciosamente las que tienen stock; pedir explicitamente al
+    // user que llene las vacias (0 si no hay stock, N si tiene).
+    const validacion = validarMatrizStocks();
+    if (validacion.requiereStock) {
+      const faltan = validacion.vacias.length;
+      T.toast('Faltan ' + faltan + ' celda(s) sin stock. Coloca 0 si no tienes stock o el numero real. Las celdas en naranja son las que faltan.', 'error');
+      highlightCeldasVacias(validacion.vacias);
+      return;
+    }
 
     if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
@@ -1319,6 +1377,20 @@
     if (!(payload.precio_venta > 0)) { T.toast('El precio de venta debe ser mayor a 0', 'error'); restoreBtn(btnGuardar); return; }
     if (payload.precio_promo != null && payload.precio_promo >= payload.precio_venta) {
       T.toast('El precio promo debe ser menor al precio de venta', 'error'); restoreBtn(btnGuardar); return;
+    }
+
+    // v10 fix Jorge: si crear con variantes activas, validar stocks ANTES del INSERT producto
+    const esCreacionConVariantes = !formState.producto && variantesState.activo &&
+      variantesState.colores.length > 0 && variantesState.tallas.length > 0;
+    if (esCreacionConVariantes) {
+      const validacion = validarMatrizStocks();
+      if (validacion.requiereStock) {
+        const faltan = validacion.vacias.length;
+        T.toast('Faltan ' + faltan + ' celda(s) sin stock en las variantes. Coloca 0 si no tienes stock o el numero real. Las celdas en naranja son las que faltan.', 'error');
+        highlightCeldasVacias(validacion.vacias);
+        restoreBtn(btnGuardar);
+        return;
+      }
     }
 
     try {

@@ -506,6 +506,17 @@ a:hover { text-decoration: underline; }
 .ta-tag-input::placeholder { color: var(--ta-text-mut); }
 
 .ta-input--stock { max-width: 100px; }
+/* v5.1: highlight para celdas sin stock al intentar guardar */
+.ta-input--stock-empty {
+  border-color: var(--ta-warn) !important;
+  background: rgba(255,170,60,.08);
+  box-shadow: 0 0 0 3px rgba(255,170,60,.18);
+  animation: ta-pulse-warn 1.2s ease-in-out 2;
+}
+@keyframes ta-pulse-warn {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255,170,60,.18); }
+  50% { box-shadow: 0 0 0 6px rgba(255,170,60,.32); }
+}
 
 /* ============================ Slots de fotos (Fase 3.3d) ============================ */
 .ta-fotos-grid {
