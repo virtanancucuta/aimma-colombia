@@ -1,4 +1,9 @@
-/* AIMMA · Tienda IA · views/vista-previa.js · v2 · 2026-05-30
+/* AIMMA · Tienda IA · views/vista-previa.js · v3 · 2026-05-30
+   v3 (fix Jorge): toggle de modo editor disparaba "Cargando..." y reseteaba
+   estate.editing=false porque renderVistaPrevia hacia queries + reset estado
+   en cada llamada. Fix: cache de data+tienda + rerenderMockup() que solo
+   re-rendea HTML sin queries ni reset. renderVistaPrevia solo en carga
+   inicial (entrada a la vista).
    v2 (Fase 3.4c): MVP Modo Editor minimal. Cliente puede editar inline:
    - hero_title, hero_subtitle, cta_text, cta_url, footer_text.
    Toggle 'Modo editor' habilita contenteditable. 'Guardar y publicar'
@@ -51,6 +56,13 @@
     guardando: false,
   };
 
+  // v3 fix bug Jorge: cache de data + tienda para re-renderizar el mockup
+  // SIN re-consultar BD en cada toggle. Antes, await renderVistaPrevia desde
+  // toggle disparaba skeleton "Cargando..." y reseteaba estate.editing=false,
+  // anulando el toggle.
+  let cachedData = null;
+  let cachedTienda = null;
+
   async function renderVistaPrevia() {
     const T = window.TiendaIA;
     const view = T.dom.mainView;
@@ -72,11 +84,14 @@
 
     try {
       const data = await cargarData(T.supabase(), tienda);
-      // v2: setear personalizaciones desde BD y calcular defaults
+      // v3 fix: setear personalizaciones desde BD y calcular defaults
+      // SOLO en la carga inicial. El toggle NO debe pasar por aqui (usa rerenderMockup).
       estate.personalizaciones = Object.assign({}, tienda.personalizaciones || {});
       estate.defaults = calcularDefaults(tienda, data.plantilla);
       estate.editing = false;
       estate.dirty = false;
+      cachedData = data;
+      cachedTienda = tienda;
       view.innerHTML = renderHeader() + renderMockup(data, tienda);
       wireInteracciones(data, tienda);
     } catch (e) {
@@ -324,21 +339,25 @@
     };
   }
 
+  // v3 fix: re-renderea SOLO el HTML del mockup (sin queries ni reset de estate)
+  function rerenderMockup() {
+    const T = window.TiendaIA;
+    const view = T.dom.mainView;
+    if (!cachedData || !cachedTienda) return;
+    view.innerHTML = renderHeader() + renderMockup(cachedData, cachedTienda);
+    wireInteracciones(cachedData, cachedTienda);
+  }
+
   function wireInteracciones(data, tienda) {
     const T = window.TiendaIA;
 
     // v2 BUG #1 fix: reset navGuards de esta view en cada wire para no acumular.
-    // El toggle llama renderVistaPrevia que llama wireInteracciones de nuevo;
-    // sin este reset, cada toggle agregaba un guard nuevo (despues de 5 toggles,
-    // 5 confirm() apilados al navegar).
     if (T.state && Array.isArray(T.state.viewNavGuards)) T.state.viewNavGuards = [];
 
-    // Toggle modo editor
+    // Toggle modo editor (v3: usa rerenderMockup, NO renderVistaPrevia)
     const btnToggle = document.getElementById('vp-toggle-editor');
     if (btnToggle) {
-      btnToggle.addEventListener('click', async () => {
-        // v2 BUG #2 fix: deshabilitar al inicio para evitar double-click race.
-        // El boton sera reemplazado por innerHTML del re-render, no requiere re-habilitar.
+      btnToggle.addEventListener('click', () => {
         if (btnToggle.disabled) return;
         btnToggle.disabled = true;
         if (estate.editing && estate.dirty) {
@@ -350,7 +369,7 @@
           estate.dirty = false;
         }
         estate.editing = !estate.editing;
-        await renderVistaPrevia();
+        rerenderMockup();
       });
     }
 
@@ -470,13 +489,14 @@
       // Persistir en el state global de la tienda tambien
       tienda.personalizaciones = data.personalizaciones || {};
       T.state.tienda.personalizaciones = tienda.personalizaciones;
+      if (cachedTienda) cachedTienda.personalizaciones = tienda.personalizaciones;
       estate.personalizaciones = Object.assign({}, tienda.personalizaciones);
       estate.dirty = false;
       estate.guardando = false;
       T.toast('Cambios guardados ✓', 'success');
-      // Salir de modo editor y re-render
+      // Salir de modo editor y re-render desde cache (sin queries)
       estate.editing = false;
-      await renderVistaPrevia();
+      rerenderMockup();
     } catch (e) {
       console.error('[vista-previa guardar] exception', e);
       T.toast('Error: ' + (e.message || e), 'error');
