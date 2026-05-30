@@ -1,5 +1,8 @@
-/* AIMMA · Tienda IA · views/inicio.js · v2 · 2026-05-29 · Vista Inicio */
-/* v2 (2026-05-29 post-audit): 3 HIGH fixes
+/* AIMMA · Tienda IA · views/inicio.js · v3 · 2026-05-30 · Vista Inicio */
+/* v3 (2026-05-30 fix Jorge): KPI "Categorias" contaba padres + hijos
+   (ej. 2 padres + 4 hijas = 6). Ahora filtra parent_id IS NULL para mostrar
+   solo nivel 1, consistente con el esquema arbol 2 niveles del DESIGN.
+   v2 (2026-05-29 post-audit): 3 HIGH fixes
    - Fix BUG #1+#2: KPIs (productos activos, pedidos pendientes, ventas mes)
      usan queries dedicadas count:exact head:true para conteos globales sin
      contaminacion por limit(5) en la query de pedidos recientes.
@@ -105,7 +108,7 @@
         .eq('tienda_id', tid).eq('estado', 'confirmado')
         .gte('confirmado_at', inicioMes),
       sb.from('categorias').select('id', { count: 'exact', head: true })
-        .eq('tienda_id', tid),
+        .eq('tienda_id', tid).is('parent_id', null),
       sb.from('paginas_legales').select('tipo', { count: 'exact' })
         .eq('tienda_id', tid),
     ]);
