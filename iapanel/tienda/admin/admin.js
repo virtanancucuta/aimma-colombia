@@ -1,5 +1,10 @@
-/* AIMMA · Tienda IA · admin.js · v4 · 2026-05-29 · Panel Admin SPA */
-/* v4 (2026-05-29): API registerNavGuard() - las views pueden interceptar
+/* AIMMA · Tienda IA · admin.js · v5 · 2026-05-30 · Panel Admin SPA */
+/* v5 (2026-05-30): Fase 3.4 - delegar la pantalla del wizard a views/wizard.js
+   via window.TiendaIA.startWizard. Cambio de logica: el wizard se activa si
+   plantilla_id IS NULL (sin chequear cortesia_razon). Razon: pilotos como
+   Maraldo+Dimac tampoco tienen plantilla -> tampoco pueden publicar sin
+   pasar por el wizard. Cortesia es sobre billing, no configuracion.
+   v4 (2026-05-29): API registerNavGuard() - las views pueden interceptar
    hashchange ANTES del cleanup para confirmar/cancelar navegacion (ej. form
    con cambios sin guardar). El listener nativo de productos.js no funcionaba
    porque admin.js dispatch hashchange primero y llama cleanupCurrentView()
@@ -405,15 +410,31 @@
       return;
     }
 
-    // Decision: wizard onboarding o app?
-    // Si la tienda NO tiene plantilla_id y NO es cortesia (pilotos saltan wizard porque ya estan sembrados manualmente)
-    if (!state.tienda.plantilla_id && !state.tienda.cortesia_razon) {
-      // Wizard (Fase 3.4 - placeholder por ahora)
+    // v5 Decision wizard onboarding: si NO tiene plantilla, debe configurar.
+    // La cortesia (billing) NO exime del setup de tienda.
+    if (!state.tienda.plantilla_id) {
       showState('stateWizard');
-      const body = $('wizard-body');
-      if (body) {
-        body.innerHTML = '<p style="color:#9aa8be;margin:0 0 20px;">Wizard onboarding en construccion (Fase 3.4). Por ahora contacta a tu asesor para configurar tu tienda.</p>';
-      }
+      // Delegar el render a views/wizard.js si esta cargado. Si todavia no,
+      // hacemos polling corto (idem patron de las views modulares).
+      let attempts = 0;
+      const tryStart = () => {
+        if (window.TiendaIA && window.TiendaIA.startWizard) {
+          try { window.TiendaIA.startWizard(); }
+          catch (e) {
+            console.error('[wizard] start error', e);
+            const body = $('wizard-body');
+            if (body) body.innerHTML = '<p style="color:#ff5d6c;">Error iniciando wizard: ' + escapeHtml(e.message || String(e)) + '</p>';
+          }
+          return;
+        }
+        if (++attempts >= 200) {
+          const body = $('wizard-body');
+          if (body) body.innerHTML = '<p style="color:#9aa8be;">No pudimos cargar el wizard. Recarga (Ctrl+Shift+R) o contacta a tu asesor.</p>';
+          return;
+        }
+        setTimeout(tryStart, 50);
+      };
+      tryStart();
       return;
     }
 

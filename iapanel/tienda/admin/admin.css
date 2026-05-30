@@ -1,5 +1,7 @@
-/* AIMMA · Tienda IA · admin.css · v5 · 2026-05-29 */
-/* v5 (2026-05-29): Fase 3.3d - slots de fotos producto + galeria + foto color.
+/* AIMMA · Tienda IA · admin.css · v6 · 2026-05-30 */
+/* v6 (2026-05-30): Fase 3.4 - estilos wizard (h3, hints, error/ok, slug row,
+   cards plantilla, swatches paleta, nav).
+   v5 (2026-05-29): Fase 3.3d - slots de fotos producto + galeria + foto color.
    v4 (2026-05-29): Fase 3.3c - tags row, tag input, matriz variantes.
    v3 (2026-05-29): Fase 3.2 - estilos vista Inicio (pills, acciones list, code).
    v2: fix [hidden] anulado por display:flex en estados.
@@ -451,6 +453,147 @@ a:hover { text-decoration: underline; }
 .ta-accion__title { font-weight: 600; font-size: 15px; }
 .ta-accion__desc { font-size: 13px; color: var(--ta-text-soft); }
 .ta-accion__cta { font-size: 13px; color: var(--ta-accent); white-space: nowrap; font-weight: 600; }
+
+/* ============================ Wizard onboarding (Fase 3.4) ============================ */
+.ta-wizard__h3 { font-size: 18px; font-weight: 600; margin: 0 0 6px; }
+.ta-wizard__hint { color: var(--ta-text-soft); font-size: 13px; margin: 0 0 20px; }
+.ta-wizard__field { margin-bottom: 16px; }
+.ta-wizard__error {
+  font-size: 13px;
+  color: var(--ta-danger);
+  margin-top: 8px;
+  background: rgba(255,93,108,.08);
+  border-left: 3px solid var(--ta-danger);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+.ta-wizard__ok {
+  font-size: 13px;
+  color: var(--ta-success);
+  margin-top: 8px;
+  font-weight: 600;
+}
+.ta-wizard__slug-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ta-wizard__slug-row input {
+  flex: 1;
+  min-width: 180px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+}
+.ta-wizard__slug-suffix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--ta-bg-soft);
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius-sm);
+  color: var(--ta-text-mut);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+}
+.ta-wizard__preview {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--ta-bg-soft);
+  border-radius: var(--ta-radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.ta-wizard__preview-label { color: var(--ta-text-mut); }
+.ta-wizard__preview code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  color: var(--ta-accent-2);
+}
+.ta-wizard__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ta-border);
+  gap: 12px;
+}
+
+/* Cards de plantillas */
+.ta-wizard__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ta-wizard__card {
+  background: var(--ta-surface);
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius);
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: var(--ta-text);
+  transition: border-color .15s, background .15s, transform .15s;
+}
+.ta-wizard__card:hover { border-color: var(--ta-accent); transform: translateY(-2px); }
+.ta-wizard__card.is-active {
+  border-color: var(--ta-accent);
+  background: rgba(77,142,255,.08);
+  box-shadow: 0 0 0 2px rgba(77,142,255,.2);
+}
+.ta-wizard__card-preview {
+  aspect-ratio: 16 / 10;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 24px;
+  color: #fff;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+.ta-wizard__card-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.ta-wizard__card-desc { font-size: 12px; color: var(--ta-text-soft); line-height: 1.4; }
+
+/* Swatches de paletas */
+.ta-wizard__swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ta-wizard__swatch {
+  background: var(--ta-surface);
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius-sm);
+  padding: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ta-text);
+  transition: border-color .15s, transform .15s;
+}
+.ta-wizard__swatch:hover { border-color: var(--ta-accent); transform: translateY(-1px); }
+.ta-wizard__swatch.is-active {
+  border-color: var(--ta-accent);
+  box-shadow: 0 0 0 2px rgba(77,142,255,.2);
+}
+.ta-wizard__swatch-colors {
+  display: flex;
+  gap: 0;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.ta-wizard__swatch-colors > span { flex: 1; height: 100%; }
+.ta-wizard__swatch-name { font-size: 13px; font-weight: 500; text-align: center; }
 
 /* ============================ Tags (variantes) ============================ */
 .ta-tags-row {
