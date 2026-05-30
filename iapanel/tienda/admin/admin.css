@@ -1,5 +1,7 @@
-/* AIMMA · Tienda IA · admin.css · v11 · 2026-05-30 */
-/* v11 (2026-05-30): Fase 3.7 - editor paginas legales (tabs + banner warn +
+/* AIMMA · Tienda IA · admin.css · v12 · 2026-05-30 */
+/* v12 (2026-05-30): Fase 3.7.b - secciones editor legales sin HTML
+   (titulo + textarea por seccion + auto-secciones con badge).
+   v11 (2026-05-30): Fase 3.7 - editor paginas legales (tabs + banner warn +
    preview iframe sandbox).
    v10 (2026-05-30): Fase 3.6 - configuracion (grid 2 cols, logo preview,
    swatches paleta, estado cards, save bar sticky).
@@ -528,6 +530,35 @@ a:hover { text-decoration: underline; }
   background: #fff;
   display: block;
 }
+
+/* v14 Fase 3.7.b: secciones del editor sin HTML */
+.ta-legal-sec {
+  background: var(--ta-bg-soft);
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.ta-legal-sec--auto { background: rgba(77,142,255,.06); border-color: rgba(77,142,255,.25); }
+.ta-legal-sec__head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.ta-legal-sec__titulo {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--ta-bg);
+}
+.ta-legal-sec__contenido {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--ta-bg);
+}
+.ta-legal-sec__auto { display: flex; flex-direction: column; gap: 6px; }
 
 /* ============================ Configuracion (Fase 3.6) ============================ */
 .ta-cfg-grid {

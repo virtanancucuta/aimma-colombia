@@ -1,4 +1,7 @@
-/* AIMMA · Tienda IA · views/configuracion.js · v2 · 2026-05-30
+/* AIMMA · Tienda IA · views/configuracion.js · v3 · 2026-05-30
+   v3 (Fase 3.7.b): nuevo campo "Horario de atencion" (textarea max 300).
+   Persiste en tiendas.horario_atencion y se usa como placeholder
+   {{HORARIO_ATENCION}} en la pagina legal de Contacto.
    v2 (post-audit): 3 HIGH fixes
    - HIGH #1: removido SVG de allowed_logo_types (bucket lo rechaza + riesgo
      XSS embebido en SVG servido desde bucket publico).
@@ -250,6 +253,12 @@
             '<input id="cfg-email" class="ta-input" type="email" maxlength="100" value="' + T.escapeHtml(t.email_contacto || '') + '" placeholder="ej. contacto@tu-tienda.co">' +
           '</div>' +
         '</div>' +
+
+        '<div class="ta-field">' +
+          '<label class="ta-field__label" for="cfg-horario">Horario de atencion</label>' +
+          '<textarea id="cfg-horario" class="ta-textarea" rows="3" maxlength="300" placeholder="ej.&#10;Lunes a viernes: 8:00 AM - 6:00 PM&#10;Sabados: 9:00 AM - 1:00 PM&#10;Domingos y festivos: cerrado">' + T.escapeHtml(t.horario_atencion || '') + '</textarea>' +
+          '<span class="ta-field__hint">Aparece en la pagina de Contacto. Una linea por dia o turno.</span>' +
+        '</div>' +
       '</section>';
   }
 
@@ -460,6 +469,7 @@
     const direccion = view.querySelector('#cfg-direccion').value.trim();
     const ciudad = view.querySelector('#cfg-ciudad').value.trim();
     const email = view.querySelector('#cfg-email').value.trim();
+    const horario = view.querySelector('#cfg-horario').value.trim();
 
     const estadoRadio = view.querySelector('input[name="cfg-estado"]:checked');
     const estado = estadoRadio ? estadoRadio.value : tienda.estado;
@@ -492,6 +502,7 @@
       direccion: direccion || null,
       ciudad_negocio: ciudad || null,
       email_contacto: email || null,
+      horario_atencion: horario || null,
       estado,
     };
 

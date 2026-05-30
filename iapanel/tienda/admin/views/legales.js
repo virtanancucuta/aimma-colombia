@@ -1,19 +1,13 @@
-/* AIMMA · Tienda IA · views/legales.js · v2 · 2026-05-30
-   v2 (post-audit): 2 HIGH fixes
-   - HIGH #1: XSS diferido en storefront publico documentado como TASK CRITICA
-     Fase 4 (#43). El preview en panel ya esta aislado con iframe sandbox vacio.
-     El storefront publico (Fase 4) DEBE usar DOMPurify al renderear estos
-     HTMLs. El cliente puede guardar <script>/<img onerror> que afectaria
-     a visitantes futuros. Allowlist: h1-h3, p, ul/ol/li, strong, a, code.
-   - HIGH #2: srcdoc rompia con comillas en HTML del cliente porque escapeHtml
-     convierte " a &quot; y srcdoc lo decodifica rompiendo el atributo.
-     Migrado a data:text/html con encodeURIComponent que preserva integro.
-   Fase 3.7 - Editor de paginas legales (Garantias / Tratamiento de datos / Contacto).
-   - Templates base en tabla tienda_paginas_legales_templates (3 filas con
-     placeholders {{NOMBRE_NEGOCIO}}, {{NIT}}, {{DIRECCION}}, etc.).
-   - Paginas guardadas en paginas_legales (UPSERT por tienda_id + tipo).
-   - Al cargar template, reemplaza placeholders con datos de la tienda.
-   - Banner si faltan datos legales con link a #/configuracion. */
+/* AIMMA · Tienda IA · views/legales.js · v3 · 2026-05-30
+   v3 (Fase 3.7.b feedback Jorge): refactor completo a editor por SECCIONES.
+   El cliente NO toca HTML nunca. Cada pagina legal se compone de N
+   secciones predefinidas (titulo + contenido como texto plano). El sistema
+   genera el HTML automaticamente al guardar combinando las secciones.
+   - Secciones con auto:true reflejan datos de la tienda (no editables).
+   - Cliente puede editar/borrar secciones no-auto y agregar custom.
+   - Vista previa muestra el HTML compuesto en iframe sandbox.
+   - Cero requirement de HTML knowledge.
+   v2 (post-audit): srcdoc -> data:URL + tarea sanitize storefront. */
 
 (function () {
   'use strict';
@@ -40,13 +34,13 @@
   // Estado
   // ============================================================
   const lstate = {
-    templates: {},        // por tipo: { titulo, contenido_html }
-    paginas: {},          // por tipo: { id, titulo, contenido_html, ultima_actualiz }
+    templates: {},        // { tipo: { titulo, secciones_template: [...] } }
+    paginas: {},          // { tipo: { id, titulo, secciones, ultima_actualiz } }
     tabActivo: 'garantias',
-    editor: {             // contenido del editor por tipo
-      garantias: { titulo: '', contenido_html: '' },
-      tratamiento_datos: { titulo: '', contenido_html: '' },
-      contacto: { titulo: '', contenido_html: '' },
+    editor: {             // { tipo: { titulo, secciones: [...] } }
+      garantias: { titulo: '', secciones: [] },
+      tratamiento_datos: { titulo: '', secciones: [] },
+      contacto: { titulo: '', secciones: [] },
     },
     dirty: { garantias: false, tratamiento_datos: false, contacto: false },
     guardando: false,
@@ -78,8 +72,8 @@
     const tienda = T.state.tienda;
 
     const [tplRes, pagRes] = await Promise.all([
-      sb.from('tienda_paginas_legales_templates').select('tipo, titulo, contenido_html'),
-      sb.from('paginas_legales').select('id, tipo, titulo, contenido_html, ultima_actualiz').eq('tienda_id', tienda.id),
+      sb.from('tienda_paginas_legales_templates').select('tipo, titulo, contenido_html, secciones_template'),
+      sb.from('paginas_legales').select('id, tipo, titulo, contenido_html, secciones, ultima_actualiz').eq('tienda_id', tienda.id),
     ]);
     if (tplRes.error) throw tplRes.error;
     if (pagRes.error) throw pagRes.error;
@@ -89,19 +83,21 @@
     lstate.paginas = {};
     for (const r of pagRes.data || []) lstate.paginas[r.tipo] = r;
 
-    // Inicializar el editor con lo que ya existe en BD, sino con template renderizado.
     for (const tipo of TIPOS) {
       const guardada = lstate.paginas[tipo];
       const tpl = lstate.templates[tipo];
-      if (guardada) {
-        lstate.editor[tipo] = { titulo: guardada.titulo, contenido_html: guardada.contenido_html };
+      if (guardada && Array.isArray(guardada.secciones) && guardada.secciones.length > 0) {
+        lstate.editor[tipo] = {
+          titulo: guardada.titulo,
+          secciones: guardada.secciones.map(s => ({ ...s })),
+        };
       } else if (tpl) {
         lstate.editor[tipo] = {
           titulo: tpl.titulo,
-          contenido_html: aplicarPlaceholders(tpl.contenido_html, tienda),
+          secciones: (tpl.secciones_template || []).map(s => ({ ...s })),
         };
       } else {
-        lstate.editor[tipo] = { titulo: '', contenido_html: '' };
+        lstate.editor[tipo] = { titulo: '', secciones: [] };
       }
       lstate.dirty[tipo] = false;
     }
@@ -110,7 +106,7 @@
   // ============================================================
   // Placeholders
   // ============================================================
-  function aplicarPlaceholders(html, tienda) {
+  function aplicarPlaceholders(texto, tienda) {
     const fechaPub = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
     const mapping = {
       '{{NOMBRE_NEGOCIO}}': tienda.nombre_negocio || tienda.nombre_legal || '',
@@ -119,9 +115,10 @@
       '{{CIUDAD}}': tienda.ciudad_negocio || '',
       '{{EMAIL_CONTACTO}}': tienda.email_contacto || '',
       '{{TELEFONO}}': tienda.telefono_contacto || '',
+      '{{HORARIO_ATENCION}}': tienda.horario_atencion || '',
       '{{FECHA_PUBLICACION}}': fechaPub,
     };
-    let out = String(html || '');
+    let out = String(texto || '');
     for (const k of Object.keys(mapping)) {
       out = out.split(k).join(mapping[k]);
     }
@@ -138,16 +135,90 @@
     if (!t.ciudad_negocio) falt.push('Ciudad');
     if (!t.email_contacto) falt.push('Email de contacto');
     if (!t.telefono_contacto) falt.push('Telefono');
+    if (!t.horario_atencion) falt.push('Horario de atencion');
     return falt;
   }
 
   // ============================================================
-  // HTML
+  // HTML generation (texto plano -> HTML)
+  // ============================================================
+  // Convierte texto plano a HTML simple. Reglas:
+  // - Lineas vacias separan parrafos
+  // - Lineas que empiezan con "- " o "* " son items de lista
+  // - El resto es <p>
+  function textoAHtml(texto) {
+    if (!texto) return '';
+    const lineas = String(texto).replace(/\r\n/g, '\n').split('\n');
+    const bloques = [];
+    let buf = [];
+    let enLista = false;
+    let listaItems = [];
+
+    function flushParrafo() {
+      if (buf.length > 0) {
+        bloques.push('<p>' + escHtml(buf.join(' ').trim()) + '</p>');
+        buf = [];
+      }
+    }
+    function flushLista() {
+      if (listaItems.length > 0) {
+        bloques.push('<ul>' + listaItems.map(it => '<li>' + escHtml(it) + '</li>').join('') + '</ul>');
+        listaItems = [];
+      }
+    }
+
+    for (const linea of lineas) {
+      const trimmed = linea.trim();
+      const esItem = /^[-*]\s+/.test(trimmed);
+      if (trimmed === '') {
+        flushParrafo();
+        flushLista();
+        enLista = false;
+      } else if (esItem) {
+        flushParrafo();
+        enLista = true;
+        listaItems.push(trimmed.replace(/^[-*]\s+/, ''));
+      } else {
+        if (enLista) {
+          flushLista();
+          enLista = false;
+        }
+        buf.push(trimmed);
+      }
+    }
+    flushParrafo();
+    flushLista();
+    return bloques.join('\n');
+  }
+
+  function escHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  // Genera el HTML completo de la pagina combinando todas las secciones
+  function generarHtmlPagina(editor, tienda) {
+    const titulo = aplicarPlaceholders(editor.titulo || '', tienda);
+    let html = '<h1>' + escHtml(titulo) + '</h1>';
+    for (const sec of editor.secciones) {
+      const contenido = aplicarPlaceholders(sec.contenido || '', tienda);
+      if (!contenido.trim() && !sec.auto) continue; // saltar secciones vacias no-auto
+      const tituloSec = aplicarPlaceholders(sec.titulo || '', tienda);
+      html += '<h2>' + escHtml(tituloSec) + '</h2>';
+      html += textoAHtml(contenido);
+    }
+    return html;
+  }
+
+  // ============================================================
+  // HTML del editor
   // ============================================================
   function renderHTML() {
     const T = window.TiendaIA;
     const tipo = lstate.tabActivo;
-    const editor = lstate.editor[tipo] || { titulo: '', contenido_html: '' };
+    const editor = lstate.editor[tipo] || { titulo: '', secciones: [] };
     const falt = camposFaltantes();
     const guardada = lstate.paginas[tipo];
 
@@ -167,7 +238,7 @@
           '<div class="ta-banner__body">' +
             '<strong>Faltan datos legales para que las paginas sean validas:</strong> ' +
             T.escapeHtml(falt.join(', ')) + '. ' +
-            'Ve a <a href="#/configuracion">Configuracion</a> y completa la seccion "Datos legales" antes de guardar.' +
+            'Ve a <a href="#/configuracion">Configuracion</a> y completalos.' +
           '</div>' +
         '</div>'
       : '';
@@ -176,8 +247,8 @@
       '<header style="margin-bottom:20px;">' +
         '<h1 class="ta-section-title">Paginas legales</h1>' +
         '<p class="ta-section-sub">' +
-          'Estas paginas son obligatorias en Colombia (Ley 1581 + Estatuto del Consumidor). ' +
-          'Cada plantilla viene pre-redactada con tus datos. Editala si necesitas y guarda.' +
+          'Editor por secciones - sin necesidad de saber HTML. Cada pagina tiene secciones predefinidas con titulo y contenido. ' +
+          'Puedes editar el texto, borrar secciones o agregar nuevas. El sistema arma la pagina final al guardar.' +
         '</p>' +
       '</header>' +
 
@@ -186,6 +257,7 @@
       '<div class="ta-legal-tabs">' + tabs + '</div>' +
 
       '<div class="ta-card" style="padding:20px;">' +
+
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">' +
           '<div>' +
             '<h2 style="margin:0 0 4px;font-size:17px;">' + T.escapeHtml(LABELS[tipo]) + '</h2>' +
@@ -200,35 +272,65 @@
           '</div>' +
         '</div>' +
 
-        '<div class="ta-field">' +
-          '<label class="ta-field__label" for="leg-titulo">Titulo de la pagina</label>' +
-          '<input id="leg-titulo" class="ta-input" type="text" maxlength="200" value="' + T.escapeHtml(editor.titulo) + '">' +
-        '</div>' +
+        (lstate.mostrandoPreview ? renderPreview(editor) : renderEditorSecciones(editor)) +
 
-        (lstate.mostrandoPreview
-          ? renderPreview(editor.contenido_html)
-          : '<div class="ta-field">' +
-              '<label class="ta-field__label" for="leg-html">Contenido HTML</label>' +
-              '<textarea id="leg-html" class="ta-textarea" rows="22" style="font-family:\'JetBrains Mono\',monospace;font-size:12px;line-height:1.5;">' +
-                T.escapeHtml(editor.contenido_html) +
-              '</textarea>' +
-              '<span class="ta-field__hint">Puedes usar HTML basico: &lt;h1&gt;, &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;strong&gt;. Las paginas se muestran tal cual en tu tienda publica.</span>' +
-            '</div>') +
       '</div>';
   }
 
-  function renderPreview(html) {
-    // v2 BUG #2 fix: usar data: URL en lugar de srcdoc para evitar el bug de
-    // double-escape. escapeHtml convierte " a &quot; y al insertarlo en
-    // srcdoc="..." el browser lo decodifica rompiendo el atributo cuando el
-    // HTML del cliente contiene comillas (ej. <a href="...">).
-    // data: URL con encodeURIComponent mantiene el HTML integro.
+  function renderEditorSecciones(editor) {
+    const T = window.TiendaIA;
+    const seccionesHtml = editor.secciones.map((sec, idx) => renderSeccionItem(sec, idx)).join('');
+    return '' +
+      '<div class="ta-field">' +
+        '<label class="ta-field__label" for="leg-titulo">Titulo de la pagina</label>' +
+        '<input id="leg-titulo" class="ta-input" type="text" maxlength="200" value="' + T.escapeHtml(editor.titulo) + '">' +
+      '</div>' +
+
+      '<div id="leg-secciones-list">' + seccionesHtml + '</div>' +
+
+      '<div style="margin-top:12px;padding-top:14px;border-top:1px dashed var(--ta-border);">' +
+        '<button type="button" id="leg-add-seccion" class="ta-btn">+ Agregar nueva seccion</button>' +
+      '</div>';
+  }
+
+  function renderSeccionItem(sec, idx) {
+    const T = window.TiendaIA;
+    const auto = !!sec.auto;
+    const tipo = lstate.tabActivo;
+    const t = window.TiendaIA.state.tienda;
+    // Si es auto, el contenido es read-only y se muestra el placeholder aplicado.
+    const previewAuto = auto ? aplicarPlaceholders(sec.contenido || '', t) : '';
+
+    return '' +
+      '<div class="ta-legal-sec' + (auto ? ' ta-legal-sec--auto' : '') + '" data-idx="' + idx + '">' +
+        '<div class="ta-legal-sec__head">' +
+          '<input type="text" class="ta-input ta-legal-sec__titulo" data-field="titulo" maxlength="100" value="' + T.escapeHtml(sec.titulo || '') + '" placeholder="Titulo de la seccion"' + (auto ? ' readonly' : '') + '>' +
+          (auto
+            ? '<span class="ta-pill ta-pill--info" title="Esta seccion se llena automaticamente desde Configuracion">auto</span>'
+            : '<button type="button" class="ta-btn ta-btn--xs ta-btn--danger" data-action="del-seccion" data-idx="' + idx + '">Eliminar</button>') +
+        '</div>' +
+        (auto
+          ? '<div class="ta-legal-sec__auto">' +
+              '<div style="white-space:pre-wrap;font-size:13px;color:var(--ta-text-soft);background:var(--ta-bg-soft);padding:10px 12px;border-radius:var(--ta-radius-sm);border:1px dashed var(--ta-border);">' +
+                T.escapeHtml(previewAuto || '(falta llenar en Configuracion)') +
+              '</div>' +
+              '<span class="ta-field__hint">Editar en <a href="#/configuracion">Configuracion</a>.</span>' +
+            '</div>'
+          : '<textarea class="ta-textarea ta-legal-sec__contenido" data-field="contenido" rows="5" placeholder="Texto de esta seccion. Separa parrafos con linea vacia. Usa - al inicio para listas.">' +
+              T.escapeHtml(sec.contenido || '') +
+            '</textarea>') +
+      '</div>';
+  }
+
+  function renderPreview(editor) {
+    const T = window.TiendaIA;
+    const tienda = T.state.tienda;
+    const htmlPagina = generarHtmlPagina(editor, tienda);
     const wrapped = '<!doctype html><html><head><meta charset="utf-8"><style>' +
-      'body{font-family:system-ui,sans-serif;color:#1a1a1a;background:#fff;padding:24px;line-height:1.6;}' +
-      'h1{font-size:24px;margin-top:0;}h2{font-size:18px;margin-top:24px;}' +
-      'ul,ol{padding-left:22px;}p{margin:12px 0;}a{color:#0066ff;}' +
-      'code{background:#f4f4f4;padding:2px 6px;border-radius:3px;font-size:13px;}' +
-      '</style></head><body>' + html + '</body></html>';
+      'body{font-family:system-ui,sans-serif;color:#1a1a1a;background:#fff;padding:24px;line-height:1.6;max-width:780px;margin:0 auto;}' +
+      'h1{font-size:26px;margin-top:0;color:#0a172a;}h2{font-size:18px;margin-top:28px;color:#1B4965;}' +
+      'ul,ol{padding-left:22px;}p{margin:10px 0;}a{color:#0066ff;}' +
+      '</style></head><body>' + htmlPagina + '</body></html>';
     const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(wrapped);
     return '<div class="ta-legal-preview-wrap">' +
       '<iframe class="ta-legal-preview" src="' + dataUrl + '" sandbox=""></iframe>' +
@@ -255,32 +357,55 @@
       btn.addEventListener('click', () => {
         const nuevoTab = btn.getAttribute('data-tab');
         if (nuevoTab === lstate.tabActivo) return;
-        // Si estamos en preview, salir al editor antes de cambiar tab
         if (lstate.mostrandoPreview) lstate.mostrandoPreview = false;
         lstate.tabActivo = nuevoTab;
         renderLegales();
       });
     });
 
-    // Editor inputs
+    // Titulo de la pagina
     const inputTitulo = view.querySelector('#leg-titulo');
     if (inputTitulo) {
       inputTitulo.addEventListener('input', () => {
         const tipo = lstate.tabActivo;
         lstate.editor[tipo].titulo = inputTitulo.value;
-        lstate.dirty[tipo] = true;
-        actualizarBotonGuardar();
+        marcarDirty();
       });
     }
-    const textareaHtml = view.querySelector('#leg-html');
-    if (textareaHtml) {
-      textareaHtml.addEventListener('input', () => {
+
+    // Inputs de secciones (titulo y contenido) - delegated
+    view.querySelectorAll('.ta-legal-sec [data-field]').forEach(el => {
+      el.addEventListener('input', () => {
+        const sec = el.closest('.ta-legal-sec');
+        const idx = parseInt(sec.getAttribute('data-idx'), 10);
+        const field = el.getAttribute('data-field');
         const tipo = lstate.tabActivo;
-        lstate.editor[tipo].contenido_html = textareaHtml.value;
-        lstate.dirty[tipo] = true;
-        actualizarBotonGuardar();
+        if (!lstate.editor[tipo].secciones[idx]) return;
+        lstate.editor[tipo].secciones[idx][field] = el.value;
+        marcarDirty();
       });
-    }
+    });
+
+    // Eliminar seccion
+    view.querySelectorAll('[data-action="del-seccion"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-idx'), 10);
+        const tipo = lstate.tabActivo;
+        if (!window.confirm('Eliminar esta seccion?')) return;
+        lstate.editor[tipo].secciones.splice(idx, 1);
+        marcarDirty();
+        renderLegales();
+      });
+    });
+
+    // Agregar seccion nueva
+    const btnAdd = view.querySelector('#leg-add-seccion');
+    if (btnAdd) btnAdd.addEventListener('click', () => {
+      const tipo = lstate.tabActivo;
+      lstate.editor[tipo].secciones.push({ slug: 'custom_' + Date.now(), titulo: 'Nueva seccion', contenido: '' });
+      marcarDirty();
+      renderLegales();
+    });
 
     // Botones
     const btnRestaurar = view.querySelector('#leg-restaurar');
@@ -299,24 +424,11 @@
     });
   }
 
-  function actualizarBotonGuardar() {
+  function marcarDirty() {
+    const tipo = lstate.tabActivo;
+    lstate.dirty[tipo] = true;
     const btn = document.getElementById('leg-guardar');
-    if (!btn) return;
-    btn.disabled = !lstate.dirty[lstate.tabActivo] || lstate.guardando;
-    btn.textContent = lstate.guardando ? 'Guardando...' : 'Guardar';
-    // Tambien actualizar el dot de la tab activa
-    const tab = document.querySelector('[data-tab="' + lstate.tabActivo + '"]');
-    if (tab) {
-      let dot = tab.querySelector('.ta-legal-tab__dot');
-      if (lstate.dirty[lstate.tabActivo] && !dot) {
-        dot = document.createElement('span');
-        dot.className = 'ta-legal-tab__dot';
-        dot.style.background = 'var(--ta-warn)';
-        tab.appendChild(dot);
-      } else if (lstate.dirty[lstate.tabActivo] && dot) {
-        dot.style.background = 'var(--ta-warn)';
-      }
-    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
   }
 
   // ============================================================
@@ -326,19 +438,15 @@
     const T = window.TiendaIA;
     const tipo = lstate.tabActivo;
     const tpl = lstate.templates[tipo];
-    if (!tpl) { T.toast('No hay plantilla disponible para este tipo.', 'error'); return; }
-    const editor = lstate.editor[tipo];
-    const tieneCambios = lstate.dirty[tipo] || (editor.contenido_html && editor.contenido_html.length > 0);
-    if (tieneCambios && !window.confirm('Esto reemplazara el contenido actual con la plantilla base + tus datos legales. Los cambios no guardados se perderan. ¿Continuar?')) return;
-
-    const tienda = T.state.tienda;
+    if (!tpl) { T.toast('No hay plantilla para este tipo.', 'error'); return; }
+    if (!window.confirm('Esto reemplazara las secciones actuales con la plantilla base. Los cambios no guardados se perderan. ¿Continuar?')) return;
     lstate.editor[tipo] = {
       titulo: tpl.titulo,
-      contenido_html: aplicarPlaceholders(tpl.contenido_html, tienda),
+      secciones: (tpl.secciones_template || []).map(s => ({ ...s })),
     };
     lstate.dirty[tipo] = true;
     renderLegales();
-    T.toast('Plantilla restaurada con tus datos actuales.', 'success');
+    T.toast('Plantilla restaurada.', 'success');
   }
 
   function togglePreview() {
@@ -354,39 +462,48 @@
     const editor = lstate.editor[tipo];
 
     if (!editor.titulo || !editor.titulo.trim()) { T.toast('El titulo es obligatorio.', 'error'); return; }
-    if (!editor.contenido_html || !editor.contenido_html.trim()) { T.toast('El contenido no puede estar vacio.', 'error'); return; }
+    if (!editor.secciones || editor.secciones.length === 0) { T.toast('Debe haber al menos una seccion.', 'error'); return; }
     if (lstate.guardando) return;
 
     lstate.guardando = true;
-    actualizarBotonGuardar();
+    const btn = document.getElementById('leg-guardar');
+    if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+    // Generar HTML compuesto a partir de las secciones
+    const contenido_html = generarHtmlPagina(editor, tienda);
 
     try {
       const guardada = lstate.paginas[tipo];
       let result;
+      const patch = {
+        titulo: editor.titulo,
+        secciones: editor.secciones,
+        contenido_html,
+      };
       if (guardada) {
         result = await sb.from('paginas_legales')
-          .update({ titulo: editor.titulo, contenido_html: editor.contenido_html, ultima_actualiz: new Date().toISOString() })
+          .update({ ...patch, ultima_actualiz: new Date().toISOString() })
           .eq('id', guardada.id).eq('tienda_id', tienda.id)
           .select().maybeSingle();
       } else {
         result = await sb.from('paginas_legales')
-          .insert({ tienda_id: tienda.id, tipo, titulo: editor.titulo, contenido_html: editor.contenido_html })
+          .insert({ tienda_id: tienda.id, tipo, ...patch })
           .select().maybeSingle();
       }
 
       if (result.error) {
         console.error('[legales] save error', result.error);
-        let msg = 'No pudimos guardar la pagina. Intenta de nuevo.';
-        if (result.error.code === '23505') msg = 'Esta pagina ya existe. Refresca la vista e intenta de nuevo.';
+        let msg = 'No pudimos guardar. Intenta de nuevo.';
+        if (result.error.code === '23505') msg = 'Esta pagina ya existe. Refresca la vista.';
         T.toast(msg, 'error');
         lstate.guardando = false;
-        actualizarBotonGuardar();
+        if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
         return;
       }
       if (guardada && result.data === null) {
         T.toast('No se pudo actualizar. Refresca la vista.', 'error');
         lstate.guardando = false;
-        actualizarBotonGuardar();
+        if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
         return;
       }
 
@@ -397,9 +514,9 @@
       renderLegales();
     } catch (e) {
       console.error('[legales] exception', e);
-      T.toast('No pudimos guardar la pagina. Intenta de nuevo.', 'error');
+      T.toast('No pudimos guardar. Intenta de nuevo.', 'error');
       lstate.guardando = false;
-      actualizarBotonGuardar();
+      if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
     }
   }
 })();
