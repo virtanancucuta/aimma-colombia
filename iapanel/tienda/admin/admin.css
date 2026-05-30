@@ -1,5 +1,7 @@
-/* AIMMA · Tienda IA · admin.css · v10 · 2026-05-30 */
-/* v10 (2026-05-30): Fase 3.6 - configuracion (grid 2 cols, logo preview,
+/* AIMMA · Tienda IA · admin.css · v11 · 2026-05-30 */
+/* v11 (2026-05-30): Fase 3.7 - editor paginas legales (tabs + banner warn +
+   preview iframe sandbox).
+   v10 (2026-05-30): Fase 3.6 - configuracion (grid 2 cols, logo preview,
    swatches paleta, estado cards, save bar sticky).
    v9 (2026-05-30): Fase 3.5 - tree categorias + modal form.
    v8 (2026-05-30): Fase 3.4c - modo editor (contenteditable outline naranja
@@ -460,6 +462,72 @@ a:hover { text-decoration: underline; }
 .ta-accion__title { font-weight: 600; font-size: 15px; }
 .ta-accion__desc { font-size: 13px; color: var(--ta-text-soft); }
 .ta-accion__cta { font-size: 13px; color: var(--ta-accent); white-space: nowrap; font-weight: 600; }
+
+/* ============================ Legales (Fase 3.7) ============================ */
+.ta-legal-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--ta-border);
+  flex-wrap: wrap;
+}
+.ta-legal-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--ta-text-soft);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.ta-legal-tab:hover { color: var(--ta-text); }
+.ta-legal-tab.is-active {
+  color: var(--ta-text);
+  border-bottom-color: var(--ta-accent);
+  font-weight: 600;
+}
+.ta-legal-tab__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ta-warn);
+}
+
+.ta-banner {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--ta-radius);
+  border-left: 4px solid var(--ta-warn);
+  background: rgba(255,170,60,.08);
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+.ta-banner__icon { font-size: 20px; line-height: 1; }
+.ta-banner__body { font-size: 13px; color: var(--ta-text); line-height: 1.5; }
+.ta-banner__body a { font-weight: 600; }
+.ta-banner--warn { border-left-color: var(--ta-warn); }
+
+.ta-legal-preview-wrap {
+  border: 1px solid var(--ta-border);
+  border-radius: var(--ta-radius-sm);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.ta-legal-preview {
+  width: 100%;
+  height: 540px;
+  border: 0;
+  background: #fff;
+  display: block;
+}
 
 /* ============================ Configuracion (Fase 3.6) ============================ */
 .ta-cfg-grid {
