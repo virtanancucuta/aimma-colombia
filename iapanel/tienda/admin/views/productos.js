@@ -1,4 +1,10 @@
-/* AIMMA · Tienda IA · views/productos.js · v10 · 2026-05-29
+/* AIMMA · Tienda IA · views/productos.js · v11 · 2026-05-30
+   v11 (Fase 3.5.b feedback Jorge): dropdown unico de Categoria reemplazado
+   por 2 dropdowns en cascada Categoria + Subcategoria. UX: el cliente
+   elige primero el padre (Calzado), despues el dropdown subcategoria muestra
+   solo los hijos (Tenis, Botas). Si la categoria no tiene hijos, el dropdown
+   sub se deshabilita con hint claro. Al guardar, sub prevalece sobre padre
+   (si hay sub elegida, esa es la categoria_id final del producto).
    Fase 3.3 COMPLETA + fix Jorge: validacion bloqueante de stocks faltantes.
    v10 (2026-05-29 post-feedback Jorge): validarMatrizStocks + highlight visual.
    Si user agrega color/talla pero deja celdas sin stock, al click Guardar
@@ -364,9 +370,30 @@
     const p = formState.producto;
     const esEdicion = !!p;
 
-    const opcionesCategorias = '<option value="">— Sin categoria —</option>' +
-      formState.categorias.map(c => {
-        const sel = p && p.categoria_id === c.id ? ' selected' : '';
+    // v11 (Fase 3.5.b feedback Jorge): dos dropdowns en cascada Categoria + Subcategoria
+    // en lugar de uno plano con padres+hijos mezclados.
+    const catSeleccionada = p && p.categoria_id ? formState.categorias.find(c => c.id === p.categoria_id) : null;
+    let padreSelId = null, subSelId = null;
+    if (catSeleccionada) {
+      if (catSeleccionada.parent_id) {
+        // El producto tiene asignada una subcategoria -> mostrar padre + sub
+        padreSelId = catSeleccionada.parent_id;
+        subSelId = catSeleccionada.id;
+      } else {
+        // El producto tiene asignada una categoria padre
+        padreSelId = catSeleccionada.id;
+      }
+    }
+    const padresList = formState.categorias.filter(c => !c.parent_id);
+    const subsList = padreSelId ? formState.categorias.filter(c => c.parent_id === padreSelId) : [];
+    const opcionesPadre = '<option value="">— Sin categoria —</option>' +
+      padresList.map(c => {
+        const sel = padreSelId === c.id ? ' selected' : '';
+        return '<option value="' + T.escapeHtml(c.id) + '"' + sel + '>' + T.escapeHtml(c.nombre) + '</option>';
+      }).join('');
+    const opcionesSub = '<option value="">— Sin subcategoria —</option>' +
+      subsList.map(c => {
+        const sel = subSelId === c.id ? ' selected' : '';
         return '<option value="' + T.escapeHtml(c.id) + '"' + sel + '>' + T.escapeHtml(c.nombre) + '</option>';
       }).join('');
 
@@ -394,10 +421,19 @@
           '<span class="ta-field__hint">Codigo unico interno del producto. Las variantes color/talla se construyen sobre este.</span>' +
         '</div>' +
 
-        '<div class="ta-field">' +
-          '<label class="ta-field__label" for="f-categoria">Categoria</label>' +
-          '<select id="f-categoria" name="categoria_id" class="ta-select">' + opcionesCategorias + '</select>' +
-          (formState.categorias.length === 0 ? '<span class="ta-field__hint">No tienes categorias creadas. <a href="#/categorias">Crear ahora</a></span>' : '') +
+        // v11: 2 dropdowns en cascada (padre + sub)
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="f-cat-padre">Categoria</label>' +
+            '<select id="f-cat-padre" class="ta-select">' + opcionesPadre + '</select>' +
+            (padresList.length === 0 ? '<span class="ta-field__hint">No tienes categorias. <a href="#/categorias">Crear ahora</a></span>' : '') +
+          '</div>' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="f-cat-sub">Subcategoria</label>' +
+            '<select id="f-cat-sub" class="ta-select"' + (subsList.length === 0 ? ' disabled' : '') + '>' + opcionesSub + '</select>' +
+            (padreSelId && subsList.length === 0 ? '<span class="ta-field__hint">Esta categoria no tiene subcategorias.</span>' : '') +
+            (!padreSelId ? '<span class="ta-field__hint">Elige primero una categoria.</span>' : '') +
+          '</div>' +
         '</div>' +
 
         '<div class="ta-field">' +
@@ -1053,6 +1089,8 @@
     wireVariantesEvents();
     // v7 (Fase 3.3d): wire fotos events solo en edicion (la seccion existe solo ahi)
     if (formState.producto) wireFotosEvents();
+    // v11 (Fase 3.5.b): cascada categoria padre -> subcategoria
+    wireCategoriaCascada();
 
     // v6: listener reactivo al campo Referencia para regenerar SKUs en la matriz
     // mientras el user escribe la referencia del producto (solo en CREAR).
@@ -1349,6 +1387,44 @@
     btn.textContent = 'Guardar variantes';
   }
 
+  // v11 (Fase 3.5.b): al cambiar la categoria padre, regenera el dropdown
+  // de subcategorias con los hijos del padre nuevo y resetea seleccion.
+  function wireCategoriaCascada() {
+    const T = window.TiendaIA;
+    const view = T.dom.mainView;
+    const selPadre = view.querySelector('#f-cat-padre');
+    const selSub = view.querySelector('#f-cat-sub');
+    if (!selPadre || !selSub) return;
+
+    selPadre.addEventListener('change', () => {
+      const padreId = selPadre.value || null;
+      const hijos = padreId ? formState.categorias.filter(c => c.parent_id === padreId) : [];
+      const opts = ['<option value="">— Sin subcategoria —</option>']
+        .concat(hijos.map(h => '<option value="' + T.escapeHtml(h.id) + '">' + T.escapeHtml(h.nombre) + '</option>'))
+        .join('');
+      selSub.innerHTML = opts;
+      selSub.disabled = hijos.length === 0;
+      formState.dirty = true;
+      // Actualizar hint visual al lado del select
+      const hintWrap = selSub.parentElement;
+      if (hintWrap) {
+        const oldHint = hintWrap.querySelector('.ta-field__hint');
+        if (oldHint) oldHint.remove();
+        const hintText = !padreId
+          ? 'Elige primero una categoria.'
+          : (hijos.length === 0 ? 'Esta categoria no tiene subcategorias.' : null);
+        if (hintText) {
+          const span = document.createElement('span');
+          span.className = 'ta-field__hint';
+          span.textContent = hintText;
+          hintWrap.appendChild(span);
+        }
+      }
+    });
+
+    selSub.addEventListener('change', () => { formState.dirty = true; });
+  }
+
   async function handleSubmit(form) {
     const T = window.TiendaIA;
     const sb = T.supabase();
@@ -1357,11 +1433,19 @@
     if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
 
     const fd = new FormData(form);
+    // v11 (Fase 3.5.b): leer categoria desde los 2 dropdowns en cascada.
+    // Si hay subcategoria seleccionada, prevalece; sino usa la padre.
+    const padreEl = form.querySelector('#f-cat-padre');
+    const subEl = form.querySelector('#f-cat-sub');
+    const padreVal = padreEl ? padreEl.value : '';
+    const subVal = subEl ? subEl.value : '';
+    const finalCategoriaId = subVal || padreVal || null;
+
     const payload = {
       tienda_id: tienda.id,
       nombre: String(fd.get('nombre') || '').trim(),
       referencia: String(fd.get('referencia') || '').trim(),
-      categoria_id: fd.get('categoria_id') || null,
+      categoria_id: finalCategoriaId,
       descripcion: String(fd.get('descripcion') || '').trim() || null,
       precio_venta: Number(fd.get('precio_venta')) || 0,
       costo: fd.get('costo') ? Number(fd.get('costo')) : null,
