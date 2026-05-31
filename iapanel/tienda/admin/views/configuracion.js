@@ -177,6 +177,27 @@
       '</section>';
   }
 
+  // v4 (Fase 6+): helper reutilizable. Genera el HTML de los 4 swatches.
+  // Usado en initial render y en re-render reactivo al cambiar el select.
+  function renderSwatchesHTML(paleta) {
+    if (!paleta) return '';
+    return '' +
+      '<div class="ta-cfg-swatches">' +
+        '<span title="Color primario" style="background:' + safeColor(paleta.color_primary, '#888') + ';"></span>' +
+        '<span title="Color accent" style="background:' + safeColor(paleta.color_accent, '#888') + ';"></span>' +
+        '<span title="Color texto" style="background:' + safeColor(paleta.color_text_base, '#888') + ';"></span>' +
+        '<span title="Color fondo" style="background:' + safeColor(paleta.color_bg_base, '#888') + ';border:1px solid var(--ta-border);"></span>' +
+        '<span class="ta-cfg-swatches__name">' + window.TiendaIA.escapeHtml(paleta.nombre || '') + '</span>' +
+      '</div>';
+  }
+
+  function refreshSwatchesBox(paletaId) {
+    const box = document.getElementById('cfg-swatches-box');
+    if (!box) return;
+    const paleta = cstate.paletas.find(p => p.id === paletaId);
+    box.innerHTML = paleta ? renderSwatchesHTML(paleta) : '';
+  }
+
   function renderSeccionPlantillaPaleta(t) {
     const T = window.TiendaIA;
     const plantilla = cstate.plantillas.find(p => p.id === t.plantilla_id);
@@ -190,13 +211,13 @@
       '<option value="' + T.escapeHtml(p.id) + '"' + (t.paleta_id === p.id ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>'
     ).join('');
 
-    const previewSwatches = paleta ?
-      '<div class="ta-cfg-swatches">' +
-        '<span style="background:' + safeColor(paleta.color_primary, '#888') + ';"></span>' +
-        '<span style="background:' + safeColor(paleta.color_accent, '#888') + ';"></span>' +
-        '<span style="background:' + safeColor(paleta.color_text_base, '#888') + ';"></span>' +
-        '<span style="background:' + safeColor(paleta.color_bg_base, '#888') + ';border:1px solid var(--ta-border);"></span>' +
-      '</div>' : '';
+    // v4 fix (Fase 6+): wrapeamos swatches en un container con ID para que el
+    // handler change del select paleta pueda re-renderizarlos sin esperar a
+    // que el user haga Guardar. Tambien usado por cascade plantilla->paleta.
+    const previewSwatches =
+      '<div id="cfg-swatches-box" class="ta-cfg-swatches-wrap">' +
+        (paleta ? renderSwatchesHTML(paleta) : '') +
+      '</div>';
 
     return '' +
       '<section class="ta-card ta-cfg-section">' +
@@ -319,15 +340,24 @@
         if (paletasFiltradas.length === 0) {
           selPaleta.innerHTML = '<option value="">— Sin paletas disponibles —</option>';
           selPaleta.disabled = true;
+          refreshSwatchesBox(null);
           T.toast('Esta plantilla no tiene paletas configuradas todavia.', 'error');
         } else {
           selPaleta.disabled = false;
           selPaleta.innerHTML = paletasFiltradas.map((p, i) =>
             '<option value="' + T.escapeHtml(p.id) + '"' + (i === 0 ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>'
           ).join('');
+          // v4 fix: refrescar swatches a la primera paleta auto-seleccionada
+          refreshSwatchesBox(paletasFiltradas[0].id);
           T.toast('Paleta seleccionada automaticamente: ' + paletasFiltradas[0].nombre + '. Puedes cambiarla.', 'success');
         }
         marcarDirty();
+      });
+
+      // v4 fix (Jorge 2026-05-31): al cambiar la paleta, actualizar swatches
+      // en tiempo real (sin esperar Guardar).
+      selPaleta.addEventListener('change', () => {
+        refreshSwatchesBox(selPaleta.value);
       });
     }
 

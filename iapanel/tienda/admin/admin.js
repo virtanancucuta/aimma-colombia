@@ -349,6 +349,20 @@
         if (dom.sidebar) dom.sidebar.classList.toggle('is-open');
       });
     }
+
+    // v7 fix Jorge (2026-05-31 noche): click outside del sidebar mobile lo
+    // cierra. Antes solo se cerraba clickeando en un nav-link (cambio de ruta).
+    // En Android la mayoria de users hacen tap en el contenido para descartar
+    // overlays - esa expectativa estaba rota.
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth > 760) return;
+      if (!dom.sidebar || !dom.sidebar.classList.contains('is-open')) return;
+      // Click dentro del sidebar o del boton toggle → ignorar
+      if (dom.sidebar.contains(e.target)) return;
+      if (dom.btnSidebarToggle && dom.btnSidebarToggle.contains(e.target)) return;
+      // Click fuera → cerrar
+      closeSidebarMobile();
+    });
     if (dom.btnLogout) {
       dom.btnLogout.addEventListener('click', async () => {
         try {
