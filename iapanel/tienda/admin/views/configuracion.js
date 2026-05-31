@@ -1,4 +1,10 @@
-/* AIMMA · Tienda IA · views/configuracion.js · v3 · 2026-05-30
+/* AIMMA · Tienda IA · views/configuracion.js · v4 · 2026-05-31
+   v4 (Fase 4 #41 SSL auto): al pasar estado a "publicada" por primera vez,
+   guardar() invoca la EF tienda-publicar-subdominio ANTES del UPDATE para
+   crear <slug>.tienda.aimma.com.co en Easypanel. Si la EF falla, abortamos
+   el cambio de estado y mostramos toast con el detalle. Idempotente: si la
+   tienda ya tiene subdominio_publicado_at, saltamos la EF (re-publicar o
+   pasar de pausada a publicada no reprovisiona).
    v3 (Fase 3.7.b): nuevo campo "Horario de atencion" (textarea max 300).
    Persiste en tiendas.horario_atencion y se usa como placeholder
    {{HORARIO_ATENCION}} en la pagina legal de Contacto.
@@ -137,7 +143,7 @@
               '<button type="button" id="cfg-logo-subir" class="ta-btn">Subir logo</button>' +
               (logoOk ? '<button type="button" id="cfg-logo-quitar" class="ta-btn ta-btn--danger">Quitar</button>' : '') +
             '</div>' +
-            '<span class="ta-field__hint">JPG, PNG, WebP o SVG. Maximo ' + MAX_LOGO_MB + 'MB. Aparece en el header de tu tienda.</span>' +
+            '<span class="ta-field__hint">JPG, PNG o WebP. Maximo ' + MAX_LOGO_MB + 'MB. Aparece en el header de tu tienda.</span>' +
           '</div>' +
         '</div>' +
 
@@ -391,7 +397,7 @@
     const sb = T.supabase();
     const tienda = T.state.tienda;
 
-    if (!ALLOWED_LOGO_TYPES.includes(file.type)) { T.toast('Tipo de archivo no permitido. Usa JPG, PNG, WebP o SVG.', 'error'); return; }
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) { T.toast('Tipo de archivo no permitido. Usa JPG, PNG o WebP.', 'error'); return; }
     if (file.size > MAX_LOGO_MB * 1024 * 1024) { T.toast('El logo es muy grande. Maximo ' + MAX_LOGO_MB + 'MB.', 'error'); return; }
 
     cstate.subiendoLogo = true;
@@ -489,6 +495,36 @@
     const btn = document.getElementById('cfg-guardar');
     if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
+    // v4 Fase 4 #41: si estamos publicando por PRIMERA vez (subdominio_publicado_at NULL)
+    // creamos el subdominio en Easypanel via EF antes de tocar BD. Si la EF falla,
+    // abortamos el cambio de estado para no dejar la tienda "publicada" sin URL real.
+    let resultadoPublicacion = null;
+    if (estado === 'publicada' && !tienda.subdominio_publicado_at) {
+      try {
+        if (btn) btn.textContent = 'Publicando tienda...';
+        T.toast('Creando dominio publico de tu tienda...');
+        const { data: epData, error: epErr } = await sb.functions.invoke('tienda-publicar-subdominio', {
+          body: { tienda_id: tienda.id },
+        });
+        if (epErr || !epData || epData.ok !== true) {
+          const detalle = (epData && (epData.detail || epData.message || epData.error)) ||
+                          (epErr && epErr.message) ||
+                          'No pudimos contactar al servidor.';
+          T.toast('No pudimos publicar la tienda: ' + detalle + ' Intenta en 1 minuto.', 'error');
+          cstate.guardando = false;
+          if (btn) { btn.disabled = false; btn.textContent = 'Guardar cambios'; }
+          return;
+        }
+        resultadoPublicacion = epData;
+      } catch (e) {
+        console.error('[cfg v4] EF publicar exception', e);
+        T.toast('Error publicando tienda: ' + (e.message || e), 'error');
+        cstate.guardando = false;
+        if (btn) { btn.disabled = false; btn.textContent = 'Guardar cambios'; }
+        return;
+      }
+    }
+
     const patch = {
       nombre_negocio: nombre,
       whatsapp_dueno: whatsapp,
@@ -526,7 +562,18 @@
       Object.assign(T.state.tienda, upd.data);
       cstate.dirty = false;
       cstate.guardando = false;
-      T.toast('Cambios guardados', 'success');
+      if (resultadoPublicacion && resultadoPublicacion.host) {
+        // v4 Fase 4: post-publicacion mostramos URL real. Refrescamos state
+        // local con los datos que la EF ya persistio para que la BD-read
+        // en proximas operaciones tenga subdominio_publicado_at correcto.
+        T.state.tienda.easypanel_domain_id = resultadoPublicacion.domain_id;
+        T.state.tienda.subdominio_publicado_at = new Date().toISOString();
+        tienda.easypanel_domain_id = resultadoPublicacion.domain_id;
+        tienda.subdominio_publicado_at = T.state.tienda.subdominio_publicado_at;
+        T.toast('Tienda publicada en https://' + resultadoPublicacion.host, 'success');
+      } else {
+        T.toast('Cambios guardados', 'success');
+      }
       renderConfiguracion();
     } catch (e) {
       console.error('[cfg] exception', e);
