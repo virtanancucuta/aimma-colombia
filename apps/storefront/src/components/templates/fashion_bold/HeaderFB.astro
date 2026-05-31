@@ -1,0 +1,82 @@
+---
+// Fashion Bold · Header · 2026-05-31
+// Streetwear / editorial. Logo wordmark display-font uppercase, nav uppercase
+// tracking-wide, sticky con animation scroll-state. Edge-to-edge (no max-width).
+// Spec del research: h-[60px] mobile / h-[72px] desktop. Underline animado bottom
+// en hover (grueso 3px). NO color shift.
+
+interface Tienda {
+  nombre_negocio: string;
+  logo_url: string | null;
+}
+interface Categoria {
+  id: string;
+  nombre: string;
+  slug: string;
+  orden: number;
+}
+
+interface Props {
+  tienda: Tienda;
+  categorias: Categoria[];
+}
+
+const { tienda, categorias } = Astro.props;
+---
+
+<header
+  class="sticky top-0 z-40 h-[60px] md:h-[72px] border-b border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]/90 backdrop-blur-md"
+>
+  <div class="mx-auto flex h-full max-w-screen-2xl items-center justify-between px-6 md:px-12">
+    {/* Logo wordmark — display font, uppercase, tight tracking */}
+    <a
+      href="/"
+      class="font-display text-xl md:text-2xl uppercase tracking-[-0.02em] text-[var(--ta-color-text-base)]"
+      aria-label={tienda.nombre_negocio}
+    >
+      {tienda.logo_url ? (
+        <img
+          src={tienda.logo_url}
+          alt={tienda.nombre_negocio}
+          width="36"
+          height="36"
+          class="h-9 w-9 object-contain"
+          loading="eager"
+        />
+      ) : (
+        <span class="font-bold">{tienda.nombre_negocio}</span>
+      )}
+    </a>
+
+    {/* Nav uppercase tracking-wide. Underline grueso animado en hover */}
+    {categorias.length > 0 && (
+      <nav class="hidden md:flex items-center gap-8" aria-label="Categorias">
+        {categorias.slice(0, 5).map((cat) => (
+          <a
+            href={`/c/${cat.slug}`}
+            class="group relative text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)] transition-opacity hover:opacity-80"
+          >
+            {cat.nombre}
+            <span class="absolute -bottom-1 left-0 right-0 h-[3px] origin-left scale-x-0 bg-[var(--ta-color-accent)] transition-transform duration-200 ease-out group-hover:scale-x-100"></span>
+          </a>
+        ))}
+      </nav>
+    )}
+
+    {/* Iconos derecha: Search (placeholder), Cart con badge */}
+    <div class="flex items-center gap-4">
+      <a
+        href="/carrito"
+        class="relative flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)] hover:opacity-80"
+        aria-label="Carrito"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <path d="M16 10a4 4 0 0 1-8 0" />
+        </svg>
+        <span class="hidden lg:inline">Bolsa</span>
+      </a>
+    </div>
+  </div>
+</header>

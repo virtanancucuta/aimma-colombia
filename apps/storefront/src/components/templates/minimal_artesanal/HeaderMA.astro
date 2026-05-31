@@ -1,0 +1,132 @@
+---
+// Minimal Artesanal · Header · 2026-05-31
+// Floating editorial. Logo CENTRADO en serif italic, nav split L/R con 3 links
+// max c/u. Bar tall 80px. Transparente sobre hero, solid bg al scroll past 100px.
+// Tiny labels uppercase tracking-[0.18em] 11px. NO sticky agresivo, NO badges.
+
+interface Tienda {
+  nombre_negocio: string;
+  logo_url: string | null;
+}
+interface Categoria {
+  id: string;
+  nombre: string;
+  slug: string;
+  orden: number;
+}
+
+interface Props {
+  tienda: Tienda;
+  categorias: Categoria[];
+}
+
+const { tienda, categorias } = Astro.props;
+
+// Para split nav, dividir categorias: primeras 3 izquierda
+const catsLeft = categorias.slice(0, 3);
+---
+
+<header
+  id="ma-header"
+  class="fixed inset-x-0 top-0 z-40 transition-colors duration-500 bg-[var(--ta-color-bg-base)]/0"
+>
+  <nav class="mx-auto flex h-20 max-w-screen-2xl items-center justify-between gap-8 px-8 lg:px-16" aria-label="Principal">
+    {/* Nav izquierda — primeros 3 enlaces de categorias */}
+    <ul class="hidden lg:flex items-center gap-10">
+      {catsLeft.map((cat) => (
+        <li>
+          <a
+            href={`/c/${cat.slug}`}
+            class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65 transition-colors hover:text-[var(--ta-color-text-base)]"
+          >
+            {cat.nombre}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    {/* Logo CENTRADO serif italic */}
+    <a
+      href="/"
+      class="font-display text-2xl italic tracking-wide text-[var(--ta-color-text-base)]"
+      aria-label={tienda.nombre_negocio}
+    >
+      {tienda.logo_url ? (
+        <img
+          src={tienda.logo_url}
+          alt={tienda.nombre_negocio}
+          width="40"
+          height="40"
+          class="h-10 w-auto object-contain"
+          loading="eager"
+        />
+      ) : (
+        <span>{tienda.nombre_negocio}</span>
+      )}
+    </a>
+
+    {/* Nav derecha — Tienda + Atelier + Bolsa */}
+    <ul class="hidden lg:flex items-center gap-10">
+      <li>
+        <a
+          href="/legales/contacto"
+          class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65 hover:text-[var(--ta-color-text-base)]"
+        >
+          Contacto
+        </a>
+      </li>
+      <li>
+        <a
+          href="/carrito"
+          class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65 hover:text-[var(--ta-color-text-base)]"
+        >
+          Bolsa
+        </a>
+      </li>
+    </ul>
+
+    {/* Mobile: hamburguesa stroke-1 + logo center (oculta nav links). Bolsa derecha */}
+    <div class="lg:hidden flex items-center justify-between w-full">
+      <button
+        type="button"
+        aria-label="Menu"
+        class="text-[var(--ta-color-text-base)]"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+          <line x1="3" y1="8" x2="21" y2="8" />
+          <line x1="3" y1="16" x2="21" y2="16" />
+        </svg>
+      </button>
+      <a
+        href="/carrito"
+        class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65"
+        aria-label="Carrito"
+      >
+        Bolsa
+      </a>
+    </div>
+  </nav>
+</header>
+
+{/* Spacer para empujar el contenido al inicio (header fixed) */}
+<div class="h-20" aria-hidden="true"></div>
+
+<script is:inline>
+  // Sticky transparent → solid al scroll past 100px (skill spec)
+  (function () {
+    const header = document.getElementById('ma-header');
+    if (!header) return;
+    function update() {
+      if (window.scrollY > 100) {
+        header.classList.remove('bg-[var(--ta-color-bg-base)]/0');
+        header.classList.add('bg-[var(--ta-color-bg-base)]/85', 'backdrop-blur-md', 'border-b', 'border-[var(--ta-color-text-base)]/10');
+      } else {
+        header.classList.add('bg-[var(--ta-color-bg-base)]/0');
+        header.classList.remove('bg-[var(--ta-color-bg-base)]/85', 'backdrop-blur-md', 'border-b', 'border-[var(--ta-color-text-base)]/10');
+      }
+    }
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    document.addEventListener('astro:page-load', update);
+  })();
+</script>

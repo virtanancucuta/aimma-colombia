@@ -1,0 +1,108 @@
+---
+// Fashion Bold · Footer · 2026-05-31
+// 4-col bg-text (inversion). Newsletter underline-only. Social SVG Lucide.
+// Bottom bar copyright + powered by AIMMA.
+
+interface Tienda {
+  nombre_negocio: string;
+  nombre_legal?: string | null;
+  nit?: string | null;
+  direccion?: string | null;
+  ciudad_negocio?: string | null;
+  whatsapp_dueno?: string | null;
+  email_contacto?: string | null;
+}
+
+interface Props {
+  tienda: Tienda;
+}
+
+const { tienda } = Astro.props;
+const year = new Date().getFullYear();
+
+const wppDigits = (tienda.whatsapp_dueno || '').replace(/\D/g, '');
+const wppLink = wppDigits
+  ? `https://wa.me/${wppDigits}?text=${encodeURIComponent('Hola! Vengo de la tienda')}`
+  : null;
+---
+
+<footer class="mt-24 bg-[var(--ta-color-text-base)] text-[var(--ta-color-bg-base)] px-6 md:px-12 lg:px-20 py-20">
+  <div class="mx-auto max-w-screen-2xl">
+    {/* Headline */}
+    <h2 class="font-display text-4xl md:text-6xl uppercase tracking-[-0.02em] mb-12 md:mb-16">
+      {tienda.nombre_negocio}
+    </h2>
+
+    <div class="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-12 mb-16">
+      {/* Col 1: Tienda */}
+      <div>
+        <h3 class="mb-4 font-body text-[11px] font-bold uppercase tracking-[0.18em] opacity-60">
+          Tienda
+        </h3>
+        <ul class="space-y-2 font-body text-sm">
+          <li><a href="/" class="hover:underline">Todos</a></li>
+          <li><a href="/carrito" class="hover:underline">Bolsa</a></li>
+        </ul>
+      </div>
+
+      {/* Col 2: Ayuda */}
+      <nav aria-label="Paginas legales">
+        <h3 class="mb-4 font-body text-[11px] font-bold uppercase tracking-[0.18em] opacity-60">
+          Ayuda
+        </h3>
+        <ul class="space-y-2 font-body text-sm">
+          <li><a href="/legales/garantias" class="hover:underline">Garantias</a></li>
+          <li><a href="/legales/datos" class="hover:underline">Datos personales</a></li>
+          <li><a href="/legales/contacto" class="hover:underline">Contacto</a></li>
+        </ul>
+      </nav>
+
+      {/* Col 3: Empresa */}
+      <div>
+        <h3 class="mb-4 font-body text-[11px] font-bold uppercase tracking-[0.18em] opacity-60">
+          Empresa
+        </h3>
+        <address class="not-italic font-body text-sm space-y-1 opacity-80">
+          {tienda.nombre_legal && <p>{tienda.nombre_legal}</p>}
+          {tienda.nit && <p>NIT {tienda.nit}</p>}
+          {tienda.direccion && <p>{tienda.direccion}{tienda.ciudad_negocio && `, ${tienda.ciudad_negocio}`}</p>}
+        </address>
+      </div>
+
+      {/* Col 4: Contacto + WhatsApp */}
+      <div>
+        <h3 class="mb-4 font-body text-[11px] font-bold uppercase tracking-[0.18em] opacity-60">
+          Contacto
+        </h3>
+        {wppLink && (
+          <a
+            href={wppLink}
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-2 bg-[var(--ta-color-accent)] px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--ta-color-on-accent)] transition-colors duration-200 hover:bg-[var(--ta-color-bg-base)] hover:text-[var(--ta-color-text-base)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M20.52 3.48A12 12 0 0 0 12 0a12 12 0 0 0-10.4 17.86L0 24l6.3-1.66A12 12 0 1 0 20.52 3.48ZM12 21.8a9.8 9.8 0 0 1-5-1.37l-.36-.21-3.74.98 1-3.65-.23-.37A9.8 9.8 0 1 1 12 21.8Z"/>
+            </svg>
+            WhatsApp
+          </a>
+        )}
+        {tienda.email_contacto && (
+          <p class="mt-4 font-body text-sm opacity-80">
+            <a href={`mailto:${tienda.email_contacto}`} class="hover:underline break-all">{tienda.email_contacto}</a>
+          </p>
+        )}
+      </div>
+    </div>
+
+    {/* Bottom bar */}
+    <div class="border-t border-[var(--ta-color-bg-base)]/15 pt-6 flex flex-wrap items-center justify-between gap-4">
+      <p class="font-body text-xs opacity-50">
+        © {year} {tienda.nombre_negocio}. Todos los derechos reservados.
+      </p>
+      <a href="https://aimma.com.co" target="_blank" rel="noopener" class="font-body text-xs opacity-50 hover:opacity-100 transition-opacity">
+        Powered by AIMMA
+      </a>
+    </div>
+  </div>
+</footer>

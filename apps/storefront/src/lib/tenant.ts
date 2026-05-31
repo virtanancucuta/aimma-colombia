@@ -13,7 +13,10 @@ export type TenantResolved = Tienda & {
 };
 
 const SUBDOMAIN_BASE = 'tienda.aimma.com.co';
-const TENANT_CACHE_TTL_SECONDS = 300; // 5 min
+// TTL corto para que cambios de paleta/plantilla/datos en panel admin se vean
+// en el storefront en ~1 min. Tradeoff: mas hits a Supabase. Aceptable.
+// TODO: invalidacion explicita via webhook Supabase para 0s lag.
+const TENANT_CACHE_TTL_SECONDS = 60;
 
 export function extractSlugFromHost(host: string | null): string | null {
   if (!host) return null;

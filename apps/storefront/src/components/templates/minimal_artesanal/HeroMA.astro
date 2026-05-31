@@ -1,0 +1,58 @@
+---
+// Minimal Artesanal · Hero · 2026-05-31
+// Centered editorial. Serif headline clamp(3rem, 8vw, 7rem). Eyebrow uppercase
+// tracking-[0.3em] 11px. Dek max-w-md. Underline link en lugar de boton.
+// Figure full-bleed abajo con caption pequeno.
+
+interface Tienda {
+  nombre_negocio: string;
+  logo_url: string | null;
+}
+
+interface Props {
+  tienda: Tienda;
+}
+
+const { tienda } = Astro.props;
+---
+
+<section class="pt-24 pb-24 lg:pt-40 lg:pb-32 text-center">
+  <p class="mb-10 font-body text-[11px] uppercase tracking-[0.3em] text-[var(--ta-color-text-base)]/50">
+    Coleccion · 2026
+  </p>
+
+  <h1
+    class="font-display leading-[0.95] tracking-[-0.02em] text-[var(--ta-color-text-base)]"
+    style="font-size: clamp(3rem, 8vw, 7rem); font-weight: 400;"
+  >
+    {tienda.nombre_negocio}
+  </h1>
+
+  <p class="mx-auto mt-10 max-w-md font-body text-[15px] leading-[1.7] text-[var(--ta-color-text-base)]/65">
+    Hecho a mano, hecho despacio. Pedidos por WhatsApp.
+  </p>
+
+  <a
+    href="#productos"
+    class="mt-14 inline-block border-b border-[var(--ta-color-text-base)]/40 pb-1 font-body text-[11px] uppercase tracking-[0.2em] text-[var(--ta-color-text-base)] transition-colors hover:border-[var(--ta-color-text-base)]"
+  >
+    Ver coleccion
+  </a>
+
+  {/* Figure opcional debajo */}
+  {tienda.logo_url && (
+    <figure class="mt-16 lg:mt-24 mx-auto max-w-screen-xl">
+      <div class="aspect-[16/10] overflow-hidden bg-[var(--ta-color-text-base)]/5">
+        <img
+          src={tienda.logo_url}
+          alt=""
+          class="h-full w-full object-contain p-16 opacity-90"
+          loading="eager"
+        />
+      </div>
+      <figcaption class="mt-4 font-body text-[10px] uppercase tracking-[0.2em] text-[var(--ta-color-text-base)]/40">
+        Coleccion · {tienda.nombre_negocio}
+      </figcaption>
+    </figure>
+  )}
+</section>

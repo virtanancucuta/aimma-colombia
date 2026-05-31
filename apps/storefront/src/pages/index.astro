@@ -3,6 +3,7 @@
 // Landing de la tienda: hero + categorias destacadas + productos destacados.
 
 import Layout from '~/layouts/Layout.astro';
+import Hero from '~/components/Hero.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
 import { getProductosPorTienda } from '~/lib/catalogo';
 
@@ -36,16 +37,9 @@ const jsonLd = {
   description={`Compra en ${tienda.nombre_negocio}. Tienda online con envios a Colombia. Pedidos faciles por WhatsApp.`}
   jsonLd={jsonLd}
 >
-  <section class="mb-12 rounded-2xl bg-[var(--ta-color-primary)] px-6 py-16 text-center text-white">
-    <h1 class="text-3xl font-bold sm:text-5xl">
-      {tienda.nombre_negocio}
-    </h1>
-    <p class="mx-auto mt-4 max-w-2xl text-lg text-white/90">
-      Descubre nuestra coleccion y haz tu pedido por WhatsApp en segundos.
-    </p>
-  </section>
+  <Hero />
 
-  <section>
+  <section id="productos" class="px-6 md:px-12 lg:px-20 py-12 lg:py-16">
     <header class="mb-6 flex items-end justify-between">
       <h2 class="text-2xl font-semibold text-[var(--ta-color-text-base)]">
         Productos

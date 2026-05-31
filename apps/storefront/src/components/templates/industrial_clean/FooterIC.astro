@@ -1,0 +1,113 @@
+---
+// Industrial Clean · Footer · 2026-05-31
+// 4-col + bottom bar. Top section dark bg con info empresa + nav cols.
+// Bottom bar separator bg-darker, NIT + politicas + powered.
+
+interface Tienda {
+  nombre_negocio: string;
+  nombre_legal?: string | null;
+  nit?: string | null;
+  direccion?: string | null;
+  ciudad_negocio?: string | null;
+  whatsapp_dueno?: string | null;
+  email_contacto?: string | null;
+  telefono_contacto?: string | null;
+  horario_atencion?: string | null;
+}
+
+interface Props {
+  tienda: Tienda;
+}
+
+const { tienda } = Astro.props;
+const year = new Date().getFullYear();
+
+const wppDigits = (tienda.whatsapp_dueno || '').replace(/\D/g, '');
+const wppLink = wppDigits
+  ? `https://wa.me/${wppDigits}?text=${encodeURIComponent('Hola! Vengo de la tienda')}`
+  : null;
+---
+
+<footer class="mt-20">
+  {/* Top section dark */}
+  <div class="bg-[var(--ta-color-text-base)] text-[var(--ta-color-bg-base)] py-16">
+    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+      <div class="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
+        {/* Col 1 (col-span-4): info empresa */}
+        <div class="lg:col-span-4">
+          <p class="font-display text-lg font-semibold mb-4">{tienda.nombre_negocio}</p>
+          {tienda.nombre_legal && (
+            <p class="font-body text-sm opacity-70 mb-1">{tienda.nombre_legal}</p>
+          )}
+          {tienda.nit && (
+            <p class="font-body text-sm opacity-70 mb-1">NIT {tienda.nit}</p>
+          )}
+          {tienda.direccion && (
+            <address class="font-body text-sm opacity-70 not-italic mb-1">
+              {tienda.direccion}{tienda.ciudad_negocio && `, ${tienda.ciudad_negocio}`}
+            </address>
+          )}
+          {tienda.telefono_contacto && (
+            <p class="font-body text-sm opacity-70 mb-1">
+              <a href={`tel:${tienda.telefono_contacto.replace(/\s/g, '')}`} class="hover:underline">{tienda.telefono_contacto}</a>
+            </p>
+          )}
+          {tienda.email_contacto && (
+            <p class="font-body text-sm opacity-70">
+              <a href={`mailto:${tienda.email_contacto}`} class="hover:underline break-all">{tienda.email_contacto}</a>
+            </p>
+          )}
+        </div>
+
+        {/* Col 2: Productos */}
+        <nav class="lg:col-span-2" aria-label="Productos">
+          <h3 class="mb-4 font-display text-xs uppercase tracking-widest font-semibold">Productos</h3>
+          <ul class="space-y-2">
+            <li><a href="/" class="font-body text-sm opacity-70 hover:opacity-100 transition-opacity">Catalogo</a></li>
+          </ul>
+        </nav>
+
+        {/* Col 3: Soporte */}
+        <nav class="lg:col-span-2" aria-label="Soporte">
+          <h3 class="mb-4 font-display text-xs uppercase tracking-widest font-semibold">Soporte</h3>
+          <ul class="space-y-2">
+            <li><a href="/legales/garantias" class="font-body text-sm opacity-70 hover:opacity-100 transition-opacity">Garantias y devoluciones</a></li>
+            <li><a href="/legales/datos" class="font-body text-sm opacity-70 hover:opacity-100 transition-opacity">Tratamiento de datos</a></li>
+            <li><a href="/legales/contacto" class="font-body text-sm opacity-70 hover:opacity-100 transition-opacity">Contacto</a></li>
+          </ul>
+        </nav>
+
+        {/* Col 4: Contacto + WhatsApp B2B */}
+        <div class="lg:col-span-4">
+          <h3 class="mb-4 font-display text-xs uppercase tracking-widest font-semibold">Asistencia comercial</h3>
+          {wppLink && (
+            <a
+              href={wppLink}
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-2 rounded-sm bg-[var(--ta-color-accent)] px-5 py-3 font-body text-sm font-medium text-[var(--ta-color-on-accent)] transition-opacity duration-200 hover:opacity-90"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M20.52 3.48A12 12 0 0 0 12 0a12 12 0 0 0-10.4 17.86L0 24l6.3-1.66A12 12 0 1 0 20.52 3.48ZM12 21.8a9.8 9.8 0 0 1-5-1.37l-.36-.21-3.74.98 1-3.65-.23-.37A9.8 9.8 0 1 1 12 21.8Z"/>
+              </svg>
+              WhatsApp
+            </a>
+          )}
+          {tienda.horario_atencion && (
+            <p class="mt-4 font-body text-xs opacity-60 whitespace-pre-line">{tienda.horario_atencion}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Bottom bar darker */}
+  <div class="bg-[var(--ta-color-text-base)] border-t border-[var(--ta-color-bg-base)]/10 py-4 text-[var(--ta-color-bg-base)]">
+    <div class="mx-auto max-w-7xl px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4 text-xs opacity-60">
+      <p class="font-body">© {year} {tienda.nombre_negocio}. Todos los derechos reservados.</p>
+      <a href="https://aimma.com.co" target="_blank" rel="noopener" class="font-body hover:opacity-100 transition-opacity">
+        Powered by AIMMA
+      </a>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,65 @@
+---
+// Fashion Bold · Hero · 2026-05-31
+// Full-bleed image overlay con typography MASIVA. 90vh desktop, 70vh mobile.
+// Display font clamp(3.5rem, 10vw, 9rem), leading-[0.85], tracking tight.
+// Contenido bottom-left anclado. CTA sharp + ghost link.
+
+interface Tienda {
+  nombre_negocio: string;
+  logo_url: string | null;
+}
+
+interface Props {
+  tienda: Tienda;
+}
+
+const { tienda } = Astro.props;
+---
+
+<section
+  class="relative h-[70vh] md:h-[90vh] w-full overflow-hidden bg-[var(--ta-color-primary)]"
+>
+  {/* Bg pattern como fallback si no hay imagen */}
+  <div
+    class="absolute inset-0 opacity-20"
+    style="background-image: radial-gradient(circle at 20% 50%, var(--ta-color-accent) 0%, transparent 50%), radial-gradient(circle at 80% 80%, var(--ta-color-text-base) 0%, transparent 50%);"
+    aria-hidden="true"
+  ></div>
+
+  {/* Capa oscura para legibilidad si el bg es claro */}
+  <div class="absolute inset-0 bg-black/10" aria-hidden="true"></div>
+
+  {/* Contenido bottom-left */}
+  <div class="relative h-full flex items-end px-6 md:px-12 lg:px-20 pb-12 md:pb-20">
+    <div class="max-w-4xl">
+      <p class="font-body text-xs uppercase tracking-[0.18em] text-[var(--ta-color-on-primary)]/80 mb-6">
+        Coleccion 2026
+      </p>
+      <h1
+        class="font-display uppercase leading-[0.88] tracking-[-0.03em] text-[var(--ta-color-on-primary)]"
+        style="font-size: clamp(3rem, 10vw, 9rem);"
+      >
+        {tienda.nombre_negocio}
+      </h1>
+      <p class="mt-6 font-body text-base md:text-lg text-[var(--ta-color-on-primary)]/90 max-w-md">
+        Descubre nuestra coleccion. Hacemos pedidos por WhatsApp en segundos.
+      </p>
+
+      {/* CTAs: primary sharp + ghost underlined */}
+      <div class="mt-8 md:mt-12 flex flex-wrap items-center gap-6">
+        <a
+          href="#productos"
+          class="inline-block bg-[var(--ta-color-accent)] px-8 md:px-10 py-4 md:py-5 font-body text-xs md:text-sm font-bold uppercase tracking-[0.08em] text-[var(--ta-color-on-accent)] transition-colors duration-200 hover:bg-[var(--ta-color-text-base)] hover:text-[var(--ta-color-bg-base)]"
+        >
+          Comprar ahora
+        </a>
+        <a
+          href="#productos"
+          class="font-body text-xs md:text-sm font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-on-primary)] underline decoration-2 underline-offset-4 hover:text-[var(--ta-color-accent)]"
+        >
+          Ver coleccion →
+        </a>
+      </div>
+    </div>
+  </div>
+</section>

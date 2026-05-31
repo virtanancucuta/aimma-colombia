@@ -1,0 +1,87 @@
+---
+// Fashion Bold · ProductCard · 2026-05-31
+// Image-top vertical. aspect-[3/4] portrait. NO border, NO shadow, NO bg.
+// Nombre body 14-15px semibold. Precio display 18px font-bold.
+// Hover: NO scale. Badge "OFERTA" / "AGOTADO" rect sharp top-left.
+
+import OptimizedImage from '~/components/OptimizedImage.astro';
+
+interface Props {
+  producto: {
+    id: string;
+    nombre: string;
+    slug: string;
+    precio: number;
+    precio_anterior?: number | null;
+    foto_principal?: string | null;
+    stock_disponible?: number | null;
+    referencia?: string | null;
+  };
+}
+
+const { producto } = Astro.props;
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+
+const precioStr = fmt(producto.precio);
+const precioAnteriorStr = producto.precio_anterior ? fmt(producto.precio_anterior) : null;
+const enDescuento = producto.precio_anterior !== null && producto.precio_anterior !== undefined && producto.precio_anterior > producto.precio;
+const sinStock = producto.stock_disponible === 0;
+---
+
+<article class="group">
+  <a href={`/p/${producto.slug}`} class="block" aria-label={producto.nombre}>
+    {/* Image aspect-[3/4] portrait fashion */}
+    <div class="relative aspect-[3/4] overflow-hidden bg-[var(--ta-color-text-base)]/5">
+      {producto.foto_principal ? (
+        <OptimizedImage
+          src={producto.foto_principal}
+          alt={producto.nombre}
+          width={400}
+          height={533}
+          loading="lazy"
+          class="h-full w-full object-cover transition-opacity duration-300"
+          transitionName={`producto-${producto.id}`}
+        />
+      ) : (
+        <div class="flex h-full items-center justify-center">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="text-[var(--ta-color-text-base)]/20" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+        </div>
+      )}
+
+      {/* Badges rect sharp top-left */}
+      {enDescuento && !sinStock && (
+        <span class="absolute left-3 top-3 bg-[var(--ta-color-accent)] px-2 py-1 font-body text-[11px] font-bold uppercase tracking-wide text-[var(--ta-color-on-accent)]">
+          Oferta
+        </span>
+      )}
+      {sinStock && (
+        <span class="absolute right-3 top-3 bg-[var(--ta-color-text-base)] px-2 py-1 font-body text-[11px] font-bold uppercase tracking-wide text-[var(--ta-color-bg-base)]">
+          Agotado
+        </span>
+      )}
+    </div>
+
+    {/* Info debajo de la imagen */}
+    <div class="pt-4">
+      <h3 class="line-clamp-2 font-body text-sm font-semibold text-[var(--ta-color-text-base)]">
+        {producto.nombre}
+      </h3>
+      <div class="mt-1 flex items-baseline gap-2">
+        <span class="font-display text-lg font-bold text-[var(--ta-color-text-base)]">
+          {precioStr}
+        </span>
+        {precioAnteriorStr && enDescuento && (
+          <span class="font-body text-xs text-[var(--ta-color-text-base)]/50 line-through">
+            {precioAnteriorStr}
+          </span>
+        )}
+      </div>
+    </div>
+  </a>
+</article>

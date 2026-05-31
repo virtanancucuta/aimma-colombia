@@ -6,6 +6,8 @@
 import { ClientRouter } from 'astro:transitions';
 import Header from '~/components/Header.astro';
 import Footer from '~/components/Footer.astro';
+import { getContrastText } from '~/lib/contrast';
+import { getTemplateStyle } from '~/lib/template-styles';
 import '~/styles/global.css';
 
 interface Props {
@@ -49,14 +51,30 @@ const accent = p?.color_accent || '#ff6b35';
 const textBase = p?.color_text_base || '#1a1a1a';
 const bgBase = p?.color_bg_base || '#ffffff';
 
+// Auto-contrast WCAG: cada color de fondo recibe su `--ta-color-on-*` calculado
+// server-side por luminancia W3C. Esto evita el bug de `text-white` sobre
+// accents claros (Noir #FFD400, Electric #00E5FF, Verde Neon #FFFF00) que daba
+// ratios <2:1 y fallaba WCAG AA (minimo 4.5:1 para texto normal).
+const onPrimary = getContrastText(primary);
+const onAccent = getContrastText(accent);
+const onBg = getContrastText(bgBase);
+
+// Plantilla activa: resuelve fonts + container layout segun slug.
+// Defaults a industrial_clean si plantilla null o slug desconocido.
+const template = getTemplateStyle(tienda.plantilla?.slug);
+
 // CSS vars en el style attribute del <html> = declaraciones validas + heredadas
-// por todos los descendientes. Reemplaza el <style is:inline define:vars> que
-// generaba CSS invalido (declaraciones sueltas fuera de selector).
+// por todos los descendientes. Incluye theming (paleta) + auto-contrast + fonts.
 const themeStyle =
   `--ta-color-primary:${primary};` +
   `--ta-color-accent:${accent};` +
   `--ta-color-text-base:${textBase};` +
-  `--ta-color-bg-base:${bgBase};`;
+  `--ta-color-bg-base:${bgBase};` +
+  `--ta-color-on-primary:${onPrimary};` +
+  `--ta-color-on-accent:${onAccent};` +
+  `--ta-color-on-bg:${onBg};` +
+  `--ta-font-display:${template.fonts.displayFamily};` +
+  `--ta-font-body:${template.fonts.bodyFamily};`;
 ---
 
 <!doctype html>
@@ -93,6 +111,11 @@ const themeStyle =
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     )}
 
+    {/* Google Fonts segun plantilla. Preconnect para reducir RTT. */}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href={template.fonts.googleFontsUrl} />
+
     {/* Theming dinamico: CSS vars inyectadas en el style del <html> (arriba).
         Esto evita el bug con is:inline + define:vars que generaba CSS invalido. */}
 
@@ -112,9 +135,9 @@ const themeStyle =
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
   </head>
 
-  <body>
+  <body class={template.bodyClass}>
     <Header />
-    <main class="flex-1 mx-auto w-full max-w-7xl px-4 py-8">
+    <main class={template.mainContainerClass}>
       <slot />
     </main>
     <Footer />

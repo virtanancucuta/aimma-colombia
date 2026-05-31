@@ -22,6 +22,7 @@ export type ProductoListItem = {
   foto_principal: string | null;
   stock_disponible: number | null;
   slug: string;
+  referencia: string | null;
 };
 
 const URL_SAFE_REF = /^[A-Za-z0-9._-]{1,64}$/;
@@ -50,6 +51,7 @@ function normalizarProducto(p: any): ProductoListItem {
     foto_principal: p.foto_principal_url ?? null,
     stock_disponible: stockSumarReservado,
     slug: urlSlug({ id: p.id, referencia: p.referencia }),
+    referencia: p.referencia ?? null,
   };
 }
 

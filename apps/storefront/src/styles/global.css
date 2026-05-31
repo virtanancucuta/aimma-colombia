@@ -14,8 +14,18 @@
   --color-text-muted: var(--ta-color-text-muted, #6b7280);
   --color-border: var(--ta-color-border, #e5e7eb);
 
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Inter', system-ui, sans-serif;
+  /* Auto-contrast (WCAG AA). Calculados SSR por luminancia en Layout.astro
+     desde los color-* respectivos. Default seguro a blanco si no hay override
+     (compatible con el bg primary oscuro por defecto). */
+  --color-on-primary: var(--ta-color-on-primary, #ffffff);
+  --color-on-accent: var(--ta-color-on-accent, #ffffff);
+  --color-on-bg: var(--ta-color-on-bg, #0a0a0a);
+
+  /* Fonts default. Override por plantilla via --ta-font-display / --ta-font-body
+     inyectadas en <html style="..."> por Layout.astro segun template-styles.ts. */
+  --font-sans: var(--ta-font-body, 'Inter', system-ui, -apple-system, sans-serif);
+  --font-display: var(--ta-font-display, 'Inter', system-ui, sans-serif);
+  --font-body: var(--ta-font-body, 'Inter', system-ui, -apple-system, sans-serif);
 
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
@@ -50,4 +60,26 @@ img, video {
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* Utilities custom para fonts dinamicas (Tailwind 4 @theme se procesa en build,
+   no puede leer CSS vars runtime, asi que estas utilities sirven para que
+   componentes hagan class="font-display" / "font-body" con paleta dinamica). */
+@layer utilities {
+  .font-display {
+    font-family: var(--ta-font-display, var(--font-display));
+  }
+  .font-body {
+    font-family: var(--ta-font-body, var(--font-body));
+  }
+}
+
+/* Reduce motion respeta preferencias del usuario (skill ui-ux-pro-max regla #6). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

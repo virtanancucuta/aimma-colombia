@@ -1,0 +1,18 @@
+---
+// AIMMA Storefront · Hero.astro · 2026-05-31
+// Dispatcher hero por plantilla. Renderea full-bleed (Fashion Bold), split
+// (Industrial Clean) o centered editorial (Minimal Artesanal).
+
+import HeroFB from '~/components/templates/fashion_bold/HeroFB.astro';
+import HeroIC from '~/components/templates/industrial_clean/HeroIC.astro';
+import HeroMA from '~/components/templates/minimal_artesanal/HeroMA.astro';
+
+const { tienda } = Astro.locals;
+const slug = tienda.plantilla?.slug;
+---
+
+{slug === 'fashion_bold' && <HeroFB tienda={tienda} />}
+{slug === 'minimal_artesanal' && <HeroMA tienda={tienda} />}
+{(slug === 'industrial_clean' || !slug || (slug !== 'fashion_bold' && slug !== 'minimal_artesanal')) && (
+  <HeroIC tienda={tienda} />
+)}

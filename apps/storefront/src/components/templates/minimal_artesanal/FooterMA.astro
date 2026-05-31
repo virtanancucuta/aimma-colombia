@@ -1,0 +1,70 @@
+---
+// Minimal Artesanal · Footer · 2026-05-31
+// Footnote vibes. Minimal centered. Serif italic name. Links tiny uppercase
+// tracking-widest. Bottom note "Hecho en Colombia · MMXXVI".
+
+interface Tienda {
+  nombre_negocio: string;
+  nit?: string | null;
+  ciudad_negocio?: string | null;
+}
+
+interface Props {
+  tienda: Tienda;
+}
+
+const { tienda } = Astro.props;
+const year = new Date().getFullYear();
+
+// Convertir year a numero romano simple
+function toRoman(num: number): string {
+  const map: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ];
+  let result = '';
+  for (const [value, symbol] of map) {
+    while (num >= value) {
+      result += symbol;
+      num -= value;
+    }
+  }
+  return result;
+}
+const yearRoman = toRoman(year);
+---
+
+<footer class="mt-32 border-t border-[var(--ta-color-text-base)]/10 px-8 py-20 lg:py-24 text-center">
+  {/* Marca en serif italic */}
+  <p class="font-display text-3xl italic text-[var(--ta-color-text-base)]">
+    {tienda.nombre_negocio}
+  </p>
+
+  {/* Links tiny uppercase */}
+  <ul class="mt-12 flex flex-wrap justify-center gap-x-10 gap-y-4 font-body text-[10px] uppercase tracking-[0.22em] text-[var(--ta-color-text-base)]/55">
+    <li><a href="/" class="hover:text-[var(--ta-color-text-base)] transition-colors">Tienda</a></li>
+    <li><a href="/legales/garantias" class="hover:text-[var(--ta-color-text-base)] transition-colors">Cuidados</a></li>
+    <li><a href="/legales/datos" class="hover:text-[var(--ta-color-text-base)] transition-colors">Datos personales</a></li>
+    <li><a href="/legales/contacto" class="hover:text-[var(--ta-color-text-base)] transition-colors">Contacto</a></li>
+    <li><a href="/carrito" class="hover:text-[var(--ta-color-text-base)] transition-colors">Bolsa</a></li>
+  </ul>
+
+  {/* NIT discreto si existe */}
+  {tienda.nit && (
+    <p class="mt-12 font-body text-[10px] uppercase tracking-[0.2em] text-[var(--ta-color-text-base)]/30">
+      NIT {tienda.nit}
+    </p>
+  )}
+
+  {/* Note final */}
+  <p class="mt-6 font-body text-[10px] uppercase tracking-[0.2em] text-[var(--ta-color-text-base)]/35">
+    Hecho en Colombia · {yearRoman}
+  </p>
+
+  <p class="mt-2">
+    <a href="https://aimma.com.co" target="_blank" rel="noopener" class="font-body text-[10px] uppercase tracking-[0.2em] text-[var(--ta-color-text-base)]/30 hover:text-[var(--ta-color-text-base)]/50 transition-colors">
+      Powered by AIMMA
+    </a>
+  </p>
+</footer>

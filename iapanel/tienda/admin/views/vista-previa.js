@@ -1,20 +1,14 @@
-/* AIMMA · Tienda IA · views/vista-previa.js · v4 · 2026-05-30
-   v4 (fix Jorge): el editor de URL estaba oculto si no habia ctaText (caso
-   minimal_artesanal default). Sacamos AMBOS inputs del hero a un panel
-   separado "Editor del boton" siempre visible en modo editor con sugerencias
-   de URL (WhatsApp, Instagram, catalogo). Re-render reactivo del mockup
-   cuando user cambia texto del CTA (debounce 600ms) preservando foco.
-   v3 (fix Jorge): toggle de modo editor disparaba "Cargando..." y reseteaba
-   estate.editing=false porque renderVistaPrevia hacia queries + reset estado
-   en cada llamada. Fix: cache de data+tienda + rerenderMockup() que solo
-   re-rendea HTML sin queries ni reset. renderVistaPrevia solo en carga
-   inicial (entrada a la vista).
-   v2 (Fase 3.4c): MVP Modo Editor minimal. Cliente puede editar inline:
-   - hero_title, hero_subtitle, cta_text, cta_url, footer_text.
-   Toggle 'Modo editor' habilita contenteditable. 'Guardar y publicar'
-   persiste en tiendas.personalizaciones (jsonb). Restaurar default por campo.
-   Editor full Webflow-style = feature PRO-MAX (post-MVP, ver memoria).
-   Fase 3.4b - Mockup interactivo del storefront dentro del Panel. */
+/* AIMMA · Tienda IA · views/vista-previa.js · v5 · 2026-05-31
+   v5 (Fase 6 paridad LIVE): la vista previa ahora muestra un <iframe>
+   apuntando a la URL real del storefront (<slug>.tienda.aimma.com.co).
+   Esto garantiza paridad 100% — el cliente ve EXACTAMENTE lo que vera
+   el visitante. Modo editor inline + mockup interno se retiran a futuro
+   (Editor Webflow-style PRO-MAX, ver memoria).
+   Cache buster ?v=timestamp para forzar refresco al volver a esta vista.
+   v4 (Fase 3.7.b): editor de URL del CTA separado del hero.
+   v3 (Fase 3.4c fix Jorge): cache de data + tienda.
+   v2 (Fase 3.4c): MVP Modo Editor inline.
+   Fase 3.4b: Mockup interactivo del storefront. */
 
 (function () {
   'use strict';
@@ -30,559 +24,117 @@
     window.TiendaIA.registerView('vista-previa', renderVistaPrevia);
   });
 
-  // Validar hex color para CSS (defensa anti-XSS por style attribute)
-  const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-  function safeColor(v, fallback) {
-    return (typeof v === 'string' && HEX_COLOR_RE.test(v.trim())) ? v.trim() : (fallback || '#888');
-  }
-  // Validar URL https/http o anchor interno
-  function safeImgUrl(url) {
-    if (!url) return null;
-    try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? url : null; }
-    catch { return null; }
-  }
-  // v2: validar URL para boton CTA (acepta https?:// o #)
-  function safeCtaUrl(url) {
-    if (!url) return '#';
-    const trimmed = String(url).trim();
-    if (trimmed === '' || trimmed === '#' || trimmed.startsWith('#')) return trimmed || '#';
-    try { const u = new URL(trimmed); return /^https?:$/.test(u.protocol) ? trimmed : '#'; }
-    catch { return '#'; }
-  }
-
-  // v2: estado del editor
-  const PERSONALIZABLES = ['hero_title', 'hero_subtitle', 'cta_text', 'cta_url', 'footer_text'];
-  const MAX_LEN = 200;
-  const estate = {
-    editing: false,        // true cuando "Modo editor" esta activo
-    dirty: false,          // hay cambios no guardados
-    personalizaciones: {}, // datos actuales (de BD + cambios locales)
-    defaults: {},          // valores default segun plantilla (no se persisten)
-    guardando: false,
-  };
-
-  // v3 fix bug Jorge: cache de data + tienda para re-renderizar el mockup
-  // SIN re-consultar BD en cada toggle. Antes, await renderVistaPrevia desde
-  // toggle disparaba skeleton "Cargando..." y reseteaba estate.editing=false,
-  // anulando el toggle.
-  let cachedData = null;
-  let cachedTienda = null;
+  // Validar slug DNS-safe (mismo regex que BD CHECK)
+  const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,40}[a-z0-9]$/;
+  const SUBDOMAIN_BASE = 'tienda.aimma.com.co';
 
   async function renderVistaPrevia() {
     const T = window.TiendaIA;
     const view = T.dom.mainView;
     const tienda = T.state.tienda;
 
-    if (!tienda.plantilla_id || !tienda.paleta_id) {
+    // Validar slug antes de construir URL
+    if (!tienda.slug || !SLUG_REGEX.test(tienda.slug)) {
       view.innerHTML = '' +
         '<div class="ta-card">' +
           '<div class="ta-empty">' +
-            '<h2 class="ta-empty__title">Configura tu plantilla y paleta primero</h2>' +
-            '<p class="ta-empty__text">Necesitas elegir plantilla y paleta antes de ver la vista previa. Ve a <a href="#/configuracion">Configuracion</a>.</p>' +
+            '<h2 class="ta-empty__title">Slug invalido</h2>' +
+            '<p class="ta-empty__text">El slug de tu tienda no es valido. Contacta a soporte.</p>' +
           '</div>' +
         '</div>';
       return;
     }
 
-    // Loading skeleton
-    view.innerHTML = '<div class="ta-card"><div class="ta-empty"><div class="ta-loader" style="width:32px;height:32px;margin:0 auto 12px;"></div><p class="ta-empty__text">Cargando preview...</p></div></div>';
-
-    try {
-      const data = await cargarData(T.supabase(), tienda);
-      // v3 fix: setear personalizaciones desde BD y calcular defaults
-      // SOLO en la carga inicial. El toggle NO debe pasar por aqui (usa rerenderMockup).
-      estate.personalizaciones = Object.assign({}, tienda.personalizaciones || {});
-      estate.defaults = calcularDefaults(tienda, data.plantilla);
-      estate.editing = false;
-      estate.dirty = false;
-      cachedData = data;
-      cachedTienda = tienda;
-      view.innerHTML = renderHeader() + renderMockup(data, tienda);
-      wireInteracciones(data, tienda);
-    } catch (e) {
-      console.error('[vista-previa] error', e);
-      view.innerHTML = '<div class="ta-card"><div class="ta-empty"><h2 class="ta-empty__title">No pudimos cargar la preview</h2><p class="ta-empty__text">' + T.escapeHtml(e.message || String(e)) + '</p></div></div>';
+    // Si la tienda no esta publicada, mostrar mensaje (la URL real solo sirve si esta publicada)
+    if (tienda.estado !== 'publicada') {
+      view.innerHTML = '' +
+        '<div class="ta-card">' +
+          '<header style="margin-bottom:24px;">' +
+            '<h1 class="ta-section-title">Vista previa</h1>' +
+          '</header>' +
+          '<div class="ta-empty">' +
+            '<h2 class="ta-empty__title">Tu tienda no esta publicada</h2>' +
+            '<p class="ta-empty__text">La vista previa muestra tu tienda real en vivo. Para verla, primero publica tu tienda desde <a href="#/configuracion">Configuracion → Estado: Publicada</a>.</p>' +
+          '</div>' +
+        '</div>';
+      return;
     }
+
+    // Si falta plantilla o paleta, avisar
+    if (!tienda.plantilla_id || !tienda.paleta_id) {
+      view.innerHTML = '' +
+        '<div class="ta-card">' +
+          '<div class="ta-empty">' +
+            '<h2 class="ta-empty__title">Configura plantilla y paleta</h2>' +
+            '<p class="ta-empty__text">Necesitas elegir plantilla y paleta antes de ver la vista previa. <a href="#/configuracion">Ir a Configuracion</a>.</p>' +
+          '</div>' +
+        '</div>';
+      return;
+    }
+
+    // Construir URL del storefront con cache buster
+    const url = 'https://' + tienda.slug + '.' + SUBDOMAIN_BASE + '/?preview=' + Date.now();
+
+    view.innerHTML = renderHeaderHTML(url) + renderIframeHTML(url);
+    wireToolbarEvents(tienda);
   }
 
-  async function cargarData(sb, tienda) {
-    // En paralelo: plantilla, paleta, productos top 6, categorias
-    const [plRes, paRes, prRes, catRes] = await Promise.all([
-      sb.from('plantillas').select('slug, nombre, descripcion').eq('id', tienda.plantilla_id).maybeSingle(),
-      sb.from('paletas').select('slug, nombre, color_primary, color_accent, color_text_base, color_bg_base').eq('id', tienda.paleta_id).maybeSingle(),
-      sb.from('productos').select('id, nombre, descripcion, precio_venta, precio_promo, foto_principal_url, estado').eq('tienda_id', tienda.id).eq('estado', 'activo').order('created_at', { ascending: false }).limit(6),
-      sb.from('categorias').select('nombre').eq('tienda_id', tienda.id).is('parent_id', null).order('orden').limit(6),
-    ]);
-    if (plRes.error) throw plRes.error;
-    if (paRes.error) throw paRes.error;
-    return {
-      plantilla: plRes.data,
-      paleta: paRes.data,
-      productos: prRes.data || [],
-      categorias: catRes.data || [],
-    };
-  }
-
-  function renderHeader() {
-    const labelToggle = estate.editing ? '✓ Salir del modo editor' : '✏️ Modo editor';
-    const guardandoTxt = estate.guardando ? 'Guardando...' : 'Guardar y publicar';
-    const saveBtn = estate.editing
-      ? '<button type="button" id="vp-guardar" class="ta-btn ta-btn--primary" ' +
-          (estate.dirty && !estate.guardando ? '' : 'disabled') + '>' + guardandoTxt + '</button>'
-      : '';
+  function renderHeaderHTML(url) {
+    const T = window.TiendaIA;
+    const safeUrl = T.escapeHtml(url);
     return '' +
       '<header style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">' +
         '<div>' +
-          '<h1 class="ta-section-title">Vista previa de tu tienda</h1>' +
+          '<h1 class="ta-section-title">Vista previa en vivo</h1>' +
           '<p class="ta-section-sub">' +
-            (estate.editing
-              ? 'Estas en <strong>modo editor</strong>. Click sobre cualquier texto resaltado para editarlo. Al terminar, <strong>Guardar y publicar</strong>.'
-              : 'Asi se vera tu tienda. Esta es una <strong>simulacion fiel</strong> dentro del panel. La tienda publica real con dominio propio estara en la siguiente fase.') +
+            'Esta es tu tienda <strong>real</strong>, tal como la veran tus clientes. ' +
+            'Las cosas se actualizan automaticamente al guardar cambios en otras secciones. ' +
+            'Si recien cambiaste algo, espera ~1 minuto a que se refresque el cache.' +
           '</p>' +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-          '<button type="button" id="vp-toggle-editor" class="ta-btn' + (estate.editing ? ' ta-btn--primary' : '') + '">' + labelToggle + '</button>' +
-          saveBtn +
+          '<button type="button" id="vp-refresh" class="ta-btn">Recargar</button>' +
+          '<a href="' + safeUrl + '" target="_blank" rel="noopener" class="ta-btn ta-btn--primary">Abrir en pestania nueva ↗</a>' +
         '</div>' +
       '</header>';
   }
 
-  // Calcula los valores DEFAULT segun la plantilla. Si el usuario no edita
-  // hero_title/hero_subtitle/cta_text/footer_text, se muestran estos.
-  function calcularDefaults(tienda, plantilla) {
-    const slug = plantilla?.slug || 'industrial_clean';
-    const nombre = tienda.nombre_negocio || 'Tu marca';
-    let heroSub = 'Calidad y estilo en cada pieza.';
-    let cta = 'Ver coleccion';
-    if (slug === 'industrial_clean') { heroSub = 'Soluciones profesionales para tu negocio.'; cta = 'Conoce mas'; }
-    if (slug === 'minimal_artesanal') { heroSub = 'Hecho a mano, con dedicacion.'; cta = ''; /* sin CTA por defecto */ }
-    return {
-      hero_title: nombre,
-      hero_subtitle: heroSub,
-      cta_text: cta,
-      cta_url: '#',
-      footer_text: nombre,
-    };
-  }
-
-  // Obtiene el valor efectivo (personalizado o default) de un campo.
-  function getValor(campo) {
-    const v = estate.personalizaciones[campo];
-    if (v == null || v === '') return estate.defaults[campo] || '';
-    return v;
-  }
-
-  function renderMockup(data, tienda) {
+  function renderIframeHTML(url) {
     const T = window.TiendaIA;
-    const paleta = data.paleta || {};
-    const plantilla = data.plantilla || {};
-    const productos = data.productos || [];
-    const categorias = data.categorias || [];
-
-    // Colores validados
-    const cP = safeColor(paleta.color_primary, '#1B4965');
-    const cA = safeColor(paleta.color_accent, '#5FA8D3');
-    const cTB = safeColor(paleta.color_text_base, '#102841');
-    const cBB = safeColor(paleta.color_bg_base, '#F4F6F8');
-
-    // Estilo segun plantilla
-    const tStyle = estiloPlantilla(plantilla.slug || 'industrial_clean');
-
-    // CSS variables como style inline en un wrapper. Usamos clase prefijada
-    // .preview-mockup para evitar leak de estilos al resto del panel.
-    const stylesVars =
-      '--p:' + cP + ';' +
-      '--a:' + cA + ';' +
-      '--tb:' + cTB + ';' +
-      '--bb:' + cBB + ';' +
-      '--font:' + tStyle.font + ';' +
-      '--font-h:' + tStyle.fontH + ';';
-
-    const logoOrText = tienda.logo_url && safeImgUrl(tienda.logo_url)
-      ? '<img src="' + T.escapeHtml(tienda.logo_url) + '" alt="" style="height:36px;width:auto;">'
-      : '<span class="preview-logo-text">' + T.escapeHtml(tienda.nombre_negocio || tienda.slug) + '</span>';
-
-    const catsHtml = categorias.length > 0
-      ? categorias.slice(0, 5).map(c => '<a href="#" onclick="return false;">' + T.escapeHtml(c.nombre) + '</a>').join('')
-      : '<a href="#" onclick="return false;">Todos los productos</a>';
-
-    const productosHtml = productos.length > 0
-      ? productos.map(p => renderProductoCard(p, cP, cA, cTB, cBB)).join('')
-      : Array.from({ length: 3 }, () => renderProductoPlaceholder()).join('');
-
-    const hero = tStyle.hero(tienda, T);
-
+    const safeUrl = T.escapeHtml(url);
     return '' +
-      '<div class="preview-mockup-frame">' +
-        '<div class="preview-mockup-bar">' +
-          '<span class="preview-dot"></span><span class="preview-dot"></span><span class="preview-dot"></span>' +
-          '<span class="preview-url">' + T.escapeHtml(tienda.slug || 'tu-tienda') + '.tienda.aimma.com.co</span>' +
+      '<div class="ta-card" style="padding:0;overflow:hidden;">' +
+        '<div style="background:#f4f4f6;padding:8px 12px;border-bottom:1px solid var(--ta-border);display:flex;align-items:center;gap:8px;font-size:13px;">' +
+          '<span style="display:inline-block;width:10px;height:10px;background:#ff5f57;border-radius:50%;"></span>' +
+          '<span style="display:inline-block;width:10px;height:10px;background:#febc2e;border-radius:50%;"></span>' +
+          '<span style="display:inline-block;width:10px;height:10px;background:#28c840;border-radius:50%;"></span>' +
+          '<span style="flex:1;text-align:center;color:#666;font-family:ui-monospace,monospace;">' + safeUrl.replace(/^https:\/\//, '') + '</span>' +
         '</div>' +
-        '<div class="preview-mockup ' + tStyle.cssClass + '" style="' + stylesVars + '">' +
-
-          '<header class="preview-header">' +
-            '<div class="preview-header__logo">' + logoOrText + '</div>' +
-            '<nav class="preview-header__nav">' + catsHtml + '</nav>' +
-            '<div class="preview-header__cart">🛒</div>' +
-          '</header>' +
-
-          hero +
-
-          '<section class="preview-products">' +
-            '<h2 class="preview-products__title">' + (productos.length > 0 ? 'Nuestros productos' : 'Pronto disponibles') + '</h2>' +
-            '<div class="preview-products__grid">' + productosHtml + '</div>' +
-            (productos.length === 0
-              ? '<p class="preview-products__hint">Aun no tienes productos cargados. Cuando los agregues, apareceran aqui.</p>'
-              : '') +
-          '</section>' +
-
-          '<footer class="preview-footer">' +
-            '<div class="editable" data-campo="footer_text"' + (estate.editing ? ' contenteditable="true" spellcheck="false"' : '') + '>' + T.escapeHtml(getValor('footer_text')) + '</div>' +
-            '<div class="preview-footer__links">' +
-              '<a href="#" onclick="return false;">Garantias</a>' +
-              '<a href="#" onclick="return false;">Tratamiento de datos</a>' +
-              '<a href="#" onclick="return false;">Contacto</a>' +
-            '</div>' +
-            '<div class="preview-footer__credit">Tienda creada con <strong>AIMMA Tienda IA</strong></div>' +
-          '</footer>' +
-
+        '<div style="position:relative;width:100%;height:80vh;background:#fff;">' +
+          '<iframe ' +
+            'id="vp-iframe" ' +
+            'src="' + safeUrl + '" ' +
+            'style="width:100%;height:100%;border:0;display:block;" ' +
+            'loading="eager" ' +
+            'referrerpolicy="origin"' +
+          '></iframe>' +
         '</div>' +
       '</div>' +
-
-      // v4: panel separado para editar texto + URL del CTA (siempre visible en modo editor)
-      renderCtaEditorPanel() +
-
-      '<div style="margin-top:20px;display:flex;gap:8px;align-items:center;color:var(--ta-text-soft);font-size:13px;flex-wrap:wrap;">' +
-        '<span>Plantilla: <strong>' + T.escapeHtml(plantilla.nombre || '-') + '</strong></span>' +
-        '<span>·</span>' +
-        '<span>Paleta: <strong>' + T.escapeHtml(paleta.nombre || '-') + '</strong></span>' +
-        '<span>·</span>' +
-        '<a href="#/configuracion" style="color:var(--ta-accent);">Cambiar →</a>' +
-      '</div>';
+      '<p style="margin-top:12px;font-size:12px;color:var(--ta-text-soft);">' +
+        'Si la vista previa no se actualiza al guardar, espera ~60s y haz click en Recargar. ' +
+        'El cache global se renueva cada minuto automaticamente.' +
+      '</p>';
   }
 
-  function renderProductoCard(p, cP, cA, cTB, cBB) {
-    const T = window.TiendaIA;
-    const foto = safeImgUrl(p.foto_principal_url);
-    const fotoBlock = foto
-      ? '<img src="' + T.escapeHtml(foto) + '" alt="" class="preview-product__img">'
-      : '<div class="preview-product__img preview-product__img--empty">📦</div>';
-    const precio = '$' + Math.round(Number(p.precio_venta || 0)).toLocaleString('es-CO');
-    const promoLabel = p.precio_promo
-      ? '<div class="preview-product__promo">$' + Math.round(Number(p.precio_promo)).toLocaleString('es-CO') + ' <span class="preview-product__antes">$' + Math.round(Number(p.precio_venta)).toLocaleString('es-CO') + '</span></div>'
-      : '<div class="preview-product__precio">' + precio + '</div>';
-    return '' +
-      '<article class="preview-product">' +
-        fotoBlock +
-        '<div class="preview-product__body">' +
-          '<h3 class="preview-product__nombre">' + T.escapeHtml(p.nombre) + '</h3>' +
-          promoLabel +
-          '<button type="button" class="preview-product__btn" onclick="return false;">Ver detalles</button>' +
-        '</div>' +
-      '</article>';
-  }
-
-  function renderProductoPlaceholder() {
-    return '' +
-      '<article class="preview-product preview-product--placeholder">' +
-        '<div class="preview-product__img preview-product__img--empty">📦</div>' +
-        '<div class="preview-product__body">' +
-          '<h3 class="preview-product__nombre">Producto de ejemplo</h3>' +
-          '<div class="preview-product__precio">$ —</div>' +
-          '<button type="button" class="preview-product__btn" disabled>Ver detalles</button>' +
-        '</div>' +
-      '</article>';
-  }
-
-  // v4: hero usa getValor() y agrega contenteditable attributes en modo editor.
-  // El editor del CTA (texto + URL) va FUERA del hero en un panel separado
-  // visible para que se vea siempre en modo editor, no solo si hay texto.
-  function renderHeroEditable(variantClass) {
-    const T = window.TiendaIA;
-    const heroTitle = getValor('hero_title');
-    const heroSub = getValor('hero_subtitle');
-    const ctaText = getValor('cta_text');
-    const ctaUrl = safeCtaUrl(getValor('cta_url'));
-    const editableAttr = estate.editing ? ' contenteditable="true" spellcheck="false"' : '';
-    const editableCls = estate.editing ? ' editable' : '';
-    // El boton en modo editor SOLO se muestra si ctaText tiene contenido.
-    // El editor de URL ahora va fuera del hero (renderCtaEditor).
-    const ctaBlock = ctaText
-      ? '<a href="' + T.escapeHtml(ctaUrl) + '" class="preview-hero__cta' + editableCls + '" data-campo="cta_text"' + editableAttr +
-          (estate.editing ? ' onclick="event.preventDefault();return false;"' : ' target="_blank" rel="noopener"') + '>' +
-          T.escapeHtml(ctaText) +
-        '</a>'
-      : '';
-    return '' +
-      '<section class="preview-hero ' + variantClass + '">' +
-        '<h1 class="editable" data-campo="hero_title"' + editableAttr + '>' + T.escapeHtml(heroTitle) + '</h1>' +
-        '<p class="editable" data-campo="hero_subtitle"' + editableAttr + '>' + T.escapeHtml(heroSub) + '</p>' +
-        ctaBlock +
-      '</section>';
-  }
-
-  // v4: panel separado de edicion del CTA. Siempre visible en modo editor,
-  // con AMBOS inputs (texto + URL) y sugerencias claras.
-  function renderCtaEditorPanel() {
-    if (!estate.editing) return '';
-    const T = window.TiendaIA;
-    const ctaText = estate.personalizaciones.cta_text != null
-      ? estate.personalizaciones.cta_text
-      : (estate.defaults.cta_text || '');
-    const ctaUrl = estate.personalizaciones.cta_url != null
-      ? estate.personalizaciones.cta_url
-      : (estate.defaults.cta_url || '');
-    return '' +
-      '<div class="preview-cta-editor-panel">' +
-        '<div class="preview-cta-editor-panel__head">' +
-          '<span class="preview-cta-editor-panel__icon">🔗</span>' +
-          '<div>' +
-            '<h3>Boton del hero (call to action)</h3>' +
-            '<p>Agrega un boton que lleve a tus clientes a WhatsApp, Instagram, un catalogo o cualquier link. Si dejas el texto vacio, no se muestra boton.</p>' +
-          '</div>' +
-        '</div>' +
-        '<div class="preview-cta-editor-panel__grid">' +
-          '<label>' +
-            '<span>Texto del boton</span>' +
-            '<input type="text" id="vp-cta-text" value="' + T.escapeHtml(ctaText) + '" placeholder="ej. Contactanos por WhatsApp" maxlength="60">' +
-          '</label>' +
-          '<label>' +
-            '<span>URL del boton (a donde lleva)</span>' +
-            '<input type="url" id="vp-cta-url" value="' + T.escapeHtml(ctaUrl) + '" placeholder="https://..." maxlength="500">' +
-            '<small class="preview-cta-editor-panel__hint">Ejemplos: ' +
-              '<code>https://wa.me/573001234567</code> · ' +
-              '<code>https://instagram.com/tu-tienda</code> · ' +
-              '<code>https://catalogo.com/promo</code>' +
-            '</small>' +
-          '</label>' +
-        '</div>' +
-      '</div>';
-  }
-
-  // Estilo segun plantilla: font, hero variant class
-  function estiloPlantilla(slug) {
-    if (slug === 'fashion_bold') {
-      return {
-        cssClass: 'preview-plantilla--bold',
-        font: "'Inter', 'Exo 2', system-ui, sans-serif",
-        fontH: "'Inter', 'Exo 2', system-ui, sans-serif",
-        hero: () => renderHeroEditable('preview-hero--bold'),
-      };
-    }
-    if (slug === 'minimal_artesanal') {
-      return {
-        cssClass: 'preview-plantilla--artesanal',
-        font: "'Lora', Georgia, serif",
-        fontH: "'Lora', Georgia, serif",
-        hero: () => renderHeroEditable('preview-hero--artesanal'),
-      };
-    }
-    return {
-      cssClass: 'preview-plantilla--clean',
-      font: "'Inter', 'Exo 2', system-ui, sans-serif",
-      fontH: "'Inter', 'Exo 2', system-ui, sans-serif",
-      hero: () => renderHeroEditable('preview-hero--clean'),
-    };
-  }
-
-  // v3 fix: re-renderea SOLO el HTML del mockup (sin queries ni reset de estate)
-  function rerenderMockup() {
-    const T = window.TiendaIA;
-    const view = T.dom.mainView;
-    if (!cachedData || !cachedTienda) return;
-    view.innerHTML = renderHeader() + renderMockup(cachedData, cachedTienda);
-    wireInteracciones(cachedData, cachedTienda);
-  }
-
-  function wireInteracciones(data, tienda) {
-    const T = window.TiendaIA;
-
-    // v2 BUG #1 fix: reset navGuards de esta view en cada wire para no acumular.
-    if (T.state && Array.isArray(T.state.viewNavGuards)) T.state.viewNavGuards = [];
-
-    // Toggle modo editor (v3: usa rerenderMockup, NO renderVistaPrevia)
-    const btnToggle = document.getElementById('vp-toggle-editor');
-    if (btnToggle) {
-      btnToggle.addEventListener('click', () => {
-        if (btnToggle.disabled) return;
-        btnToggle.disabled = true;
-        if (estate.editing && estate.dirty) {
-          if (!window.confirm('Tienes cambios sin guardar. ¿Salir sin guardar?')) {
-            btnToggle.disabled = false;
-            return;
-          }
-          estate.personalizaciones = Object.assign({}, tienda.personalizaciones || {});
-          estate.dirty = false;
-        }
-        estate.editing = !estate.editing;
-        rerenderMockup();
+  function wireToolbarEvents(tienda) {
+    const btnRefresh = document.getElementById('vp-refresh');
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', () => {
+        const iframe = document.getElementById('vp-iframe');
+        if (!iframe) return;
+        const newUrl = 'https://' + tienda.slug + '.' + SUBDOMAIN_BASE + '/?preview=' + Date.now();
+        iframe.src = newUrl;
       });
-    }
-
-    // Boton Guardar y publicar (solo visible en modo editor)
-    const btnGuardar = document.getElementById('vp-guardar');
-    if (btnGuardar) {
-      btnGuardar.addEventListener('click', () => guardarPersonalizaciones(tienda));
-    }
-
-    if (!estate.editing) return;
-
-    // Listeners para cada campo editable (contenteditable)
-    document.querySelectorAll('.editable[data-campo]').forEach(el => {
-      el.addEventListener('input', () => {
-        const campo = el.getAttribute('data-campo');
-        if (!PERSONALIZABLES.includes(campo)) return;
-        let valor = (el.textContent || '').trim();
-        if (valor.length > MAX_LEN) {
-          valor = valor.slice(0, MAX_LEN);
-          el.textContent = valor;
-          // Mover cursor al final
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-        // Si vuelve al default, eliminar la personalizacion (limpia el JSON)
-        if (valor === estate.defaults[campo]) {
-          delete estate.personalizaciones[campo];
-        } else {
-          estate.personalizaciones[campo] = valor;
-        }
-        estate.dirty = true;
-        actualizarBotonGuardar();
-      });
-      // Permitir blur con Escape (cancela edicion del input actual)
-      el.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter' && el.tagName !== 'P') {
-          ev.preventDefault();
-          el.blur();
-        }
-      });
-    });
-
-    // v4: input dedicado para TEXTO del CTA (panel separado) - reactivo:
-    // al cambiar el texto, regenera el mockup para que el boton aparezca/desaparezca.
-    const inputCtaText = document.getElementById('vp-cta-text');
-    if (inputCtaText) {
-      let textTimer = null;
-      inputCtaText.addEventListener('input', () => {
-        const valor = inputCtaText.value.slice(0, 60).trim();
-        if (valor === '' || valor === estate.defaults.cta_text) {
-          delete estate.personalizaciones.cta_text;
-        } else {
-          estate.personalizaciones.cta_text = valor;
-        }
-        estate.dirty = true;
-        actualizarBotonGuardar();
-        // Re-render para que el boton aparezca o desaparezca segun valor.
-        // Debounce para no re-render en cada keystroke.
-        clearTimeout(textTimer);
-        textTimer = setTimeout(() => {
-          if (!estate.editing) return;
-          const focusedId = document.activeElement && document.activeElement.id;
-          rerenderMockup();
-          if (focusedId) {
-            const el = document.getElementById(focusedId);
-            if (el && typeof el.focus === 'function') {
-              el.focus();
-              if (el.setSelectionRange && typeof el.value === 'string') {
-                const end = el.value.length;
-                el.setSelectionRange(end, end);
-              }
-            }
-          }
-        }, 600);
-      });
-    }
-
-    // v4: input dedicado para URL del CTA (panel separado)
-    const inputCtaUrl = document.getElementById('vp-cta-url');
-    if (inputCtaUrl) {
-      inputCtaUrl.addEventListener('input', () => {
-        const valor = inputCtaUrl.value.trim();
-        if (valor.length > 500) return;
-        if (valor === '' || valor === estate.defaults.cta_url) {
-          delete estate.personalizaciones.cta_url;
-        } else {
-          estate.personalizaciones.cta_url = valor;
-        }
-        estate.dirty = true;
-        actualizarBotonGuardar();
-      });
-    }
-
-    // navGuard si dirty
-    T.registerNavGuard(() => {
-      if (!estate.editing || !estate.dirty) return true;
-      return window.confirm('Tienes cambios sin guardar en la vista previa. ¿Salir de todos modos?');
-    });
-  }
-
-  function actualizarBotonGuardar() {
-    const btn = document.getElementById('vp-guardar');
-    if (!btn) return;
-    btn.disabled = !(estate.dirty && !estate.guardando);
-    btn.textContent = estate.guardando ? 'Guardando...' : 'Guardar y publicar';
-  }
-
-  async function guardarPersonalizaciones(tienda) {
-    const T = window.TiendaIA;
-    const sb = T.supabase();
-    if (estate.guardando) return;
-
-    // Limpiar valores invalidos (definensa): truncar y validar URL
-    const limpio = {};
-    for (const k of PERSONALIZABLES) {
-      const v = estate.personalizaciones[k];
-      if (v == null || v === '') continue;
-      if (k === 'cta_url') {
-        const valid = safeCtaUrl(v);
-        if (valid && valid !== '#') limpio[k] = valid;
-      } else {
-        const trimmed = String(v).trim().slice(0, MAX_LEN);
-        if (trimmed) limpio[k] = trimmed;
-      }
-    }
-
-    estate.guardando = true;
-    actualizarBotonGuardar();
-
-    try {
-      const { data, error } = await sb.from('tiendas')
-        .update({ personalizaciones: limpio })
-        .eq('id', tienda.id)
-        .select('personalizaciones')
-        .maybeSingle();
-      if (error) {
-        T.toast('Error al guardar: ' + (error.message || 'desconocido'), 'error');
-        estate.guardando = false;
-        actualizarBotonGuardar();
-        return;
-      }
-      if (!data) {
-        T.toast('No se pudo actualizar. Refresca e intenta de nuevo.', 'error');
-        estate.guardando = false;
-        actualizarBotonGuardar();
-        return;
-      }
-      // Persistir en el state global de la tienda tambien
-      tienda.personalizaciones = data.personalizaciones || {};
-      T.state.tienda.personalizaciones = tienda.personalizaciones;
-      if (cachedTienda) cachedTienda.personalizaciones = tienda.personalizaciones;
-      estate.personalizaciones = Object.assign({}, tienda.personalizaciones);
-      estate.dirty = false;
-      estate.guardando = false;
-      T.toast('Cambios guardados ✓', 'success');
-      // Salir de modo editor y re-render desde cache (sin queries)
-      estate.editing = false;
-      rerenderMockup();
-    } catch (e) {
-      console.error('[vista-previa guardar] exception', e);
-      T.toast('Error: ' + (e.message || e), 'error');
-      estate.guardando = false;
-      actualizarBotonGuardar();
     }
   }
 })();
