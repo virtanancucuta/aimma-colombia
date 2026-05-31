@@ -1,29 +1,36 @@
-# AIMMA Storefront · Cloudflare Workers config · v2 · 2026-05-31
-# Workers Static Assets pattern (Pages deprecated). Las env vars de PROD
-# se setean en el dashboard Cloudflare. En dev local salen de .env / .dev.vars
-# via platformProxy del adapter.
+# AIMMA Storefront · Cloudflare Workers config · v3 · 2026-05-31
+# Workers Static Assets pattern. Las env vars de PROD se setean con
+# `wrangler secret put`. En dev local salen de .dev.vars (gitignored).
 
 name = "aimma-storefront"
 main = "./dist/_worker.js/index.js"
 compatibility_date = "2026-05-15"
-compatibility_flags = ["nodejs_compat"] # Requerido por adapter @astrojs/cloudflare
+compatibility_flags = ["nodejs_compat"]
+account_id = "3bf845736613d4a5dc45802168665a80"
 
 [assets]
 directory = "./dist"
 
 # KV namespace para cache de tenant (slug -> tienda JSON). TTL 300s.
-# Invalidacion: webhook desde Supabase cuando tienda cambia → KV.delete(slug).
-# IDs se setean cuando se crea el binding en Cloudflare dashboard.
-# [[kv_namespaces]]
-# binding = "TENANT_CACHE"
-# id = "<set-in-cf-dashboard>"
-# preview_id = "<set-in-cf-dashboard>"
+# Invalidacion: webhook desde Supabase cuando tienda cambia -> KV.delete(slug).
+# Namespace creado en Cloudflare Dashboard 2026-05-31.
+[[kv_namespaces]]
+binding = "TENANT_CACHE"
+id = "99d06757be9f459883862cedec8683d2"
 
-# (Opcional Fase 5.x) KV para HTML cache de rutas SSR.
-# [[kv_namespaces]]
-# binding = "HTML_CACHE"
-# id = "<set-in-cf-dashboard>"
+# Routes: cuando una request matchea el pattern y el DNS esta proxied,
+# CF rutea al Worker en lugar de al origen.
+# zone_name evita tener que poner zone_id (el adapter lo resuelve).
+[[routes]]
+pattern = "*.tienda.aimma.com.co/*"
+zone_name = "aimma.com.co"
+
+[[routes]]
+pattern = "tienda.aimma.com.co/*"
+zone_name = "aimma.com.co"
 
 [vars]
-# Vars publicas. Secrets reales (CF token, etc) se setean con `wrangler secret put`.
 PUBLIC_SUBDOMAIN_BASE = "tienda.aimma.com.co"
+PUBLIC_SUPABASE_URL = "https://rsmxklkxqsaptchcjszd.supabase.co"
+PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1"
+PUBLIC_SITE_BASE = "https://tienda.aimma.com.co"
