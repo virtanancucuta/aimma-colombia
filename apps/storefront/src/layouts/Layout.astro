@@ -1,0 +1,120 @@
+---
+// AIMMA Storefront · Layout.astro · 2026-05-31
+// Layout base SSR. Inyecta theming CSS vars desde paleta de la tienda,
+// View Transitions (ClientRouter), meta tags dinamicas, JSON-LD opcional.
+
+import { ClientRouter } from 'astro:transitions';
+import Header from '~/components/Header.astro';
+import Footer from '~/components/Footer.astro';
+import '~/styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  canonical?: string;
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const { tienda } = Astro.locals;
+const {
+  title,
+  description,
+  ogImage,
+  canonical,
+  noindex = false,
+  jsonLd,
+} = Astro.props;
+
+// Defaults sensatos por tienda
+const pageTitle = title
+  ? `${title} — ${tienda.nombre_negocio}`
+  : tienda.nombre_negocio;
+const pageDesc =
+  description ||
+  `Compra en ${tienda.nombre_negocio}. Tienda online con envios a Colombia. Pedidos por WhatsApp.`;
+
+// URL canonical absoluta
+const url = new URL(Astro.url.pathname, Astro.url.origin);
+const pageCanonical = canonical || url.toString();
+
+// Open Graph image fallback al logo de la tienda
+const ogImg = ogImage || tienda.logo_url || undefined;
+
+// Theming: CSS vars desde paleta. Defaults conservadores si paleta es null.
+const p = tienda.paleta;
+const primary = p?.color_primary || '#1a1a1a';
+const accent = p?.color_accent || '#ff6b35';
+const textBase = p?.color_text_base || '#1a1a1a';
+const bgBase = p?.color_bg_base || '#ffffff';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDesc} />
+    <link rel="canonical" href={pageCanonical} />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
+
+    {/* Open Graph */}
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDesc} />
+    <meta property="og:url" content={pageCanonical} />
+    <meta property="og:site_name" content={tienda.nombre_negocio} />
+    {ogImg && <meta property="og:image" content={ogImg} />}
+    <meta property="og:locale" content="es_CO" />
+
+    {/* Twitter Card */}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDesc} />
+    {ogImg && <meta name="twitter:image" content={ogImg} />}
+
+    {/* Favicon */}
+    {tienda.logo_url ? (
+      <link rel="icon" type="image/png" href={tienda.logo_url} />
+    ) : (
+      <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    )}
+
+    {/* Theming dinamico via CSS vars. Inline para evitar FOUC en SSR. */}
+    <style is:inline define:vars={{ primary, accent, textBase, bgBase }}>
+      :root {
+        --ta-color-primary: var(--primary);
+        --ta-color-accent: var(--accent);
+        --ta-color-text-base: var(--textBase);
+        --ta-color-bg-base: var(--bgBase);
+      }
+    </style>
+
+    {/* View Transitions (Astro 5+) */}
+    <ClientRouter />
+
+    {/* JSON-LD Schema.org si se proveyo */}
+    {jsonLd && (
+      <script
+        is:inline
+        type="application/ld+json"
+        set:html={JSON.stringify(jsonLd)}
+      />
+    )}
+
+    {/* Sitemap pointer en cada pagina */}
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+  </head>
+
+  <body>
+    <Header />
+    <main class="flex-1 mx-auto w-full max-w-7xl px-4 py-8">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

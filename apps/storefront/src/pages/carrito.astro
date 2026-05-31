@@ -1,0 +1,128 @@
+---
+// AIMMA Storefront · /carrito · 2026-05-31
+// Carrito MVP: localStorage en cliente + checkout via WhatsApp link.
+// Para Fase 5.x: integracion con tabla pedidos + OTP cliente final.
+
+import Layout from '~/layouts/Layout.astro';
+
+const { tienda } = Astro.locals;
+
+const wppDigits = (tienda.whatsapp_dueno || '').replace(/\D/g, '');
+const wppBase = wppDigits ? `https://wa.me/${wppDigits}?text=` : null;
+---
+
+<Layout title="Carrito" description={`Tu carrito de compras en ${tienda.nombre_negocio}.`} noindex>
+  <header class="mb-8">
+    <h1 class="text-3xl font-bold text-[var(--ta-color-text-base)]">Tu carrito</h1>
+  </header>
+
+  <section id="carrito-app" class="rounded-lg border p-6">
+    <p class="text-[var(--ta-color-text-base)]/60" id="carrito-vacio">
+      Tu carrito esta vacio. <a href="/" class="underline">Volver al inicio</a>.
+    </p>
+
+    <ul id="carrito-items" class="space-y-4" hidden></ul>
+
+    <div id="carrito-resumen" class="mt-6 hidden border-t pt-4">
+      <div class="flex items-center justify-between text-lg font-semibold">
+        <span>Total</span>
+        <span id="carrito-total">$0</span>
+      </div>
+      <a
+        id="carrito-checkout"
+        href="#"
+        target="_blank"
+        rel="noopener"
+        class="mt-4 inline-flex w-full items-center justify-center rounded-md bg-[var(--ta-color-accent)] px-6 py-3 font-semibold text-white hover:opacity-90"
+      >
+        Hacer pedido por WhatsApp
+      </a>
+    </div>
+  </section>
+
+  <script is:inline define:vars={{ wppBase, tiendaNombre: tienda.nombre_negocio }}>
+    // ============================================================
+    // Carrito MVP — localStorage namespace: aimma_cart_<hostname>
+    // ============================================================
+    (function () {
+      'use strict';
+      const KEY = 'aimma_cart_' + location.hostname;
+
+      function read() {
+        try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+        catch { return []; }
+      }
+
+      function fmt(n) {
+        return new Intl.NumberFormat('es-CO', {
+          style: 'currency', currency: 'COP',
+          minimumFractionDigits: 0, maximumFractionDigits: 0
+        }).format(n);
+      }
+
+      function render() {
+        const items = read();
+        const vacio = document.getElementById('carrito-vacio');
+        const lista = document.getElementById('carrito-items');
+        const resumen = document.getElementById('carrito-resumen');
+        const totalEl = document.getElementById('carrito-total');
+        const checkoutEl = document.getElementById('carrito-checkout');
+
+        if (items.length === 0) {
+          vacio.hidden = false;
+          lista.hidden = true;
+          resumen.hidden = true;
+          return;
+        }
+        vacio.hidden = true;
+        lista.hidden = false;
+        resumen.classList.remove('hidden');
+        resumen.hidden = false;
+
+        lista.innerHTML = items.map((it, i) => `
+          <li class="flex items-center justify-between gap-4 border-b pb-3">
+            <div class="flex-1">
+              <p class="font-medium">${escapeHtml(it.nombre)}</p>
+              <p class="text-sm text-black/60">${escapeHtml(it.variante || '')} · Cant: ${it.cantidad}</p>
+            </div>
+            <div class="text-right">
+              <p class="font-semibold">${fmt(it.precio * it.cantidad)}</p>
+              <button data-idx="${i}" class="text-xs text-red-600 hover:underline mt-1">Quitar</button>
+            </div>
+          </li>
+        `).join('');
+
+        const total = items.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
+        totalEl.textContent = fmt(total);
+
+        if (wppBase) {
+          const msg = 'Hola! Quiero pedir desde ' + tiendaNombre + ':\\n\\n' +
+            items.map(it => '- ' + it.cantidad + 'x ' + it.nombre +
+              (it.variante ? ' (' + it.variante + ')' : '') +
+              ' — ' + fmt(it.precio * it.cantidad)).join('\\n') +
+            '\\n\\nTotal: ' + fmt(total);
+          checkoutEl.href = wppBase + encodeURIComponent(msg);
+        }
+
+        lista.querySelectorAll('button[data-idx]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            const items = read();
+            items.splice(idx, 1);
+            localStorage.setItem(KEY, JSON.stringify(items));
+            render();
+          });
+        });
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[<>&"]/g, c =>
+          ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
+      }
+
+      // Re-render en navegacion via ClientRouter (View Transitions)
+      document.addEventListener('astro:page-load', render);
+      render();
+    })();
+  </script>
+</Layout>

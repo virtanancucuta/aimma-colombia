@@ -1,0 +1,31 @@
+---
+// AIMMA Storefront · ProductGrid.astro · 2026-05-31
+// Grid responsive de productos. 2 cols mobile, 3 tablet, 4 desktop.
+
+import ProductCard from '~/components/ProductCard.astro';
+
+interface Props {
+  productos: Array<{
+    id: string;
+    nombre: string;
+    slug: string;
+    precio: number;
+    precio_anterior?: number | null;
+    foto_principal?: string | null;
+    stock_disponible?: number | null;
+  }>;
+  emptyMessage?: string;
+}
+
+const { productos, emptyMessage = 'Aun no hay productos disponibles.' } = Astro.props;
+---
+
+{productos.length === 0 ? (
+  <div class="rounded-lg border border-dashed py-16 text-center">
+    <p class="text-[var(--ta-color-text-base)]/60">{emptyMessage}</p>
+  </div>
+) : (
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    {productos.map((p) => <ProductCard producto={p} />)}
+  </div>
+)}

@@ -1,0 +1,59 @@
+---
+// AIMMA Storefront · /c/[slug] · 2026-05-31
+// Pagina de categoria con grid de productos filtrados.
+
+import Layout from '~/layouts/Layout.astro';
+import ProductGrid from '~/components/ProductGrid.astro';
+import { getCategoriaPorSlug, getProductosPorTienda } from '~/lib/catalogo';
+
+const { tienda, supabase } = Astro.locals;
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/', 302);
+}
+
+const categoria = await getCategoriaPorSlug(supabase, tienda.id, slug);
+
+if (!categoria) {
+  return new Response(
+    `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8" /><title>Categoria no encontrada</title></head><body><h1>Categoria no encontrada</h1><p><a href="/">Volver al inicio</a></p></body></html>`,
+    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+
+const productos = await getProductosPorTienda(supabase, tienda.id, {
+  categoriaId: categoria.id,
+  limit: 48,
+});
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: categoria.nombre,
+  url: Astro.url.toString(),
+  isPartOf: { '@type': 'WebSite', name: tienda.nombre_negocio },
+};
+---
+
+<Layout
+  title={categoria.nombre}
+  description={`Productos de la categoria ${categoria.nombre} en ${tienda.nombre_negocio}.`}
+  jsonLd={jsonLd}
+>
+  <header class="mb-8">
+    <nav class="mb-2 text-sm text-[var(--ta-color-text-base)]/60" aria-label="Breadcrumb">
+      <a href="/" class="hover:underline">Inicio</a>
+      <span aria-hidden="true"> / </span>
+      <span>{categoria.nombre}</span>
+    </nav>
+    <h1 class="text-3xl font-bold text-[var(--ta-color-text-base)]">
+      {categoria.nombre}
+    </h1>
+    <p class="mt-2 text-sm text-[var(--ta-color-text-base)]/70">
+      {productos.length} {productos.length === 1 ? 'producto' : 'productos'}
+    </p>
+  </header>
+
+  <ProductGrid productos={productos} emptyMessage="Esta categoria aun no tiene productos." />
+</Layout>

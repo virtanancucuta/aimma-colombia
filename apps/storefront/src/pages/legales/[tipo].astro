@@ -1,0 +1,83 @@
+---
+// AIMMA Storefront · /legales/[tipo] · 2026-05-31
+// Paginas legales (Garantias / Datos / Contacto). Render desde tabla
+// paginas_legales con DOMPurify sanitization para campo contenido_html.
+//
+// La tabla guarda tanto contenido_html (legacy) como secciones (jsonb v3.7.b).
+// Preferimos secciones si existen.
+
+import Layout from '~/layouts/Layout.astro';
+import DOMPurify from 'isomorphic-dompurify';
+import { getPaginaLegal } from '~/lib/catalogo';
+
+const TIPOS_VALIDOS = ['garantias', 'datos', 'contacto'] as const;
+type TipoLegal = (typeof TIPOS_VALIDOS)[number];
+
+const { tienda, supabase } = Astro.locals;
+const { tipo } = Astro.params;
+
+if (!tipo || !TIPOS_VALIDOS.includes(tipo as TipoLegal)) {
+  return Astro.redirect('/', 302);
+}
+
+const pagina = await getPaginaLegal(supabase, tienda.id, tipo as TipoLegal);
+
+const TITULOS_DEFAULT: Record<TipoLegal, string> = {
+  garantias: 'Garantias y devoluciones',
+  datos: 'Tratamiento de datos personales',
+  contacto: 'Contacto',
+};
+
+const tituloPagina = pagina?.titulo || TITULOS_DEFAULT[tipo as TipoLegal];
+
+// Secciones JSON: [{titulo: string, contenido: string}, ...]
+interface Seccion { titulo: string; contenido: string }
+const secciones: Seccion[] = Array.isArray(pagina?.secciones)
+  ? (pagina!.secciones as unknown as Seccion[])
+  : [];
+
+// Sanitizar HTML legacy (campo contenido_html). Solo si no hay secciones.
+const contenidoHtmlSafe =
+  secciones.length === 0 && pagina?.contenido_html
+    ? DOMPurify.sanitize(pagina.contenido_html, { USE_PROFILES: { html: true } })
+    : null;
+
+const ultimaActualiz = pagina?.ultima_actualiz
+  ? new Date(pagina.ultima_actualiz).toLocaleDateString('es-CO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  : null;
+---
+
+<Layout
+  title={tituloPagina}
+  description={`${tituloPagina} de ${tienda.nombre_negocio}.`}
+  noindex={false}
+>
+  <article class="prose prose-sm mx-auto max-w-3xl text-[var(--ta-color-text-base)]">
+    <h1 class="text-3xl font-bold">{tituloPagina}</h1>
+
+    {ultimaActualiz && (
+      <p class="text-sm text-[var(--ta-color-text-base)]/60">
+        Ultima actualizacion: {ultimaActualiz}
+      </p>
+    )}
+
+    {secciones.length > 0 ? (
+      secciones.map((s) => (
+        <section class="mt-8">
+          <h2 class="text-xl font-semibold">{s.titulo}</h2>
+          <p class="whitespace-pre-line">{s.contenido}</p>
+        </section>
+      ))
+    ) : contenidoHtmlSafe ? (
+      <div set:html={contenidoHtmlSafe} />
+    ) : (
+      <p class="mt-8 text-[var(--ta-color-text-base)]/70">
+        Esta pagina no ha sido configurada todavia. Contactanos por WhatsApp si necesitas informacion.
+      </p>
+    )}
+  </article>
+</Layout>

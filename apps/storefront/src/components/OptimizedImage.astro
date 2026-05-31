@@ -1,0 +1,71 @@
+---
+// AIMMA Storefront · OptimizedImage.astro · 2026-05-31
+// Wrapper de <img> que usa Cloudflare Image Resizing via URL pattern
+// /cdn-cgi/image/<options>/<source-url> cuando la URL es absoluta.
+//
+// En dev local sin proxy Cloudflare, sirve la URL original (no optimiza).
+// En produccion detras de aimma.com.co, Cloudflare resizing aplica.
+//
+// Devuelve srcset responsive auto + format=auto (negocia WebP/AVIF segun
+// Accept header del cliente).
+
+interface Props {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  loading?: 'lazy' | 'eager';
+  class?: string;
+  sizes?: string;
+  transitionName?: string;
+}
+
+const {
+  src,
+  alt,
+  width,
+  height,
+  loading = 'lazy',
+  class: className,
+  sizes = '(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw',
+  transitionName,
+} = Astro.props;
+
+// Cloudflare Image Resizing pattern. Solo aplica si:
+//   1) src es URL absoluta (http/https)
+//   2) estamos en host bajo aimma.com.co (CF proxy activo)
+//
+// En SSR podemos detectar el host:
+const host = Astro.request.headers.get('host') || '';
+const cfActive = host.endsWith('aimma.com.co');
+
+function cfImage(srcUrl: string, w: number, quality = 85): string {
+  if (!cfActive || !srcUrl.startsWith('http')) return srcUrl;
+  const opts = `width=${w},format=auto,quality=${quality}`;
+  return `/cdn-cgi/image/${opts}/${srcUrl}`;
+}
+
+// Responsive widths (escalas de imagen para srcset).
+const widths = [Math.round(width * 0.5), width, Math.round(width * 1.5), width * 2];
+const srcset = widths
+  .map((w) => `${cfImage(src, w)} ${w}w`)
+  .join(', ');
+
+// Default src = base width
+const defaultSrc = cfImage(src, width);
+
+const styleAttr = transitionName ? `view-transition-name: ${transitionName}` : undefined;
+---
+
+<img
+  src={defaultSrc}
+  srcset={srcset}
+  sizes={sizes}
+  alt={alt}
+  width={width}
+  height={height}
+  loading={loading}
+  decoding={loading === 'eager' ? 'sync' : 'async'}
+  class={className}
+  style={styleAttr}
+/>

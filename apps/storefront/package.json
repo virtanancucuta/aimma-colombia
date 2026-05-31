@@ -1,0 +1,30 @@
+{
+  "name": "@aimma/storefront",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AIMMA Storefront publico multi-tenant — Astro 5 + Cloudflare Pages",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@aimma/database": "*",
+    "@astrojs/cloudflare": "^12.5.0",
+    "@astrojs/sitemap": "^3.4.0",
+    "@supabase/supabase-js": "^2.47.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "astro": "^5.6.0",
+    "isomorphic-dompurify": "^2.20.0",
+    "tailwindcss": "^4.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  }
+}

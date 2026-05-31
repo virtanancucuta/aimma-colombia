@@ -10,6 +10,12 @@ node_modules/
 dist/
 build/
 
+# Astro + Cloudflare Workers (Fase 5+)
+.astro/
+.wrangler/
+.dev.vars
+*.tsbuildinfo
+
 # Specs internas y prompts de trabajo (no exponer aunque el repo sea publico)
 AIMMA-prompts-trabajo.md
 e2e-tests/

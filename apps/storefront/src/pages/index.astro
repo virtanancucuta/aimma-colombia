@@ -1,0 +1,65 @@
+---
+// AIMMA Storefront · / (home) · 2026-05-31
+// Landing de la tienda: hero + categorias destacadas + productos destacados.
+
+import Layout from '~/layouts/Layout.astro';
+import ProductGrid from '~/components/ProductGrid.astro';
+import { getProductosPorTienda } from '~/lib/catalogo';
+
+const { tienda, supabase } = Astro.locals;
+
+// Productos destacados: ultimos 12 activos.
+const productos = await getProductosPorTienda(supabase, tienda.id, { limit: 12 });
+
+// JSON-LD Schema.org Store/LocalBusiness para SEO base de la tienda.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Store',
+  name: tienda.nombre_negocio,
+  ...(tienda.email_contacto && { email: tienda.email_contacto }),
+  ...(tienda.telefono_contacto && { telephone: tienda.telefono_contacto }),
+  ...(tienda.direccion && {
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: tienda.direccion,
+      ...(tienda.ciudad_negocio && { addressLocality: tienda.ciudad_negocio }),
+      addressCountry: 'CO',
+    },
+  }),
+  url: Astro.url.toString(),
+  ...(tienda.logo_url && { logo: tienda.logo_url, image: tienda.logo_url }),
+};
+---
+
+<Layout
+  title={undefined}
+  description={`Compra en ${tienda.nombre_negocio}. Tienda online con envios a Colombia. Pedidos faciles por WhatsApp.`}
+  jsonLd={jsonLd}
+>
+  <section class="mb-12 rounded-2xl bg-[var(--ta-color-primary)] px-6 py-16 text-center text-white">
+    <h1 class="text-3xl font-bold sm:text-5xl">
+      {tienda.nombre_negocio}
+    </h1>
+    <p class="mx-auto mt-4 max-w-2xl text-lg text-white/90">
+      Descubre nuestra coleccion y haz tu pedido por WhatsApp en segundos.
+    </p>
+  </section>
+
+  <section>
+    <header class="mb-6 flex items-end justify-between">
+      <h2 class="text-2xl font-semibold text-[var(--ta-color-text-base)]">
+        Productos
+      </h2>
+    </header>
+    <ProductGrid productos={productos} />
+  </section>
+</Layout>
+
+{/*
+  Cache-Control para storefront publico:
+  - Edge (Cloudflare) cachea por 5 min, sirve stale hasta 1h mientras revalida.
+  - Cliente revalida en cada request (no cache local).
+*/}
+<script is:inline>
+  // Aca puede ir analytics o tracking. Vacio por ahora.
+</script>

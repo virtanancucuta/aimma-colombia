@@ -1,0 +1,20 @@
+# Build & dependencies
+node_modules/
+.astro/
+dist/
+.cache/
+
+# Dev
+.env
+.env.local
+.env.*.local
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store

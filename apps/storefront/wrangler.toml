@@ -1,0 +1,29 @@
+# AIMMA Storefront · Cloudflare Workers config · v2 · 2026-05-31
+# Workers Static Assets pattern (Pages deprecated). Las env vars de PROD
+# se setean en el dashboard Cloudflare. En dev local salen de .env / .dev.vars
+# via platformProxy del adapter.
+
+name = "aimma-storefront"
+main = "./dist/_worker.js/index.js"
+compatibility_date = "2026-05-15"
+compatibility_flags = ["nodejs_compat"] # Requerido por adapter @astrojs/cloudflare
+
+[assets]
+directory = "./dist"
+
+# KV namespace para cache de tenant (slug -> tienda JSON). TTL 300s.
+# Invalidacion: webhook desde Supabase cuando tienda cambia → KV.delete(slug).
+# IDs se setean cuando se crea el binding en Cloudflare dashboard.
+# [[kv_namespaces]]
+# binding = "TENANT_CACHE"
+# id = "<set-in-cf-dashboard>"
+# preview_id = "<set-in-cf-dashboard>"
+
+# (Opcional Fase 5.x) KV para HTML cache de rutas SSR.
+# [[kv_namespaces]]
+# binding = "HTML_CACHE"
+# id = "<set-in-cf-dashboard>"
+
+[vars]
+# Vars publicas. Secrets reales (CF token, etc) se setean con `wrangler secret put`.
+PUBLIC_SUBDOMAIN_BASE = "tienda.aimma.com.co"

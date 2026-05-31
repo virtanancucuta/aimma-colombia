@@ -1,0 +1,19 @@
+{
+  "name": "aimma-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AIMMA Colombia monorepo — aimma.com.co (web/admin/dashboard legacy) + Panel IA Storefront publico multi-tenant Astro",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "storefront:dev": "npm run dev --workspace=@aimma/storefront",
+    "storefront:build": "npm run build --workspace=@aimma/storefront",
+    "storefront:preview": "npm run preview --workspace=@aimma/storefront"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

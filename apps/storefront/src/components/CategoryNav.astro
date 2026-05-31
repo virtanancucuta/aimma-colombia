@@ -1,0 +1,30 @@
+---
+// AIMMA Storefront · CategoryNav.astro · 2026-05-31
+// Nav horizontal de categorias top-level. Sin dropdown nested (Fase futura).
+
+interface Props {
+  categorias: Array<{
+    id: string;
+    nombre: string;
+    slug: string;
+    orden: number;
+  }>;
+}
+
+const { categorias } = Astro.props;
+---
+
+<nav class="hidden md:flex" aria-label="Categorias">
+  <ul class="flex items-center gap-1">
+    {categorias.map((cat) => (
+      <li>
+        <a
+          href={`/c/${cat.slug}`}
+          class="rounded-md px-3 py-2 text-sm font-medium text-[var(--ta-color-text-base)] hover:bg-black/5"
+        >
+          {cat.nombre}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
