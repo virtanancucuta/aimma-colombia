@@ -1,5 +1,11 @@
-// AIMMA Comercial · Tienda IA · Fase 4 #41 · tienda-publicar-subdominio v2
+// AIMMA Comercial · Tienda IA · Fase 4 #41 · tienda-publicar-subdominio v3
 // 2026-05-31
+//
+// v3 (post-test E2E aimma-test):
+//   - BUG-FIX: Easypanel responde "Domain X is already used in Y service"
+//     cuando el host ya existe (no "already exists" ni "duplicate"). El regex
+//     de duplicate detection no lo capturaba y caia en easypanel_error 502.
+//     Extendido a /already (exists|used)|unique|duplicate/i.
 //
 // v2 (post-audit pre-push):
 //   - CRITICAL: no leakear texto raw de Easypanel al frontend. detail genérico,
@@ -208,7 +214,10 @@ Deno.serve(async (req: Request) => {
     const epText = await epRes.text();
 
     const isOk = epRes.ok;
-    const isDuplicate = !isOk && /already exists|unique|duplicate/i.test(epText);
+    // v3: Easypanel responde "is already used in <project>/<service>" para
+    // dominios ya registrados. Tambien aceptamos exists/duplicate/unique
+    // por defensa contra cambios en futuras versiones del API.
+    const isDuplicate = !isOk && /already (exists|used)|unique|duplicate/i.test(epText);
 
     if (!isOk && !isDuplicate) {
       // Detalle completo SOLO en log server-side, no leak al frontend.
