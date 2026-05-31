@@ -48,10 +48,19 @@ const primary = p?.color_primary || '#1a1a1a';
 const accent = p?.color_accent || '#ff6b35';
 const textBase = p?.color_text_base || '#1a1a1a';
 const bgBase = p?.color_bg_base || '#ffffff';
+
+// CSS vars en el style attribute del <html> = declaraciones validas + heredadas
+// por todos los descendientes. Reemplaza el <style is:inline define:vars> que
+// generaba CSS invalido (declaraciones sueltas fuera de selector).
+const themeStyle =
+  `--ta-color-primary:${primary};` +
+  `--ta-color-accent:${accent};` +
+  `--ta-color-text-base:${textBase};` +
+  `--ta-color-bg-base:${bgBase};`;
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang="es" style={themeStyle}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -84,15 +93,8 @@ const bgBase = p?.color_bg_base || '#ffffff';
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     )}
 
-    {/* Theming dinamico via CSS vars. Inline para evitar FOUC en SSR. */}
-    <style is:inline define:vars={{ primary, accent, textBase, bgBase }}>
-      :root {
-        --ta-color-primary: var(--primary);
-        --ta-color-accent: var(--accent);
-        --ta-color-text-base: var(--textBase);
-        --ta-color-bg-base: var(--bgBase);
-      }
-    </style>
+    {/* Theming dinamico: CSS vars inyectadas en el style del <html> (arriba).
+        Esto evita el bug con is:inline + define:vars que generaba CSS invalido. */}
 
     {/* View Transitions (Astro 5+) */}
     <ClientRouter />
