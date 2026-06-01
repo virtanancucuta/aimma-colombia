@@ -1,0 +1,51 @@
+---
+// AIMMA Editor PRO-MAX · Hero · variant Minimal Artesanal · 2026-06-01
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
+  : section.fondo.tipo === 'imagen' ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
+  : section.fondo.tipo === 'gradient' ? `background-image:${section.fondo.valor};`
+  : '';
+---
+
+<section class={`block-section ${padClass} ma-hero`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="hero" data-plantilla="minimal_artesanal">
+  {section.elementos.map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  /* Minimal Artesanal hero: Fraunces variable opsz, generous tracking */
+  .ma-hero :global(.block-text--size-3xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    font-variation-settings: 'opsz' 96;
+  }
+  .ma-hero :global(.block-text--size-2xl),
+  .ma-hero :global(.block-text--size-xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 400;
+    font-variation-settings: 'opsz' 48;
+    letter-spacing: -0.015em;
+  }
+  .ma-hero :global(.block-text--size-md),
+  .ma-hero :global(.block-text--size-lg) {
+    font-family: var(--ta-font-body);
+    line-height: 1.65;
+    max-width: 60ch;
+    text-wrap: balance;
+  }
+  .ma-hero :global(.block-button) {
+    border-radius: 999px;
+    padding: 0.875rem 2.25rem;
+    font-family: var(--ta-font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 300ms ease-out;
+  }
+</style>
