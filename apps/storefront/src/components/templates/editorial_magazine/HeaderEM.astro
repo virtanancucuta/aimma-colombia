@@ -1,0 +1,81 @@
+---
+// Editorial Magazine · Header · 2026-06-01
+// Floating top-6, logo Fraunces small-caps izquierda, nav inline derecha 3 links.
+// Hairline ink al scroll. Cero centered logo.
+
+interface Tienda {
+  nombre_negocio: string;
+  logo_url: string | null;
+}
+
+interface Categoria {
+  id: string;
+  nombre: string;
+  slug: string;
+  orden: number;
+}
+
+interface Props {
+  tienda: Tienda;
+  categorias: Categoria[];
+}
+
+const { tienda, categorias } = Astro.props;
+const navCats = categorias.slice(0, 4);
+---
+
+<header class="em-header sticky top-0 z-40 transition-[background-color,border-bottom-color] duration-300">
+  <div class="mx-auto max-w-[1440px] px-6 md:px-10 lg:px-20 h-20 lg:h-24 flex items-center justify-between gap-6">
+    <a href="/" class="flex items-center gap-3 group" aria-label={tienda.nombre_negocio}>
+      {tienda.logo_url ? (
+        <img
+          src={tienda.logo_url}
+          alt={tienda.nombre_negocio}
+          width="32"
+          height="32"
+          loading="eager"
+          class="h-8 w-8 object-contain"
+        />
+      ) : null}
+      <span
+        class="font-display text-[20px] lg:text-[22px] text-[var(--ta-color-text-base)] transition-colors duration-200 group-hover:text-[var(--ta-color-primary)]"
+        style="font-weight:500; font-style:italic; letter-spacing:-0.02em; font-variation-settings:'opsz' 36;"
+      >
+        {tienda.nombre_negocio}
+      </span>
+    </a>
+
+    <nav class="hidden lg:flex items-center gap-9" aria-label="Categorias">
+      {navCats.map((cat) => (
+        <a
+          href={`/c/${cat.slug}`}
+          class="font-body text-[13px] font-medium text-[var(--ta-color-text-base)]/72 hover:text-[var(--ta-color-text-base)] transition-colors duration-200"
+        >
+          {cat.nombre}
+        </a>
+      ))}
+    </nav>
+
+    <a
+      href="/carrito"
+      class="flex items-center gap-2 font-body text-[13px] font-medium text-[var(--ta-color-text-base)]/80 hover:text-[var(--ta-color-text-base)] transition-colors duration-200"
+      aria-label="Carrito"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
+      </svg>
+      <span class="hidden md:inline">Carrito</span>
+    </a>
+  </div>
+  <span class="em-rule block h-px bg-[var(--ta-color-text-base)]/10"></span>
+</header>
+
+<style>
+  .em-header {
+    background-color: color-mix(in oklab, var(--ta-color-bg-base) 88%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+</style>

@@ -1,10 +1,11 @@
 ---
-// AIMMA Storefront · ProductCard.astro · v2 · 2026-05-31
-// Dispatcher product card por plantilla.
+// AIMMA Storefront · ProductCard.astro · v3 · 2026-06-01
+// Dispatcher product card — 4 plantillas activas.
 
 import ProductCardFB from '~/components/templates/fashion_bold/ProductCardFB.astro';
 import ProductCardIC from '~/components/templates/industrial_clean/ProductCardIC.astro';
 import ProductCardMA from '~/components/templates/minimal_artesanal/ProductCardMA.astro';
+import ProductCardEM from '~/components/templates/editorial_magazine/ProductCardEM.astro';
 
 interface Props {
   producto: {
@@ -26,6 +27,7 @@ const slug = tienda.plantilla?.slug;
 
 {slug === 'fashion_bold' && <ProductCardFB producto={producto} />}
 {slug === 'minimal_artesanal' && <ProductCardMA producto={producto} />}
-{(slug === 'industrial_clean' || !slug || (slug !== 'fashion_bold' && slug !== 'minimal_artesanal')) && (
+{slug === 'editorial_magazine' && <ProductCardEM producto={producto} />}
+{(slug === 'industrial_clean' || !slug || !['fashion_bold', 'minimal_artesanal', 'editorial_magazine'].includes(slug)) && (
   <ProductCardIC producto={producto} />
 )}

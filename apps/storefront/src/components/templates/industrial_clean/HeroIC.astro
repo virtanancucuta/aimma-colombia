@@ -1,11 +1,10 @@
 ---
-// Industrial Clean · Hero · 2026-05-31
-// Split 6/6 layout. Eyebrow + H1 + dek + 2 CTAs + trust badges.
-// py-20 lg:py-28. NO full-bleed, NO 100vh.
+// Industrial Clean · Hero · v2 · 2026-06-01 agency-level rewrite
+// Light-source canvas (no logo placeholder). Tech precision. UN solo CTA.
+// Specs en flow normal (NO eyebrow tracked). Motion: stagger reveal + soft pulse.
 
 interface Tienda {
   nombre_negocio: string;
-  logo_url: string | null;
   ciudad_negocio?: string | null;
 }
 
@@ -16,90 +15,106 @@ interface Props {
 const { tienda } = Astro.props;
 ---
 
-<section class="py-12 lg:py-20">
-  <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-    {/* Left col — texto */}
-    <div>
-      <p class="font-display text-xs uppercase tracking-[0.2em] text-[var(--ta-color-primary)] mb-6">
-        Productos y soluciones
-      </p>
-      <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight text-[var(--ta-color-text-base)]">
+<section class="ic-hero relative py-16 lg:py-24">
+  <div class="grid items-center gap-14 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
+    {/* Left col — texto + specs reales */}
+    <div class="ic-stagger">
+      <h1
+        class="font-display font-semibold text-[var(--ta-color-text-base)] text-balance"
+        style="font-size:clamp(2.5rem, 5.5vw, 4.75rem); line-height:1.04; letter-spacing:-0.038em;"
+      >
         {tienda.nombre_negocio}
       </h1>
-      <p class="mt-6 font-body text-base lg:text-lg text-[var(--ta-color-text-base)]/70 max-w-xl leading-relaxed">
-        Catalogo completo de productos profesionales. Calidad garantizada,
-        soporte directo via WhatsApp.
+
+      <p class="mt-7 font-body text-[15px] lg:text-[17px] text-[var(--ta-color-text-base)]/72 leading-[1.6] max-w-[58ch]">
+        Catalogo profesional con despacho confirmado por WhatsApp.
+        Garantia incluida{tienda.ciudad_negocio ? `, taller en ${tienda.ciudad_negocio}` : ''}.
       </p>
 
-      {/* CTAs: primary + ghost outline */}
-      <div class="mt-8 flex flex-wrap items-center gap-4">
-        <a
-          href="#productos"
-          class="inline-flex items-center gap-2 rounded-sm bg-[var(--ta-color-primary)] px-6 py-3 font-body text-sm font-medium text-[var(--ta-color-on-primary)] transition-colors duration-200 hover:opacity-90"
-        >
-          Ver productos
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <line x1="5" y1="12" x2="19" y2="12" />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
-        </a>
-        <a
-          href="/legales/contacto"
-          class="inline-flex items-center rounded-sm border border-[var(--ta-color-text-base)]/20 px-6 py-3 font-body text-sm font-medium text-[var(--ta-color-text-base)] transition-colors duration-200 hover:bg-[var(--ta-color-text-base)]/5"
-        >
-          Contactanos
-        </a>
-      </div>
+      {/* Specs row — datos concretos, no eyebrow tracked */}
+      <dl class="mt-10 grid grid-cols-3 gap-x-6 gap-y-3 max-w-md">
+        <div>
+          <dt class="font-body text-[11px] text-[var(--ta-color-text-base)]/55" style="font-feature-settings:'tnum' on;">DESPACHO</dt>
+          <dd class="mt-1 font-display text-[15px] font-semibold tabular-nums text-[var(--ta-color-text-base)]">24-48h</dd>
+        </div>
+        <div>
+          <dt class="font-body text-[11px] text-[var(--ta-color-text-base)]/55">PAGO</dt>
+          <dd class="mt-1 font-display text-[15px] font-semibold text-[var(--ta-color-text-base)]">WhatsApp</dd>
+        </div>
+        <div>
+          <dt class="font-body text-[11px] text-[var(--ta-color-text-base)]/55">GARANTIA</dt>
+          <dd class="mt-1 font-display text-[15px] font-semibold text-[var(--ta-color-text-base)]">Incluida</dd>
+        </div>
+      </dl>
 
-      {/* Trust strip */}
-      <ul class="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 text-xs font-body text-[var(--ta-color-text-base)]/60">
-        <li class="flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          Garantia incluida
-        </li>
-        <li class="flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <rect x="1" y="3" width="15" height="13" />
-            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-            <circle cx="5.5" cy="18.5" r="2.5" />
-            <circle cx="18.5" cy="18.5" r="2.5" />
-          </svg>
-          Envios a toda Colombia
-        </li>
-        {tienda.ciudad_negocio && (
-          <li class="flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            Sede {tienda.ciudad_negocio}
-          </li>
-        )}
-      </ul>
+      {/* UN CTA — quitamos el ghost duplicado */}
+      <a
+        href="#productos"
+        class="ic-cta mt-10 inline-flex items-center gap-2.5 bg-[var(--ta-color-primary)] px-7 py-3.5 font-body text-[15px] font-medium text-[var(--ta-color-on-primary)] transition-transform duration-200 will-change-transform hover:translate-x-0.5"
+        style="border-radius:2px;"
+      >
+        Ver catalogo completo
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </a>
     </div>
 
-    {/* Right col — image placeholder con grid pattern industrial */}
-    <div class="relative aspect-[4/3] overflow-hidden rounded-sm bg-[var(--ta-color-text-base)]/5">
-      {tienda.logo_url ? (
-        <img
-          src={tienda.logo_url}
-          alt=""
-          class="absolute inset-0 h-full w-full object-contain p-12 opacity-80"
-          loading="eager"
-        />
-      ) : (
-        <div class="flex h-full items-center justify-center">
-          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.5" class="text-[var(--ta-color-primary)]/40" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="0" />
-            <line x1="3" y1="9" x2="21" y2="9" />
-            <line x1="3" y1="15" x2="21" y2="15" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-            <line x1="15" y1="3" x2="15" y2="21" />
-          </svg>
-        </div>
-      )}
+    {/* Right col — canvas tipografico con light source CSS (NO logo image) */}
+    <div class="relative ic-canvas overflow-hidden bg-[var(--ta-color-text-base)]/[0.04] aspect-[5/6] lg:aspect-[4/5]" style="border-radius:2px;">
+      {/* Light source radial */}
+      <div
+        class="absolute inset-0"
+        aria-hidden="true"
+        style="background-image:radial-gradient(ellipse 70% 55% at 30% 25%, color-mix(in oklab, var(--ta-color-primary) 14%, transparent), transparent 70%);"
+      ></div>
+
+      {/* Grid hairlines técnicas — material no template */}
+      <svg class="absolute inset-0 w-full h-full opacity-30" aria-hidden="true">
+        <defs>
+          <pattern id="ic-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M40 0L0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.5" class="text-[var(--ta-color-text-base)]" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#ic-grid)" />
+      </svg>
+
+      {/* Statement tipográfico sobre canvas — no logo */}
+      <div class="absolute inset-0 flex flex-col justify-end p-8 lg:p-12">
+        <p class="font-body text-[10px] tabular-nums tracking-wide text-[var(--ta-color-text-base)]/60 mb-3">
+          REF · {new Date().getFullYear().toString().slice(-2)}/06
+        </p>
+        <p
+          class="font-display font-semibold text-[var(--ta-color-text-base)] text-balance"
+          style="font-size:clamp(1.5rem, 3vw, 2.5rem); line-height:1.05; letter-spacing:-0.03em;"
+        >
+          Hecho para durar.<br/>
+          <span class="text-[var(--ta-color-primary)]">Pensado para resolver.</span>
+        </p>
+      </div>
     </div>
   </div>
+
+  <style>
+    .ic-stagger > * {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: icReveal 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .ic-stagger > *:nth-child(1) { animation-delay: 80ms; }
+    .ic-stagger > *:nth-child(2) { animation-delay: 160ms; }
+    .ic-stagger > *:nth-child(3) { animation-delay: 240ms; }
+    .ic-stagger > *:nth-child(4) { animation-delay: 320ms; }
+    .ic-canvas {
+      opacity: 0;
+      animation: icReveal 720ms cubic-bezier(0.22, 1, 0.36, 1) 200ms forwards;
+    }
+    @keyframes icReveal {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ic-stagger > *, .ic-canvas { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
 </section>

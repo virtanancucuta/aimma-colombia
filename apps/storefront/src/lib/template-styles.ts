@@ -6,7 +6,7 @@
 // 3 plantillas activas: fashion_bold, industrial_clean, minimal_artesanal.
 // Plantillas extra futuras deben agregarse aqui + sus variants en components/templates/.
 
-export type TemplateSlug = 'fashion_bold' | 'industrial_clean' | 'minimal_artesanal';
+export type TemplateSlug = 'fashion_bold' | 'industrial_clean' | 'minimal_artesanal' | 'editorial_magazine';
 
 export interface FontConfig {
   /** Google Fonts URL incluyendo weights y display=swap */
@@ -67,10 +67,23 @@ const MINIMAL_ARTESANAL: TemplateStyle = {
   bodyClass: 'font-body bg-[var(--ta-color-bg-base)] text-[var(--ta-color-text-base)]',
 };
 
+const EDITORIAL_MAGAZINE: TemplateStyle = {
+  slug: 'editorial_magazine',
+  fonts: {
+    googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap',
+    displayFamily: '"Fraunces", "Cormorant Garamond", "Playfair Display", Georgia, serif',
+    bodyFamily: '"Inter", system-ui, -apple-system, sans-serif',
+  },
+  // Editorial Magazine = baseline editorial generoso, max-w refined.
+  mainContainerClass: 'flex-1 mx-auto w-full max-w-[1440px] px-6 md:px-10 lg:px-20',
+  bodyClass: 'font-body bg-[var(--ta-color-bg-base)] text-[var(--ta-color-text-base)]',
+};
+
 const TEMPLATE_STYLES: Record<TemplateSlug, TemplateStyle> = {
   fashion_bold: FASHION_BOLD,
   industrial_clean: INDUSTRIAL_CLEAN,
   minimal_artesanal: MINIMAL_ARTESANAL,
+  editorial_magazine: EDITORIAL_MAGAZINE,
 };
 
 // ============================================================

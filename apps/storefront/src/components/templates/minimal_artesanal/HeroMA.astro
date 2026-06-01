@@ -1,12 +1,11 @@
 ---
-// Minimal Artesanal · Hero · 2026-05-31
-// Centered editorial. Serif headline clamp(3rem, 8vw, 7rem). Eyebrow uppercase
-// tracking-[0.3em] 11px. Dek max-w-md. Underline link en lugar de boton.
-// Figure full-bleed abajo con caption pequeno.
+// Minimal Artesanal · Hero · v2 · 2026-06-01 agency-level rewrite
+// Editorial asimetrico con dropcap + pull quote. Fraunces italic.
+// NO eyebrow tracked. NO logo placeholder. UN solo CTA underlined.
 
 interface Tienda {
   nombre_negocio: string;
-  logo_url: string | null;
+  ciudad_negocio?: string | null;
 }
 
 interface Props {
@@ -14,45 +13,85 @@ interface Props {
 }
 
 const { tienda } = Astro.props;
+const firstLetter = tienda.nombre_negocio.charAt(0);
+const rest = tienda.nombre_negocio.slice(1);
+const ciudad = tienda.ciudad_negocio || 'Colombia';
 ---
 
-<section class="pt-24 pb-24 lg:pt-40 lg:pb-32 text-center">
-  <p class="mb-10 font-body text-[11px] uppercase tracking-[0.3em] text-[var(--ta-color-text-base)]/50">
-    Coleccion · 2026
-  </p>
+<section class="ma-hero relative pt-32 pb-24 lg:pt-48 lg:pb-32">
+  <div class="grid lg:grid-cols-12 gap-12 lg:gap-16">
+    {/* Texto editorial — col 7 desktop, asimetrico anclado abajo */}
+    <div class="lg:col-span-7 flex flex-col justify-end ma-fade">
+      <h1
+        class="font-display text-[var(--ta-color-text-base)] text-balance"
+        style="font-size:clamp(2.75rem, 6.5vw, 5.5rem); font-weight:400; line-height:1.02; letter-spacing:-0.035em; font-variation-settings:'opsz' 144;"
+      >
+        <span aria-hidden="true" class="ma-dropcap">{firstLetter}</span>
+        <span class="sr-only">{firstLetter}</span>{rest}
+      </h1>
 
-  <h1
-    class="font-display leading-[0.95] tracking-[-0.02em] text-[var(--ta-color-text-base)]"
-    style="font-size: clamp(3rem, 8vw, 7rem); font-weight: 400;"
-  >
-    {tienda.nombre_negocio}
-  </h1>
+      <p
+        class="mt-8 font-display text-[var(--ta-color-text-base)]/72 max-w-[44ch]"
+        style="font-size:clamp(1.05rem, 1.8vw, 1.4rem); font-style:italic; font-weight:400; line-height:1.45; font-variation-settings:'opsz' 24;"
+      >
+        Una coleccion pensada despacio, hecha despacio.
+        Pedidos por WhatsApp, despacho desde {ciudad}.
+      </p>
 
-  <p class="mx-auto mt-10 max-w-md font-body text-[15px] leading-[1.7] text-[var(--ta-color-text-base)]/65">
-    Hecho a mano, hecho despacio. Pedidos por WhatsApp.
-  </p>
+      <a
+        href="#productos"
+        class="ma-link mt-12 inline-flex items-center gap-3 font-body text-[14px] font-medium text-[var(--ta-color-text-base)] w-fit"
+      >
+        <span class="border-b border-[var(--ta-color-text-base)] pb-1">Ver coleccion completa</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="13 6 19 12 13 18" />
+        </svg>
+      </a>
+    </div>
 
-  <a
-    href="#productos"
-    class="mt-14 inline-block border-b border-[var(--ta-color-text-base)]/40 pb-1 font-body text-[11px] uppercase tracking-[0.2em] text-[var(--ta-color-text-base)] transition-colors hover:border-[var(--ta-color-text-base)]"
-  >
-    Ver coleccion
-  </a>
+    {/* Pull-quote editorial col 5 derecha — reemplaza el logo placeholder */}
+    <aside class="lg:col-span-5 flex items-center ma-fade" style="animation-delay:240ms;">
+      <figure class="relative w-full">
+        {/* Hairline top y bottom */}
+        <span class="block h-px bg-[var(--ta-color-text-base)]/15"></span>
+        <blockquote class="py-12 lg:py-16 px-2">
+          <p
+            class="font-display italic text-[var(--ta-color-text-base)]"
+            style="font-size:clamp(1.4rem, 2.6vw, 2rem); font-weight:300; line-height:1.32; letter-spacing:-0.01em; font-variation-settings:'opsz' 96;"
+          >
+            &ldquo;Lo que se hace con tiempo dura mas tiempo.&rdquo;
+          </p>
+          <figcaption class="mt-6 font-body text-[12px] text-[var(--ta-color-text-base)]/50" style="letter-spacing:0.04em;">
+            Filosofia de la casa
+          </figcaption>
+        </blockquote>
+        <span class="block h-px bg-[var(--ta-color-text-base)]/15"></span>
+      </figure>
+    </aside>
+  </div>
 
-  {/* Figure opcional debajo */}
-  {tienda.logo_url && (
-    <figure class="mt-16 lg:mt-24 mx-auto max-w-screen-xl">
-      <div class="aspect-[16/10] overflow-hidden bg-[var(--ta-color-text-base)]/5">
-        <img
-          src={tienda.logo_url}
-          alt=""
-          class="h-full w-full object-contain p-16 opacity-90"
-          loading="eager"
-        />
-      </div>
-      <figcaption class="mt-4 font-body text-[10px] uppercase tracking-[0.2em] text-[var(--ta-color-text-base)]/40">
-        Coleccion · {tienda.nombre_negocio}
-      </figcaption>
-    </figure>
-  )}
+  <style>
+    .ma-dropcap {
+      font-style: italic;
+      font-weight: 300;
+      font-variation-settings: 'opsz' 144;
+      color: var(--ta-color-primary);
+    }
+    .ma-fade {
+      opacity: 0;
+      transform: translateY(8px);
+      animation: maFade 900ms cubic-bezier(0.22, 1, 0.36, 1) 120ms forwards;
+    }
+    .ma-link {
+      transition: gap 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ma-link:hover { gap: 1.25rem; }
+    @keyframes maFade {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ma-fade { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
 </section>

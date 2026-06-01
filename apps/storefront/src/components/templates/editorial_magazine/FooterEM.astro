@@ -1,0 +1,104 @@
+---
+// Editorial Magazine · Footer · 2026-06-01
+// 4 col: pull-quote / sitio / atencion / firma. Captions Fraunces italic.
+// Year en romano MMXXVI. Hairline top.
+
+interface Tienda {
+  nombre_negocio: string;
+  whatsapp_dueno?: string | null;
+  email_contacto?: string | null;
+  direccion?: string | null;
+  ciudad_negocio?: string | null;
+  horario_atencion?: string | null;
+}
+
+interface Props {
+  tienda: Tienda;
+}
+
+const { tienda } = Astro.props;
+const year = new Date().getFullYear();
+const romanYear = (n: number): string => {
+  const map: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ];
+  let r = '';
+  for (const [v, s] of map) { while (n >= v) { r += s; n -= v; } }
+  return r;
+};
+const wppDigits = (tienda.whatsapp_dueno || '').replace(/\D/g, '');
+---
+
+<footer class="em-footer pt-24 lg:pt-32 pb-12">
+  <span class="block h-px bg-[var(--ta-color-text-base)]/12 mb-16 lg:mb-20"></span>
+  <div class="grid gap-12 lg:grid-cols-12 lg:gap-16">
+    <div class="lg:col-span-5">
+      <p
+        class="font-display italic text-[var(--ta-color-text-base)]"
+        style="font-size:clamp(1.5rem, 2.6vw, 2rem); font-weight:300; line-height:1.3; letter-spacing:-0.018em; font-variation-settings:'opsz' 96;"
+      >
+        {tienda.nombre_negocio} es una casa que cuida la pieza, la persona y el tiempo que las une.
+      </p>
+    </div>
+
+    <nav class="lg:col-span-2 lg:col-start-7" aria-label="Sitio">
+      <h4 class="font-body text-[11px] font-medium text-[var(--ta-color-text-base)]/55 mb-5" style="letter-spacing:0.04em;">
+        Sitio
+      </h4>
+      <ul class="space-y-3 font-body text-[14px] text-[var(--ta-color-text-base)]/80">
+        <li><a href="/" class="hover:text-[var(--ta-color-text-base)] transition-colors">Inicio</a></li>
+        <li><a href="#productos" class="hover:text-[var(--ta-color-text-base)] transition-colors">Coleccion</a></li>
+        <li><a href="/legales/contacto" class="hover:text-[var(--ta-color-text-base)] transition-colors">Contacto</a></li>
+        <li><a href="/legales/garantias" class="hover:text-[var(--ta-color-text-base)] transition-colors">Garantias</a></li>
+      </ul>
+    </nav>
+
+    <div class="lg:col-span-3">
+      <h4 class="font-body text-[11px] font-medium text-[var(--ta-color-text-base)]/55 mb-5" style="letter-spacing:0.04em;">
+        Atencion
+      </h4>
+      <ul class="space-y-3 font-body text-[14px] text-[var(--ta-color-text-base)]/80">
+        {wppDigits && (
+          <li>
+            <a href={`https://wa.me/${wppDigits}`} target="_blank" rel="noopener" class="hover:text-[var(--ta-color-text-base)] transition-colors">
+              WhatsApp · {tienda.whatsapp_dueno}
+            </a>
+          </li>
+        )}
+        {tienda.email_contacto && (
+          <li>
+            <a href={`mailto:${tienda.email_contacto}`} class="hover:text-[var(--ta-color-text-base)] transition-colors">
+              {tienda.email_contacto}
+            </a>
+          </li>
+        )}
+        {tienda.horario_atencion && (
+          <li class="text-[var(--ta-color-text-base)]/60">{tienda.horario_atencion}</li>
+        )}
+        {tienda.direccion && (
+          <li class="text-[var(--ta-color-text-base)]/60">
+            {tienda.direccion}{tienda.ciudad_negocio ? `, ${tienda.ciudad_negocio}` : ''}
+          </li>
+        )}
+      </ul>
+    </div>
+
+    <div class="lg:col-span-2">
+      <h4 class="font-body text-[11px] font-medium text-[var(--ta-color-text-base)]/55 mb-5" style="letter-spacing:0.04em;">
+        Legal
+      </h4>
+      <ul class="space-y-3 font-body text-[14px] text-[var(--ta-color-text-base)]/80">
+        <li><a href="/legales/datos" class="hover:text-[var(--ta-color-text-base)] transition-colors">Tratamiento de datos</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mt-16 flex flex-wrap items-baseline justify-between gap-4 font-body text-[12px] text-[var(--ta-color-text-base)]/55">
+    <p>&copy; {romanYear(year)} &middot; {tienda.nombre_negocio}</p>
+    <p class="font-display italic" style="font-variation-settings:'opsz' 24;">
+      Hecho con cuidado en Colombia
+    </p>
+  </div>
+</footer>
