@@ -20,3 +20,4 @@ build/
 AIMMA-prompts-trabajo.md
 e2e-tests/
 keepalive_workflow.json
+.audit-screenshots/
