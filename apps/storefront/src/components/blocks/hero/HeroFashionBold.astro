@@ -1,0 +1,53 @@
+---
+// AIMMA Editor PRO-MAX · Hero · variant Fashion Bold · 2026-06-01
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color'
+  ? `background-color:${section.fondo.valor};`
+  : section.fondo.tipo === 'imagen'
+    ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
+    : section.fondo.tipo === 'gradient'
+      ? `background-image:${section.fondo.valor};`
+      : '';
+---
+
+<section
+  class={`block-section ${padClass} fb-hero`}
+  style={`${heightStyle}${bgStyle}`}
+  data-section-id={section.id}
+  data-section-tipo="hero"
+  data-plantilla="fashion_bold"
+>
+  {section.elementos.map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  /* Fashion Bold hero: tipografia anton uppercase edge-to-edge */
+  .fb-hero :global(.block-text--size-3xl),
+  .fb-hero :global(.block-text--size-2xl) {
+    font-family: var(--ta-font-display);
+    text-transform: uppercase;
+    letter-spacing: -0.04em;
+    line-height: 0.88;
+    font-weight: 400;
+  }
+  .fb-hero :global(.block-text--size-xl) {
+    font-family: var(--ta-font-display);
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+  }
+  .fb-hero :global(.block-button) {
+    border-radius: 0;
+    padding: 1rem 2.5rem;
+    font-family: var(--ta-font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.85rem;
+  }
+</style>
