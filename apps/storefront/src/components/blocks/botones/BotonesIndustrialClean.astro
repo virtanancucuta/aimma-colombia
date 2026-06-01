@@ -1,0 +1,33 @@
+---
+// AIMMA Editor PRO-MAX · Botones (fila CTAs) · variant Industrial Clean
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+
+interface Props {
+  section: Section;
+}
+
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color'
+  ? `background-color:${section.fondo.valor};`
+  : '';
+---
+
+<section
+  class={`block-section ${padClass} ic-botones`}
+  style={`${heightStyle}${bgStyle}`}
+  data-section-id={section.id}
+  data-section-tipo="botones"
+>
+  {section.elementos.map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  .ic-botones :global(.block-button) {
+    border-radius: 2px;
+    padding: 0.875rem 2rem;
+    font-size: 0.95rem;
+  }
+</style>

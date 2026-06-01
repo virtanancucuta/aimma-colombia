@@ -1,0 +1,45 @@
+---
+// AIMMA Editor PRO-MAX · Texto · variant Industrial Clean · 2026-06-01
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+
+interface Props {
+  section: Section;
+}
+
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color'
+  ? `background-color:${section.fondo.valor};`
+  : section.fondo.tipo === 'imagen'
+    ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
+    : section.fondo.tipo === 'gradient'
+      ? `background-image:${section.fondo.valor};`
+      : '';
+---
+
+<section
+  class={`block-section ${padClass} ic-texto`}
+  style={`${heightStyle}${bgStyle}`}
+  data-section-id={section.id}
+  data-section-tipo="texto"
+>
+  {section.elementos.map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  .ic-texto :global(.block-text--size-2xl),
+  .ic-texto :global(.block-text--size-xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+  }
+  .ic-texto :global(.block-text--size-md),
+  .ic-texto :global(.block-text--size-lg) {
+    font-family: var(--ta-font-body);
+    line-height: 1.6;
+    max-width: 65ch;
+  }
+</style>

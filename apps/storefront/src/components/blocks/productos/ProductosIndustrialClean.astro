@@ -1,0 +1,90 @@
+---
+// AIMMA Editor PRO-MAX · Productos · variant Industrial Clean · 2026-06-01
+// Section grid productos: query Supabase con filtros del elemento.
+// Reusa ProductCardIC existente de Fase 9.
+
+import type { Section, Element } from '@aimma/database';
+import ProductCard from '~/components/templates/industrial_clean/ProductCardIC.astro';
+import { getProductosPorTienda } from '~/lib/catalogo';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+
+interface Props {
+  section: Section;
+}
+
+const { section } = Astro.props;
+const { tienda, supabase } = Astro.locals;
+
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color'
+  ? `background-color:${section.fondo.valor};`
+  : '';
+
+// Encontrar primer elemento 'productos' del section (tipico: 1 por section)
+const prodEl = section.elementos.find(el => el.tipo === 'productos') as
+  Extract<Element, { tipo: 'productos' }> | undefined;
+
+// Si no hay element productos, no rendereamos grid (caso defensivo).
+// try/catch: si Supabase falla, mostrar empty state en vez de 500.
+let productos: Awaited<ReturnType<typeof getProductosPorTienda>> = [];
+if (prodEl) {
+  try {
+    productos = await getProductosPorTienda(supabase, tienda.id, {
+      limit: prodEl.props.limite,
+      categoriaId: prodEl.props.categoria_id ?? undefined,
+    });
+  } catch (err) {
+    console.error('[ProductosIC] getProductosPorTienda failed:', err);
+    productos = [];
+  }
+}
+
+// Tailwind JIT requiere strings literales (no template ${}). Mapear con ternarios.
+const colsClass = !prodEl || prodEl.props.columnas === 'auto'
+  ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+  : prodEl.props.columnas === 2 ? 'grid-cols-2'
+  : prodEl.props.columnas === 3 ? 'grid-cols-3'
+  : prodEl.props.columnas === 4 ? 'grid-cols-4'
+  : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+---
+
+<section
+  class={`block-section ${padClass} ic-productos`}
+  style={`${heightStyle}${bgStyle}`}
+  data-section-id={section.id}
+  data-section-tipo="productos"
+>
+  {/* Renderear primero elementos NO-productos (titulo opcional, separador, etc) */}
+  {section.elementos.filter(el => el.tipo !== 'productos').map((el) => (
+    <ElementRenderer el={el} />
+  ))}
+
+  {/* Grid productos: ocupa todo el ancho 24-col, fuera del grid normal */}
+  <div class="ic-productos-grid" style="grid-column:1 / -1;">
+    {productos.length === 0 ? (
+      <div class="ic-empty">Sin productos disponibles</div>
+    ) : (
+      <div class={`grid gap-3 lg:gap-4 ${colsClass}`}>
+        {productos.map((p) => <ProductCard producto={p} />)}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .ic-productos-grid {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+  }
+  .ic-empty {
+    padding: 3rem;
+    text-align: center;
+    color: color-mix(in oklab, var(--ta-color-text-base) 60%, transparent);
+    font-family: var(--ta-font-body);
+    font-size: 0.95rem;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 12%, transparent);
+    border-radius: 2px;
+  }
+</style>

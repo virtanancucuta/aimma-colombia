@@ -1,0 +1,51 @@
+---
+// AIMMA Editor PRO-MAX · Imagen banner · variant Industrial Clean
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+
+interface Props {
+  section: Section;
+}
+
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+
+// Industrial Clean: la imagen banner suele tener border 1px y aspect-ratio fijo.
+// Si el primer elemento es imagen, lo trato como fondo full.
+const primerImagen = section.elementos.find(el => el.tipo === 'imagen');
+const bgStyle = primerImagen && primerImagen.tipo === 'imagen'
+  ? `background-image:url(${primerImagen.props.src});background-size:${primerImagen.props.objeto};background-position:center;`
+  : section.fondo.tipo === 'color'
+    ? `background-color:${section.fondo.valor};`
+    : '';
+
+const overlayStyle = section.fondo.overlay
+  ? `position:relative;`
+  : '';
+---
+
+<section
+  class={`block-section ${padClass} ic-imagen`}
+  style={`${heightStyle}${bgStyle}${overlayStyle}`}
+  data-section-id={section.id}
+  data-section-tipo="imagen"
+>
+  {section.fondo.overlay && (
+    <div
+      class="block-imagen-overlay"
+      style={`position:absolute;inset:0;background:${section.fondo.overlay.color};opacity:${section.fondo.overlay.opacity};pointer-events:none;`}
+    />
+  )}
+  {/* Solo renderizo elementos NO-imagen (la imagen es el fondo) */}
+  {section.elementos.filter(el => el.tipo !== 'imagen').map((el) => (
+    <ElementRenderer el={el} />
+  ))}
+</section>
+
+<style>
+  .ic-imagen {
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+    overflow: hidden;
+  }
+</style>

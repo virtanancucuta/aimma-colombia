@@ -1,0 +1,32 @@
+---
+// AIMMA Editor PRO-MAX · Espaciador · 2026-06-01
+// Section vacia con solo altura + fondo configurable. Sin variantes por
+// plantilla (es agnostico). Util para crear respiro entre secciones.
+
+import type { Section } from '@aimma/database';
+
+interface Props {
+  section: Section;
+}
+
+const { section } = Astro.props;
+
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color'
+  ? `background-color:${section.fondo.valor};`
+  : section.fondo.tipo === 'imagen'
+    ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
+    : section.fondo.tipo === 'gradient'
+      ? `background-image:${section.fondo.valor};`
+      : '';
+---
+
+<section
+  class={`block-section ${padClass}`}
+  style={`${heightStyle}${bgStyle}`}
+  data-section-id={section.id}
+  data-section-tipo="espaciador"
+>
+  {/* Espaciador no tiene elementos */}
+</section>

@@ -1,0 +1,189 @@
+---
+// AIMMA Editor PRO-MAX · Formulario · variant Industrial Clean
+// NOTA: el handler de submit es Plan 3 (necesita EF tienda-form-submit).
+// Por ahora el form renderea pero submit hace POST a /internal/form-submit
+// que devuelve 404 — eso es OK para Plan 1.
+
+import type { Section, Element } from '@aimma/database';
+
+interface Props {
+  section: Section;
+}
+
+const { section } = Astro.props;
+
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color'
+  ? `background-color:${section.fondo.valor};`
+  : '';
+
+// Filtrar elementos form_field
+const campos = section.elementos.filter(el => el.tipo === 'form_field') as
+  Extract<Element, { tipo: 'form_field' }>[];
+
+// Buscar opcional titulo (elemento texto)
+const titulo = section.elementos.find(el => el.tipo === 'texto');
+
+// Buscar boton submit (elemento boton)
+const submitBtn = section.elementos.find(el => el.tipo === 'boton');
+---
+
+<section
+  class={`block-section ${padClass} ic-form`}
+  style={`${heightStyle}${bgStyle}`}
+  data-section-id={section.id}
+  data-section-tipo="formulario"
+>
+  <form
+    class="ic-form-inner"
+    style="grid-column:1 / -1;"
+    method="POST"
+    action="/internal/form-submit"
+    data-form-id={section.id}
+  >
+    {titulo && titulo.tipo === 'texto' && (
+      <h3 class="ic-form-title">{titulo.props.contenido}</h3>
+    )}
+
+    {campos.map((campo, idx) => {
+      const fieldId = `${section.id}_field_${idx}`;
+      if (campo.props.tipo_campo === 'textarea') {
+        return (
+          <div class="ic-form-field">
+            <label for={fieldId}>
+              {campo.props.label}
+              {campo.props.requerido && <span class="ic-required">*</span>}
+            </label>
+            <textarea
+              id={fieldId}
+              name={`field_${idx}`}
+              placeholder={campo.props.placeholder ?? ''}
+              required={campo.props.requerido}
+              rows={4}
+            ></textarea>
+          </div>
+        );
+      }
+      if (campo.props.tipo_campo === 'select') {
+        return (
+          <div class="ic-form-field">
+            <label for={fieldId}>
+              {campo.props.label}
+              {campo.props.requerido && <span class="ic-required">*</span>}
+            </label>
+            <select id={fieldId} name={`field_${idx}`} required={campo.props.requerido}>
+              <option value="">{campo.props.placeholder ?? 'Selecciona...'}</option>
+              {(campo.props.opciones ?? []).map((opt) => (
+                <option value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+        );
+      }
+      if (campo.props.tipo_campo === 'checkbox') {
+        return (
+          <div class="ic-form-field ic-form-field--check">
+            <input id={fieldId} name={`field_${idx}`} type="checkbox" required={campo.props.requerido} />
+            <label for={fieldId}>{campo.props.label}</label>
+          </div>
+        );
+      }
+      return (
+        <div class="ic-form-field">
+          <label for={fieldId}>
+            {campo.props.label}
+            {campo.props.requerido && <span class="ic-required">*</span>}
+          </label>
+          <input
+            id={fieldId}
+            name={`field_${idx}`}
+            type={campo.props.tipo_campo}
+            placeholder={campo.props.placeholder ?? ''}
+            required={campo.props.requerido}
+          />
+        </div>
+      );
+    })}
+
+    {/* Honeypot anti-spam */}
+    <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+      <label for={`${section.id}_hp`}>No llenar este campo</label>
+      <input id={`${section.id}_hp`} name="website" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <button type="submit" class="ic-form-submit">
+      {submitBtn && submitBtn.tipo === 'boton' ? submitBtn.props.texto : 'Enviar'}
+    </button>
+  </form>
+</section>
+
+<style>
+  .ic-form-inner {
+    max-width: 580px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    font-family: var(--ta-font-body);
+  }
+  .ic-form-title {
+    font-family: var(--ta-font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--ta-color-text-base);
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.02em;
+  }
+  .ic-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .ic-form-field label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ta-color-text-base);
+  }
+  .ic-required {
+    color: #d72c0d;
+    margin-left: 4px;
+  }
+  .ic-form-field input,
+  .ic-form-field textarea,
+  .ic-form-field select {
+    padding: 0.75rem 1rem;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent);
+    border-radius: 2px;
+    background: var(--ta-color-bg-base);
+    color: var(--ta-color-text-base);
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: border-color 200ms;
+  }
+  .ic-form-field input:focus,
+  .ic-form-field textarea:focus,
+  .ic-form-field select:focus {
+    outline: none;
+    border-color: var(--ta-color-primary);
+  }
+  .ic-form-field--check {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .ic-form-submit {
+    padding: 0.875rem 2rem;
+    background: var(--ta-color-primary);
+    color: var(--ta-color-on-primary);
+    border: none;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 200ms;
+  }
+  .ic-form-submit:hover { opacity: 0.85; }
+</style>
