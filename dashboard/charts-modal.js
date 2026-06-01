@@ -268,8 +268,8 @@
           datasets: [{
             label: 'Valor vendido',
             data: top.map(r => Math.round(r.valorVendido || 0)),
-            backgroundColor: 'rgba(0, 212, 245, 0.65)',
-            borderColor: 'rgba(0, 212, 245, 1)',
+            backgroundColor: 'rgba(0, 109, 139, 0.80)',
+            borderColor: 'rgba(0, 109, 139, 1)',
             borderWidth: 1,
             borderRadius: 4,
           }]
@@ -296,11 +296,11 @@
           },
           scales: {
             x: {
-              ticks: { callback: v => formatMoneyShort(v), color: 'rgba(255,255,255,0.7)' },
-              grid: { color: 'rgba(255,255,255,0.06)' }
+              ticks: { callback: v => formatMoneyShort(v), color: 'rgba(26,26,26,0.72)' },
+              grid: { color: 'rgba(26,26,26,0.10)' }
             },
             y: {
-              ticks: { color: 'rgba(255,255,255,0.85)', font: { size: 11 } },
+              ticks: { color: 'rgba(26,26,26,0.85)', font: { size: 11 } },
               grid: { display: false }
             }
           }
@@ -340,7 +340,7 @@
           datasets: [{
             label: 'Capital amarrado',
             data: top.map(r => Math.round(r.capitalAmarrado || 0)),
-            backgroundColor: top.map(r => (r.capitalAmarrado || 0) > 5e6 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(0, 212, 245, 0.65)'),
+            backgroundColor: top.map(r => (r.capitalAmarrado || 0) > 5e6 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(0, 109, 139, 0.80)'),
             borderColor:     top.map(r => (r.capitalAmarrado || 0) > 5e6 ? 'rgba(239, 68, 68, 1)'   : 'rgba(0, 212, 245, 1)'),
             borderWidth: 1,
             borderRadius: 4,
@@ -368,8 +368,8 @@
             },
           },
           scales: {
-            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.06)' } },
-            y: { ticks: { color: 'rgba(255,255,255,0.85)', font: { size: 11 } }, grid: { display: false } }
+            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(26,26,26,0.72)' }, grid: { color: 'rgba(26,26,26,0.10)' } },
+            y: { ticks: { color: 'rgba(26,26,26,0.85)', font: { size: 11 } }, grid: { display: false } }
           }
         }
       }
@@ -428,8 +428,8 @@
             },
           },
           scales: {
-            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.06)' } },
-            y: { ticks: { color: 'rgba(255,255,255,0.85)', font: { size: 11 } }, grid: { display: false } }
+            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(26,26,26,0.72)' }, grid: { color: 'rgba(26,26,26,0.10)' } },
+            y: { ticks: { color: 'rgba(26,26,26,0.85)', font: { size: 11 } }, grid: { display: false } }
           }
         }
       }
@@ -488,8 +488,8 @@
             },
           },
           scales: {
-            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.06)' } },
-            y: { ticks: { color: 'rgba(255,255,255,0.85)', font: { size: 11 } }, grid: { display: false } }
+            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(26,26,26,0.72)' }, grid: { color: 'rgba(26,26,26,0.10)' } },
+            y: { ticks: { color: 'rgba(26,26,26,0.85)', font: { size: 11 } }, grid: { display: false } }
           }
         }
       }
@@ -547,8 +547,8 @@
             },
           },
           scales: {
-            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.06)' } },
-            y: { ticks: { color: 'rgba(255,255,255,0.85)', font: { size: 11 } }, grid: { display: false } }
+            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(26,26,26,0.72)' }, grid: { color: 'rgba(26,26,26,0.10)' } },
+            y: { ticks: { color: 'rgba(26,26,26,0.85)', font: { size: 11 } }, grid: { display: false } }
           }
         }
       }
@@ -579,7 +579,7 @@
           datasets: [{
             label: 'Pesos',
             data: [Math.round(pe.totalVentas || 0), Math.round(pe.puntoEquilibrioVentas || 0), Math.round(pe.totalGastos || 0)],
-            backgroundColor: [color, 'rgba(0, 212, 245, 0.65)', 'rgba(245, 158, 11, 0.65)'],
+            backgroundColor: [color, 'rgba(0, 109, 139, 0.80)', 'rgba(245, 158, 11, 0.65)'],
             borderColor:     [colorBorder, 'rgba(0, 212, 245, 1)', 'rgba(245, 158, 11, 1)'],
             borderWidth: 2,
             borderRadius: 6,
@@ -604,8 +604,8 @@
             },
           },
           scales: {
-            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.06)' } },
-            y: { ticks: { color: 'rgba(255,255,255,0.85)', font: { size: 13, weight: '600' } }, grid: { display: false } }
+            x: { ticks: { callback: v => formatMoneyShort(v), color: 'rgba(26,26,26,0.72)' }, grid: { color: 'rgba(26,26,26,0.10)' } },
+            y: { ticks: { color: 'rgba(26,26,26,0.85)', font: { size: 13, weight: '600' } }, grid: { display: false } }
           }
         }
       }
@@ -646,7 +646,7 @@
           datasets: [{
             data,
             backgroundColor: palette.slice(0, data.length),
-            borderColor: 'rgba(14, 22, 38, 1)',
+            borderColor: '#ffffff',
             borderWidth: 2,
           }]
         },
@@ -657,7 +657,7 @@
           plugins: {
             legend: {
               position: 'right',
-              labels: { color: 'rgba(255,255,255,0.85)', font: { size: 12 }, padding: 12 }
+              labels: { color: 'rgba(26,26,26,0.85)', font: { size: 12 }, padding: 12 }
             },
             tooltip: {
               callbacks: {
@@ -707,7 +707,7 @@
           datasets: [{
             data: filas.map(f => Math.round(f.monto || 0)),
             backgroundColor: palette.slice(0, filas.length),
-            borderColor: 'rgba(14, 22, 38, 1)',
+            borderColor: '#ffffff',
             borderWidth: 2,
           }]
         },
@@ -718,7 +718,7 @@
           plugins: {
             legend: {
               position: 'right',
-              labels: { color: 'rgba(255,255,255,0.85)', font: { size: 11 }, padding: 10 }
+              labels: { color: 'rgba(26,26,26,0.85)', font: { size: 11 }, padding: 10 }
             },
             tooltip: {
               callbacks: {
