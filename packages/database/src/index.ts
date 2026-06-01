@@ -27,3 +27,5 @@ export type ProductoVariante = Tables<'producto_variantes'>;
 export type Plantilla = Tables<'plantillas'>;
 export type Paleta = Tables<'paletas'>;
 export type PaginaLegal = Tables<'paginas_legales'>;
+
+export * from './editor-schema';
