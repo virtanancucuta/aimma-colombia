@@ -900,6 +900,7 @@ export type Database = {
           precio_promo: number | null
           precio_venta: number
           referencia: string
+          slug: string
           tienda_id: string
           updated_at: string
           variante_tipo_1: string | null
@@ -920,6 +921,7 @@ export type Database = {
           precio_promo?: number | null
           precio_venta: number
           referencia: string
+          slug?: string
           tienda_id: string
           updated_at?: string
           variante_tipo_1?: string | null
@@ -940,6 +942,7 @@ export type Database = {
           precio_promo?: number | null
           precio_venta?: number
           referencia?: string
+          slug?: string
           tienda_id?: string
           updated_at?: string
           variante_tipo_1?: string | null

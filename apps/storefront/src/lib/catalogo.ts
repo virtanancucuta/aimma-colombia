@@ -2,8 +2,8 @@
 // Helpers para queries de catalogo (productos, categorias, variantes).
 // Las queries respetan RLS publico de Supabase (tienda.estado=publicada).
 //
-// NOTA TODO Fase 5.x: agregar columna `slug` en `productos` para URLs SEO-safe.
-// Por ahora usamos `referencia` cuando es URL-safe, fallback a `id`.
+// Fase 7: columna `slug` agregada en BD (trigger auto-genera desde nombre).
+// URLs SEO long-tail: /p/zapatos-deportivos-air-max-90 en vez de UUID/referencia.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@aimma/database';
@@ -25,15 +25,6 @@ export type ProductoListItem = {
   referencia: string | null;
 };
 
-const URL_SAFE_REF = /^[A-Za-z0-9._-]{1,64}$/;
-
-function urlSlug(producto: { id: string; referencia: string | null }): string {
-  if (producto.referencia && URL_SAFE_REF.test(producto.referencia)) {
-    return producto.referencia;
-  }
-  return producto.id;
-}
-
 function normalizarProducto(p: any): ProductoListItem {
   const stockSumarReservado = Array.isArray(p.producto_variantes)
     ? p.producto_variantes.reduce(
@@ -50,7 +41,7 @@ function normalizarProducto(p: any): ProductoListItem {
       : null,
     foto_principal: p.foto_principal_url ?? null,
     stock_disponible: stockSumarReservado,
-    slug: urlSlug({ id: p.id, referencia: p.referencia }),
+    slug: p.slug || p.id,
     referencia: p.referencia ?? null,
   };
 }
@@ -65,7 +56,7 @@ export async function getProductosPorTienda(
   let q = supabase
     .from('productos')
     .select(
-      `id, nombre, referencia, precio_venta, precio_promo, foto_principal_url, estado,
+      `id, nombre, slug, referencia, precio_venta, precio_promo, foto_principal_url, estado,
        producto_variantes(stock, reservado)`
     )
     .eq('tienda_id', tiendaId)
@@ -88,24 +79,43 @@ export async function getProductoPorSlug(
   tiendaId: string,
   slug: string
 ) {
-  // slug puede ser referencia o id. Probamos ambos en 1 query.
-  const tryId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
-  let q = supabase
+  // Prioridad: slug nuevo SEO (kebab-case). Fallback SOLO si el input es UUID
+  // (URLs antiguas pre-migracion). NO se cae a `referencia` para evitar
+  // colisiones cuando un producto inactivo tiene slug que coincide con
+  // referencia de otro producto activo.
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+
+  // 1. Intento por slug SEO (caso 99%+ post-migracion)
+  const { data, error } = await supabase
     .from('productos')
-    .select(
-      `*, producto_variantes(*)`
-    )
+    .select(`*, producto_variantes(*)`)
     .eq('tienda_id', tiendaId)
-    .eq('estado', 'activo');
+    .eq('estado', 'activo')
+    .eq('slug', slug)
+    .maybeSingle();
 
-  q = tryId ? q.eq('id', slug) : q.eq('referencia', slug);
-
-  const { data, error } = await q.maybeSingle();
   if (error) {
-    console.error('[catalogo] getProductoPorSlug error:', error.message);
+    console.error('[catalogo] getProductoPorSlug slug error:', error.message);
     return null;
   }
-  return data;
+  if (data) return data;
+
+  // 2. Fallback compat estricto: solo si el input parece UUID
+  if (!isUuid) return null;
+
+  const res = await supabase
+    .from('productos')
+    .select(`*, producto_variantes(*)`)
+    .eq('tienda_id', tiendaId)
+    .eq('estado', 'activo')
+    .eq('id', slug)
+    .maybeSingle();
+
+  if (res.error) {
+    console.error('[catalogo] getProductoPorSlug uuid fallback error:', res.error.message);
+    return null;
+  }
+  return res.data;
 }
 
 // ============================================================

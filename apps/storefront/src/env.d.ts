@@ -11,6 +11,7 @@ interface Env {
   TENANT_CACHE?: KVNamespace;
   HTML_CACHE?: KVNamespace;
   PUBLIC_SUBDOMAIN_BASE: string;
+  INVALIDATE_SECRET?: string;
 }
 
 declare global {
