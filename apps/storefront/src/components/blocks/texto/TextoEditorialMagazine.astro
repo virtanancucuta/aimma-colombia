@@ -1,0 +1,37 @@
+---
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+interface Props { section: Section; }
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
+  : section.fondo.tipo === 'imagen' ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
+  : section.fondo.tipo === 'gradient' ? `background-image:${section.fondo.valor};`
+  : '';
+---
+
+<section class={`block-section ${padClass} em-texto`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="texto" data-plantilla="editorial_magazine">
+  {section.elementos.map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  .em-texto :global(.block-text--size-2xl),
+  .em-texto :global(.block-text--size-xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .em-texto :global(.block-text--size-md),
+  .em-texto :global(.block-text--size-lg) {
+    font-family: var(--ta-font-body);
+    line-height: 1.65;
+    max-width: 62ch;
+  }
+  .em-texto :global(.block-text--size-lg) {
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 400;
+  }
+</style>

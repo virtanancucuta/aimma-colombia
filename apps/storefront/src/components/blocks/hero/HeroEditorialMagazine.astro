@@ -1,0 +1,45 @@
+---
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+interface Props { section: Section; }
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
+  : section.fondo.tipo === 'imagen' ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
+  : section.fondo.tipo === 'gradient' ? `background-image:${section.fondo.valor};`
+  : '';
+---
+
+<section class={`block-section ${padClass} em-hero`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="hero" data-plantilla="editorial_magazine">
+  {section.elementos.map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  /* Editorial Magazine hero: Fraunces display + accent spans */
+  .em-hero :global(.block-text--size-3xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 300;
+    letter-spacing: -0.012em;
+    line-height: 1;
+    text-wrap: balance;
+  }
+  .em-hero :global(.block-text--size-2xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.018em;
+    color: var(--ta-color-accent);
+  }
+  .em-hero :global(.block-text--size-xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 400;
+    letter-spacing: -0.012em;
+  }
+  .em-hero :global(.block-text--size-md),
+  .em-hero :global(.block-text--size-lg) {
+    font-family: var(--ta-font-body);
+    line-height: 1.6;
+    max-width: 65ch;
+  }
+</style>

@@ -1,0 +1,31 @@
+---
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+interface Props { section: Section; }
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const primerImagen = section.elementos.find(el => el.tipo === 'imagen');
+const bgStyle = primerImagen && primerImagen.tipo === 'imagen'
+  ? `background-image:url(${primerImagen.props.src});background-size:${primerImagen.props.objeto};background-position:center;`
+  : section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
+  : '';
+const overlayStyle = section.fondo.overlay ? `position:relative;` : '';
+---
+
+<section class={`block-section ${padClass} em-imagen`} style={`${heightStyle}${bgStyle}${overlayStyle}`} data-section-id={section.id} data-section-tipo="imagen" data-plantilla="editorial_magazine">
+  {section.fondo.overlay && (
+    <div class="block-imagen-overlay" style={`position:absolute;inset:0;background:${section.fondo.overlay.color};opacity:${section.fondo.overlay.opacity};pointer-events:none;`} />
+  )}
+  {section.elementos.filter(el => el.tipo !== 'imagen').map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  .em-imagen :global(.block-text--size-3xl),
+  .em-imagen :global(.block-text--size-2xl) {
+    font-family: var(--ta-font-display);
+    font-weight: 300;
+    color: var(--ta-color-bg-base);
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  }
+</style>

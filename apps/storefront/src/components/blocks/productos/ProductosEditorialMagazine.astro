@@ -1,0 +1,68 @@
+---
+import type { Section, Element } from '@aimma/database';
+import ProductCard from '~/components/templates/editorial_magazine/ProductCardEM.astro';
+import { getProductosPorTienda } from '~/lib/catalogo';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const { tienda, supabase } = Astro.locals;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
+
+const prodEl = section.elementos.find(el => el.tipo === 'productos') as Extract<Element, { tipo: 'productos' }> | undefined;
+
+let productos: Awaited<ReturnType<typeof getProductosPorTienda>> = [];
+if (prodEl) {
+  try {
+    productos = await getProductosPorTienda(supabase, tienda.id, {
+      limit: prodEl.props.limite,
+      categoriaId: prodEl.props.categoria_id ?? undefined,
+    });
+  } catch (err) {
+    console.error('[ProductosEM] getProductosPorTienda failed:', err);
+    productos = [];
+  }
+}
+
+const colsClass = !prodEl || prodEl.props.columnas === 'auto'
+  ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+  : prodEl.props.columnas === 2 ? 'grid-cols-2'
+  : prodEl.props.columnas === 3 ? 'grid-cols-3'
+  : prodEl.props.columnas === 4 ? 'grid-cols-4'
+  : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+---
+
+<section class={`block-section ${padClass} em-productos`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="productos" data-plantilla="editorial_magazine">
+  {section.elementos.filter(el => el.tipo !== 'productos').map((el) => <ElementRenderer el={el} />)}
+  <div class="em-productos-grid" style="grid-column:1 / -1;">
+    {productos.length === 0 ? (
+      <div class="em-empty">Sin productos disponibles</div>
+    ) : (
+      <div class={`grid gap-x-4 gap-y-10 lg:gap-x-6 lg:gap-y-14 ${colsClass}`}>
+        {productos.map((p) => <ProductCard producto={p} />)}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .em-productos-grid {
+    display: block;
+    width: 100%;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid var(--ta-color-accent);
+  }
+  .em-empty {
+    padding: 3rem;
+    text-align: center;
+    color: var(--ta-color-text-base);
+    opacity: 0.5;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1rem;
+  }
+</style>

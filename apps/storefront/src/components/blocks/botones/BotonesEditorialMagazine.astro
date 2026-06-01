@@ -1,0 +1,28 @@
+---
+import type { Section } from '@aimma/database';
+import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+interface Props { section: Section; }
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
+---
+
+<section class={`block-section ${padClass} em-botones`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="botones" data-plantilla="editorial_magazine">
+  {section.elementos.map((el) => <ElementRenderer el={el} />)}
+</section>
+
+<style>
+  .em-botones :global(.block-button) {
+    border-radius: 0;
+    padding: 1rem 2rem;
+    font-family: var(--ta-font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .em-botones :global(.block-button--outline) {
+    border-color: var(--ta-color-accent);
+    color: var(--ta-color-accent);
+  }
+</style>

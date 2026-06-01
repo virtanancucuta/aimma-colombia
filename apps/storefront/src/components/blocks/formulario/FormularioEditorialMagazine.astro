@@ -1,0 +1,132 @@
+---
+import type { Section, Element } from '@aimma/database';
+interface Props { section: Section; }
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
+const campos = section.elementos.filter(el => el.tipo === 'form_field') as Extract<Element, { tipo: 'form_field' }>[];
+const titulo = section.elementos.find(el => el.tipo === 'texto');
+const submitBtn = section.elementos.find(el => el.tipo === 'boton');
+---
+
+<section class={`block-section ${padClass} em-form`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="formulario" data-plantilla="editorial_magazine">
+  <form class="em-form-inner" style="grid-column:1 / -1;" method="POST" action="/internal/form-submit" data-form-id={section.id}>
+    {titulo && titulo.tipo === 'texto' && (
+      <h3 class="em-form-title">{titulo.props.contenido}</h3>
+    )}
+    {campos.map((campo, idx) => {
+      const fieldId = `${section.id}_field_${idx}`;
+      if (campo.props.tipo_campo === 'textarea') {
+        return (
+          <div class="em-form-field">
+            <label for={fieldId}>{campo.props.label}{campo.props.requerido && <span class="em-required">*</span>}</label>
+            <textarea id={fieldId} name={`field_${idx}`} placeholder={campo.props.placeholder ?? ''} required={campo.props.requerido} rows={4}></textarea>
+          </div>
+        );
+      }
+      if (campo.props.tipo_campo === 'select') {
+        return (
+          <div class="em-form-field">
+            <label for={fieldId}>{campo.props.label}{campo.props.requerido && <span class="em-required">*</span>}</label>
+            <select id={fieldId} name={`field_${idx}`} required={campo.props.requerido}>
+              <option value="">{campo.props.placeholder ?? 'Selecciona...'}</option>
+              {(campo.props.opciones ?? []).map((opt) => <option value={opt}>{opt}</option>)}
+            </select>
+          </div>
+        );
+      }
+      if (campo.props.tipo_campo === 'checkbox') {
+        return (
+          <div class="em-form-field em-form-field--check">
+            <input id={fieldId} name={`field_${idx}`} type="checkbox" required={campo.props.requerido} />
+            <label for={fieldId}>{campo.props.label}</label>
+          </div>
+        );
+      }
+      return (
+        <div class="em-form-field">
+          <label for={fieldId}>{campo.props.label}{campo.props.requerido && <span class="em-required">*</span>}</label>
+          <input id={fieldId} name={`field_${idx}`} type={campo.props.tipo_campo} placeholder={campo.props.placeholder ?? ''} required={campo.props.requerido} />
+        </div>
+      );
+    })}
+    <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+      <label for={`${section.id}_hp`}>No llenar este campo</label>
+      <input id={`${section.id}_hp`} name="website" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+    <button type="submit" class="em-form-submit">
+      {submitBtn && submitBtn.tipo === 'boton' ? submitBtn.props.texto : 'Enviar'}
+    </button>
+  </form>
+</section>
+
+<style>
+  .em-form-inner {
+    max-width: 580px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    font-family: var(--ta-font-body);
+  }
+  .em-form-title {
+    font-family: var(--ta-font-display);
+    font-weight: 300;
+    letter-spacing: -0.012em;
+    font-size: 2.25rem;
+    line-height: 1.05;
+    color: var(--ta-color-text-base);
+    margin: 0 0 0.5rem 0;
+  }
+  .em-form-title :global(span),
+  .em-form-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ta-color-accent);
+  }
+  .em-form-field { display: flex; flex-direction: column; gap: 0.5rem; }
+  .em-form-field label {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    color: var(--ta-color-text-base);
+    font-weight: 500;
+    font-family: var(--ta-font-body);
+  }
+  .em-required { color: var(--ta-color-accent); margin-left: 4px; }
+  .em-form-field input,
+  .em-form-field textarea,
+  .em-form-field select {
+    padding: 0.75rem 0;
+    border: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--ta-color-text-base) 25%, transparent);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ta-color-text-base);
+    font-family: inherit;
+    font-size: 1rem;
+  }
+  .em-form-field input:focus,
+  .em-form-field textarea:focus,
+  .em-form-field select:focus {
+    outline: none;
+    border-bottom-color: var(--ta-color-accent);
+  }
+  .em-form-field--check { flex-direction: row; align-items: center; gap: 0.5rem; }
+  .em-form-field--check input { border: 1px solid var(--ta-color-text-base); padding: 0; height: 18px; width: 18px; }
+  .em-form-submit {
+    padding: 1rem 2rem;
+    background: var(--ta-color-accent);
+    color: var(--ta-color-bg-base);
+    border: none;
+    border-radius: 0;
+    font-family: var(--ta-font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .em-form-submit:hover { opacity: 0.88; }
+</style>

@@ -1,0 +1,37 @@
+---
+import type { Section, Element } from '@aimma/database';
+interface Props { section: Section; }
+const { section } = Astro.props;
+const padClass = `block-section--pad-${section.padding}`;
+const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
+const galEl = section.elementos.find(el => el.tipo === 'galeria') as Extract<Element, { tipo: 'galeria' }> | undefined;
+const gapClass = galEl?.props.gap === 'tight' ? 'gap-0'
+  : galEl?.props.gap === 'loose' ? 'gap-8'
+  : 'gap-2';
+const colsClass = galEl?.props.layout === 'carrusel'
+  ? 'flex overflow-x-auto snap-x snap-mandatory'
+  : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+---
+
+<section class={`block-section ${padClass} em-galeria`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="galeria" data-plantilla="editorial_magazine">
+  <div class={`${colsClass} ${gapClass}`} style="grid-column:1 / -1;">
+    {galEl?.props.imagenes.map((img) => (
+      <div class="em-galeria-item">
+        <img src={img.src} alt={img.alt} loading="lazy" class="w-full h-full object-cover" />
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  /* Editorial Magazine galeria: aspect 4/5, NO border */
+  .em-galeria-item {
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+  }
+  .em-galeria :global(.flex.overflow-x-auto) .em-galeria-item {
+    flex: 0 0 280px;
+    scroll-snap-align: center;
+  }
+</style>
