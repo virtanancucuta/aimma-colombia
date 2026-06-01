@@ -16,7 +16,7 @@ Reducir el lag de propagacion de cambios (paleta, plantilla, productos) desde el
             [Database Webhook Supabase] (configurado por Jorge)
                        |
                        v
-            POST https://aimma-test.tienda.aimma.com.co/_internal/invalidate-kv
+            POST https://aimma-test.tienda.aimma.com.co/internal/invalidate-kv
               Authorization: Bearer djt_wCsW3evNQHyoBlzhSnGrp-BBvvGSP7EiWPWsCJ0
               { type: "UPDATE", record: {slug, ...}, old_record: {...} }
                        |
@@ -29,7 +29,7 @@ Reducir el lag de propagacion de cambios (paleta, plantilla, productos) desde el
 
 ## Pre-requisitos completados (Tipo A Claude)
 
-- [x] Endpoint `/_internal/invalidate-kv` en `apps/storefront/src/pages/_internal/invalidate-kv.ts`
+- [x] Endpoint `/internal/invalidate-kv` en `apps/storefront/src/pages/internal/invalidate-kv.ts`
 - [x] Middleware excluye `/_internal/` (ya estaba)
 - [x] Auth con bearer token `INVALIDATE_SECRET`
 - [x] Soporta payload simple, batch y formato webhook Supabase
@@ -55,7 +55,7 @@ Debe aparecer `INVALIDATE_SECRET` en la lista.
 ### Paso 2: Test endpoint manual
 
 ```bash
-curl -X POST https://aimma-test.tienda.aimma.com.co/_internal/invalidate-kv \
+curl -X POST https://aimma-test.tienda.aimma.com.co/internal/invalidate-kv \
   -H "Authorization: Bearer djt_wCsW3evNQHyoBlzhSnGrp-BBvvGSP7EiWPWsCJ0" \
   -H "Content-Type: application/json" \
   -d '{"slug":"aimma-test"}'
@@ -78,9 +78,9 @@ Crear **4 webhooks** (uno por tabla):
 - Events: INSERT, UPDATE, DELETE
 - Type: HTTP Request
 - Method: POST
-- URL: `https://tienda.aimma.com.co/_internal/invalidate-kv`
+- URL: `https://tienda.aimma.com.co/internal/invalidate-kv`
   - Truco: como es wildcard, cualquier subdomain del storefront sirve. Pero por consistencia usar la raiz.
-  - Alternativa mas robusta: `https://aimma-test.tienda.aimma.com.co/_internal/invalidate-kv`
+  - Alternativa mas robusta: `https://aimma-test.tienda.aimma.com.co/internal/invalidate-kv`
 - Headers:
   - `Authorization: Bearer djt_wCsW3evNQHyoBlzhSnGrp-BBvvGSP7EiWPWsCJ0`
   - `Content-Type: application/json`
@@ -104,7 +104,7 @@ BEGIN
   WHERE id = COALESCE(NEW.tienda_id, OLD.tienda_id);
   IF v_slug IS NOT NULL THEN
     PERFORM net.http_post(
-      url := 'https://tienda.aimma.com.co/_internal/invalidate-kv',
+      url := 'https://tienda.aimma.com.co/internal/invalidate-kv',
       headers := jsonb_build_object(
         'Authorization', 'Bearer djt_wCsW3evNQHyoBlzhSnGrp-BBvvGSP7EiWPWsCJ0',
         'Content-Type', 'application/json'

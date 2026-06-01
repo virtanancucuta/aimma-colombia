@@ -1,4 +1,7 @@
-// AIMMA Storefront · /_internal/invalidate-kv · 2026-05-31
+// AIMMA Storefront · /internal/invalidate-kv · v2 · 2026-06-01
+// FIX 2026-06-01: renombrado de _internal/ a internal/ porque Astro EXCLUYE
+// carpetas con prefijo `_` del build (endpoint nunca llegaba al bundle deploy).
+//
 // Endpoint POST que invalida cache KV para un slug de tienda.
 // Llamado desde:
 // 1. Database webhook Supabase (al UPDATE/INSERT/DELETE en tiendas/productos/etc)
@@ -6,7 +9,7 @@
 // 3. EF tienda-guardar-layout al guardar Editor PRO-MAX
 //
 // Auth: Bearer token con INVALIDATE_SECRET (CF Worker secret).
-// El middleware excluye /_internal/ — este endpoint corre sin tenant lookup.
+// Middleware excluye /internal/ — este endpoint corre sin tenant lookup.
 //
 // Payload soportado:
 //   { "slug": "aimma-test" }                         simple

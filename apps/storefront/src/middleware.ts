@@ -11,7 +11,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Permitir endpoints internos que no requieren tienda (health, etc).
   // /robots.txt y /sitemap.xml SI requieren tienda — los manejamos despues.
-  if (url.pathname.startsWith('/_health') || url.pathname.startsWith('/_internal/')) {
+  // NOTA: Astro excluye carpetas con prefijo `_` del build — por eso `internal/`
+  // sin underscore. El endpoint `/internal/invalidate-kv` vive en
+  // src/pages/internal/invalidate-kv.ts y es solo accesible con bearer secret.
+  if (url.pathname.startsWith('/_health') || url.pathname.startsWith('/internal/')) {
     return next();
   }
 
