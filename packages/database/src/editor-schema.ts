@@ -27,8 +27,12 @@ const GridMobileSchema = z.object({
   col_end: z.number().int().min(2).max(25).optional(),
 }).optional();
 
+// CSS-safe color: bloquea CSS injection en style="color:${valor}". Permite
+// #hex, rgb()/rgba(), hsl()/hsla(), oklch()/oklab(), y nombres CSS basicos.
+const CSS_COLOR_REGEX = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)<>]+\)|hsla?\([^)<>]+\)|ok(lch|lab)\([^)<>]+\)|[a-zA-Z]{3,30})$/;
+
 const EstiloSchema = z.object({
-  color_texto: z.string().nullable().optional(),
+  color_texto: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').nullable().optional(),
   alineacion: z.enum(['left', 'center', 'right']).default('left'),
   tamaño: z.enum(['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl']).default('md'),
   peso: z.enum(['normal', 'medium', 'semibold', 'bold']).default('normal'),
@@ -144,7 +148,7 @@ export const DivisorElementSchema = BaseElementSchema.extend({
   tipo: z.literal('divisor'),
   props: z.object({
     estilo: z.enum(['linea', 'punto', 'icono']).default('linea'),
-    color: z.string().nullable().optional(),
+    color: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').nullable().optional(),
   }),
 });
 
@@ -165,14 +169,29 @@ export type Element = z.infer<typeof ElementSchema>;
 // Section
 // ============================================================
 
+// CSS-safe gradient: bloquea CSS injection. Solo linear/radial/conic-gradient.
+const CSS_GRADIENT_REGEX = /^(linear|radial|conic)-gradient\([^)<>"'`;{}@\\]{1,400}\)$/i;
+// CSS-safe https URL: bloquea javascript:, data:, etc.
+const HTTPS_URL_REGEX = /^https:\/\/[^"'<>`\s]{4,490}$/;
+
 const FondoSchema = z.object({
   tipo: z.enum(['color', 'imagen', 'gradient', 'transparente']).default('transparente'),
   valor: z.string().max(500),
   overlay: z.object({
-    color: z.string(),
+    color: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
     opacity: z.number().min(0).max(1),
   }).optional(),
-});
+}).refine((f) => {
+  // tipo=transparente acepta valor vacio o cualquier string ignorable
+  if (f.tipo === 'transparente') return true;
+  // tipo=color requiere CSS color valido
+  if (f.tipo === 'color') return CSS_COLOR_REGEX.test(f.valor);
+  // tipo=imagen requiere https URL safe
+  if (f.tipo === 'imagen') return HTTPS_URL_REGEX.test(f.valor);
+  // tipo=gradient requiere CSS gradient sin caracteres peligrosos
+  if (f.tipo === 'gradient') return CSS_GRADIENT_REGEX.test(f.valor);
+  return false;
+}, { message: 'fondo.valor invalido para tipo declarado', path: ['valor'] });
 
 export const SectionSchema = z.object({
   id: z.string().regex(/^sec_[a-z0-9]{4,}$/, 'id formato sec_xxxx'),

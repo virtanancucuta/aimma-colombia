@@ -1,9 +1,12 @@
-/* AIMMA Editor PRO-MAX · CSS Grid 24-col base + Container Queries */
-
-/* Section es contenedor con grid 24-col en desktop, 1-col en mobile via container query */
+/* AIMMA Editor PRO-MAX · CSS Grid 24-col base + Media Queries
+ *
+ * Plan 1 nota: cambiamos de @container a @media porque .block-section es
+ * el root del grid (no se anida en otra section), entonces no puede ser su
+ * propio container query target — la regla NO matchearia. Plan 2 puede
+ * volver a @container si Editor preview viewport-simulado necesita scoped
+ * width queries.
+ */
 .block-section {
-  container-type: inline-size;
-  container-name: block-section;
   display: grid;
   grid-template-columns: repeat(24, 1fr);
   grid-auto-rows: 60px;
@@ -38,10 +41,10 @@
 .block-element--align-center { justify-content: center; }
 .block-element--align-right  { justify-content: flex-end; }
 
-/* Mobile auto-collapse via @container query.
-   Cuando el section es <768px ancho, grid colapsa a 1-col y todos los
+/* Mobile auto-collapse via @media query (viewport-wide).
+   Cuando el viewport es <768px, grid colapsa a 1-col y todos los
    elements ocupan full width en orden vertical. */
-@container block-section (max-width: 767px) {
+@media (max-width: 767px) {
   .block-section {
     grid-template-columns: 1fr;
     grid-auto-rows: auto;
