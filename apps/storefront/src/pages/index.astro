@@ -5,13 +5,23 @@
 import Layout from '~/layouts/Layout.astro';
 import Hero from '~/components/Hero.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
+import BlockRenderer from '~/components/BlockRenderer.astro';
 import { getProductosPorTienda } from '~/lib/catalogo';
+import { parsePersonalizaciones } from '@aimma/database';
 
 const { tienda, supabase } = Astro.locals;
 const plantillaSlug = tienda.plantilla?.slug;
 
-// Productos destacados
-const productos = await getProductosPorTienda(supabase, tienda.id, { limit: 12 });
+// Plan 1: Check si hay personalizaciones.pages.home valido -> BlockRenderer.
+// Else -> fallback al render actual (Hero + ProductGrid).
+const pers = parsePersonalizaciones(tienda.personalizaciones);
+const homeSections = pers?.pages?.home?.sections ?? null;
+
+// Solo cargar productos para fallback (BlockRenderer carga sus propios productos en ProductosIC).
+let productos: Awaited<ReturnType<typeof getProductosPorTienda>> = [];
+if (!homeSections) {
+  productos = await getProductosPorTienda(supabase, tienda.id, { limit: 12 });
+}
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -37,10 +47,14 @@ const jsonLd = {
   description={`Compra en ${tienda.nombre_negocio}. Tienda online con envios a Colombia. Pedidos faciles por WhatsApp.`}
   jsonLd={jsonLd}
 >
-  <Hero />
+  {homeSections ? (
+    <BlockRenderer sections={homeSections} />
+  ) : (
+    <>
+      <Hero />
 
-  {/* Section header diferenciado por plantilla */}
-  {plantillaSlug === 'fashion_bold' && (
+      {/* Section header diferenciado por plantilla */}
+      {plantillaSlug === 'fashion_bold' && (
     <section id="productos" class="pt-20 lg:pt-28 pb-24 lg:pb-32 px-6 md:px-12 lg:px-20">
       <header class="mb-10 lg:mb-14 flex items-end justify-between gap-6 border-b border-[var(--ta-color-text-base)] pb-4">
         <h2 class="font-display uppercase leading-none tracking-[-0.04em] text-[var(--ta-color-text-base)]" style="font-size:clamp(2rem, 5vw, 3.5rem);">
@@ -103,6 +117,8 @@ const jsonLd = {
       </header>
       <ProductGrid productos={productos} />
     </section>
+  )}
+    </>
   )}
 </Layout>
 
