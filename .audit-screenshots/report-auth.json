@@ -1,0 +1,174 @@
+[
+  {
+    "name": "mi-cuenta",
+    "url": "http://localhost:8765/mi-cuenta.html",
+    "status": 200,
+    "errs": [
+      "PAGEERR: Unexpected token 'async'",
+      "PAGEERR: Cannot read properties of undefined (reading 'requireAuth')"
+    ],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "Mi Cuenta · AIMMA Colombia",
+      "location": "/mi-cuenta.html"
+    }
+  },
+  {
+    "name": "upgrade-pro",
+    "url": "http://localhost:8765/upgrade-pro.html",
+    "status": 200,
+    "errs": [
+      "PAGEERR: Unexpected token 'async'",
+      "PAGEERR: Cannot read properties of undefined (reading 'requireAuth')"
+    ],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "Activar Plan PRO · AIMMA Colombia",
+      "location": "/upgrade-pro.html"
+    }
+  },
+  {
+    "name": "iapanel-hub",
+    "url": "http://localhost:8765/iapanel/index.html",
+    "status": 200,
+    "errs": [
+      "PAGEERR: Unexpected token 'async'",
+      "PAGEERR: Cannot read properties of undefined (reading 'requireAuth')"
+    ],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "Tu Panel IA · AIMMA Colombia",
+      "location": "/iapanel/index.html"
+    }
+  },
+  {
+    "name": "iapanel-estudio",
+    "url": "http://localhost:8765/iapanel/estudio/index.html",
+    "status": 200,
+    "errs": [
+      "PAGEERR: Unexpected token 'function'"
+    ],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgba(26, 26, 26, 0.92)",
+      "darkContainers": [
+        {
+          "tag": "header",
+          "id": "",
+          "cls": "estudio-header",
+          "bg": "rgba(4, 13, 26, 0.72)",
+          "w": 1280,
+          "h": 64,
+          "text": "VOLVER AL PANEL\nAIMMA · Contenido IA\nSAL"
+        }
+      ],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "AIMMA · Contenido IA · Editor de fotos",
+      "location": "/iapanel/estudio/index.html"
+    }
+  },
+  {
+    "name": "iapanel-estudio-recargas",
+    "url": "http://localhost:8765/iapanel/estudio/recargas.html",
+    "status": 200,
+    "errs": [],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "AIMMA · Contenido IA · Recargar tokens",
+      "location": "/iapanel/estudio/recargas.html"
+    }
+  },
+  {
+    "name": "iapanel-estudio-admin",
+    "url": "http://localhost:8765/iapanel/estudio/admin.html",
+    "status": 200,
+    "errs": [],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "Admin · Contenido IA · AIMMA",
+      "location": "/iapanel/estudio/admin.html"
+    }
+  },
+  {
+    "name": "iapanel-tienda-admin",
+    "url": "http://localhost:8765/iapanel/tienda/admin/index.html",
+    "status": 200,
+    "errs": [],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "AIMMA · Tienda IA · Panel",
+      "location": "/iapanel/tienda/admin/index.html"
+    }
+  },
+  {
+    "name": "dashboard",
+    "url": "http://localhost:8765/dashboard/index.html",
+    "status": 200,
+    "errs": [
+      "PAGEERR: Unexpected token 'async'",
+      "PAGEERR: Unexpected token ')'"
+    ],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [
+        {
+          "tag": "header",
+          "id": "",
+          "cls": "site-header",
+          "bg": "rgba(4, 13, 26, 0.85)",
+          "w": 1280,
+          "h": 72,
+          "text": ""
+        }
+      ],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "AIMMA · Dashboard Financiero",
+      "location": "/dashboard/index.html"
+    }
+  },
+  {
+    "name": "cuenta-cancelada",
+    "url": "http://localhost:8765/cuenta-cancelada.html",
+    "status": 200,
+    "errs": [
+      "PAGEERR: Unexpected token 'async'",
+      "PAGEERR: Cannot read properties of undefined (reading 'requireAuth')"
+    ],
+    "analysis": {
+      "bodyBg": "rgb(250, 250, 250)",
+      "bodyColor": "rgb(26, 26, 26)",
+      "darkContainers": [],
+      "lowContrast": [],
+      "invisibleInputs": [],
+      "title": "Tu cuenta fue dada de baja · AIMMA",
+      "location": "/cuenta-cancelada.html"
+    }
+  }
+]

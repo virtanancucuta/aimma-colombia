@@ -135,14 +135,14 @@ input, textarea, select { font-family: inherit; }
   top: 0; left: 0; right: 0;
   height: var(--header-h);
   z-index: 100;
-  background: rgba(4, 13, 26, 0.72);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--white-15);
-  transition: transform var(--transition), background 0.3s;
+  transition: transform var(--transition), background 0.3s, border-bottom-color 0.3s;
 }
 .site-header.hidden { transform: translateY(-100%); }
-.site-header.scrolled { background: rgba(4, 13, 26, 0.92); border-bottom-color: rgba(0, 212, 245, 0.18); }
+.site-header.scrolled { background: rgba(255, 255, 255, 0.95); border-bottom-color: rgba(0, 109, 139, 0.20); }
 
 .header-inner {
   height: 100%;
@@ -330,7 +330,7 @@ input, textarea, select { font-family: inherit; }
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(2, 8, 18, 0.7);
+  background: rgba(0, 0, 0, 0.45);
   z-index: 105;
   opacity: 0;
   pointer-events: none;
@@ -2377,7 +2377,7 @@ main { padding-top: var(--header-h); position: relative; z-index: 1; }
   justify-content: space-between;
   padding: 18px 28px;
   border-bottom: 1px solid var(--white-15);
-  background: rgba(4, 13, 26, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
@@ -2675,7 +2675,7 @@ main { padding-top: var(--header-h); position: relative; z-index: 1; }
   gap: 16px;
   padding: 18px 28px;
   border-bottom: 1px solid var(--white-15);
-  background: rgba(4, 13, 26, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
