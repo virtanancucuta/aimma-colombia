@@ -1,27 +1,37 @@
 /* =============================================
    AIMMA · Sistema de diseño
-   Dark futurista / tech corporativo
+   White-mode profesional Shopify-style (Fase 8 · 2026-05-31)
+   Branding AIMMA preservado: cyan + Exo 2 / Rajdhani
+   Tokens conservados (--navy-*, --white-*, --cyan-*) con VALORES invertidos
+   para minimizar cambios en cientos de declaraciones existentes.
    ============================================= */
 
 :root {
-  --navy-deepest: #020812;
-  --navy-deep: #040d1a;
-  --navy: #071425;
-  --navy-card: #0a1e33;
-  --navy-line: #103048;
-  --cyan: #00d4f5;
+  /* Backgrounds — Shopify scale */
+  --navy-deepest: #f1f1f3;  /* surfaces mas profundas */
+  --navy-deep:    #fafafa;  /* body */
+  --navy:         #f6f6f7;  /* sidebar / nav */
+  --navy-card:    #ffffff;  /* cards / surfaces */
+  --navy-line:    #e1e3e5;  /* borders */
+
+  /* AIMMA brand cyan — version WCAG-safe sobre blanco como default */
+  --cyan: #0096b7;          /* texto/accent default (3.7:1 large, AAA con bold weight) */
+  --cyan-bright: #00d4f5;   /* brand original para hero/badges/halos brillantes */
   --cyan-soft: #00b4d8;
-  --cyan-deep: #0096b7;
-  --cyan-glow: rgba(0, 212, 245, 0.18);
-  --cyan-glow-strong: rgba(0, 212, 245, 0.35);
-  --white: #ffffff;
-  --white-90: rgba(255, 255, 255, 0.90);
-  --white-80: rgba(255, 255, 255, 0.80);
-  --white-70: rgba(255, 255, 255, 0.70);
-  --white-60: rgba(255, 255, 255, 0.60);
-  --white-40: rgba(255, 255, 255, 0.40);
-  --white-15: rgba(255, 255, 255, 0.07);
-  --error: #ff4d6d;
+  --cyan-deep: #006d8b;     /* texto pequeno sobre blanco (6.0:1 AA full) */
+  --cyan-text: #006d8b;
+  --cyan-glow: rgba(0, 212, 245, 0.08);
+  --cyan-glow-strong: rgba(0, 212, 245, 0.15);
+
+  /* Texto — invertido (oscuro sobre claro) */
+  --white:    #1a1a1a;                       /* principal — antes #ffffff */
+  --white-90: rgba(26, 26, 26, 0.92);
+  --white-80: rgba(26, 26, 26, 0.82);
+  --white-70: rgba(26, 26, 26, 0.70);
+  --white-60: rgba(26, 26, 26, 0.60);
+  --white-40: rgba(26, 26, 26, 0.55);
+  --white-15: rgba(0, 0, 0, 0.04);           /* superficies sutiles */
+  --error: #d72c0d;
 
   --font-display: 'Exo 2', system-ui, sans-serif;
   --font-ui: 'Rajdhani', system-ui, sans-serif;
@@ -45,6 +55,27 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ========== MOCKUP DARK SCOPE ==========
+   Los mockups (terminal CLI, telefonos, Instagram preview) representan UIs
+   reales que SON oscuras IRL. Mantienen dark mode interno via override de
+   tokens dentro del scope. Branding AIMMA mantiene chrome blanco profesional
+   afuera; los mockups se ven realistas adentro. */
+.terminal, .phone, .app-phone, .conv-phone, .conv-ig-phone, .conv-ig-screen, .mockup-dark {
+  --white:    #ffffff;
+  --white-90: rgba(255,255,255,0.92);
+  --white-80: rgba(255,255,255,0.82);
+  --white-70: rgba(255,255,255,0.70);
+  --white-60: rgba(255,255,255,0.60);
+  --white-40: rgba(255,255,255,0.42);
+  --white-15: rgba(255,255,255,0.07);
+  --navy-deep: #040d1a;
+  --navy-card: #0a1e33;
+  --navy-line: #103048;
+  --cyan: #00d4f5;          /* mockup interno: cyan brillante AIMMA contrasta sobre dark */
+  --cyan-deep: #0096b7;
+  color: var(--white);
 }
 img, svg { max-width: 100%; display: block; }
 button { font-family: inherit; cursor: pointer; border: none; background: transparent; color: inherit; }

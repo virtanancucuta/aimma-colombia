@@ -165,7 +165,7 @@
         '<p class="ta-section-sub">' +
           'Este es el panel de control del <strong>modulo Tienda IA</strong>. ' +
           'Aqui veras como va tu catalogo y tus pedidos. ' +
-          'Tu slug es <code style="background:#0a172a;padding:2px 6px;border-radius:4px;">' + slug + '.tienda.aimma.com.co</code>' +
+          'Tu slug es <code style="background:var(--ta-surface-2);color:var(--ta-text);padding:2px 6px;border-radius:4px;border:1px solid var(--ta-border);">' + slug + '.tienda.aimma.com.co</code>' +
         '</p>' +
       '</header>';
   }

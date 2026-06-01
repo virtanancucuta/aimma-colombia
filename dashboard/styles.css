@@ -1,30 +1,40 @@
 /* =============================================
    AIMMA Financiero · Sistema de diseño
-   Heredado de aimma.com.co (dark futurista tech)
+   White-mode profesional Shopify-style (Fase 8 · 2026-05-31)
+   Hereda paleta AIMMA aimma.com.co. Tokens conservados con valores invertidos.
    ============================================= */
 
 :root {
-  --navy-deepest: #020812;
-  --navy-deep: #040d1a;
-  --navy: #071425;
-  --navy-card: #0a1e33;
-  --navy-card-2: #0d2640;
-  --navy-line: #103048;
-  --cyan: #00d4f5;
+  /* Backgrounds — Shopify scale */
+  --navy-deepest: #f1f1f3;
+  --navy-deep:    #fafafa;
+  --navy:         #f6f6f7;
+  --navy-card:    #ffffff;
+  --navy-card-2:  #f6f6f7;
+  --navy-line:    #e1e3e5;
+
+  /* AIMMA cyan WCAG-safe sobre blanco como default */
+  --cyan: #0096b7;
+  --cyan-bright: #00d4f5;
   --cyan-soft: #00b4d8;
-  --cyan-deep: #0096b7;
-  --cyan-glow: rgba(0, 212, 245, 0.18);
-  --cyan-glow-strong: rgba(0, 212, 245, 0.35);
-  --white: #ffffff;
-  --white-70: rgba(255, 255, 255, 0.78);
-  --white-40: rgba(255, 255, 255, 0.65);   /* Auditoria: subido de 0.40 a 0.65 para cumplir WCAG 4.5:1 sobre fondo navy */
-  --white-15: rgba(255, 255, 255, 0.07);
-  --error: #ff4d6d;
-  --error-glow: rgba(255, 77, 109, 0.18);
-  --success: #00e89c;
-  --success-glow: rgba(0, 232, 156, 0.18);
-  --warning: #ffb547;
-  --warning-glow: rgba(255, 181, 71, 0.18);
+  --cyan-deep: #006d8b;
+  --cyan-text: #006d8b;
+  --cyan-glow: rgba(0, 212, 245, 0.08);
+  --cyan-glow-strong: rgba(0, 212, 245, 0.15);
+
+  /* Texto invertido (oscuro sobre claro) */
+  --white:    #1a1a1a;
+  --white-70: rgba(26, 26, 26, 0.78);
+  --white-40: rgba(26, 26, 26, 0.55);
+  --white-15: rgba(0, 0, 0, 0.04);
+
+  /* States — versiones WCAG-safe sobre blanco */
+  --error: #d72c0d;
+  --error-glow: rgba(215, 44, 13, 0.10);
+  --success: #008060;
+  --success-glow: rgba(0, 128, 96, 0.10);
+  --warning: #b78103;
+  --warning-glow: rgba(183, 129, 3, 0.10);
 
   --font-display: 'Exo 2', system-ui, sans-serif;
   --font-ui: 'Rajdhani', system-ui, sans-serif;

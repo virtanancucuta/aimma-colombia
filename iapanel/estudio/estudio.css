@@ -1,27 +1,34 @@
-/* AIMMA Contenido IA · estudio.css · v1 · 2026-05-23 */
+/* AIMMA Contenido IA · estudio.css · v2 · 2026-05-31 white-mode */
+/* White-mode profesional Shopify-style. Tokens conservados con valores invertidos. */
 
 :root {
-  --navy-deep: #040d1a;
-  --navy-card: #0a1726;
-  --navy: #0e1f33;
-  --cyan: #00d4f5;
-  --cyan-soft: rgba(0,212,245,0.8);
-  --cyan-glow: rgba(0,212,245,0.2);
-  --cyan-glow-strong: rgba(0,212,245,0.35);
-  --white: #ffffff;
-  --white-90: rgba(255,255,255,0.9);
-  --white-80: rgba(255,255,255,0.8);
-  --white-70: rgba(255,255,255,0.7);
-  --white-60: rgba(255,255,255,0.6);
-  --white-40: rgba(255,255,255,0.4);
-  --white-15: rgba(255,255,255,0.07);
+  /* Backgrounds — Shopify scale */
+  --navy-deep: #fafafa;
+  --navy-card: #ffffff;
+  --navy:      #f6f6f7;
+  /* AIMMA cyan WCAG-safe sobre blanco */
+  --cyan: #0096b7;
+  --cyan-bright: #00d4f5;
+  --cyan-soft: #00b4d8;
+  --cyan-deep: #006d8b;
+  --cyan-text: #006d8b;
+  --cyan-glow: rgba(0,212,245,0.08);
+  --cyan-glow-strong: rgba(0,212,245,0.15);
+  /* Texto invertido */
+  --white:    #1a1a1a;
+  --white-90: rgba(26,26,26,0.92);
+  --white-80: rgba(26,26,26,0.82);
+  --white-70: rgba(26,26,26,0.70);
+  --white-60: rgba(26,26,26,0.60);
+  --white-40: rgba(26,26,26,0.55);
+  --white-15: rgba(0,0,0,0.04);
   --radius: 8px;
   --radius-lg: 22px;
   --font-display: 'Exo 2', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --transition: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --danger: #ff5470;
-  --success: #36d399;
+  --danger: #d72c0d;
+  --success: #008060;
 }
 
 * { box-sizing: border-box; }

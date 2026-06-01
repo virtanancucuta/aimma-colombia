@@ -22,23 +22,26 @@
 [hidden] { display: none !important; }
 
 :root {
-  --ta-bg: #040d1a;
-  --ta-bg-soft: #0a172a;
-  --ta-surface: #0f1f38;
-  --ta-surface-2: #16273f;
-  --ta-border: rgba(255,255,255,0.08);
-  --ta-border-strong: rgba(255,255,255,0.18);
-  --ta-text: #e6ecf5;
-  --ta-text-soft: #9aa8be;
-  --ta-text-mut: #6b7993;
-  --ta-accent: #4d8eff;
-  --ta-accent-2: #00d2c2;
-  --ta-warn: #ffaa3c;
-  --ta-danger: #ff5d6c;
-  --ta-success: #2ecc71;
+  /* White-mode Shopify-style (Fase 8 · 2026-05-31). Branding AIMMA preservado. */
+  --ta-bg: #fafafa;
+  --ta-bg-soft: #f6f6f7;
+  --ta-surface: #ffffff;
+  --ta-surface-2: #f1f1f3;
+  --ta-border: rgba(0,0,0,0.08);
+  --ta-border-strong: rgba(0,0,0,0.16);
+  --ta-text: #1a1a1a;
+  --ta-text-soft: #4a4a4a;
+  --ta-text-mut: #737373;
+  --ta-accent: #0096b7;       /* AIMMA cyan oscuro WCAG-safe sobre blanco */
+  --ta-accent-2: #008060;     /* verde Shopify para success accents */
+  --ta-accent-bright: #00d4f5;/* cyan brillante AIMMA solo para hero/badges grandes */
+  --ta-warn: #b78103;
+  --ta-danger: #d72c0d;
+  --ta-success: #008060;
   --ta-radius: 12px;
   --ta-radius-sm: 8px;
-  --ta-shadow: 0 2px 12px rgba(0,0,0,0.32);
+  --ta-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --ta-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 10px 15px -3px rgba(0,0,0,0.05);
   --ta-sidebar-w: 240px;
   --ta-topbar-h: 56px;
 }
@@ -270,9 +273,9 @@ a:hover { text-decoration: underline; }
 .ta-btn--primary {
   background: var(--ta-accent);
   border-color: var(--ta-accent);
-  color: #001f4a;
+  color: #ffffff;
 }
-.ta-btn--primary:hover { background: #6ba0ff; border-color: #6ba0ff; }
+.ta-btn--primary:hover { background: #007a99; border-color: #007a99; }
 .ta-btn--danger {
   background: transparent;
   border-color: rgba(255,93,108,.4);
@@ -965,13 +968,13 @@ a:hover { text-decoration: underline; }
   min-width: 200px;
   padding: 6px 10px;
   border-radius: 4px;
-  border: 1px solid rgba(255,255,255,.3);
-  background: rgba(255,255,255,.12);
-  color: var(--bb);
+  border: 1px solid rgba(0,0,0,.15);
+  background: #ffffff;
+  color: var(--ta-text);
   font-family: "JetBrains Mono", monospace;
   font-size: 12px;
 }
-.preview-cta-url-editor input::placeholder { color: rgba(255,255,255,.55); }
+.preview-cta-url-editor input::placeholder { color: rgba(0,0,0,.45); }
 
 /* v4: panel separado para editor del CTA (texto + URL) */
 .preview-cta-editor-panel {
@@ -1125,8 +1128,8 @@ a:hover { text-decoration: underline; }
 .ta-wizard__card:hover { border-color: var(--ta-accent); transform: translateY(-2px); }
 .ta-wizard__card.is-active {
   border-color: var(--ta-accent);
-  background: rgba(77,142,255,.08);
-  box-shadow: 0 0 0 2px rgba(77,142,255,.2);
+  background: rgba(0,150,183,.08);
+  box-shadow: 0 0 0 2px rgba(0,150,183,.25);
 }
 .ta-wizard__card-preview {
   aspect-ratio: 16 / 10;

@@ -287,7 +287,8 @@
         if (p.y < 0 || p.y > h) p.vy *= -1;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 212, 245, 0.6)';
+        // white-mode: cyan oscuro para contraste sobre fondo blanco
+        ctx.fillStyle = 'rgba(0, 150, 183, 0.55)';
         ctx.fill();
       }
 
@@ -301,8 +302,8 @@
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(0, 212, 245, ${0.18 * (1 - d2 / 14000)})`;
-            ctx.lineWidth = 0.6;
+            ctx.strokeStyle = `rgba(0, 150, 183, ${0.30 * (1 - d2 / 14000)})`;
+            ctx.lineWidth = 0.7;
             ctx.stroke();
           }
         }
@@ -573,7 +574,7 @@
       const padL = 40, padR = 20, padT = 20, padB = 40;
       const w = rect.width - padL - padR;
       const h = rect.height - padT - padB;
-      ctx.strokeStyle = 'rgba(0, 212, 245, 0.1)';
+      ctx.strokeStyle = 'rgba(26, 26, 26, 0.10)';
       ctx.lineWidth = 1;
 
       // grid horizontal
@@ -586,7 +587,7 @@
       }
 
       // labels meses
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.fillStyle = 'rgba(26, 26, 26, 0.55)';
       ctx.font = '10px JetBrains Mono';
       ctx.textAlign = 'center';
       months.forEach((m, i) => {
@@ -796,7 +797,7 @@
       ctx.clearRect(0, 0, rect.width, rect.height);
 
       // grid
-      ctx.strokeStyle = 'rgba(0, 212, 245, 0.08)';
+      ctx.strokeStyle = 'rgba(26, 26, 26, 0.08)';
       ctx.lineWidth = 1;
       for (let i = 0; i <= 4; i++) {
         const y = padT + (h * i) / 4;
@@ -811,22 +812,22 @@
         const bH = (before[i] / 100) * h * progress;
         const aH = (after[i] / 100) * h * progress;
 
-        // antes
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        // antes (gris sobre blanco)
+        ctx.fillStyle = 'rgba(26, 26, 26, 0.18)';
         ctx.fillRect(baseX, padT + h - bH, barW * 0.85, bH);
 
-        // despues con glow
-        ctx.shadowColor = '#00d4f5';
+        // despues con glow cyan (brand AIMMA — version oscura para contraste)
+        ctx.shadowColor = '#0096b7';
         ctx.shadowBlur = 12;
         const grad = ctx.createLinearGradient(0, padT, 0, padT + h);
-        grad.addColorStop(0, '#00d4f5');
-        grad.addColorStop(1, '#0096b7');
+        grad.addColorStop(0, '#0096b7');
+        grad.addColorStop(1, '#006d8b');
         ctx.fillStyle = grad;
         ctx.fillRect(baseX + barW, padT + h - aH, barW * 0.85, aH);
         ctx.shadowBlur = 0;
 
         // labels
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillStyle = 'rgba(26, 26, 26, 0.70)';
         ctx.font = '11px Rajdhani';
         ctx.textAlign = 'center';
         ctx.fillText(l, baseX + barW * 0.85, padT + h + 22);
@@ -834,13 +835,13 @@
 
       // leyenda
       ctx.font = '11px JetBrains Mono';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillStyle = 'rgba(26, 26, 26, 0.55)';
       ctx.textAlign = 'left';
       ctx.fillRect(padL, 10, 12, 8);
       ctx.fillText('ANTES', padL + 18, 18);
-      ctx.fillStyle = '#00d4f5';
+      ctx.fillStyle = '#0096b7';
       ctx.fillRect(padL + 80, 10, 12, 8);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillStyle = 'rgba(26, 26, 26, 0.75)';
       ctx.fillText('DESPUÉS · CON IA', padL + 98, 18);
     }
 
