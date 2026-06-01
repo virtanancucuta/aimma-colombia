@@ -1,0 +1,42 @@
+---
+// AIMMA Editor PRO-MAX · BlockRenderer dispatcher · 2026-06-01
+// Recibe un array de Section y los renderea con el block correcto segun
+// section.tipo + plantilla activa de la tienda.
+//
+// En Plan 1: solo Industrial Clean implementado. Otras plantillas caen
+// al fallback Industrial Clean hasta Plan 2.
+
+import type { Section } from '@aimma/database';
+import HeroIndustrialClean from '~/components/blocks/hero/HeroIndustrialClean.astro';
+import TextoIndustrialClean from '~/components/blocks/texto/TextoIndustrialClean.astro';
+import ImagenIndustrialClean from '~/components/blocks/imagen/ImagenIndustrialClean.astro';
+import BotonesIndustrialClean from '~/components/blocks/botones/BotonesIndustrialClean.astro';
+import ProductosIndustrialClean from '~/components/blocks/productos/ProductosIndustrialClean.astro';
+import GaleriaIndustrialClean from '~/components/blocks/galeria/GaleriaIndustrialClean.astro';
+import Espaciador from '~/components/blocks/espaciador/Espaciador.astro';
+import FormularioIndustrialClean from '~/components/blocks/formulario/FormularioIndustrialClean.astro';
+
+interface Props {
+  sections: Section[];
+}
+
+const { sections } = Astro.props;
+const { tienda } = Astro.locals;
+
+// En Plan 1 todos van a Industrial Clean. Plan 2 dispatcheara por
+// tienda.plantilla?.slug a Fashion Bold / Minimal Artesanal /
+// Editorial Magazine.
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+---
+
+{sections.map((section) => {
+  if (section.tipo === 'hero') return <HeroIndustrialClean section={section} />;
+  if (section.tipo === 'texto') return <TextoIndustrialClean section={section} />;
+  if (section.tipo === 'imagen') return <ImagenIndustrialClean section={section} />;
+  if (section.tipo === 'botones') return <BotonesIndustrialClean section={section} />;
+  if (section.tipo === 'productos') return <ProductosIndustrialClean section={section} />;
+  if (section.tipo === 'galeria') return <GaleriaIndustrialClean section={section} />;
+  if (section.tipo === 'espaciador') return <Espaciador section={section} />;
+  if (section.tipo === 'formulario') return <FormularioIndustrialClean section={section} />;
+  return null;
+})}
