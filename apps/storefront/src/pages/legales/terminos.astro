@@ -1,0 +1,155 @@
+---
+// AIMMA Storefront · /legales/terminos · v1 · 2026-06-01
+// Pagina estatica global: aclara que AIMMA es plataforma SaaS, no marketplace.
+// Proteccion legal contra responsabilidad de transaccion.
+
+import Layout from '~/layouts/Layout.astro';
+
+const { tienda } = Astro.locals;
+const today = new Date().toLocaleDateString('es-CO', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<Layout
+  title="Terminos de uso del servicio"
+  description={`Terminos de uso de la plataforma AIMMA y el rol de ${tienda.nombre_negocio} en las transacciones.`}
+  noindex={false}
+>
+  <article class="prose prose-sm mx-auto max-w-3xl px-6 py-10 lg:py-16 text-[var(--ta-color-text-base)]">
+    <header class="not-prose mb-10">
+      <p class="font-body text-[13px] text-[var(--ta-color-text-base)]/55 mb-2">
+        Vigentes desde {today}
+      </p>
+      <h1 class="font-display font-semibold tracking-tight text-[var(--ta-color-text-base)]" style="font-size:clamp(2rem, 4.5vw, 3rem); line-height:1.1; letter-spacing:-0.02em;">
+        Terminos de uso del servicio
+      </h1>
+    </header>
+
+    <section class="mt-8">
+      <h2 class="font-display font-semibold text-[var(--ta-color-text-base)]" style="font-size:1.35rem;">
+        1. Naturaleza del servicio
+      </h2>
+      <p class="leading-[1.65]">
+        Esta tienda online es operada por <strong>{tienda.nombre_negocio}</strong> usando
+        AIMMA como plataforma tecnologica. AIMMA Colombia SAS provee la herramienta
+        de software (Tienda IA) que permite a {tienda.nombre_negocio} mostrar sus
+        productos y recibir pedidos.
+      </p>
+      <p class="leading-[1.65] mt-3">
+        AIMMA es un <strong>proveedor de software como servicio (SaaS)</strong>, no
+        un marketplace ni intermediario comercial. AIMMA no compra, vende, almacena
+        ni despacha productos.
+      </p>
+    </section>
+
+    <section class="mt-8">
+      <h2 class="font-display font-semibold text-[var(--ta-color-text-base)]" style="font-size:1.35rem;">
+        2. Quien vende
+      </h2>
+      <p class="leading-[1.65]">
+        El vendedor unico y responsable de cada pedido realizado en esta tienda es
+        <strong>{tienda.nombre_negocio}</strong>{tienda.nit ? ` (NIT ${tienda.nit})` : ''}.
+        Toda relacion contractual de compraventa se establece directamente entre
+        el comprador y {tienda.nombre_negocio}.
+      </p>
+    </section>
+
+    <section class="mt-8">
+      <h2 class="font-display font-semibold text-[var(--ta-color-text-base)]" style="font-size:1.35rem;">
+        3. Coordinacion del pedido
+      </h2>
+      <p class="leading-[1.65]">
+        Al completar el formulario de pedido, esta tienda registra tu solicitud y
+        te conecta con {tienda.nombre_negocio} via WhatsApp. <strong>Pago, plazo de
+        entrega, metodo de envio y politicas de devolucion son acordados directamente
+        entre vos y la tienda</strong> a traves de ese canal.
+      </p>
+      <p class="leading-[1.65] mt-3">
+        AIMMA no participa en pagos, no recibe comisiones por venta, no garantiza
+        la entrega ni media en disputas comerciales entre comprador y vendedor.
+      </p>
+    </section>
+
+    <section class="mt-8">
+      <h2 class="font-display font-semibold text-[var(--ta-color-text-base)]" style="font-size:1.35rem;">
+        4. Garantias y devoluciones
+      </h2>
+      <p class="leading-[1.65]">
+        Las garantias, devoluciones y reclamos sobre productos son responsabilidad
+        exclusiva de {tienda.nombre_negocio}, conforme a la Ley 1480 de 2011
+        (Estatuto del Consumidor de Colombia) y las politicas que la tienda
+        publique en
+        <a href="/legales/garantias" class="underline">esta seccion</a>.
+      </p>
+    </section>
+
+    <section class="mt-8">
+      <h2 class="font-display font-semibold text-[var(--ta-color-text-base)]" style="font-size:1.35rem;">
+        5. Tratamiento de datos
+      </h2>
+      <p class="leading-[1.65]">
+        Los datos personales que ingreses en el formulario de pedido (nombre,
+        telefono, direccion, email opcional) son recolectados por
+        {tienda.nombre_negocio} con el unico fin de coordinar tu pedido. AIMMA
+        Colombia SAS actua como
+        <strong>encargado del tratamiento</strong> bajo instrucciones de la tienda,
+        conforme a la Ley 1581 de 2012 (Habeas Data Colombia).
+      </p>
+      <p class="leading-[1.65] mt-3">
+        Para ejercer derechos sobre tus datos (acceso, rectificacion, supresion)
+        consulta la
+        <a href="/legales/datos" class="underline">politica de datos de esta tienda</a>.
+      </p>
+    </section>
+
+    <section class="mt-8">
+      <h2 class="font-display font-semibold text-[var(--ta-color-text-base)]" style="font-size:1.35rem;">
+        6. Limitacion de responsabilidad de AIMMA
+      </h2>
+      <p class="leading-[1.65]">
+        AIMMA Colombia SAS no es responsable por:
+      </p>
+      <ul class="leading-[1.65] mt-3 space-y-1 pl-4">
+        <li>Calidad, descripcion exacta o disponibilidad de productos.</li>
+        <li>Demoras, perdidas o danos durante el envio.</li>
+        <li>Disputas comerciales entre comprador y vendedor.</li>
+        <li>Errores de inventario o precios cargados por la tienda.</li>
+        <li>Comunicaciones o acuerdos privados via WhatsApp.</li>
+      </ul>
+      <p class="leading-[1.65] mt-3">
+        AIMMA es responsable unicamente por la disponibilidad tecnica del software
+        (uptime razonable de la plataforma) y por proteger la integridad de los
+        datos almacenados.
+      </p>
+    </section>
+
+    <section class="mt-8">
+      <h2 class="font-display font-semibold text-[var(--ta-color-text-base)]" style="font-size:1.35rem;">
+        7. Contacto
+      </h2>
+      <p class="leading-[1.65]">
+        Para cualquier asunto relacionado con tu pedido, contacta a
+        {tienda.nombre_negocio} directamente
+        {tienda.whatsapp_dueno ? (
+          <span>via WhatsApp al <strong>{tienda.whatsapp_dueno}</strong></span>
+        ) : (
+          <a href="/legales/contacto" class="underline">via la pagina de contacto</a>
+        )}.
+      </p>
+      <p class="leading-[1.65] mt-3">
+        Para asuntos relacionados con la plataforma AIMMA (problemas tecnicos del
+        sitio), escribe a <a href="mailto:soporte@aimma.com.co" class="underline">soporte@aimma.com.co</a>.
+      </p>
+    </section>
+
+    <footer class="not-prose mt-16 pt-6 border-t border-[var(--ta-color-text-base)]/10">
+      <p class="font-body text-[13px] text-[var(--ta-color-text-base)]/55">
+        AIMMA Colombia SAS &middot; Plataforma SaaS de tiendas online &middot;
+        <a href="https://aimma.com.co" class="underline">aimma.com.co</a>
+      </p>
+    </footer>
+  </article>
+</Layout>
