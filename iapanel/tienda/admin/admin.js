@@ -31,7 +31,8 @@
   const PANEL_URL = '/iapanel/';
   const STOREFRONT_HOST = 'tienda.aimma.com.co'; // <slug>.tienda.aimma.com.co
 
-  const ROUTES = ['', 'productos', 'categorias', 'pedidos', 'configuracion', 'legales', 'vista-previa'];
+  // 'pedidos' mantiene retrocompat con URLs viejas; alias a 'crm' (misma vista).
+  const ROUTES = ['', 'productos', 'categorias', 'crm', 'pedidos', 'configuracion', 'legales', 'vista-previa'];
   const DEFAULT_ROUTE = '';
 
   // ============================================================
@@ -306,6 +307,7 @@
     'productos': function () { renderPlaceholder('Productos', 'Lista, crear, editar productos y variantes (Fase 3.3).'); },
     'categorias': function () { renderPlaceholder('Categorias', 'Arbol de 2 niveles para organizar tu catalogo (Fase 3.5).'); },
     'pedidos': function () { renderPlaceholder('Pedidos', 'Aun no tienes pedidos. Los pedidos apareceran aqui cuando publiques tu tienda y los compradores hagan checkout por WhatsApp (Fase 5).'); },
+    'crm': function () { renderPlaceholder('CRM', 'Aun no tienes pedidos. Los pedidos apareceran aqui cuando publiques tu tienda y los compradores hagan checkout por WhatsApp (Fase 5).'); },
     'configuracion': function () { renderPlaceholder('Configuracion', 'Nombre, logo, WhatsApp, plantilla, paleta, datos legales (Fase 3.6).'); },
     'legales': function () { renderPlaceholder('Paginas legales', 'Editor de garantias, tratamiento de datos y contacto (Fase 3.7).'); },
   };
