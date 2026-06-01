@@ -1,0 +1,91 @@
+---
+// AIMMA Editor PRO-MAX · ElementRenderer · 2026-06-01
+// Helper compartido: renderiza UN elemento dentro del grid 24-col.
+// Recibe Element del schema Zod + tipo de plantilla (para variants futuras).
+//
+// Tipos soportados: texto, imagen, boton, productos, galeria, form_field,
+// embed, divisor.
+
+import type { Element } from '@aimma/database';
+
+interface Props {
+  el: Element;
+}
+
+const { el } = Astro.props;
+
+// Compose grid CSS vars desde el.grid
+const gridStyle = [
+  `--col-start:${el.grid.col_start}`,
+  `--col-end:${el.grid.col_end}`,
+  `--row-start:${el.grid.row_start}`,
+  `--row-end:${el.grid.row_end}`,
+  el.grid_mobile?.orden != null ? `--mobile-orden:${el.grid_mobile.orden}` : '',
+].filter(Boolean).join(';') + ';';
+
+// Estilos comunes desde el.estilo
+const alignClass = `block-element--align-${el.estilo.alineacion}`;
+const colorInline = el.estilo.color_texto
+  ? `color:${el.estilo.color_texto};`
+  : '';
+---
+
+<div class={`block-element ${alignClass}`} style={gridStyle}>
+  {el.tipo === 'texto' && (
+    <p
+      class={[
+        `block-text--size-${el.estilo.tamaño}`,
+        `block-text--weight-${el.estilo.peso}`,
+        `block-text--align-${el.estilo.alineacion}`,
+      ].join(' ')}
+      style={`font-family:var(--ta-font-body);${colorInline}`}
+    >
+      {el.props.contenido}
+    </p>
+  )}
+
+  {el.tipo === 'imagen' && (
+    el.props.link_url ? (
+      <a href={el.props.link_url} class="block w-full h-full">
+        <img
+          src={el.props.src}
+          alt={el.props.alt}
+          loading="lazy"
+          class="w-full h-full"
+          style={`object-fit:${el.props.objeto};`}
+        />
+      </a>
+    ) : (
+      <img
+        src={el.props.src}
+        alt={el.props.alt}
+        loading="lazy"
+        class="w-full h-full"
+        style={`object-fit:${el.props.objeto};`}
+      />
+    )
+  )}
+
+  {el.tipo === 'boton' && (
+    <a
+      href={el.props.url}
+      class={`block-button block-button--${el.props.estilo_visual}`}
+      target={el.props.target}
+      rel={el.props.target === '_blank' ? 'noopener' : undefined}
+      style={colorInline}
+    >
+      {el.props.texto}
+    </a>
+  )}
+
+  {el.tipo === 'divisor' && (
+    <hr
+      class="w-full"
+      style={`border-style:${el.props.estilo === 'linea' ? 'solid' : el.props.estilo === 'punto' ? 'dotted' : 'solid'};border-color:${el.props.color || 'var(--ta-color-text-base)'};opacity:0.15;`}
+    />
+  )}
+
+  {/* Otros tipos (productos, galeria, form_field, embed) se delegan a
+      los blocks especificos por plantilla en sus archivos correspondientes
+      porque requieren queries Supabase o renderers complejos */}
+</div>
