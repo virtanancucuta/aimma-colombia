@@ -6,22 +6,22 @@
   --navy-deep: #fafafa;
   --navy-card: #ffffff;
   --navy:      #f6f6f7;
-  /* AIMMA cyan WCAG-safe sobre blanco */
-  --cyan: #0096b7;
+  /* AIMMA cyan WCAG AA full sobre blanco */
+  --cyan: #006d8b;
   --cyan-bright: #00d4f5;
   --cyan-soft: #00b4d8;
-  --cyan-deep: #006d8b;
-  --cyan-text: #006d8b;
-  --cyan-glow: rgba(0,212,245,0.08);
-  --cyan-glow-strong: rgba(0,212,245,0.15);
+  --cyan-deep: #005570;
+  --cyan-text: #005570;
+  --cyan-glow: rgba(0,212,245,0.10);
+  --cyan-glow-strong: rgba(0,212,245,0.18);
   /* Texto invertido */
   --white:    #1a1a1a;
   --white-90: rgba(26,26,26,0.92);
-  --white-80: rgba(26,26,26,0.82);
-  --white-70: rgba(26,26,26,0.70);
-  --white-60: rgba(26,26,26,0.60);
-  --white-40: rgba(26,26,26,0.55);
-  --white-15: rgba(0,0,0,0.04);
+  --white-80: rgba(26,26,26,0.85);
+  --white-70: rgba(26,26,26,0.75);
+  --white-60: rgba(26,26,26,0.70);
+  --white-40: rgba(26,26,26,0.62);
+  --white-15: rgba(0,0,0,0.06);
   --radius: 8px;
   --radius-lg: 22px;
   --font-display: 'Exo 2', sans-serif;

@@ -18,24 +18,26 @@
        (copiadas del style.v3.css de aimma-website)
        ============================ */
     :root {
-      --navy-deepest: #020812;
-      --navy-deep: #040d1a;
-      --navy: #071425;
-      --navy-card: #0a1e33;
-      --navy-line: #103048;
-      --cyan: #00d4f5;
+      /* AIMMA Contenido IA admin · white-mode Shopify-style (Fase 8) */
+      --navy-deepest: #f1f1f3;
+      --navy-deep: #fafafa;
+      --navy: #f6f6f7;
+      --navy-card: #ffffff;
+      --navy-line: #e1e3e5;
+      --cyan: #006d8b;
+      --cyan-bright: #00d4f5;
       --cyan-soft: #00b4d8;
-      --cyan-deep: #0096b7;
-      --cyan-glow: rgba(0, 212, 245, 0.18);
-      --cyan-glow-strong: rgba(0, 212, 245, 0.35);
-      --white: #ffffff;
-      --white-90: rgba(255, 255, 255, 0.90);
-      --white-80: rgba(255, 255, 255, 0.80);
-      --white-70: rgba(255, 255, 255, 0.70);
-      --white-60: rgba(255, 255, 255, 0.60);
-      --white-40: rgba(255, 255, 255, 0.40);
-      --white-15: rgba(255, 255, 255, 0.07);
-      --error: #ff4d6d;
+      --cyan-deep: #005570;
+      --cyan-glow: rgba(0, 212, 245, 0.10);
+      --cyan-glow-strong: rgba(0, 212, 245, 0.18);
+      --white: #1a1a1a;
+      --white-90: rgba(26, 26, 26, 0.92);
+      --white-80: rgba(26, 26, 26, 0.85);
+      --white-70: rgba(26, 26, 26, 0.75);
+      --white-60: rgba(26, 26, 26, 0.70);
+      --white-40: rgba(26, 26, 26, 0.62);
+      --white-15: rgba(0, 0, 0, 0.06);
+      --error: #d72c0d;
 
       --font-display: 'Exo 2', system-ui, sans-serif;
       --font-ui: 'Rajdhani', system-ui, sans-serif;
@@ -69,7 +71,7 @@
        ============================ */
     .topbar {
       position: sticky; top: 0; z-index: 20;
-      background: rgba(4, 13, 26, 0.88);
+      background: rgba(250, 250, 250, 0.88);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--white-15);
       height: var(--header-h);
@@ -220,7 +222,7 @@
       color: var(--white-40);
       text-transform: uppercase;
       padding: 12px 14px;
-      background: rgba(255,255,255,0.02);
+      background: rgba(0,0,0,0.025);
       border-bottom: 1px solid var(--white-15);
       white-space: nowrap;
     }
@@ -273,7 +275,7 @@
       border-radius: 6px;
       border: 1px solid var(--white-15);
       color: var(--white-60);
-      background: rgba(255,255,255,0.03);
+      background: rgba(0,0,0,0.035);
     }
     .pill.test { color: #fbbf24; border-color: rgba(251,191,36,0.45); background: rgba(251,191,36,0.10); }
     .pill.prod { color: #4ade80; border-color: rgba(74,222,128,0.45); background: rgba(74,222,128,0.10); }
@@ -288,7 +290,7 @@
       padding: 16px;
     }
     .health-item {
-      background: rgba(255,255,255,0.02);
+      background: rgba(0,0,0,0.025);
       border: 1px solid var(--white-15);
       border-radius: 8px;
       padding: 14px;

@@ -587,7 +587,7 @@
       }
 
       // labels meses
-      ctx.fillStyle = 'rgba(26, 26, 26, 0.55)';
+      ctx.fillStyle = 'rgba(26, 26, 26, 0.78)';
       ctx.font = '10px JetBrains Mono';
       ctx.textAlign = 'center';
       months.forEach((m, i) => {
@@ -827,7 +827,7 @@
         ctx.shadowBlur = 0;
 
         // labels
-        ctx.fillStyle = 'rgba(26, 26, 26, 0.70)';
+        ctx.fillStyle = 'rgba(26, 26, 26, 0.82)';
         ctx.font = '11px Rajdhani';
         ctx.textAlign = 'center';
         ctx.fillText(l, baseX + barW * 0.85, padT + h + 22);
@@ -835,7 +835,7 @@
 
       // leyenda
       ctx.font = '11px JetBrains Mono';
-      ctx.fillStyle = 'rgba(26, 26, 26, 0.55)';
+      ctx.fillStyle = 'rgba(26, 26, 26, 0.78)';
       ctx.textAlign = 'left';
       ctx.fillRect(padL, 10, 12, 8);
       ctx.fillText('ANTES', padL + 18, 18);

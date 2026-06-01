@@ -280,7 +280,7 @@
             '<span style="background:' + safeColor(pa.color_primary) + ';"></span>' +
             '<span style="background:' + safeColor(pa.color_accent) + ';"></span>' +
             '<span style="background:' + safeColor(pa.color_text_base) + ';"></span>' +
-            '<span style="background:' + safeColor(pa.color_bg_base) + ';border:1px solid rgba(255,255,255,.15);"></span>' +
+            '<span style="background:' + safeColor(pa.color_bg_base) + ';border:1px solid rgba(0,0,0,.15);"></span>' +
           '</div>' +
           '<div class="ta-wizard__swatch-name">' + T.escapeHtml(pa.nombre) + '</div>' +
         '</button>';

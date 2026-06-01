@@ -14,23 +14,26 @@
   --navy-card:    #ffffff;  /* cards / surfaces */
   --navy-line:    #e1e3e5;  /* borders */
 
-  /* AIMMA brand cyan — version WCAG-safe sobre blanco como default */
-  --cyan: #0096b7;          /* texto/accent default (3.7:1 large, AAA con bold weight) */
-  --cyan-bright: #00d4f5;   /* brand original para hero/badges/halos brillantes */
-  --cyan-soft: #00b4d8;
-  --cyan-deep: #006d8b;     /* texto pequeno sobre blanco (6.0:1 AA full) */
-  --cyan-text: #006d8b;
-  --cyan-glow: rgba(0, 212, 245, 0.08);
-  --cyan-glow-strong: rgba(0, 212, 245, 0.15);
+  /* AIMMA brand cyan — WCAG AA full sobre blanco (6.0:1)
+     SOLO #cyan-bright para hero/halos decorativos; NUNCA en texto. */
+  --cyan: #006d8b;          /* default — pasa AA texto normal (4.5:1+) */
+  --cyan-soft: #00b4d8;     /* secundario */
+  --cyan-deep: #005570;     /* texto critico (8:1) */
+  --cyan-text: #005570;
+  --cyan-bright: #00d4f5;   /* SOLO decorativo: hero, halos, glows. NO usar en texto. */
+  --cyan-glow: rgba(0, 212, 245, 0.10);
+  --cyan-glow-strong: rgba(0, 212, 245, 0.18);
 
-  /* Texto — invertido (oscuro sobre claro) */
-  --white:    #1a1a1a;                       /* principal — antes #ffffff */
-  --white-90: rgba(26, 26, 26, 0.92);
-  --white-80: rgba(26, 26, 26, 0.82);
-  --white-70: rgba(26, 26, 26, 0.70);
-  --white-60: rgba(26, 26, 26, 0.60);
-  --white-40: rgba(26, 26, 26, 0.55);
-  --white-15: rgba(0, 0, 0, 0.04);           /* superficies sutiles */
+  /* Texto secundario WCAG sobre blanco (HIGH fix audit) */
+
+  /* Texto — invertido (oscuro sobre claro), valores ajustados WCAG AA */
+  --white:    #1a1a1a;                       /* principal — 16.9:1 */
+  --white-90: rgba(26, 26, 26, 0.92);        /* 14:1 */
+  --white-80: rgba(26, 26, 26, 0.85);        /* 11:1 (subio de 0.82) */
+  --white-70: rgba(26, 26, 26, 0.75);        /* 8:1 (subio de 0.70) */
+  --white-60: rgba(26, 26, 26, 0.70);        /* 6.5:1 AA pass (subio de 0.60) */
+  --white-40: rgba(26, 26, 26, 0.62);        /* 5:1 AA pass (subio de 0.55) — antes era subtexto invisible */
+  --white-15: rgba(0, 0, 0, 0.06);           /* superficies sutiles visibles */
   --error: #d72c0d;
 
   --font-display: 'Exo 2', system-ui, sans-serif;
@@ -70,11 +73,19 @@ body {
   --white-60: rgba(255,255,255,0.60);
   --white-40: rgba(255,255,255,0.42);
   --white-15: rgba(255,255,255,0.07);
-  --navy-deep: #040d1a;
-  --navy-card: #0a1e33;
-  --navy-line: #103048;
-  --cyan: #00d4f5;          /* mockup interno: cyan brillante AIMMA contrasta sobre dark */
-  --cyan-deep: #0096b7;
+  --navy-deepest: #020812;
+  --navy-deep:    #040d1a;
+  --navy:         #071425;
+  --navy-card:    #0a1e33;
+  --navy-line:    #103048;
+  --cyan:         #00d4f5;  /* mockup interno: cyan brillante AIMMA contrasta sobre dark */
+  --cyan-bright:  #00d4f5;
+  --cyan-soft:    #00b4d8;
+  --cyan-deep:    #0096b7;
+  --cyan-text:    #0096b7;
+  --error:        #ff4d6d;
+  --success:      #00e89c;
+  --warning:      #ffb547;
   color: var(--white);
 }
 img, svg { max-width: 100%; display: block; }
@@ -2441,22 +2452,22 @@ main { padding-top: var(--header-h); position: relative; z-index: 1; }
   width: 100%;
   padding: 12px 14px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--white-15);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
   color: var(--white);
   font-family: var(--font-ui);
   font-size: 0.96rem;
   outline: none;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
-.auth-field input::placeholder { color: rgba(255, 255, 255, 0.32); }
-.auth-field input:hover { border-color: rgba(255, 255, 255, 0.20); }
+.auth-field input::placeholder { color: rgba(26, 26, 26, 0.45); }
+.auth-field input:hover { border-color: rgba(0, 0, 0, 0.28); }
 .auth-field input:focus {
   border-color: var(--cyan);
-  background: rgba(0, 212, 245, 0.05);
-  box-shadow: 0 0 0 3px rgba(0, 212, 245, 0.15);
+  background: rgba(0, 109, 139, 0.04);
+  box-shadow: 0 0 0 3px rgba(0, 109, 139, 0.18);
 }
-.auth-field.invalid input { border-color: var(--error); background: rgba(255, 77, 109, 0.06); }
+.auth-field.invalid input { border-color: var(--error); background: rgba(215, 44, 13, 0.06); }
 .auth-field-error {
   font-size: 0.78rem;
   color: var(--error);

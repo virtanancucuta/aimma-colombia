@@ -32,9 +32,9 @@
   --ta-text: #1a1a1a;
   --ta-text-soft: #4a4a4a;
   --ta-text-mut: #737373;
-  --ta-accent: #0096b7;       /* AIMMA cyan oscuro WCAG-safe sobre blanco */
+  --ta-accent: #006d8b;       /* AIMMA cyan WCAG AA full (6.0:1) — #fff sobre este pasa AA */
   --ta-accent-2: #008060;     /* verde Shopify para success accents */
-  --ta-accent-bright: #00d4f5;/* cyan brillante AIMMA solo para hero/badges grandes */
+  --ta-accent-bright: #00d4f5;/* cyan brillante AIMMA SOLO hero/halos. No texto. */
   --ta-warn: #b78103;
   --ta-danger: #d72c0d;
   --ta-success: #008060;
@@ -275,7 +275,7 @@ a:hover { text-decoration: underline; }
   border-color: var(--ta-accent);
   color: #ffffff;
 }
-.ta-btn--primary:hover { background: #007a99; border-color: #007a99; }
+.ta-btn--primary:hover { background: #005570; border-color: #005570; }
 .ta-btn--danger {
   background: transparent;
   border-color: rgba(255,93,108,.4);
@@ -1128,8 +1128,8 @@ a:hover { text-decoration: underline; }
 .ta-wizard__card:hover { border-color: var(--ta-accent); transform: translateY(-2px); }
 .ta-wizard__card.is-active {
   border-color: var(--ta-accent);
-  background: rgba(0,150,183,.08);
-  box-shadow: 0 0 0 2px rgba(0,150,183,.25);
+  background: rgba(0,109,139,.08);
+  box-shadow: 0 0 0 2px rgba(0,109,139,.25);
 }
 .ta-wizard__card-preview {
   aspect-ratio: 16 / 10;

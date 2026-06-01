@@ -1,7 +1,8 @@
 /* =========================================================================
-   AIMMA Charts Modal — Propuesta B (modal gráfico ampliado)
-   Modal fullscreen reusable para visualizar cualquier informe como gráfico.
+   AIMMA Charts Modal — White-mode Shopify-style (Fase 8 · 2026-05-31)
+   Modal fullscreen reusable para visualizar cualquier informe como grafico.
    Patron Apple/Stripe: overlay + chart grande + navegacion entre informes.
+   Branding AIMMA preservado (cyan en accents, fonts Exo 2 / JetBrains Mono).
    ========================================================================= */
 
 /* Overlay backdrop */
@@ -10,7 +11,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -29,8 +30,8 @@
 
 /* Container del modal */
 .chart-modal__container {
-  background: var(--bg-panel, #0e1626);
-  border: 1px solid var(--border-faint, rgba(255,255,255,0.1));
+  background: var(--bg-panel, #ffffff);
+  border: 1px solid var(--border-faint, rgba(0,0,0,0.10));
   border-radius: 16px;
   width: 100%;
   max-width: 1200px;
@@ -38,7 +39,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 212, 245, 0.15);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
 }
 
 /* Header del modal */
@@ -47,7 +48,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--border-faint, rgba(255,255,255,0.08));
+  border-bottom: 1px solid var(--border-faint, rgba(0,0,0,0.08));
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -56,7 +57,7 @@
   font-weight: 800;
   font-size: 1.15rem;
   margin: 0;
-  color: var(--text-strong, #fff);
+  color: var(--text-strong, #1a1a1a);
   flex: 1 1 auto;
 }
 .chart-modal__controls {
@@ -72,16 +73,16 @@
   padding: 8px 14px;
   min-height: 36px;
   border-radius: 8px;
-  border: 1px solid var(--border-faint, rgba(255,255,255,0.15));
+  border: 1px solid var(--border-faint, rgba(0,0,0,0.15));
   background: transparent;
-  color: var(--text-strong, #fff);
+  color: var(--text-strong, #1a1a1a);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 180ms, border-color 180ms;
 }
-.chart-modal__btn:hover { background: rgba(0, 212, 245, 0.08); border-color: var(--cyan, #00d4f5); }
-.chart-modal__btn:focus-visible { outline: 2px solid var(--cyan, #00d4f5); outline-offset: 2px; }
+.chart-modal__btn:hover { background: rgba(0, 109, 139, 0.08); border-color: var(--cyan, #006d8b); }
+.chart-modal__btn:focus-visible { outline: 2px solid var(--cyan, #006d8b); outline-offset: 2px; }
 .chart-modal__btn--close {
   width: 40px;
   height: 40px;
@@ -100,13 +101,13 @@
   gap: 4px;
   padding: 4px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.10);
 }
 .chart-modal__topn-label {
   padding: 0 8px;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(26, 26, 26, 0.65);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -118,18 +119,18 @@
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(26, 26, 26, 0.78);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 180ms, color 180ms;
 }
-.chart-modal__topn-btn:hover { background: rgba(0, 212, 245, 0.1); color: #fff; }
+.chart-modal__topn-btn:hover { background: rgba(0, 109, 139, 0.10); color: #1a1a1a; }
 .chart-modal__topn-btn[aria-pressed="true"] {
-  background: var(--cyan, #00d4f5);
-  color: #000;
+  background: var(--cyan, #006d8b);
+  color: #ffffff;
 }
-.chart-modal__topn-btn:focus-visible { outline: 2px solid var(--cyan, #00d4f5); outline-offset: 2px; }
+.chart-modal__topn-btn:focus-visible { outline: 2px solid var(--cyan, #006d8b); outline-offset: 2px; }
 
 /* Navegacion entre informes (flechas izq/der) */
 .chart-modal__nav {
@@ -139,9 +140,9 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-faint, rgba(255,255,255,0.2));
-  color: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border-faint, rgba(0,0,0,0.15));
+  color: #1a1a1a;
   font-size: 1.4rem;
   cursor: pointer;
   display: flex;
@@ -149,9 +150,10 @@
   justify-content: center;
   transition: background 180ms;
   z-index: 1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
-.chart-modal__nav:hover { background: var(--cyan, #00d4f5); color: #000; }
-.chart-modal__nav:focus-visible { outline: 2px solid var(--cyan, #00d4f5); outline-offset: 2px; }
+.chart-modal__nav:hover { background: var(--cyan, #006d8b); color: #ffffff; }
+.chart-modal__nav:focus-visible { outline: 2px solid var(--cyan, #006d8b); outline-offset: 2px; }
 .chart-modal__nav--prev { left: 8px; }
 .chart-modal__nav--next { right: 8px; }
 .chart-modal__nav[disabled] { opacity: 0.3; cursor: not-allowed; }
@@ -180,9 +182,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  border-top: 1px solid var(--border-faint, rgba(255,255,255,0.08));
+  border-top: 1px solid var(--border-faint, rgba(0,0,0,0.08));
   font-size: 0.8rem;
-  color: var(--text-soft, rgba(255,255,255,0.6));
+  color: var(--text-soft, rgba(26,26,26,0.70));
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -195,26 +197,27 @@
   display: inline-block;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.12);
   font-family: monospace;
   font-size: 0.7rem;
+  color: #1a1a1a;
 }
 
-/* Botón "Ver grafico" debajo de cada reporte */
+/* Boton "Ver grafico" debajo de cada reporte */
 .reporte-btn--chart {
   background: transparent;
-  border: 1px solid var(--cyan, #00d4f5);
-  color: var(--cyan, #00d4f5);
+  border: 1px solid var(--cyan, #006d8b);
+  color: var(--cyan, #006d8b);
   margin-left: 8px;
 }
 .reporte-btn--chart:hover {
-  background: var(--cyan, #00d4f5);
-  color: #000;
+  background: var(--cyan, #006d8b);
+  color: #ffffff;
 }
 .reporte-btns-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-/* Estado vacío */
+/* Estado vacio */
 .chart-modal__empty {
   display: flex;
   flex-direction: column;
@@ -222,7 +225,7 @@
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
-  color: var(--text-soft, rgba(255,255,255,0.6));
+  color: var(--text-soft, rgba(26,26,26,0.70));
   gap: 12px;
 }
 

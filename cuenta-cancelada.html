@@ -105,13 +105,14 @@
 
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: rgba(0,0,0,0.85); color: var(--white); padding: 12px 20px;
+      background: #1a1a1a; color: #ffffff; padding: 12px 20px;
       border-radius: 8px; font-size: 0.9rem; opacity: 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.20);
       transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 100;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .toast.success { background: rgba(34,197,94,0.95); color: var(--navy-deep); }
-    .toast.error { background: rgba(239,68,68,0.95); color: var(--white); }
+    .toast.success { background: #008060; color: #ffffff; }
+    .toast.error { background: #d72c0d; color: #ffffff; }
   </style>
 </head>
 <body>

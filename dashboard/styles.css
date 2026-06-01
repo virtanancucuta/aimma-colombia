@@ -13,20 +13,20 @@
   --navy-card-2:  #f6f6f7;
   --navy-line:    #e1e3e5;
 
-  /* AIMMA cyan WCAG-safe sobre blanco como default */
-  --cyan: #0096b7;
-  --cyan-bright: #00d4f5;
+  /* AIMMA cyan WCAG AA full sobre blanco (6.0:1+) */
+  --cyan: #006d8b;
+  --cyan-bright: #00d4f5;   /* SOLO hero/halos decorativos. NO texto. */
   --cyan-soft: #00b4d8;
-  --cyan-deep: #006d8b;
-  --cyan-text: #006d8b;
-  --cyan-glow: rgba(0, 212, 245, 0.08);
-  --cyan-glow-strong: rgba(0, 212, 245, 0.15);
+  --cyan-deep: #005570;
+  --cyan-text: #005570;
+  --cyan-glow: rgba(0, 212, 245, 0.10);
+  --cyan-glow-strong: rgba(0, 212, 245, 0.18);
 
-  /* Texto invertido (oscuro sobre claro) */
+  /* Texto invertido (oscuro sobre claro), valores WCAG AA */
   --white:    #1a1a1a;
   --white-70: rgba(26, 26, 26, 0.78);
-  --white-40: rgba(26, 26, 26, 0.55);
-  --white-15: rgba(0, 0, 0, 0.04);
+  --white-40: rgba(26, 26, 26, 0.62);     /* subio de 0.55 a 0.62 (5:1 AA) */
+  --white-15: rgba(0, 0, 0, 0.06);
 
   /* States — versiones WCAG-safe sobre blanco */
   --error: #d72c0d;
