@@ -1,0 +1,111 @@
+/* AIMMA Editor PRO-MAX · CSS Grid 24-col base + Container Queries */
+
+/* Section es contenedor con grid 24-col en desktop, 1-col en mobile via container query */
+.block-section {
+  container-type: inline-size;
+  container-name: block-section;
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  grid-auto-rows: 60px;
+  gap: 0;
+  position: relative;
+  width: 100%;
+}
+
+/* Padding sizes — aplicado al section completo */
+.block-section--pad-sm { padding-block: 1.5rem; padding-inline: 1rem; }
+.block-section--pad-md { padding-block: 2.5rem; padding-inline: 1.5rem; }
+.block-section--pad-lg { padding-block: 4rem;   padding-inline: 2rem; }
+.block-section--pad-xl { padding-block: 6rem;   padding-inline: 2.5rem; }
+
+@media (min-width: 1024px) {
+  .block-section--pad-sm { padding-inline: 2rem; }
+  .block-section--pad-md { padding-inline: 4rem; }
+  .block-section--pad-lg { padding-inline: 5rem; }
+  .block-section--pad-xl { padding-inline: 6rem; }
+}
+
+/* Element dentro del grid usa CSS vars seteadas inline */
+.block-element {
+  grid-column: var(--col-start) / var(--col-end);
+  grid-row: var(--row-start) / var(--row-end);
+  min-width: 0;
+  display: flex;
+}
+
+/* Alineacion del contenido dentro del element */
+.block-element--align-left   { justify-content: flex-start; }
+.block-element--align-center { justify-content: center; }
+.block-element--align-right  { justify-content: flex-end; }
+
+/* Mobile auto-collapse via @container query.
+   Cuando el section es <768px ancho, grid colapsa a 1-col y todos los
+   elements ocupan full width en orden vertical. */
+@container block-section (max-width: 767px) {
+  .block-section {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+  .block-element {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+  /* Si grid_mobile.orden esta seteado, respetar el orden custom */
+  .block-element[style*="--mobile-orden"] {
+    order: var(--mobile-orden);
+  }
+}
+
+/* Tamano de texto utility-style (consumido via class por TextoBlock) */
+.block-text--size-xs   { font-size: 0.75rem; }
+.block-text--size-sm   { font-size: 0.875rem; }
+.block-text--size-md   { font-size: 1rem; }
+.block-text--size-lg   { font-size: 1.25rem; }
+.block-text--size-xl   { font-size: 1.75rem; }
+.block-text--size-2xl  { font-size: 2.25rem; }
+.block-text--size-3xl  { font-size: clamp(2.5rem, 5vw, 4rem); }
+
+.block-text--weight-normal     { font-weight: 400; }
+.block-text--weight-medium     { font-weight: 500; }
+.block-text--weight-semibold   { font-weight: 600; }
+.block-text--weight-bold       { font-weight: 700; }
+
+.block-text--align-left   { text-align: left; }
+.block-text--align-center { text-align: center; }
+.block-text--align-right  { text-align: right; }
+
+/* Boton base — estilos visuales por estilo_visual */
+.block-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 200ms ease-out;
+}
+.block-button:hover { opacity: 0.85; }
+
+.block-button--primary {
+  background: var(--ta-color-primary);
+  color: var(--ta-color-on-primary);
+}
+.block-button--secondary {
+  background: var(--ta-color-accent);
+  color: var(--ta-color-on-accent);
+}
+.block-button--ghost {
+  background: transparent;
+  color: var(--ta-color-text-base);
+}
+.block-button--outline {
+  background: transparent;
+  color: var(--ta-color-text-base);
+  border: 1.5px solid var(--ta-color-text-base);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .block-button { transition: none; }
+}
