@@ -1,0 +1,41 @@
+---
+// Fashion Bold · ProductGrid · 2026-06-01
+// Edge-to-edge tight 2-cols mobile, 3 desktop, sin gaps grandes. Hairline divider negro entre rows.
+
+import ProductCard from '~/components/templates/fashion_bold/ProductCardFB.astro';
+
+interface Props {
+  productos: Array<{
+    id: string;
+    nombre: string;
+    slug: string;
+    precio: number;
+    precio_anterior?: number | null;
+    foto_principal?: string | null;
+    stock_disponible?: number | null;
+    referencia?: string | null;
+  }>;
+  emptyMessage?: string;
+}
+
+const { productos, emptyMessage = 'Sin productos por ahora.' } = Astro.props;
+---
+
+{productos.length === 0 ? (
+  <div class="py-24 text-center">
+    <p class="font-body text-sm uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/60">{emptyMessage}</p>
+  </div>
+) : (
+  <div class="fb-grid grid grid-cols-2 lg:grid-cols-3 gap-x-1 gap-y-12 lg:gap-y-16">
+    {productos.map((p) => <ProductCard producto={p} />)}
+  </div>
+)}
+
+<style>
+  .fb-grid {
+    background-color: var(--ta-color-text-base);
+  }
+  .fb-grid > * {
+    background: var(--ta-color-bg-base);
+  }
+</style>

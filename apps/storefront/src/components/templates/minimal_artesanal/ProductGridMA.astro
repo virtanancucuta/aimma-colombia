@@ -1,0 +1,39 @@
+---
+// Minimal Artesanal · ProductGrid · 2026-06-01
+// 2 cols generoso whitespace + offset asimetrico cada otra fila.
+// Estilo galeria editorial slow.
+
+import ProductCard from '~/components/templates/minimal_artesanal/ProductCardMA.astro';
+
+interface Props {
+  productos: Array<{
+    id: string;
+    nombre: string;
+    slug: string;
+    precio: number;
+    precio_anterior?: number | null;
+    foto_principal?: string | null;
+    stock_disponible?: number | null;
+    referencia?: string | null;
+  }>;
+  emptyMessage?: string;
+}
+
+const { productos, emptyMessage = 'Coleccion en preparacion.' } = Astro.props;
+---
+
+{productos.length === 0 ? (
+  <div class="py-24 text-center">
+    <p class="font-display italic text-[var(--ta-color-text-base)]/60" style="font-size:1.15rem; font-variation-settings:'opsz' 36;">
+      {emptyMessage}
+    </p>
+  </div>
+) : (
+  <div class="ma-grid grid grid-cols-2 lg:grid-cols-3 gap-x-8 lg:gap-x-16 gap-y-20 lg:gap-y-28">
+    {productos.map((p, i) => (
+      <div class={`ma-grid-item ${i % 6 === 1 || i % 6 === 4 ? 'lg:translate-y-12' : ''}`}>
+        <ProductCard producto={p} />
+      </div>
+    ))}
+  </div>
+)}

@@ -70,8 +70,10 @@ const MINIMAL_ARTESANAL: TemplateStyle = {
 const EDITORIAL_MAGAZINE: TemplateStyle = {
   slug: 'editorial_magazine',
   fonts: {
-    googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap',
-    displayFamily: '"Fraunces", "Cormorant Garamond", "Playfair Display", Georgia, serif',
+    // Cormorant Garamond (NO Fraunces — evitar colision tipografica con minimal_artesanal).
+    // Estilo Vogue/Vanity Fair: serif neoclasico fino + Inter clean para body.
+    googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Inter:wght@400;500;600&display=swap',
+    displayFamily: '"Cormorant Garamond", "Playfair Display", "Times New Roman", Georgia, serif',
     bodyFamily: '"Inter", system-ui, -apple-system, sans-serif',
   },
   // Editorial Magazine = baseline editorial generoso, max-w refined.

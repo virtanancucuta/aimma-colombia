@@ -1,8 +1,11 @@
 ---
-// AIMMA Storefront · ProductGrid.astro · 2026-05-31
-// Grid responsive de productos. 2 cols mobile, 3 tablet, 4 desktop.
+// AIMMA Storefront · ProductGrid.astro · v2 · 2026-06-01
+// Dispatcher product grid por plantilla. Cada variante tiene layout distinto.
 
-import ProductCard from '~/components/ProductCard.astro';
+import ProductGridFB from '~/components/templates/fashion_bold/ProductGridFB.astro';
+import ProductGridIC from '~/components/templates/industrial_clean/ProductGridIC.astro';
+import ProductGridMA from '~/components/templates/minimal_artesanal/ProductGridMA.astro';
+import ProductGridEM from '~/components/templates/editorial_magazine/ProductGridEM.astro';
 
 interface Props {
   productos: Array<{
@@ -13,19 +16,19 @@ interface Props {
     precio_anterior?: number | null;
     foto_principal?: string | null;
     stock_disponible?: number | null;
+    referencia?: string | null;
   }>;
   emptyMessage?: string;
 }
 
-const { productos, emptyMessage = 'Aun no hay productos disponibles.' } = Astro.props;
+const { productos, emptyMessage } = Astro.props;
+const { tienda } = Astro.locals;
+const slug = tienda.plantilla?.slug;
 ---
 
-{productos.length === 0 ? (
-  <div class="rounded-lg border border-dashed py-16 text-center">
-    <p class="text-[var(--ta-color-text-base)]/60">{emptyMessage}</p>
-  </div>
-) : (
-  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-    {productos.map((p) => <ProductCard producto={p} />)}
-  </div>
+{slug === 'fashion_bold' && <ProductGridFB productos={productos} emptyMessage={emptyMessage} />}
+{slug === 'minimal_artesanal' && <ProductGridMA productos={productos} emptyMessage={emptyMessage} />}
+{slug === 'editorial_magazine' && <ProductGridEM productos={productos} emptyMessage={emptyMessage} />}
+{(slug === 'industrial_clean' || !slug || !['fashion_bold', 'minimal_artesanal', 'editorial_magazine'].includes(slug)) && (
+  <ProductGridIC productos={productos} emptyMessage={emptyMessage} />
 )}

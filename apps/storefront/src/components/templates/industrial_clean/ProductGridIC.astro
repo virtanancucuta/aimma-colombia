@@ -1,0 +1,32 @@
+---
+// Industrial Clean · ProductGrid · 2026-06-01
+// Grid técnico 4 cols desktop con border-collapse aspecto tabular.
+
+import ProductCard from '~/components/templates/industrial_clean/ProductCardIC.astro';
+
+interface Props {
+  productos: Array<{
+    id: string;
+    nombre: string;
+    slug: string;
+    precio: number;
+    precio_anterior?: number | null;
+    foto_principal?: string | null;
+    stock_disponible?: number | null;
+    referencia?: string | null;
+  }>;
+  emptyMessage?: string;
+}
+
+const { productos, emptyMessage = 'Sin productos disponibles.' } = Astro.props;
+---
+
+{productos.length === 0 ? (
+  <div class="border border-[var(--ta-color-text-base)]/12 py-16 text-center" style="border-radius:2px;">
+    <p class="font-body text-sm text-[var(--ta-color-text-base)]/65">{emptyMessage}</p>
+  </div>
+) : (
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+    {productos.map((p) => <ProductCard producto={p} />)}
+  </div>
+)}

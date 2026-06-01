@@ -1,0 +1,42 @@
+---
+// Editorial Magazine · ProductGrid · 2026-06-01
+// 3 cols editorial con "Pieza N" eyebrow + rule divider entre items
+// Estilo catalogo de revista.
+
+import ProductCard from '~/components/templates/editorial_magazine/ProductCardEM.astro';
+
+interface Props {
+  productos: Array<{
+    id: string;
+    nombre: string;
+    slug: string;
+    precio: number;
+    precio_anterior?: number | null;
+    foto_principal?: string | null;
+    stock_disponible?: number | null;
+    referencia?: string | null;
+  }>;
+  emptyMessage?: string;
+}
+
+const { productos, emptyMessage = 'Edicion en curaduria.' } = Astro.props;
+---
+
+{productos.length === 0 ? (
+  <div class="py-20 text-center border-t border-b border-[var(--ta-color-accent)]/30">
+    <p class="font-display italic text-[var(--ta-color-text-base)]/65" style="font-size:1.25rem;">
+      {emptyMessage}
+    </p>
+  </div>
+) : (
+  <div class="em-grid grid grid-cols-2 lg:grid-cols-3 gap-x-6 lg:gap-x-10 gap-y-16 lg:gap-y-20">
+    {productos.map((p, i) => (
+      <article class="em-grid-item">
+        <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">
+          Pieza {String(i + 1).padStart(2, '0')}
+        </p>
+        <ProductCard producto={p} />
+      </article>
+    ))}
+  </div>
+)}
