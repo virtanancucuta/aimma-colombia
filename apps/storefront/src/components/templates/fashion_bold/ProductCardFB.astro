@@ -30,10 +30,10 @@ const enDescuento = producto.precio_anterior !== null && producto.precio_anterio
 const sinStock = producto.stock_disponible === 0;
 ---
 
-<article class="group">
+<article class="group bg-[var(--ta-color-bg-base)]">
   <a href={`/p/${producto.slug}`} class="block" aria-label={producto.nombre}>
     {/* Image aspect-[3/4] portrait fashion */}
-    <div class="relative aspect-[3/4] overflow-hidden bg-[var(--ta-color-text-base)]/5">
+    <div class="relative aspect-[3/4] overflow-hidden bg-[var(--ta-color-bg-base)]">
       {producto.foto_principal ? (
         <OptimizedImage
           src={producto.foto_principal}
@@ -45,7 +45,7 @@ const sinStock = producto.stock_disponible === 0;
           transitionName={`producto-${producto.id}`}
         />
       ) : (
-        <div class="flex h-full items-end justify-center p-6 bg-[var(--ta-color-primary)]/[0.04]">
+        <div class="flex h-full items-end justify-center p-6 bg-[var(--ta-color-bg-base)] border border-[var(--ta-color-text-base)]/10">
           <span
             class="font-display uppercase leading-[0.88] tracking-[-0.03em] text-center text-[var(--ta-color-text-base)]/55 line-clamp-3"
             style="font-size:clamp(1.5rem, 4vw, 2.75rem);"
