@@ -11,7 +11,9 @@
   };
 
   async function render(container, tienda) {
-    const supabase = window.TiendaIA?.supabase;
+    // admin.js expone window.TiendaIA.supabase como factory function () => supabase.
+    // Hay que invocarla, no leerla como propiedad.
+    const supabase = window.TiendaIA?.supabase?.();
     if (!supabase) {
       container.innerHTML = '<div class="ta-empty">No se pudo cargar mensajes.</div>';
       return;
@@ -28,7 +30,7 @@
       .limit(200);
 
     if (error) {
-      container.innerHTML = '<div class="ta-empty">Error cargando mensajes: ' + error.message + '</div>';
+      container.innerHTML = '<div class="ta-empty">Error cargando mensajes: ' + escapeHTML(error.message) + '</div>';
       return;
     }
 

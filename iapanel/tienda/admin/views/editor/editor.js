@@ -233,7 +233,8 @@
   }
 
   async function markFirstChoice(ctx) {
-    const supabase = window.TiendaIA?.supabase;
+    // admin.js expone window.TiendaIA.supabase como factory function () => supabase.
+    const supabase = window.TiendaIA?.supabase?.();
     if (!supabase) return;
     const ES = window.TiendaIA.editorState;
     await supabase
@@ -243,7 +244,8 @@
   }
 
   async function markTourSeen(ctx) {
-    const supabase = window.TiendaIA?.supabase;
+    // admin.js expone window.TiendaIA.supabase como factory function () => supabase.
+    const supabase = window.TiendaIA?.supabase?.();
     if (!supabase) return;
     const ES = window.TiendaIA.editorState;
     await supabase
