@@ -16,6 +16,7 @@
     cancelados: 'Cancelados',
     devoluciones: 'Devoluciones',
     clientes: 'Clientes',
+    mensajes: 'Mensajes',
   };
 
   const state = {
@@ -67,6 +68,7 @@
           renderTabBtn('cancelados', 'Cancelados') +
           renderTabBtn('devoluciones', 'Devoluciones') +
           renderTabBtn('clientes', 'Clientes') +
+          renderTabBtn('mensajes', 'Mensajes', 'badge-mensajes-tab') +
         '</div>' +
       '</div>' +
 
@@ -92,8 +94,11 @@
       '<div id="cm-content"></div>';
   }
 
-  function renderTabBtn(id, label) {
-    return '<button type="button" class="cm-tab" data-tab="' + id + '" style="padding:14px 18px;background:none;border:none;border-bottom:2px solid transparent;font-size:14px;font-weight:500;color:var(--ta-text-soft);cursor:pointer;white-space:nowrap;">' + label + '</button>';
+  function renderTabBtn(id, label, badgeId) {
+    var badgeHtml = badgeId
+      ? '<span id="' + badgeId + '" class="ta-nav-badge" style="display:none;margin-left:6px;"></span>'
+      : '';
+    return '<button type="button" class="cm-tab" data-tab="' + id + '" style="padding:14px 18px;background:none;border:none;border-bottom:2px solid transparent;font-size:14px;font-weight:500;color:var(--ta-text-soft);cursor:pointer;white-space:nowrap;">' + label + badgeHtml + '</button>';
   }
 
   function wireToolbarEvents() {
@@ -106,7 +111,7 @@
         highlightActiveTab();
         // Mostrar/ocultar periodo segun tab (Clientes no usa periodo)
         const periodo = document.getElementById('cm-toolbar-periodo');
-        if (periodo) periodo.style.display = state.tab === 'clientes' ? 'none' : 'flex';
+        if (periodo) periodo.style.display = (state.tab === 'clientes' || state.tab === 'mensajes') ? 'none' : 'flex';
         await loadDataForCurrentTab();
       });
     });
@@ -151,6 +156,8 @@
 
     if (state.tab === 'clientes') {
       await loadClientes();
+    } else if (state.tab === 'mensajes') {
+      // El modulo crm-mensajes maneja su propia carga; solo limpiamos el loading
     } else {
       await loadPedidos();
     }
@@ -301,8 +308,22 @@
   // ============================================================
 
   function renderContent() {
-    if (state.tab === 'clientes') renderClientes();
-    else renderPedidosTabla();
+    if (state.tab === 'clientes') {
+      renderClientes();
+    } else if (state.tab === 'mensajes') {
+      var c = document.getElementById('cm-content');
+      if (!c) return;
+      // Crear contenedor hijo con id esperado por crm-mensajes.js
+      c.innerHTML = '<div id="crm-mensajes-tab"></div>';
+      var tabContent = document.getElementById('crm-mensajes-tab');
+      if (window.TiendaIA && window.TiendaIA.crmMensajes && window.TiendaIA.crmMensajes.render) {
+        window.TiendaIA.crmMensajes.render(tabContent, window.TiendaIA.state.tienda);
+      } else {
+        tabContent.innerHTML = '<div class="ta-empty">Modulo no disponible.</div>';
+      }
+    } else {
+      renderPedidosTabla();
+    }
   }
 
   function renderPedidosTabla() {
