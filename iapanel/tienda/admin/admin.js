@@ -32,7 +32,7 @@
   const STOREFRONT_HOST = 'tienda.aimma.com.co'; // <slug>.tienda.aimma.com.co
 
   // 'pedidos' mantiene retrocompat con URLs viejas; alias a 'crm' (misma vista).
-  const ROUTES = ['', 'productos', 'categorias', 'crm', 'pedidos', 'configuracion', 'legales', 'vista-previa'];
+  const ROUTES = ['', 'productos', 'categorias', 'crm', 'pedidos', 'configuracion', 'legales', 'vista-previa', 'editor'];
   const DEFAULT_ROUTE = '';
 
   // ============================================================
@@ -400,6 +400,9 @@
     registerView,
     registerNavGuard,  // v4 (Fase 3.3): cancelar navegacion si dirty form
     escapeHtml,
+    // Plan 3: cache de sesion sincrono para editor.js y otras views
+    _lastSession: null,
+    getSession: () => window.TiendaIA._lastSession,
   };
 
   // ============================================================
@@ -415,6 +418,14 @@
       showError(e.message);
       return;
     }
+
+    // Plan 3: cache sincrono de sesion una vez que supabase esta inicializado
+    supabase.auth.getSession().then(({ data }) => {
+      window.TiendaIA._lastSession = data.session;
+    });
+    supabase.auth.onAuthStateChange((_event, session) => {
+      window.TiendaIA._lastSession = session;
+    });
 
     let user;
     try {
