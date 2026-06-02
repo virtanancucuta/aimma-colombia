@@ -1,10 +1,12 @@
 ---
 // AIMMA Editor PRO-MAX · Formulario · variant Industrial Clean
-// NOTA: el handler de submit es Plan 3 (necesita EF tienda-form-submit).
-// Por ahora el form renderea pero submit hace POST a /internal/form-submit
-// que devuelve 404 — eso es OK para Plan 1.
+// Plan 3: submit handler en _FormSubmitHandler.astro (importado abajo).
+// Fetch a EF tienda-form-submit con honeypot + section_id + tienda_slug.
 
 import type { Section, Element } from '@aimma/database';
+import _FormSubmitHandler from './_FormSubmitHandler.astro';
+
+const tiendaSlug = Astro.locals.tienda?.slug || '';
 
 interface Props {
   section: Section;
@@ -38,10 +40,19 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
   <form
     class="ic-form-inner"
     style="grid-column:1 / -1;"
-    method="POST"
-    action="/internal/form-submit"
-    data-form-id={section.id}
+    novalidate
+    data-form-section-id={section.id}
+    data-tienda-slug={tiendaSlug}
   >
+    {/* Honeypot anti-spam (hidden) */}
+    <input
+      type="text"
+      name="honeypot"
+      tabindex="-1"
+      autocomplete="off"
+      aria-hidden="true"
+      style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"
+    />
     {titulo && titulo.tipo === 'texto' && (
       <h3 class="ic-form-title">{titulo.props.contenido}</h3>
     )}
@@ -106,16 +117,14 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
       );
     })}
 
-    {/* Honeypot anti-spam */}
-    <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
-      <label for={`${section.id}_hp`}>No llenar este campo</label>
-      <input id={`${section.id}_hp`} name="website" type="text" tabindex="-1" autocomplete="off" />
-    </div>
-
     <button type="submit" class="ic-form-submit">
       {submitBtn && submitBtn.tipo === 'boton' ? submitBtn.props.texto : 'Enviar'}
     </button>
+
+    <p class="form-message" hidden role="status" aria-live="polite"></p>
   </form>
+
+  <_FormSubmitHandler />
 </section>
 
 <style>
@@ -186,4 +195,21 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
     transition: opacity 200ms;
   }
   .ic-form-submit:hover { opacity: 0.85; }
+  .form-message {
+    margin-top: 1rem;
+    padding: 0.875rem 1.125rem;
+    border-radius: 0.375rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+  .form-message--success {
+    background: rgba(16, 185, 129, 0.1);
+    color: rgb(6, 95, 70);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .form-message--error {
+    background: rgba(239, 68, 68, 0.1);
+    color: rgb(127, 29, 29);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
 </style>

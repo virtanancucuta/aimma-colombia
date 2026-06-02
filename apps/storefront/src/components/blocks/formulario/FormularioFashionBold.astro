@@ -1,5 +1,8 @@
 ---
+// Plan 3: submit handler en _FormSubmitHandler.astro (importado abajo).
+// Fetch a EF tienda-form-submit con honeypot + section_id + tienda_slug.
 import type { Section, Element } from '@aimma/database';
+import _FormSubmitHandler from './_FormSubmitHandler.astro';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const padClass = `block-section--pad-${section.padding}`;
@@ -8,10 +11,26 @@ const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fon
 const campos = section.elementos.filter(el => el.tipo === 'form_field') as Extract<Element, { tipo: 'form_field' }>[];
 const titulo = section.elementos.find(el => el.tipo === 'texto');
 const submitBtn = section.elementos.find(el => el.tipo === 'boton');
+const tiendaSlug = Astro.locals.tienda?.slug || '';
 ---
 
 <section class={`block-section ${padClass} fb-form`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="formulario" data-plantilla="fashion_bold">
-  <form class="fb-form-inner" style="grid-column:1 / -1;" method="POST" action="/internal/form-submit" data-form-id={section.id}>
+  <form
+    class="fb-form-inner"
+    style="grid-column:1 / -1;"
+    novalidate
+    data-form-section-id={section.id}
+    data-tienda-slug={tiendaSlug}
+  >
+    {/* Honeypot anti-spam (hidden) */}
+    <input
+      type="text"
+      name="honeypot"
+      tabindex="-1"
+      autocomplete="off"
+      aria-hidden="true"
+      style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"
+    />
     {titulo && titulo.tipo === 'texto' && (
       <h3 class="fb-form-title">{titulo.props.contenido}</h3>
     )}
@@ -51,14 +70,14 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
         </div>
       );
     })}
-    <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
-      <label for={`${section.id}_hp`}>No llenar este campo</label>
-      <input id={`${section.id}_hp`} name="website" type="text" tabindex="-1" autocomplete="off" />
-    </div>
     <button type="submit" class="fb-form-submit">
       {submitBtn && submitBtn.tipo === 'boton' ? submitBtn.props.texto : 'Enviar'}
     </button>
+
+    <p class="form-message" hidden role="status" aria-live="polite"></p>
   </form>
+
+  <_FormSubmitHandler />
 </section>
 
 <style>
@@ -125,4 +144,21 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
     align-self: flex-start;
   }
   .fb-form-submit:hover { opacity: 0.85; }
+  .form-message {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .form-message--success {
+    background: var(--ta-color-success-bg, rgba(16, 185, 129, 0.08));
+    color: var(--ta-color-success-fg, rgb(6, 95, 70));
+  }
+  .form-message--error {
+    background: var(--ta-color-error-bg, rgba(239, 68, 68, 0.08));
+    color: var(--ta-color-error-fg, rgb(127, 29, 29));
+  }
 </style>
