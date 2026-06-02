@@ -233,7 +233,10 @@ const BodySchema = z.object({
   tienda_id: z.string().uuid(),
   page_id: z.literal('home'),
   mode: z.enum(['draft', 'publish']),
-  personalizaciones: PersonalizacionesSchema,
+  personalizaciones: PersonalizacionesSchema.refine(
+    (p) => p.pages['home'] !== undefined,
+    { message: 'personalizaciones.pages.home es requerido', path: ['pages', 'home'] },
+  ),
   base_updated_at: z.string().datetime().nullable(),
 });
 
