@@ -73,18 +73,13 @@ serve(async (req) => {
     return json({ error: 'invalid_body', detail }, 400, origin);
   }
 
-  // 4) Honeypot - silent drop si tiene valor
-  if (body.honeypot.trim() !== '') {
-    // 200 success para que el bot crea que funciono
-    return json({ success: true, message: 'Recibido' }, 200, origin);
-  }
-
-  // 5) Max fields
+  // 4) Max fields (fast-reject antes de tocar BD)
   if (Object.keys(body.fields).length > MAX_FIELDS) {
     return json({ error: 'too_many_fields' }, 400, origin);
   }
 
-  // 6) IP rate limit
+  // 5) IP rate limit (corre ANTES del honeypot para que bots con honeypot
+  //    relleno tambien sean rate-limited y no puedan flood la EF)
   const ip = req.headers.get('CF-Connecting-IP')
           || req.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
           || 'unknown';
@@ -100,6 +95,13 @@ serve(async (req) => {
     // No bloqueamos por error de rate limit
   } else if (rateCount && rateCount > RATE_LIMIT_PER_HOUR) {
     return json({ error: 'rate_limited', retry_after: 3600 }, 429, origin);
+  }
+
+  // 6) Honeypot - silent drop si tiene valor (despues de rate limit para
+  //    no permitir bypass via honeypot relleno)
+  if (body.honeypot.trim() !== '') {
+    // 200 success para que el bot crea que funciono
+    return json({ success: true, message: 'Recibido' }, 200, origin);
   }
 
   // 7) Lookup tienda + verificar section_id es formulario
@@ -166,13 +168,14 @@ serve(async (req) => {
   // 11) Cola notif email (stub Plan 3)
   if (tienda.notif_email) {
     const cuerpo = JSON.stringify(fieldsSafe, null, 2);
-    await supabaseSvc.from('form_submission_notifications').insert({
+    const { error: notifErr } = await supabaseSvc.from('form_submission_notifications').insert({
       tienda_id: tienda.id,
       submission_id: insertedSubmission.id,
       destino: tienda.notif_email,
       asunto: 'Nuevo mensaje en ' + tienda.nombre_negocio,
       cuerpo,
     });
+    if (notifErr) console.error('notif_insert_failed', notifErr);
   }
 
   return json({
