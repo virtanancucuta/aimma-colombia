@@ -4,7 +4,7 @@
 // Fetch a EF tienda-form-submit con honeypot + section_id + tienda_slug.
 
 import type { Section, Element } from '@aimma/database';
-import _FormSubmitHandler from './_FormSubmitHandler.astro';
+import FormSubmitHandler from './_FormSubmitHandler.astro';
 
 const tiendaSlug = Astro.locals.tienda?.slug || '';
 
@@ -124,7 +124,7 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
     <p class="form-message" hidden role="status" aria-live="polite"></p>
   </form>
 
-  <_FormSubmitHandler />
+  <FormSubmitHandler />
 </section>
 
 <style>
