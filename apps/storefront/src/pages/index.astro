@@ -1,6 +1,8 @@
 ---
-// AIMMA Storefront · / (home) · v2 · 2026-06-01
-// Landing por plantilla: hero + product section por variante.
+// AIMMA Storefront · / (home) · v3 · 2026-06-02
+// BlockRenderer (schema v3) si hay pages.home; else fallback Hero+ProductGrid.
+// Modo preview (?preview=<token>): valida token efimero, renderiza pages.home_draft
+// fresco (bypass cache), noindex, e inyecta puente postMessage para el Editor PRO-MAX.
 
 import Layout from '~/layouts/Layout.astro';
 import Hero from '~/components/Hero.astro';
@@ -12,12 +14,43 @@ import { parsePersonalizaciones } from '@aimma/database';
 const { tienda, supabase } = Astro.locals;
 const plantillaSlug = tienda.plantilla?.slug;
 
-// Plan 1: Check si hay personalizaciones.pages.home valido -> BlockRenderer.
-// Else -> fallback al render actual (Hero + ProductGrid).
-const pers = parsePersonalizaciones(tienda.personalizaciones);
-const homeSections = pers?.pages?.home?.sections ?? null;
+const ADMIN_ORIGIN = 'https://aimma.com.co';
+const previewToken = Astro.url.searchParams.get('preview');
+let isPreview = false;
 
-// Solo cargar productos para fallback (BlockRenderer carga sus propios productos en ProductosIC).
+// ── Modo preview: validar token efimero + leer draft fresco (sin cache KV) ──
+let persRaw: unknown = tienda.personalizaciones;
+if (previewToken) {
+  const { data: tok } = await supabase
+    .from('preview_tokens')
+    .select('tienda_id, expires_at')
+    .eq('token', previewToken)
+    .maybeSingle();
+
+  const valido = tok && tok.tienda_id === tienda.id && new Date(tok.expires_at) > new Date();
+  if (!valido) {
+    return new Response('Preview token invalido o expirado', {
+      status: 403,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+  isPreview = true;
+  // Releer fresco de Postgres (el tenant de locals viene de KV, puede estar cacheado).
+  const { data: fresh } = await supabase
+    .from('tiendas')
+    .select('personalizaciones')
+    .eq('id', tienda.id)
+    .single();
+  persRaw = fresh?.personalizaciones ?? tienda.personalizaciones;
+}
+
+const pers = parsePersonalizaciones(persRaw);
+// En preview priorizar home_draft; en publico, home.
+const homeSections =
+  (isPreview ? (pers?.pages?.home_draft?.sections ?? pers?.pages?.home?.sections)
+             : pers?.pages?.home?.sections) ?? null;
+
+// Solo cargar productos para fallback (los blocks cargan sus propios productos).
 let productos: Awaited<ReturnType<typeof getProductosPorTienda>> = [];
 if (!homeSections) {
   productos = await getProductosPorTienda(supabase, tienda.id, { limit: 12 });
@@ -46,6 +79,7 @@ const jsonLd = {
   title={undefined}
   description={`Compra en ${tienda.nombre_negocio}. Tienda online con envios a Colombia. Pedidos faciles por WhatsApp.`}
   jsonLd={jsonLd}
+  noindex={isPreview}
 >
   {homeSections ? (
     <BlockRenderer sections={homeSections} />
@@ -53,7 +87,6 @@ const jsonLd = {
     <>
       <Hero />
 
-      {/* Section header diferenciado por plantilla */}
       {plantillaSlug === 'fashion_bold' && (
     <section id="productos" class="pt-20 lg:pt-28 pb-24 lg:pb-32 px-6 md:px-12 lg:px-20">
       <header class="mb-10 lg:mb-14 flex items-end justify-between gap-6 border-b border-[var(--ta-color-text-base)] pb-4">
@@ -102,7 +135,6 @@ const jsonLd = {
     </section>
   )}
 
-  {/* Default industrial_clean / fallback */}
   {(plantillaSlug === 'industrial_clean' || !plantillaSlug || !['fashion_bold', 'minimal_artesanal', 'editorial_magazine'].includes(plantillaSlug)) && (
     <section id="productos" class="py-12 lg:py-16">
       <header class="mb-8 flex items-end justify-between">
@@ -122,6 +154,25 @@ const jsonLd = {
   )}
 </Layout>
 
-<script is:inline>
-  // Tracking placeholder
-</script>
+{isPreview && (
+  <script is:inline define:vars={{ ADMIN_ORIGIN }}>
+    // Puente Editor PRO-MAX (solo en preview). Click en seccion -> avisa al panel.
+    // Recibe {type:'reload'} -> recarga. Valida origin en ambos sentidos.
+    document.addEventListener('click', (e) => {
+      const el = e.target instanceof Element ? e.target.closest('[data-section-id]') : null;
+      if (!el) return;
+      e.preventDefault();
+      const sectionId = el.getAttribute('data-section-id');
+      try { parent.postMessage({ type: 'select', sectionId }, ADMIN_ORIGIN); } catch (_) {}
+    }, true);
+
+    window.addEventListener('message', (e) => {
+      if (e.origin !== ADMIN_ORIGIN) return;
+      const msg = e.data || {};
+      if (msg.type === 'reload') location.reload();
+    });
+
+    // Avisar al panel que el preview esta listo.
+    try { parent.postMessage({ type: 'preview-ready' }, ADMIN_ORIGIN); } catch (_) {}
+  </script>
+)}
