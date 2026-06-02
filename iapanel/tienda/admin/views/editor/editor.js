@@ -14,23 +14,38 @@
   };
 
   // Registrar como view del panel admin
-  function registerEditor() {
-    if (!window.TiendaIA || !window.TiendaIA.registerView) {
-      console.warn('editor.js: registerView no disponible aun, reintentando...');
-      setTimeout(registerEditor, 200);
+  // FIX BUG LIVE: registerView espera funcion directa, no objeto {render, cleanup}.
+  // Cleanup se registra via T.registerCleanup() dentro de mountEditor.
+  function whenReady(cb, attempts) {
+    attempts = attempts || 0;
+    if (window.TiendaIA && typeof window.TiendaIA.registerView === 'function') {
+      cb();
       return;
     }
-    window.TiendaIA.registerView('editor', {
-      render: mountEditor,
-      cleanup: unmountEditor,
+    if (attempts >= 200) {
+      console.error('[editor.js] window.TiendaIA no inicializo en 10s. Verifica que admin.js cargo sin errores.');
+      return;
+    }
+    setTimeout(() => whenReady(cb, attempts + 1), 50);
+  }
+
+  function registerEditor() {
+    whenReady(() => {
+      window.TiendaIA.registerView('editor', mountEditor);
     });
   }
 
-  async function mountEditor(container, ctx) {
-    const tienda = ctx.state.tienda;
+  async function mountEditor() {
+    const T = window.TiendaIA;
+    const tienda = T.state.tienda;
+    const container = T.dom.mainView;
     if (!tienda) {
       container.innerHTML = '<div style="padding:2rem">No hay tienda asociada.</div>';
       return;
+    }
+    // Registrar cleanup para cuando el user navegue fuera del editor
+    if (typeof T.registerCleanup === 'function') {
+      T.registerCleanup(unmountEditor);
     }
 
     container.innerHTML = '';
@@ -69,10 +84,10 @@
 
     // Render paneles
     window.TiendaIA.editorToolbar.render(toolbarEl, {
-      onBack: () => handleBack(ctx),
+      onBack: () => handleBack(),
       onUndo: () => window.TiendaIA.editorState.undo(),
       onRedo: () => window.TiendaIA.editorState.redo(),
-      onSave: () => savePublish(ctx),
+      onSave: () => savePublish(),
       onDeselect: () => window.TiendaIA.editorState.deselect(),
       onDelete: () => {
         const sel = window.TiendaIA.editorState.selection;
@@ -84,11 +99,11 @@
     });
 
     window.TiendaIA.editorSidebar.render(sidebarEl, {
-      onAddSection: () => openCatalogForSection(ctx),
+      onAddSection: () => openCatalogForSection(),
     });
 
     window.TiendaIA.editorCanvas.render(canvasEl, {
-      onAddSection: () => openCatalogForSection(ctx),
+      onAddSection: () => openCatalogForSection(),
     });
 
     window.TiendaIA.editorInspector.render(inspectorEl, {
@@ -105,13 +120,13 @@
           window.TiendaIA.editorState.markDirty();
           window.TiendaIA.editorCanvas.rebuild();
         }
-        markFirstChoice(ctx);
+        markFirstChoice();
         if (!tienda.editor_tour_visto_at) {
-          window.TiendaIA.editorFirstUse.showTour(() => markTourSeen(ctx));
+          window.TiendaIA.editorFirstUse.showTour(() => markTourSeen());
         }
       });
     } else if (!tienda.editor_tour_visto_at) {
-      window.TiendaIA.editorFirstUse.showTour(() => markTourSeen(ctx));
+      window.TiendaIA.editorFirstUse.showTour(() => markTourSeen());
     }
 
     state.mounted = true;
@@ -139,7 +154,7 @@
     state.autoSaveTimer = setTimeout(saveDraft, state.AUTO_SAVE_MS);
   }
 
-  function openCatalogForSection(ctx) {
+  function openCatalogForSection() {
     window.TiendaIA.editorModalCatalog.open((tipo) => {
       window.TiendaIA.editorState.insertSection(tipo);
     });
@@ -178,7 +193,7 @@
     }
   }
 
-  async function savePublish(ctx) {
+  async function savePublish() {
     const ES = window.TiendaIA.editorState;
     if (ES.saving) return;
     ES.markSaving(true);
@@ -232,7 +247,7 @@
     }
   }
 
-  async function markFirstChoice(ctx) {
+  async function markFirstChoice() {
     // admin.js expone window.TiendaIA.supabase como factory function () => supabase.
     const supabase = window.TiendaIA?.supabase?.();
     if (!supabase) return;
@@ -243,7 +258,7 @@
       .eq('id', ES.tienda_id);
   }
 
-  async function markTourSeen(ctx) {
+  async function markTourSeen() {
     // admin.js expone window.TiendaIA.supabase como factory function () => supabase.
     const supabase = window.TiendaIA?.supabase?.();
     if (!supabase) return;
@@ -254,7 +269,7 @@
       .eq('id', ES.tienda_id);
   }
 
-  function handleBack(ctx) {
+  function handleBack() {
     const ES = window.TiendaIA.editorState;
     if (ES.dirty) {
       if (!confirm('Tenés cambios sin publicar.\n\nTu borrador queda guardado y podrás retomarlo cuando vuelvas. ¿Salir igual?')) return;
