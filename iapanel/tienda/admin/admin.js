@@ -484,6 +484,17 @@
       window.history.replaceState(null, '', '#/');
     }
     handleHashChange();
+
+    // Plan 3: refresh badge mensajes (form_submissions no leidos) cada 60s
+    setInterval(function () {
+      if (state.tienda && window.TiendaIA && window.TiendaIA.crmMensajes && window.TiendaIA.crmMensajes.refreshBadge) {
+        window.TiendaIA.crmMensajes.refreshBadge(supabase, state.tienda);
+      }
+    }, 60000);
+
+    if (state.tienda && window.TiendaIA && window.TiendaIA.crmMensajes && window.TiendaIA.crmMensajes.refreshBadge) {
+      window.TiendaIA.crmMensajes.refreshBadge(supabase, state.tienda);
+    }
   }
 
   if (document.readyState === 'loading') {
