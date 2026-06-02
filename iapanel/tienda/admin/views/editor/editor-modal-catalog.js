@@ -5,14 +5,22 @@
   'use strict';
 
   const CATALOG = [
-    { tipo: 'hero', icon: '🎯', title: 'Hero banner' },
-    { tipo: 'texto', icon: '📝', title: 'Texto rico' },
-    { tipo: 'imagen', icon: '🖼', title: 'Imagen banner' },
-    { tipo: 'botones', icon: '🔘', title: 'Botones de acción' },
-    { tipo: 'productos', icon: '🛍', title: 'Productos' },
-    { tipo: 'galeria', icon: '📷', title: 'Galería' },
-    { tipo: 'espaciador', icon: '⬚', title: 'Espaciador' },
-    { tipo: 'formulario', icon: '✉', title: 'Formulario' },
+    { tipo: 'hero', icon: '🎯', title: 'Banner principal',
+      desc: 'Encabezado grande con título, descripción y botón' },
+    { tipo: 'texto', icon: '📝', title: 'Texto',
+      desc: 'Párrafo descriptivo o título secundario' },
+    { tipo: 'imagen', icon: '🖼', title: 'Imagen',
+      desc: 'Una imagen destacada de tu negocio' },
+    { tipo: 'botones', icon: '🔘', title: 'Botones',
+      desc: 'Fila de botones (WhatsApp, ubicación, llamar)' },
+    { tipo: 'productos', icon: '🛍', title: 'Productos',
+      desc: 'Grilla con los productos de tu tienda' },
+    { tipo: 'galeria', icon: '📷', title: 'Galería',
+      desc: 'Varias imágenes en grilla o carrusel' },
+    { tipo: 'espaciador', icon: '⬚', title: 'Espacio en blanco',
+      desc: 'Separador vertical entre secciones' },
+    { tipo: 'formulario', icon: '✉', title: 'Formulario',
+      desc: 'Para que los clientes te dejen mensajes' },
   ];
 
   let modalEl = null;
@@ -34,6 +42,7 @@
       }, [
         E('div', { class: 'ed-catalog-card__icon' }, item.icon),
         E('h4', { class: 'ed-catalog-card__title' }, item.title),
+        E('p', { class: 'ed-catalog-card__desc' }, item.desc || ''),
       ]);
       grid.appendChild(card);
     });

@@ -50,9 +50,9 @@
     const ES = window.TiendaIA.editorState;
     const wrap = C.el('div', { class: 'ed-inspector__body' });
     const SECTION_LABEL_MAP = {
-      hero: 'Hero', texto: 'Texto', imagen: 'Imagen',
+      hero: 'Banner principal', texto: 'Texto', imagen: 'Imagen',
       botones: 'Botones', productos: 'Productos', galeria: 'Galería',
-      espaciador: 'Espaciador', formulario: 'Formulario',
+      espaciador: 'Espacio en blanco', formulario: 'Formulario',
     };
 
     wrap.appendChild(C.headerLabel('Sección · ' + (SECTION_LABEL_MAP[sec.tipo] || sec.tipo)));
@@ -110,7 +110,7 @@
   const TYPE_LABEL_MAP = {
     texto: 'Texto', imagen: 'Imagen', boton: 'Botón',
     productos: 'Productos', galeria: 'Galería',
-    form_field: 'Campo del formulario', embed: 'Embed', divisor: 'Divisor',
+    form_field: 'Campo del formulario', embed: 'Video o mapa', divisor: 'Divisor',
   };
 
   function renderForElement(el) {

@@ -6,9 +6,9 @@
   'use strict';
 
   const SECTION_LABELS = {
-    hero: 'Hero', texto: 'Texto', imagen: 'Imagen',
+    hero: 'Banner principal', texto: 'Texto', imagen: 'Imagen',
     botones: 'Botones', productos: 'Productos', galeria: 'Galería',
-    espaciador: 'Espaciador', formulario: 'Formulario',
+    espaciador: 'Espacio en blanco', formulario: 'Formulario',
   };
 
   const state = {
@@ -139,29 +139,49 @@
     );
     if (!gridEl) return;
 
+    // Crear DOM de items ANTES de GridStack.init para que se enganche al constructor.
+    // Patron compatible con GridStack 11.x: items con gs-x/gs-y/gs-w/gs-h en el HTML +
+    // grid.makeWidget(el) post-init para enlazarlos.
+    const itemEls = [];
+    sec.elementos.forEach(el => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'grid-stack-item';
+      itemEl.setAttribute('gs-x', (el.grid.col_start || 1) - 1);
+      itemEl.setAttribute('gs-y', (el.grid.row_start || 1) - 1);
+      itemEl.setAttribute('gs-w', Math.max(1, (el.grid.col_end || 13) - (el.grid.col_start || 1)));
+      itemEl.setAttribute('gs-h', Math.max(1, (el.grid.row_end || 4) - (el.grid.row_start || 1)));
+      itemEl.setAttribute('data-element-id', el.id);
+
+      const contentEl = document.createElement('div');
+      contentEl.className = 'grid-stack-item-content';
+      contentEl.innerHTML = renderElementHTML(el);
+      itemEl.appendChild(contentEl);
+
+      gridEl.appendChild(itemEl);
+      itemEls.push({ el: itemEl, sectionId: sec.id, elementId: el.id });
+    });
+
     const grid = window.GridStack.init({
       column: 24,
       cellHeight: 60,
       margin: 0,
       float: true,
       animate: true,
-      disableOneColumnMode: true,
-      handle: '.grid-stack-item-content',
+      // handle no especificado: GridStack usa toda la barra del item para drag.
+      // Asi el usuario puede arrastrar desde cualquier punto del bloque.
+      // El click selecciona el element via bindElementEvents (stopPropagation cuando es click corto).
       resizable: { handles: 'se, sw, ne, nw, e, w, n, s' },
       minRow: sec.altura_filas,
+      // Mobile collapse manejado por CSS @media en blocks.css, evitamos colision con GridStack.
+      column: 24,
     }, gridEl);
 
-    sec.elementos.forEach(el => {
-      const node = grid.addWidget({
-        x: (el.grid.col_start || 1) - 1,
-        y: (el.grid.row_start || 1) - 1,
-        w: (el.grid.col_end || 13) - (el.grid.col_start || 1),
-        h: (el.grid.row_end || 4) - (el.grid.row_start || 1),
-        content: renderElementHTML(el),
-        id: el.id,
-      });
-      node.setAttribute('data-element-id', el.id);
-      bindElementEvents(node, sec.id, el.id);
+    // makeWidget enlaza los items DOM ya presentes con la instancia GridStack
+    // (drag/resize listo). En GridStack 11.x init() ya enlaza los items con
+    // atributos gs-* del HTML, pero llamar makeWidget explicito es defensa.
+    itemEls.forEach(({ el, sectionId, elementId }) => {
+      try { grid.makeWidget(el); } catch (e) { /* ya enlazado */ }
+      bindElementEvents(el, sectionId, elementId);
     });
 
     grid.on('change', (event, items) => {

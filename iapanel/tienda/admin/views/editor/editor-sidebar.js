@@ -5,9 +5,9 @@
   'use strict';
 
   const SECTION_LABELS = {
-    hero: 'Hero', texto: 'Texto', imagen: 'Imagen',
+    hero: 'Banner principal', texto: 'Texto', imagen: 'Imagen',
     botones: 'Botones', productos: 'Productos', galeria: 'Galería',
-    espaciador: 'Espaciador', formulario: 'Formulario',
+    espaciador: 'Espacio en blanco', formulario: 'Formulario',
   };
 
   const state = { container: null, callbacks: {} };
