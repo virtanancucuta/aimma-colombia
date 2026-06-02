@@ -1,6 +1,9 @@
-/* AIMMA Tienda IA · Editor PRO-MAX Plan 3 · editor-state.js v1
- * Singleton state. Maneja: sections + theme + selection + dirty + snapshots.
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-state.js v2 (SCHEMA v3)
+ * Singleton state. Modelo Shopify-style: secciones APILADAS (orden = orden vertical).
+ * SIN grid 2D, SIN elementos posicionados. Cada seccion: {id,tipo,ancho,fondo,padding,props}.
+ * Mantiene: snapshots/undo/redo (structuredClone), dirty, base_updated_at, locking optimista.
  * Observer pattern para listeners de cambios.
+ * Marker: editor-plan4-v3-state.
  */
 
 (function(window) {
@@ -8,12 +11,13 @@
 
   const MAX_SNAPSHOTS = 20;
   const DEBOUNCE_TYPING_MS = 1000;
+  const MAX_SECTIONS = 20;
 
   const state = {
     tienda_id: null,
     sections: [],
     theme: {},
-    selection: null,        // { tipo: 'section'|'element', id }
+    selection: null,          // { sectionId } | null
     dirty: false,
     saving: false,
     lastDraftSavedAt: null,
@@ -26,12 +30,13 @@
   };
 
   // ============================================================
-  // NanoID minimo (4 chars)
+  // NanoID minimo (6 chars, valida /^sec_[a-z0-9]{4,}$/)
   // ============================================================
-  function nanoid4() {
+  function nanoid(len) {
     const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
     let s = '';
-    for (let i = 0; i < 4; i++) {
+    const n = len || 6;
+    for (let i = 0; i < n; i++) {
       s += chars[Math.floor(Math.random() * chars.length)];
     }
     return s;
@@ -67,10 +72,13 @@
   function init(personalizaciones, tienda_id) {
     state.tienda_id = tienda_id;
     const pers = personalizaciones || {};
-    const home = pers.pages?.home || pers.pages?.home_draft || null;
-    state.sections = home?.sections ? structuredClone(home.sections) : [];
+    // En el editor priorizamos el borrador si existe, si no la home publicada.
+    const home = pers.pages?.home_draft || pers.pages?.home || null;
+    state.sections = Array.isArray(home?.sections) ? structuredClone(home.sections) : [];
     state.theme = pers.theme ? structuredClone(pers.theme) : {};
-    state.base_updated_at = home?.updated_at || null;
+    // base_updated_at: usamos el de la home PUBLICADA para el locking optimista
+    // (el draft no participa del locking; guardar-layout compara contra home).
+    state.base_updated_at = pers.pages?.home?.updated_at || home?.updated_at || null;
     state.selection = null;
     state.dirty = false;
     state.snapshots = [];
@@ -82,200 +90,92 @@
   }
 
   // ============================================================
-  // Section factories
+  // Factory de props por defecto por tipo (SCHEMA v3)
   // ============================================================
-  function createSectionDefault(tipo) {
-    const id = 'sec_' + nanoid4();
-    const base = {
-      id,
-      tipo,
-      altura_filas: 5,
-      fondo: { tipo: 'transparente', valor: '' },
-      padding: 'md',
-      elementos: [],
-    };
-
+  function defaultProps(tipo) {
     switch (tipo) {
-      case 'hero':
-        base.altura_filas = 10;
-        base.padding = 'lg';
-        base.elementos = [
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'texto',
-            grid: { col_start: 1, col_end: 17, row_start: 3, row_end: 6 },
-            estilo: { alineacion: 'left', tamaño: '3xl', peso: 'bold' },
-            props: { contenido: '[Tu título aquí]' },
-          },
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'boton',
-            grid: { col_start: 1, col_end: 7, row_start: 8, row_end: 10 },
-            estilo: { alineacion: 'left', tamaño: 'lg', peso: 'semibold' },
-            props: {
-              texto: 'Ver productos', url: '#productos',
-              estilo_visual: 'primary', target: '_self'
-            },
-          },
-        ];
-        break;
-
+      case 'banner':
+        return {
+          titulo: 'Tu titulo aqui',
+          subtitulo: 'Una frase corta que describa tu negocio.',
+          boton: { texto: 'Ver productos', url: '#productos', estilo_visual: 'primary', target: '_self', icono: 'arrow' },
+          alineacion: 'left',
+        };
       case 'texto':
-        base.altura_filas = 5;
-        base.elementos = [{
-          id: 'el_' + nanoid4(),
-          tipo: 'texto',
-          grid: { col_start: 4, col_end: 22, row_start: 2, row_end: 5 },
-          estilo: { alineacion: 'left', tamaño: 'md', peso: 'normal' },
-          props: { contenido: '[Escribí tu texto aquí]' },
-        }];
-        break;
-
+        return { contenido: 'Escribi aqui tu texto.', alineacion: 'left', tamanio: 'md' };
       case 'imagen':
-        base.altura_filas = 7;
-        base.elementos = [{
-          id: 'el_' + nanoid4(),
-          tipo: 'imagen',
-          grid: { col_start: 1, col_end: 25, row_start: 1, row_end: 7 },
-          estilo: { alineacion: 'center', tamaño: 'md', peso: 'normal' },
-          props: {
-            src: 'https://placehold.co/1200x600',
-            alt: 'Imagen banner',
-            objeto: 'cover',
-          },
-        }];
-        break;
-
+        return { src: 'https://placehold.co/1200x600', alt: 'Imagen', objeto: 'cover' };
       case 'botones':
-        base.altura_filas = 3;
-        base.elementos = [
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'boton',
-            grid: { col_start: 7, col_end: 13, row_start: 1, row_end: 3 },
-            estilo: { alineacion: 'center', tamaño: 'md', peso: 'semibold' },
-            props: {
-              texto: 'WhatsApp', url: 'https://wa.me/57XXXXXXXXXX',
-              estilo_visual: 'primary', target: '_blank', icono: 'whatsapp'
-            },
-          },
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'boton',
-            grid: { col_start: 13, col_end: 19, row_start: 1, row_end: 3 },
-            estilo: { alineacion: 'center', tamaño: 'md', peso: 'semibold' },
-            props: {
-              texto: 'Ubicación', url: 'https://maps.google.com',
-              estilo_visual: 'secondary', target: '_blank', icono: 'location'
-            },
-          },
-        ];
-        break;
-
+        return {
+          items: [
+            { texto: 'WhatsApp', url: 'https://wa.me/57XXXXXXXXXX', estilo_visual: 'primary', target: '_blank', icono: 'whatsapp' },
+            { texto: 'Ubicacion', url: 'https://maps.google.com', estilo_visual: 'secondary', target: '_blank', icono: 'location' },
+          ],
+        };
       case 'productos':
-        base.altura_filas = 10;
-        base.elementos = [{
-          id: 'el_' + nanoid4(),
-          tipo: 'productos',
-          grid: { col_start: 1, col_end: 25, row_start: 1, row_end: 10 },
-          estilo: { alineacion: 'center', tamaño: 'md', peso: 'normal' },
-          props: {
-            categoria_id: null, limite: 8, orden: 'recientes',
-            columnas: 'auto', mostrar_precio: true,
-          },
-        }];
-        break;
-
+        return { categoria_id: null, limite: 8, orden: 'recientes', columnas: 'auto', mostrar_precio: true };
       case 'galeria':
-        base.altura_filas = 8;
-        base.elementos = [{
-          id: 'el_' + nanoid4(),
-          tipo: 'galeria',
-          grid: { col_start: 1, col_end: 25, row_start: 1, row_end: 8 },
-          estilo: { alineacion: 'center', tamaño: 'md', peso: 'normal' },
-          props: {
-            imagenes: [
-              { src: 'https://placehold.co/800x800/eee/666?text=1', alt: 'Imagen 1' },
-              { src: 'https://placehold.co/800x800/eee/666?text=2', alt: 'Imagen 2' },
-              { src: 'https://placehold.co/800x800/eee/666?text=3', alt: 'Imagen 3' },
-            ],
-            layout: 'grid', gap: 'normal',
-          },
-        }];
-        break;
-
-      case 'espaciador':
-        base.altura_filas = 2;
-        base.elementos = [];
-        break;
-
+        return {
+          imagenes: [
+            { src: 'https://placehold.co/800x800/eee/666?text=1', alt: 'Imagen 1' },
+            { src: 'https://placehold.co/800x800/eee/666?text=2', alt: 'Imagen 2' },
+            { src: 'https://placehold.co/800x800/eee/666?text=3', alt: 'Imagen 3' },
+          ],
+          layout: 'grid',
+          gap: 'normal',
+        };
       case 'formulario':
-        base.altura_filas = 8;
-        base.elementos = [
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'texto',
-            grid: { col_start: 1, col_end: 25, row_start: 1, row_end: 2 },
-            estilo: { alineacion: 'center', tamaño: 'xl', peso: 'semibold' },
-            props: { contenido: 'Escribinos' },
-          },
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'form_field',
-            grid: { col_start: 7, col_end: 19, row_start: 2, row_end: 3 },
-            estilo: { alineacion: 'left', tamaño: 'md', peso: 'normal' },
-            props: { tipo_campo: 'text', label: 'Nombre', requerido: true },
-          },
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'form_field',
-            grid: { col_start: 7, col_end: 19, row_start: 3, row_end: 4 },
-            estilo: { alineacion: 'left', tamaño: 'md', peso: 'normal' },
-            props: { tipo_campo: 'email', label: 'Email', requerido: true },
-          },
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'form_field',
-            grid: { col_start: 7, col_end: 19, row_start: 4, row_end: 7 },
-            estilo: { alineacion: 'left', tamaño: 'md', peso: 'normal' },
-            props: { tipo_campo: 'textarea', label: 'Mensaje', requerido: false },
-          },
-          {
-            id: 'el_' + nanoid4(),
-            tipo: 'boton',
-            grid: { col_start: 9, col_end: 17, row_start: 7, row_end: 8 },
-            estilo: { alineacion: 'center', tamaño: 'md', peso: 'semibold' },
-            props: { texto: 'Enviar', url: '#submit', estilo_visual: 'primary', target: '_self' },
-          },
-        ];
-        break;
+        return {
+          titulo: 'Escribinos',
+          campos: [
+            { tipo_campo: 'text', label: 'Nombre', requerido: true },
+            { tipo_campo: 'email', label: 'Email', requerido: true },
+            { tipo_campo: 'textarea', label: 'Mensaje', requerido: false },
+          ],
+          boton_texto: 'Enviar',
+        };
+      case 'espacio':
+        return { altura: 'md' };
+      case 'video':
+        return { html: '', aspect_ratio: '16/9' };
+      default:
+        return {};
     }
-    return base;
   }
 
-  function createElementDefault(tipo, gridDefault) {
-    const id = 'el_' + nanoid4();
-    const grid = gridDefault || { col_start: 1, col_end: 13, row_start: 1, row_end: 4 };
-    const baseEstilo = { alineacion: 'left', tamaño: 'md', peso: 'normal' };
+  function defaultPadding(tipo) {
+    if (tipo === 'banner') return 'lg';
+    if (tipo === 'espacio') return 'sm';
+    return 'md';
+  }
 
-    const map = {
-      texto: { props: { contenido: 'Nuevo texto' } },
-      imagen: { props: { src: 'https://placehold.co/800x600', alt: '', objeto: 'cover' } },
-      boton: { props: { texto: 'Botón', url: '#', estilo_visual: 'primary', target: '_self' } },
-      productos: { props: { categoria_id: null, limite: 8, orden: 'recientes', columnas: 'auto', mostrar_precio: true } },
-      galeria: { props: { imagenes: [{ src: 'https://placehold.co/600x600', alt: '' }], layout: 'grid', gap: 'normal' } },
-      form_field: { props: { tipo_campo: 'text', label: 'Campo', requerido: false } },
-      embed: { props: { html: '', aspect_ratio: '16/9' } },
-      divisor: { props: { estilo: 'linea' } },
+  function defaultAncho(tipo) {
+    // banner/imagen/galeria/video lucen mejor full-bleed; el resto centrado.
+    if (tipo === 'banner' || tipo === 'imagen' || tipo === 'galeria' || tipo === 'video' || tipo === 'productos') {
+      return 'completo';
+    }
+    return 'contenido';
+  }
+
+  function createSectionDefault(tipo) {
+    return {
+      id: 'sec_' + nanoid(6),
+      tipo,
+      ancho: defaultAncho(tipo),
+      fondo: { tipo: 'transparente', valor: '' },
+      padding: defaultPadding(tipo),
+      props: defaultProps(tipo),
     };
-
-    return { id, tipo, grid, estilo: baseEstilo, ...(map[tipo] || {}) };
   }
 
   // ============================================================
   // Section operations
   // ============================================================
-  function insertSection(tipo, atIndex) {
+  function addSection(tipo, atIndex) {
+    if (state.sections.length >= MAX_SECTIONS) {
+      if (window.TiendaIA?.toast) window.TiendaIA.toast('Maximo ' + MAX_SECTIONS + ' secciones por pagina', 'error');
+      return null;
+    }
     const section = createSectionDefault(tipo);
     if (typeof atIndex === 'number' && atIndex >= 0 && atIndex <= state.sections.length) {
       state.sections.splice(atIndex, 0, section);
@@ -290,7 +190,7 @@
 
   function removeSection(sectionId) {
     state.sections = state.sections.filter(s => s.id !== sectionId);
-    if (state.selection?.id === sectionId) state.selection = null;
+    if (state.selection?.sectionId === sectionId) state.selection = null;
     pushSnapshot();
     markDirty();
     notify('sections');
@@ -299,6 +199,8 @@
 
   function reorderSections(fromIdx, toIdx) {
     if (fromIdx === toIdx) return;
+    if (fromIdx < 0 || fromIdx >= state.sections.length) return;
+    if (toIdx < 0 || toIdx >= state.sections.length) return;
     const [moved] = state.sections.splice(fromIdx, 1);
     state.sections.splice(toIdx, 0, moved);
     pushSnapshot();
@@ -307,11 +209,14 @@
   }
 
   function duplicateSection(sectionId) {
+    if (state.sections.length >= MAX_SECTIONS) {
+      if (window.TiendaIA?.toast) window.TiendaIA.toast('Maximo ' + MAX_SECTIONS + ' secciones por pagina', 'error');
+      return null;
+    }
     const idx = state.sections.findIndex(s => s.id === sectionId);
-    if (idx < 0) return;
+    if (idx < 0) return null;
     const copy = structuredClone(state.sections[idx]);
-    copy.id = 'sec_' + nanoid4();
-    copy.elementos = copy.elementos.map(el => ({ ...el, id: 'el_' + nanoid4() }));
+    copy.id = 'sec_' + nanoid(6);
     state.sections.splice(idx + 1, 0, copy);
     pushSnapshot();
     markDirty();
@@ -319,80 +224,24 @@
     return copy.id;
   }
 
-  function updateSectionProp(sectionId, key, value) {
+  // Reemplaza/mergea props de una seccion. partialProps se mergea sobre props.
+  function updateSectionProps(sectionId, partialProps) {
+    const sec = state.sections.find(s => s.id === sectionId);
+    if (!sec) return;
+    sec.props = { ...sec.props, ...partialProps };
+    debouncedSnapshot(sectionId + ':props');
+    markDirty();
+    notify('sections');
+  }
+
+  // Actualiza una propiedad base de la seccion (fondo, padding, ancho).
+  function updateSectionBase(sectionId, key, value) {
     const sec = state.sections.find(s => s.id === sectionId);
     if (!sec) return;
     sec[key] = value;
-    debouncedSnapshot(sectionId + ':' + key);
+    debouncedSnapshot(sectionId + ':base:' + key);
     markDirty();
     notify('sections');
-  }
-
-  // ============================================================
-  // Element operations
-  // ============================================================
-  function insertElement(sectionId, tipo, gridDefault) {
-    const sec = state.sections.find(s => s.id === sectionId);
-    if (!sec) return null;
-    const el = createElementDefault(tipo, gridDefault);
-    sec.elementos.push(el);
-    pushSnapshot();
-    markDirty();
-    notify('sections');
-    return el.id;
-  }
-
-  function removeElement(elementId) {
-    let removed = false;
-    state.sections.forEach(sec => {
-      const before = sec.elementos.length;
-      sec.elementos = sec.elementos.filter(e => e.id !== elementId);
-      if (sec.elementos.length !== before) removed = true;
-    });
-    if (state.selection?.id === elementId) state.selection = null;
-    if (removed) {
-      pushSnapshot();
-      markDirty();
-      notify('sections');
-      notify('selection');
-    }
-  }
-
-  function updateElementGrid(sectionId, elementId, grid) {
-    const sec = state.sections.find(s => s.id === sectionId);
-    if (!sec) return;
-    const el = sec.elementos.find(e => e.id === elementId);
-    if (!el) return;
-    el.grid = { ...el.grid, ...grid };
-    pushSnapshot();
-    markDirty();
-    notify('sections');
-  }
-
-  function updateElementProp(elementId, key, value) {
-    const el = findElement(elementId);
-    if (!el) return;
-    el.props[key] = value;
-    debouncedSnapshot(elementId + ':props:' + key);
-    markDirty();
-    notify('sections');
-  }
-
-  function updateElementStyle(elementId, key, value) {
-    const el = findElement(elementId);
-    if (!el) return;
-    el.estilo[key] = value;
-    debouncedSnapshot(elementId + ':estilo:' + key);
-    markDirty();
-    notify('sections');
-  }
-
-  function findElement(elementId) {
-    for (const sec of state.sections) {
-      const el = sec.elementos.find(e => e.id === elementId);
-      if (el) return el;
-    }
-    return null;
   }
 
   function findSection(sectionId) {
@@ -400,10 +249,10 @@
   }
 
   // ============================================================
-  // Selection
+  // Selection (solo seccion en v3)
   // ============================================================
-  function select(tipo, id) {
-    state.selection = { tipo, id };
+  function select(sectionId) {
+    state.selection = sectionId ? { sectionId } : null;
     notify('selection');
   }
 
@@ -413,7 +262,7 @@
   }
 
   // ============================================================
-  // Snapshots (undo/redo)
+  // Snapshots (undo/redo) — structuredClone preservado de Plan 3
   // ============================================================
   function pushSnapshot() {
     state.snapshots = state.snapshots.slice(0, state.snapshotIdx + 1);
@@ -477,7 +326,7 @@
 
   function markClean(updated_at) {
     state.dirty = false;
-    state.base_updated_at = updated_at;
+    if (updated_at) state.base_updated_at = updated_at;
     state.lastPublishedAt = new Date();
     notify('dirty');
   }
@@ -487,13 +336,14 @@
     notify('saving');
   }
 
+  // SCHEMA v3: schema_version:3, page.version:2.
   function serialize() {
     return {
-      schema_version: 2,
+      schema_version: 3,
       theme: state.theme,
       pages: {
         home: {
-          version: 1,
+          version: 2,
           updated_at: new Date().toISOString(),
           sections: structuredClone(state.sections),
         },
@@ -516,9 +366,9 @@
     get base_updated_at() { return state.base_updated_at; },
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
-    findSection, findElement,
-    insertSection, removeSection, reorderSections, duplicateSection, updateSectionProp,
-    insertElement, removeElement, updateElementGrid, updateElementProp, updateElementStyle,
+    findSection,
+    addSection, removeSection, reorderSections, duplicateSection,
+    updateSectionProps, updateSectionBase,
     select, deselect,
     undo, redo, canUndo, canRedo, pushSnapshot,
     markDirty, markClean, markSaving,
