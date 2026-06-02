@@ -1,59 +1,59 @@
 ---
-// AIMMA Editor PRO-MAX · Galeria · variant Industrial Clean
-import type { Section, Element } from '@aimma/database';
+// AIMMA Editor PRO-MAX · Galeria · Industrial Clean · SCHEMA v3
+// Seccion auto-contenida: lee section.props { imagenes (3..12), layout, gap }.
+// gap tight/normal/loose -> gap-2/gap-4/gap-8.
+// NOTA v1: layout 'carrusel' y 'mosaico' se renderizan como grid responsive
+// (mismo grid que 'grid'). Carrusel/mosaico reales quedan para una iteracion
+// futura; en v1 garantizamos paridad visual y responsive correcto.
 
-interface Props {
-  section: Section;
-}
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
 
+interface Props { section: Section; }
 const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'galeria' }>).props;
 
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color'
-  ? `background-color:${section.fondo.valor};`
-  : '';
-
-const galEl = section.elementos.find(el => el.tipo === 'galeria') as
-  Extract<Element, { tipo: 'galeria' }> | undefined;
-
-const gapClass = galEl?.props.gap === 'tight' ? 'gap-2'
-  : galEl?.props.gap === 'loose' ? 'gap-8'
+const gap = p.gap ?? 'normal';
+// Tailwind JIT: clases literales.
+const gapClass = gap === 'tight' ? 'gap-2'
+  : gap === 'loose' ? 'gap-8'
   : 'gap-4';
-
-const colsClass = galEl?.props.layout === 'carrusel'
-  ? 'flex overflow-x-auto snap-x snap-mandatory'
-  : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
 ---
 
-<section
-  class={`block-section ${padClass} ic-galeria`}
-  style={`${heightStyle}${bgStyle}`}
-  data-section-id={section.id}
-  data-section-tipo="galeria"
->
-  <div class={`${colsClass} ${gapClass}`} style="grid-column:1 / -1;">
-    {galEl?.props.imagenes.map((img) => (
-      <div class="ic-galeria-item">
+<SectionShell section={section}>
+  <div class={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${gapClass}`} data-field="imagenes">
+    {p.imagenes.map((img) => (
+      <figure class="ic-galeria-item">
         <img
           src={img.src}
           alt={img.alt}
           loading="lazy"
+          decoding="async"
           class="w-full h-full object-cover"
         />
-      </div>
+      </figure>
     ))}
   </div>
-</section>
+</SectionShell>
 
 <style>
   .ic-galeria-item {
+    margin: 0;
     aspect-ratio: 1 / 1;
     overflow: hidden;
     border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
   }
-  .ic-galeria :global(.flex.overflow-x-auto) .ic-galeria-item {
-    flex: 0 0 280px;
-    scroll-snap-align: center;
+  .ic-galeria-item img {
+    display: block;
+    transition: transform 300ms ease-out;
+  }
+  .ic-galeria-item:hover img {
+    transform: scale(1.04);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ic-galeria-item img { transition: none; }
+    .ic-galeria-item:hover img { transform: none; }
   }
 </style>

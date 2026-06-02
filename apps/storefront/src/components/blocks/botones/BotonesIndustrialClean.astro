@@ -1,31 +1,57 @@
 ---
-// AIMMA Editor PRO-MAX · Botones (fila CTAs) · variant Industrial Clean
+// AIMMA Editor PRO-MAX · Botones (fila de CTAs) · Industrial Clean · SCHEMA v3
+// Seccion auto-contenida: lee section.props { items: Boton[] } (1..6).
+// Cada boton usa .block-button--{estilo_visual} de blocks.css.
+// border-radius 2px (Industrial Clean). Iconos SVG por nombre (arrow/whatsapp/...).
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
 
-interface Props {
-  section: Section;
-}
-
+interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color'
-  ? `background-color:${section.fondo.valor};`
-  : '';
+const p = (section as Extract<Section, { tipo: 'botones' }>).props;
+
+// Paths SVG por icono (24x24 viewBox, stroke currentColor).
+const iconPaths: Record<string, string> = {
+  arrow: 'M5 12h14M12 5l7 7-7 7',
+  whatsapp: 'M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2z',
+  email: 'M4 4h16v16H4zM4 6l8 6 8-6',
+  phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.6 2.7a2 2 0 0 1-.5 1.9L8 9.9a16 16 0 0 0 6 6l1.6-1.2a2 2 0 0 1 1.9-.5l2.7.6a2 2 0 0 1 1.7 2z',
+  location: 'M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  link: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
+};
 ---
 
-<section
-  class={`block-section ${padClass} ic-botones`}
-  style={`${heightStyle}${bgStyle}`}
-  data-section-id={section.id}
-  data-section-tipo="botones"
->
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  <div class="ic-botones-row">
+    {p.items.map((btn) => (
+      <a
+        href={btn.url}
+        target={btn.target}
+        rel={btn.target === '_blank' ? 'noopener' : undefined}
+        class={`block-button block-button--${btn.estilo_visual}`}
+        style="border-radius:2px;"
+        data-field="botones"
+      >
+        {btn.texto}
+        {btn.icono && iconPaths[btn.icono] && (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d={iconPaths[btn.icono]} />
+          </svg>
+        )}
+      </a>
+    ))}
+  </div>
+</SectionShell>
 
 <style>
-  .ic-botones :global(.block-button) {
+  .ic-botones-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.875rem;
+    align-items: center;
+  }
+  .ic-botones-row :global(.block-button) {
     border-radius: 2px;
     padding: 0.875rem 2rem;
     font-size: 0.95rem;

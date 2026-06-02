@@ -1,31 +1,72 @@
 ---
+// AIMMA Editor PRO-MAX · Imagen · Editorial Magazine · SCHEMA v3
+// Seccion auto-contenida: lee section.props { src, alt, objeto, aspect_ratio?, link_url? }.
+// Respeta object-fit (objeto) y aspect_ratio. Si hay link_url, envuelve en <a>.
+// Lenguaje Vogue/Kinfolk: SIN border, SIN radius (full-bleed editorial). lazy.
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const primerImagen = section.elementos.find(el => el.tipo === 'imagen');
-const bgStyle = primerImagen && primerImagen.tipo === 'imagen'
-  ? `background-image:url(${primerImagen.props.src});background-size:${primerImagen.props.objeto};background-position:center;`
-  : section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
-  : '';
-const overlayStyle = section.fondo.overlay ? `position:relative;` : '';
+const p = (section as Extract<Section, { tipo: 'imagen' }>).props;
+
+const objeto = p.objeto ?? 'cover';
+const objClass = objeto === 'contain' ? 'object-contain' : 'object-cover';
+
+// aspect_ratio opcional: si no viene, la imagen fluye con su ratio natural.
+const ratioStyle = p.aspect_ratio ? `aspect-ratio:${p.aspect_ratio};` : '';
 ---
 
-<section class={`block-section ${padClass} em-imagen`} style={`${heightStyle}${bgStyle}${overlayStyle}`} data-section-id={section.id} data-section-tipo="imagen" data-plantilla="editorial_magazine">
-  {section.fondo.overlay && (
-    <div class="block-imagen-overlay" style={`position:absolute;inset:0;background:${section.fondo.overlay.color};opacity:${section.fondo.overlay.opacity};pointer-events:none;`} />
+<SectionShell section={section}>
+  {p.link_url ? (
+    <a href={p.link_url} class="em-imagen-link block">
+      <figure class="em-imagen-figure" style={ratioStyle}>
+        <img
+          src={p.src}
+          alt={p.alt}
+          loading="lazy"
+          decoding="async"
+          class={`em-imagen-img w-full h-full ${objClass}`}
+          data-field="src"
+        />
+      </figure>
+    </a>
+  ) : (
+    <figure class="em-imagen-figure" style={ratioStyle}>
+      <img
+        src={p.src}
+        alt={p.alt}
+        loading="lazy"
+        decoding="async"
+        class={`em-imagen-img w-full h-full ${objClass}`}
+        data-field="src"
+      />
+    </figure>
   )}
-  {section.elementos.filter(el => el.tipo !== 'imagen').map((el) => <ElementRenderer el={el} />)}
-</section>
+  {p.alt && (
+    <figcaption class="em-imagen-caption font-body text-[11px] tracking-[0.06em] text-[var(--ta-color-text-base)]/55 mt-4 flex items-baseline gap-3">
+      <span class="block h-px w-8 bg-[var(--ta-color-accent)]"></span>
+      <span>{p.alt}</span>
+    </figcaption>
+  )}
+</SectionShell>
 
 <style>
-  .em-imagen :global(.block-text--size-3xl),
-  .em-imagen :global(.block-text--size-2xl) {
-    font-family: var(--ta-font-display);
-    font-weight: 300;
-    color: var(--ta-color-bg-base);
-    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  .em-imagen-figure {
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+  .em-imagen-img {
+    display: block;
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .em-imagen-link { text-decoration: none; }
+  .em-imagen-link:hover .em-imagen-img { transform: scale(1.03); }
+  @media (prefers-reduced-motion: reduce) {
+    .em-imagen-img { transition: none; }
+    .em-imagen-link:hover .em-imagen-img { transform: none; }
   }
 </style>

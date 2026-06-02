@@ -1,35 +1,64 @@
 ---
+// AIMMA Editor PRO-MAX · Imagen · Fashion Bold · SCHEMA v3
+// Seccion auto-contenida: lee section.props { src, alt, objeto, aspect_ratio?, link_url? }.
+// Fashion Bold: edge-to-edge, NO border, border-radius 0. Respeta object-fit y aspect_ratio.
+// Si hay link_url, envuelve en <a>. loading="lazy".
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const primerImagen = section.elementos.find(el => el.tipo === 'imagen');
-const bgStyle = primerImagen && primerImagen.tipo === 'imagen'
-  ? `background-image:url(${primerImagen.props.src});background-size:${primerImagen.props.objeto};background-position:center;`
-  : section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
-  : '';
-const overlayStyle = section.fondo.overlay ? `position:relative;` : '';
+const p = (section as Extract<Section, { tipo: 'imagen' }>).props;
+
+const objeto = p.objeto ?? 'cover';
+const objClass = objeto === 'contain' ? 'object-contain' : 'object-cover';
+
+// aspect_ratio opcional: si no viene, la imagen fluye con su ratio natural.
+const ratioStyle = p.aspect_ratio ? `aspect-ratio:${p.aspect_ratio};` : '';
 ---
 
-<section class={`block-section ${padClass} fb-imagen`} style={`${heightStyle}${bgStyle}${overlayStyle}`} data-section-id={section.id} data-section-tipo="imagen" data-plantilla="fashion_bold">
-  {section.fondo.overlay && (
-    <div class="block-imagen-overlay" style={`position:absolute;inset:0;background:${section.fondo.overlay.color};opacity:${section.fondo.overlay.opacity};pointer-events:none;`} />
+<SectionShell section={section}>
+  {p.link_url ? (
+    <a href={p.link_url} class="fb-imagen-link block">
+      <figure class="fb-imagen-figure" style={ratioStyle}>
+        <img
+          src={p.src}
+          alt={p.alt}
+          loading="lazy"
+          decoding="async"
+          class={`fb-imagen-img w-full h-full ${objClass}`}
+          data-field="src"
+        />
+      </figure>
+    </a>
+  ) : (
+    <figure class="fb-imagen-figure" style={ratioStyle}>
+      <img
+        src={p.src}
+        alt={p.alt}
+        loading="lazy"
+        decoding="async"
+        class={`fb-imagen-img w-full h-full ${objClass}`}
+        data-field="src"
+      />
+    </figure>
   )}
-  {section.elementos.filter(el => el.tipo !== 'imagen').map((el) => <ElementRenderer el={el} />)}
-</section>
+</SectionShell>
 
 <style>
-  /* Fashion Bold imagen: NO border, edge-to-edge */
-  .fb-imagen { overflow: hidden; }
-  .fb-imagen :global(.block-text--size-3xl),
-  .fb-imagen :global(.block-text--size-2xl) {
-    font-family: var(--ta-font-display);
-    text-transform: uppercase;
-    letter-spacing: -0.04em;
-    line-height: 0.88;
-    color: var(--ta-color-bg-base);
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  /* Fashion Bold imagen: edge-to-edge, sin borde, sin radius */
+  .fb-imagen-figure {
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 0;
+    background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent);
+  }
+  .fb-imagen-img {
+    display: block;
+  }
+  .fb-imagen-link {
+    text-decoration: none;
   }
 </style>

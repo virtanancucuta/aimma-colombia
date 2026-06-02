@@ -1,50 +1,30 @@
 ---
-// AIMMA Editor PRO-MAX · Formulario · variant Industrial Clean
-// Plan 3: submit handler en _FormSubmitHandler.astro (importado abajo).
-// Fetch a EF tienda-form-submit con honeypot + section_id + tienda_slug.
+// AIMMA Editor PRO-MAX · Formulario · Industrial Clean · SCHEMA v3
+// Seccion auto-contenida: lee section.props { titulo?, campos (1..8), boton_texto }.
+// Submit via _FormSubmitHandler.astro -> EF tienda-form-submit.
+// honeypot oculto + data-form-section-id + data-tienda-slug. Respeta requerido.
+// Mapea campos: text/email/tel -> input, textarea -> textarea, select -> select,
+// checkbox -> input checkbox.
 
-import type { Section, Element } from '@aimma/database';
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
 import FormSubmitHandler from './_FormSubmitHandler.astro';
 
-const tiendaSlug = Astro.locals.tienda?.slug || '';
-
-interface Props {
-  section: Section;
-}
-
+interface Props { section: Section; }
 const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'formulario' }>).props;
 
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color'
-  ? `background-color:${section.fondo.valor};`
-  : '';
-
-// Filtrar elementos form_field
-const campos = section.elementos.filter(el => el.tipo === 'form_field') as
-  Extract<Element, { tipo: 'form_field' }>[];
-
-// Buscar opcional titulo (elemento texto)
-const titulo = section.elementos.find(el => el.tipo === 'texto');
-
-// Buscar boton submit (elemento boton)
-const submitBtn = section.elementos.find(el => el.tipo === 'boton');
+const tiendaSlug = Astro.locals.tiendaSlug ?? Astro.locals.tienda?.slug ?? '';
 ---
 
-<section
-  class={`block-section ${padClass} ic-form`}
-  style={`${heightStyle}${bgStyle}`}
-  data-section-id={section.id}
-  data-section-tipo="formulario"
->
+<SectionShell section={section}>
   <form
     class="ic-form-inner"
-    style="grid-column:1 / -1;"
     novalidate
     data-form-section-id={section.id}
     data-tienda-slug={tiendaSlug}
   >
-    {/* Honeypot anti-spam (hidden) */}
+    {/* Honeypot anti-spam (oculto fuera de pantalla) */}
     <input
       type="text"
       name="honeypot"
@@ -53,79 +33,89 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
       aria-hidden="true"
       style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"
     />
-    {titulo && titulo.tipo === 'texto' && (
-      <h3 class="ic-form-title">{titulo.props.contenido}</h3>
+
+    {p.titulo && (
+      <h3 class="ic-form-title" data-field="titulo">{p.titulo}</h3>
     )}
 
-    {campos.map((campo, idx) => {
+    {p.campos.map((campo, idx) => {
       const fieldId = `${section.id}_field_${idx}`;
-      if (campo.props.tipo_campo === 'textarea') {
+      const fieldName = `field_${idx}`;
+
+      if (campo.tipo_campo === 'textarea') {
         return (
           <div class="ic-form-field">
             <label for={fieldId}>
-              {campo.props.label}
-              {campo.props.requerido && <span class="ic-required">*</span>}
+              {campo.label}
+              {campo.requerido && <span class="ic-required">*</span>}
             </label>
             <textarea
               id={fieldId}
-              name={`field_${idx}`}
-              placeholder={campo.props.placeholder ?? ''}
-              required={campo.props.requerido}
+              name={fieldName}
+              placeholder={campo.placeholder ?? ''}
+              required={campo.requerido}
               rows={4}
             ></textarea>
           </div>
         );
       }
-      if (campo.props.tipo_campo === 'select') {
+
+      if (campo.tipo_campo === 'select') {
         return (
           <div class="ic-form-field">
             <label for={fieldId}>
-              {campo.props.label}
-              {campo.props.requerido && <span class="ic-required">*</span>}
+              {campo.label}
+              {campo.requerido && <span class="ic-required">*</span>}
             </label>
-            <select id={fieldId} name={`field_${idx}`} required={campo.props.requerido}>
-              <option value="">{campo.props.placeholder ?? 'Selecciona...'}</option>
-              {(campo.props.opciones ?? []).map((opt) => (
+            <select id={fieldId} name={fieldName} required={campo.requerido}>
+              <option value="">{campo.placeholder ?? 'Selecciona...'}</option>
+              {(campo.opciones ?? []).map((opt) => (
                 <option value={opt}>{opt}</option>
               ))}
             </select>
           </div>
         );
       }
-      if (campo.props.tipo_campo === 'checkbox') {
+
+      if (campo.tipo_campo === 'checkbox') {
         return (
           <div class="ic-form-field ic-form-field--check">
-            <input id={fieldId} name={`field_${idx}`} type="checkbox" required={campo.props.requerido} />
-            <label for={fieldId}>{campo.props.label}</label>
+            <input id={fieldId} name={fieldName} type="checkbox" required={campo.requerido} />
+            <label for={fieldId}>
+              {campo.label}
+              {campo.requerido && <span class="ic-required">*</span>}
+            </label>
           </div>
         );
       }
+
+      // text / email / tel
       return (
         <div class="ic-form-field">
           <label for={fieldId}>
-            {campo.props.label}
-            {campo.props.requerido && <span class="ic-required">*</span>}
+            {campo.label}
+            {campo.requerido && <span class="ic-required">*</span>}
           </label>
           <input
             id={fieldId}
-            name={`field_${idx}`}
-            type={campo.props.tipo_campo}
-            placeholder={campo.props.placeholder ?? ''}
-            required={campo.props.requerido}
+            name={fieldName}
+            type={campo.tipo_campo}
+            placeholder={campo.placeholder ?? ''}
+            required={campo.requerido}
           />
         </div>
       );
     })}
 
-    <button type="submit" class="ic-form-submit">
-      {submitBtn && submitBtn.tipo === 'boton' ? submitBtn.props.texto : 'Enviar'}
+    <button type="submit" class="ic-form-submit" data-field="boton_texto">
+      {p.boton_texto}
     </button>
 
     <p class="form-message" hidden role="status" aria-live="polite"></p>
   </form>
 
   <FormSubmitHandler />
-</section>
+</SectionShell>
 
 <style>
   .ic-form-inner {
@@ -181,6 +171,10 @@ const submitBtn = section.elementos.find(el => el.tipo === 'boton');
     flex-direction: row;
     align-items: center;
     gap: 0.5rem;
+  }
+  .ic-form-field--check input {
+    width: auto;
+    flex: 0 0 auto;
   }
   .ic-form-submit {
     padding: 0.875rem 2rem;

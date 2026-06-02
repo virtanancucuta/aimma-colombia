@@ -1,51 +1,66 @@
 ---
-// AIMMA Editor PRO-MAX · Imagen banner · variant Industrial Clean
+// AIMMA Editor PRO-MAX · Imagen · Industrial Clean · SCHEMA v3
+// Seccion auto-contenida: lee section.props { src, alt, objeto, aspect_ratio?, link_url? }.
+// Respeta object-fit (objeto) y aspect_ratio. Si hay link_url, envuelve en <a>.
+// Borde sutil 1px + border-radius 2px (lenguaje Industrial Clean). loading="lazy".
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
 
-interface Props {
-  section: Section;
-}
-
+interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
+const p = (section as Extract<Section, { tipo: 'imagen' }>).props;
 
-// Industrial Clean: la imagen banner suele tener border 1px y aspect-ratio fijo.
-// Si el primer elemento es imagen, lo trato como fondo full.
-const primerImagen = section.elementos.find(el => el.tipo === 'imagen');
-const bgStyle = primerImagen && primerImagen.tipo === 'imagen'
-  ? `background-image:url(${primerImagen.props.src});background-size:${primerImagen.props.objeto};background-position:center;`
-  : section.fondo.tipo === 'color'
-    ? `background-color:${section.fondo.valor};`
-    : '';
+const objeto = p.objeto ?? 'cover';
+const objClass = objeto === 'contain' ? 'object-contain' : 'object-cover';
 
-const overlayStyle = section.fondo.overlay
-  ? `position:relative;`
+// aspect_ratio opcional: si no viene, la imagen fluye con su ratio natural.
+const ratioStyle = p.aspect_ratio
+  ? `aspect-ratio:${p.aspect_ratio};`
   : '';
 ---
 
-<section
-  class={`block-section ${padClass} ic-imagen`}
-  style={`${heightStyle}${bgStyle}${overlayStyle}`}
-  data-section-id={section.id}
-  data-section-tipo="imagen"
->
-  {section.fondo.overlay && (
-    <div
-      class="block-imagen-overlay"
-      style={`position:absolute;inset:0;background:${section.fondo.overlay.color};opacity:${section.fondo.overlay.opacity};pointer-events:none;`}
-    />
+<SectionShell section={section}>
+  {p.link_url ? (
+    <a href={p.link_url} class="ic-imagen-link block">
+      <figure class="ic-imagen-figure" style={ratioStyle}>
+        <img
+          src={p.src}
+          alt={p.alt}
+          loading="lazy"
+          decoding="async"
+          class={`ic-imagen-img w-full h-full ${objClass}`}
+          data-field="src"
+        />
+      </figure>
+    </a>
+  ) : (
+    <figure class="ic-imagen-figure" style={ratioStyle}>
+      <img
+        src={p.src}
+        alt={p.alt}
+        loading="lazy"
+        decoding="async"
+        class={`ic-imagen-img w-full h-full ${objClass}`}
+        data-field="src"
+      />
+    </figure>
   )}
-  {/* Solo renderizo elementos NO-imagen (la imagen es el fondo) */}
-  {section.elementos.filter(el => el.tipo !== 'imagen').map((el) => (
-    <ElementRenderer el={el} />
-  ))}
-</section>
+</SectionShell>
 
 <style>
-  .ic-imagen {
-    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+  .ic-imagen-figure {
+    margin: 0;
+    width: 100%;
     overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
+  }
+  .ic-imagen-img {
+    display: block;
+  }
+  .ic-imagen-link {
+    text-decoration: none;
   }
 </style>
