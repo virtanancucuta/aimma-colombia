@@ -1,0 +1,101 @@
+---
+// _FormSubmitHandler.astro
+// AIMMA Editor PRO-MAX Plan 3
+// Script inline DRY que las 4 variants de Formulario importan.
+// Captura submit de cualquier form con data-form-section-id,
+// hace fetch a EF tienda-form-submit, muestra success/error inline.
+---
+
+<script is:inline>
+(function() {
+  'use strict';
+
+  const EF_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co/functions/v1/tienda-form-submit';
+
+  function init() {
+    const forms = document.querySelectorAll('form[data-form-section-id]');
+    if (!forms.length) return;
+
+    forms.forEach((form) => {
+      if (form.dataset.handlerBound === '1') return;
+      form.dataset.handlerBound = '1';
+      form.addEventListener('submit', onSubmit);
+    });
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const msgEl = form.querySelector('.form-message');
+
+    if (msgEl) {
+      msgEl.hidden = true;
+      msgEl.className = 'form-message';
+    }
+
+    const fd = new FormData(form);
+    const fields = {};
+    let honeypot = '';
+    for (const [k, v] of fd.entries()) {
+      if (k === 'honeypot') { honeypot = String(v); continue; }
+      fields[k] = String(v);
+    }
+
+    const body = {
+      tienda_slug: form.dataset.tiendaSlug,
+      section_id: form.dataset.formSectionId,
+      fields: fields,
+      honeypot: honeypot,
+    };
+
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const r = await fetch(EF_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json().catch(() => ({}));
+
+      if (r.ok && data.success) {
+        form.reset();
+        if (msgEl) {
+          msgEl.textContent = data.message || 'Mensaje enviado correctamente.';
+          msgEl.className = 'form-message form-message--success';
+          msgEl.hidden = false;
+        }
+      } else {
+        const errMsg = (data.error === 'rate_limited')
+          ? 'Demasiados envios. Esperá un momento e intentá de nuevo.'
+          : (data.error === 'missing_required_field')
+            ? 'Falta completar: ' + (data.field || 'un campo requerido') + '.'
+            : (data.error === 'invalid_email')
+              ? 'El email no es valido.'
+              : 'No pudimos enviar tu mensaje. Intentá de nuevo en unos minutos.';
+        if (msgEl) {
+          msgEl.textContent = errMsg;
+          msgEl.className = 'form-message form-message--error';
+          msgEl.hidden = false;
+        }
+      }
+    } catch (err) {
+      console.error('form_submit_network_error', err);
+      if (msgEl) {
+        msgEl.textContent = 'Error de conexion. Verificá tu internet.';
+        msgEl.className = 'form-message form-message--error';
+        msgEl.hidden = false;
+      }
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
