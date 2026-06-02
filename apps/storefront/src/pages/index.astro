@@ -21,13 +21,12 @@ let isPreview = false;
 // ── Modo preview: validar token efimero + leer draft fresco (sin cache KV) ──
 let persRaw: unknown = tienda.personalizaciones;
 if (previewToken) {
-  const { data: tok } = await supabase
-    .from('preview_tokens')
-    .select('tienda_id, expires_at')
-    .eq('token', previewToken)
-    .maybeSingle();
+  // RLS de preview_tokens esta cerrada; validamos via RPC SECURITY DEFINER
+  // (anon solo puede validar el token que ya posee, no listar la tabla).
+  const { data: validTiendaId } = await supabase
+    .rpc('validate_preview_token', { p_token: previewToken });
 
-  const valido = tok && tok.tienda_id === tienda.id && new Date(tok.expires_at) > new Date();
+  const valido = validTiendaId && validTiendaId === tienda.id;
   if (!valido) {
     return new Response('Preview token invalido o expirado', {
       status: 403,
