@@ -1,23 +1,25 @@
 ---
-// Plan 3: submit handler en _FormSubmitHandler.astro (importado abajo).
-// Fetch a EF tienda-form-submit con honeypot + section_id + tienda_slug.
-import type { Section, Element } from '@aimma/database';
+// AIMMA Editor PRO-MAX · Formulario · Fashion Bold · SCHEMA v3
+// Seccion auto-contenida: lee section.props { titulo?, campos: [{tipo_campo,label,...}], boton_texto }.
+// Submit handler en _FormSubmitHandler.astro: fetch a EF tienda-form-submit con
+// honeypot + section_id + tienda_slug. Fashion Bold: labels uppercase, inputs underline, btn rect.
+// SIN grid 2D, SIN elementos, SIN _ElementRenderer.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
 import FormSubmitHandler from './_FormSubmitHandler.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
-const campos = section.elementos.filter(el => el.tipo === 'form_field') as Extract<Element, { tipo: 'form_field' }>[];
-const titulo = section.elementos.find(el => el.tipo === 'texto');
-const submitBtn = section.elementos.find(el => el.tipo === 'boton');
-const tiendaSlug = Astro.locals.tienda?.slug || '';
+const p = (section as Extract<Section, { tipo: 'formulario' }>).props;
+
+const tiendaSlug = Astro.locals.tiendaSlug || '';
+const botonTexto = p.boton_texto || 'Enviar';
 ---
 
-<section class={`block-section ${padClass} fb-form`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="formulario" data-plantilla="fashion_bold">
+<SectionShell section={section}>
   <form
     class="fb-form-inner"
-    style="grid-column:1 / -1;"
     novalidate
     data-form-section-id={section.id}
     data-tienda-slug={tiendaSlug}
@@ -31,54 +33,57 @@ const tiendaSlug = Astro.locals.tienda?.slug || '';
       aria-hidden="true"
       style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"
     />
-    {titulo && titulo.tipo === 'texto' && (
-      <h3 class="fb-form-title">{titulo.props.contenido}</h3>
+
+    {p.titulo && (
+      <h3 class="fb-form-title" data-field="titulo">{p.titulo}</h3>
     )}
-    {campos.map((campo, idx) => {
+
+    {p.campos.map((campo, idx) => {
       const fieldId = `${section.id}_field_${idx}`;
-      if (campo.props.tipo_campo === 'textarea') {
+      if (campo.tipo_campo === 'textarea') {
         return (
           <div class="fb-form-field">
-            <label for={fieldId}>{campo.props.label}{campo.props.requerido && <span class="fb-required">*</span>}</label>
-            <textarea id={fieldId} name={`field_${idx}`} placeholder={campo.props.placeholder ?? ''} required={campo.props.requerido} rows={4}></textarea>
+            <label for={fieldId}>{campo.label}{campo.requerido && <span class="fb-required">*</span>}</label>
+            <textarea id={fieldId} name={`field_${idx}`} placeholder={campo.placeholder ?? ''} required={campo.requerido} rows={4}></textarea>
           </div>
         );
       }
-      if (campo.props.tipo_campo === 'select') {
+      if (campo.tipo_campo === 'select') {
         return (
           <div class="fb-form-field">
-            <label for={fieldId}>{campo.props.label}{campo.props.requerido && <span class="fb-required">*</span>}</label>
-            <select id={fieldId} name={`field_${idx}`} required={campo.props.requerido}>
-              <option value="">{campo.props.placeholder ?? 'Selecciona...'}</option>
-              {(campo.props.opciones ?? []).map((opt) => <option value={opt}>{opt}</option>)}
+            <label for={fieldId}>{campo.label}{campo.requerido && <span class="fb-required">*</span>}</label>
+            <select id={fieldId} name={`field_${idx}`} required={campo.requerido}>
+              <option value="">{campo.placeholder ?? 'Selecciona...'}</option>
+              {(campo.opciones ?? []).map((opt) => <option value={opt}>{opt}</option>)}
             </select>
           </div>
         );
       }
-      if (campo.props.tipo_campo === 'checkbox') {
+      if (campo.tipo_campo === 'checkbox') {
         return (
           <div class="fb-form-field fb-form-field--check">
-            <input id={fieldId} name={`field_${idx}`} type="checkbox" required={campo.props.requerido} />
-            <label for={fieldId}>{campo.props.label}</label>
+            <input id={fieldId} name={`field_${idx}`} type="checkbox" required={campo.requerido} />
+            <label for={fieldId}>{campo.label}</label>
           </div>
         );
       }
       return (
         <div class="fb-form-field">
-          <label for={fieldId}>{campo.props.label}{campo.props.requerido && <span class="fb-required">*</span>}</label>
-          <input id={fieldId} name={`field_${idx}`} type={campo.props.tipo_campo} placeholder={campo.props.placeholder ?? ''} required={campo.props.requerido} />
+          <label for={fieldId}>{campo.label}{campo.requerido && <span class="fb-required">*</span>}</label>
+          <input id={fieldId} name={`field_${idx}`} type={campo.tipo_campo} placeholder={campo.placeholder ?? ''} required={campo.requerido} />
         </div>
       );
     })}
-    <button type="submit" class="fb-form-submit">
-      {submitBtn && submitBtn.tipo === 'boton' ? submitBtn.props.texto : 'Enviar'}
+
+    <button type="submit" class="fb-form-submit" data-field="boton_texto">
+      {botonTexto}
     </button>
 
     <p class="form-message" hidden role="status" aria-live="polite"></p>
   </form>
 
   <FormSubmitHandler />
-</section>
+</SectionShell>
 
 <style>
   .fb-form-inner {

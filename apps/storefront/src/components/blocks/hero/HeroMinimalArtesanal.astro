@@ -1,51 +1,136 @@
 ---
-// AIMMA Editor PRO-MAX · Hero · variant Minimal Artesanal · 2026-06-01
+// AIMMA Editor PRO-MAX · Banner (hero) · Minimal Artesanal · SCHEMA v3
+// Seccion auto-contenida: lee section.props (titulo/subtitulo/imagen_fondo/boton/alineacion).
+// Lenguaje MA: Fraunces editorial, opsz 96/144, mucho espacio en blanco, CTA pill (999px)
+// para primary/secondary o link subrayado para ghost/outline. data-field (Plan 5).
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
 
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
-  : section.fondo.tipo === 'imagen' ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
-  : section.fondo.tipo === 'gradient' ? `background-image:${section.fondo.valor};`
-  : '';
+const p = (section as Extract<Section, { tipo: 'banner' }>).props;
+
+const align = p.alineacion ?? 'left';
+const alignClass = align === 'center'
+  ? 'text-center items-center mx-auto'
+  : align === 'right'
+    ? 'text-right items-end ml-auto'
+    : 'text-left items-start';
+
+const objClass = p.imagen_fondo?.objeto === 'contain' ? 'object-contain' : 'object-cover';
+
+const esPill = !!p.boton && (p.boton.estilo_visual === 'primary' || p.boton.estilo_visual === 'secondary');
+const iconPath: Record<string, string> = {
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  whatsapp: '', email: '', phone: '', location: '', link: '',
+};
+const showArrow = !!p.boton && (p.boton.icono === 'arrow' || !p.boton.icono);
 ---
 
-<section class={`block-section ${padClass} ma-hero`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="hero" data-plantilla="minimal_artesanal">
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  {p.imagen_fondo && (
+    <div class="ma-banner-media" aria-hidden="true">
+      <img
+        src={p.imagen_fondo.src}
+        alt={p.imagen_fondo.alt}
+        loading="eager"
+        decoding="async"
+        class={`w-full h-full ${objClass}`}
+      />
+    </div>
+  )}
+
+  <div class={`ma-banner flex flex-col ${alignClass}`}>
+    <h1
+      class="ma-banner-title font-display text-[var(--ta-color-text-base)] text-balance"
+      data-field="titulo"
+    >
+      {p.titulo}
+    </h1>
+
+    {p.subtitulo && (
+      <p
+        class="ma-banner-sub font-display italic text-[var(--ta-color-text-base)]/72"
+        data-field="subtitulo"
+      >
+        {p.subtitulo}
+      </p>
+    )}
+
+    {p.boton && (
+      <a
+        href={p.boton.url}
+        target={p.boton.target}
+        rel={p.boton.target === '_blank' ? 'noopener noreferrer' : undefined}
+        class={esPill
+          ? `ma-banner-pill ma-banner-pill--${p.boton.estilo_visual} mt-10`
+          : 'ma-banner-link mt-10 inline-flex items-center gap-3 font-body text-[14px] font-medium text-[var(--ta-color-text-base)] w-fit'}
+        data-field="boton.texto"
+      >
+        {esPill
+          ? p.boton.texto
+          : <span class="border-b border-[var(--ta-color-text-base)] pb-1">{p.boton.texto}</span>}
+        {showArrow && (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d={iconPath.arrow} />
+          </svg>
+        )}
+      </a>
+    )}
+  </div>
+</SectionShell>
 
 <style>
-  /* Minimal Artesanal hero: Fraunces variable opsz, generous tracking */
-  .ma-hero :global(.block-text--size-3xl) {
-    font-family: var(--ta-font-display);
+  .ma-banner-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 7;
+    overflow: hidden;
+    margin-bottom: 3.5rem;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
+  }
+  .ma-banner-media img { display: block; }
+  .ma-banner { max-width: 56ch; }
+  .ma-banner-title {
     font-weight: 400;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
+    font-size: clamp(2.75rem, 6.5vw, 5.5rem);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    font-variation-settings: 'opsz' 144;
+  }
+  .ma-banner-sub {
+    margin-top: 1.75rem;
+    max-width: 44ch;
+    font-weight: 400;
+    font-size: clamp(1.05rem, 1.8vw, 1.4rem);
+    line-height: 1.45;
     font-variation-settings: 'opsz' 96;
   }
-  .ma-hero :global(.block-text--size-2xl),
-  .ma-hero :global(.block-text--size-xl) {
-    font-family: var(--ta-font-display);
-    font-weight: 400;
-    font-variation-settings: 'opsz' 48;
-    letter-spacing: -0.015em;
-  }
-  .ma-hero :global(.block-text--size-md),
-  .ma-hero :global(.block-text--size-lg) {
-    font-family: var(--ta-font-body);
-    line-height: 1.65;
-    max-width: 60ch;
-    text-wrap: balance;
-  }
-  .ma-hero :global(.block-button) {
-    border-radius: 999px;
+  .ma-banner.items-center .ma-banner-sub { margin-inline: auto; }
+  .ma-banner.items-end .ma-banner-sub { margin-inline: 0 0 0 auto; }
+
+  .ma-banner-link { transition: gap 220ms cubic-bezier(0.4, 0, 0.2, 1); }
+  .ma-banner-link:hover { gap: 1.25rem; }
+
+  .ma-banner-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
     padding: 0.875rem 2.25rem;
+    border-radius: 999px;
     font-family: var(--ta-font-body);
     font-size: 0.875rem;
     font-weight: 500;
+    text-decoration: none;
     transition: opacity 300ms ease-out;
+  }
+  .ma-banner-pill:hover { opacity: 0.85; }
+  .ma-banner-pill--primary { background: var(--ta-color-text-base); color: var(--ta-color-bg-base); }
+  .ma-banner-pill--secondary { background: var(--ta-color-accent); color: var(--ta-color-on-accent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ma-banner-link, .ma-banner-pill { transition: none; }
   }
 </style>

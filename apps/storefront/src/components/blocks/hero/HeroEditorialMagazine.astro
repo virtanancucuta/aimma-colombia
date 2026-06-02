@@ -1,45 +1,116 @@
 ---
+// AIMMA Editor PRO-MAX · Banner (hero) · Editorial Magazine · SCHEMA v3
+// Seccion auto-contenida: lee section.props (titulo/subtitulo/boton/imagen_fondo).
+// Lenguaje Vogue/Kinfolk: display serif weight 300 + dropcap + eyebrow con rule +
+// accent italic. UN solo CTA con underline animado. data-field para edicion inline.
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
-  : section.fondo.tipo === 'imagen' ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
-  : section.fondo.tipo === 'gradient' ? `background-image:${section.fondo.valor};`
-  : '';
+const p = (section as Extract<Section, { tipo: 'banner' }>).props;
+
+const align = p.alineacion ?? 'left';
+const alignClass = align === 'center'
+  ? 'text-center mx-auto items-center'
+  : align === 'right'
+    ? 'text-right ml-auto items-end'
+    : 'text-left items-start';
+
+const titulo = p.titulo ?? '';
+const firstLetter = titulo.charAt(0);
+const rest = titulo.slice(1);
+
+const objeto = p.imagen_fondo?.objeto ?? 'cover';
+const objClass = objeto === 'contain' ? 'object-contain' : 'object-cover';
 ---
 
-<section class={`block-section ${padClass} em-hero`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="hero" data-plantilla="editorial_magazine">
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  <div class={`em-banner flex flex-col ${alignClass}`} style="max-width:60rem;">
+    {/* Eyebrow editorial — accent + hairline rule */}
+    <div class="em-banner-eyebrow flex items-baseline gap-4 mb-10 lg:mb-14 w-full">
+      <span class="block h-px flex-1 max-w-[110px] bg-[var(--ta-color-accent)]"></span>
+      <span class="block h-px flex-1 bg-[var(--ta-color-accent)]/30"></span>
+    </div>
+
+    <h1
+      class="font-display text-[var(--ta-color-text-base)] text-balance"
+      style="font-size:clamp(2.75rem, 7vw, 6.5rem); font-weight:300; line-height:0.96; letter-spacing:-0.015em;"
+      data-field="titulo"
+    >
+      {firstLetter && <span class="em-dropcap" aria-hidden="true">{firstLetter}</span>}<span class="sr-only">{firstLetter}</span>{rest}
+    </h1>
+
+    {p.subtitulo && (
+      <p
+        class="mt-9 max-w-[46ch] font-display text-[var(--ta-color-text-base)]/72"
+        style="font-size:clamp(1.1rem, 1.7vw, 1.45rem); font-style:italic; font-weight:400; line-height:1.5;"
+        data-field="subtitulo"
+      >
+        {p.subtitulo}
+      </p>
+    )}
+
+    {p.boton && (
+      <a
+        href={p.boton.url}
+        target={p.boton.target}
+        rel={p.boton.target === '_blank' ? 'noopener' : undefined}
+        class="em-banner-link mt-12 lg:mt-14 inline-flex items-baseline gap-3 font-body text-[14px] font-medium text-[var(--ta-color-text-base)] w-fit"
+        data-field="boton.texto"
+      >
+        <span class="em-underline">{p.boton.texto}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="13 6 19 12 13 18" />
+        </svg>
+      </a>
+    )}
+
+    {p.imagen_fondo && (
+      <figure class="em-banner-figure mt-14 lg:mt-20 w-full">
+        <img
+          src={p.imagen_fondo.src}
+          alt={p.imagen_fondo.alt}
+          loading="lazy"
+          decoding="async"
+          class={`w-full ${objClass}`}
+          style="aspect-ratio:16/9;"
+          data-field="imagen_fondo.src"
+        />
+      </figure>
+    )}
+  </div>
+</SectionShell>
 
 <style>
-  /* Editorial Magazine hero: Fraunces display + accent spans */
-  .em-hero :global(.block-text--size-3xl) {
-    font-family: var(--ta-font-display);
-    font-weight: 300;
-    letter-spacing: -0.012em;
-    line-height: 1;
-    text-wrap: balance;
-  }
-  .em-hero :global(.block-text--size-2xl) {
-    font-family: var(--ta-font-display);
-    font-weight: 400;
+  .em-dropcap {
+    display: inline-block;
+    color: var(--ta-color-accent);
     font-style: italic;
-    letter-spacing: -0.018em;
+    font-weight: 300;
+  }
+  .em-banner-link {
+    transition: gap 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+  }
+  .em-banner-link:hover { gap: 1.25rem; }
+  .em-underline {
+    position: relative;
+    padding-bottom: 2px;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-size: 100% 1px;
+    background-repeat: no-repeat;
+  }
+  .em-banner-link:hover .em-underline {
+    background-image: linear-gradient(var(--ta-color-accent), var(--ta-color-accent));
     color: var(--ta-color-accent);
   }
-  .em-hero :global(.block-text--size-xl) {
-    font-family: var(--ta-font-display);
-    font-weight: 400;
-    letter-spacing: -0.012em;
+  .em-banner-figure {
+    margin: 0;
+    overflow: hidden;
   }
-  .em-hero :global(.block-text--size-md),
-  .em-hero :global(.block-text--size-lg) {
-    font-family: var(--ta-font-body);
-    line-height: 1.6;
-    max-width: 65ch;
-  }
+  .em-banner-figure img { display: block; }
 </style>

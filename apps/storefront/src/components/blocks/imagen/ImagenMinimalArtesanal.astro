@@ -1,33 +1,58 @@
 ---
+// AIMMA Editor PRO-MAX · Imagen · Minimal Artesanal · SCHEMA v3
+// Seccion auto-contenida: lee section.props { src, alt, objeto, aspect_ratio?, link_url? }.
+// Respeta object-fit (objeto) y aspect_ratio. Si hay link_url, envuelve en <a>.
+// Lenguaje MA: soft border-radius 4px, sin borde duro. loading="lazy".
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const primerImagen = section.elementos.find(el => el.tipo === 'imagen');
-const bgStyle = primerImagen && primerImagen.tipo === 'imagen'
-  ? `background-image:url(${primerImagen.props.src});background-size:${primerImagen.props.objeto};background-position:center;`
-  : section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
-  : '';
-const overlayStyle = section.fondo.overlay ? `position:relative;` : '';
+const p = (section as Extract<Section, { tipo: 'imagen' }>).props;
+
+const objeto = p.objeto ?? 'cover';
+const objClass = objeto === 'contain' ? 'object-contain' : 'object-cover';
+
+const ratioStyle = p.aspect_ratio ? `aspect-ratio:${p.aspect_ratio};` : '';
 ---
 
-<section class={`block-section ${padClass} ma-imagen`} style={`${heightStyle}${bgStyle}${overlayStyle}`} data-section-id={section.id} data-section-tipo="imagen" data-plantilla="minimal_artesanal">
-  {section.fondo.overlay && (
-    <div class="block-imagen-overlay" style={`position:absolute;inset:0;background:${section.fondo.overlay.color};opacity:${section.fondo.overlay.opacity};pointer-events:none;`} />
+<SectionShell section={section}>
+  {p.link_url ? (
+    <a href={p.link_url} class="ma-imagen-link block">
+      <figure class="ma-imagen-figure" style={ratioStyle}>
+        <img
+          src={p.src}
+          alt={p.alt}
+          loading="lazy"
+          decoding="async"
+          class={`ma-imagen-img w-full h-full ${objClass}`}
+          data-field="src"
+        />
+      </figure>
+    </a>
+  ) : (
+    <figure class="ma-imagen-figure" style={ratioStyle}>
+      <img
+        src={p.src}
+        alt={p.alt}
+        loading="lazy"
+        decoding="async"
+        class={`ma-imagen-img w-full h-full ${objClass}`}
+        data-field="src"
+      />
+    </figure>
   )}
-  {section.elementos.filter(el => el.tipo !== 'imagen').map((el) => <ElementRenderer el={el} />)}
-</section>
+</SectionShell>
 
 <style>
-  /* Minimal Artesanal imagen: soft border-radius + text-shadow */
-  .ma-imagen { border-radius: 4px; overflow: hidden; }
-  .ma-imagen :global(.block-text--size-3xl),
-  .ma-imagen :global(.block-text--size-2xl) {
-    font-family: var(--ta-font-display);
-    font-variation-settings: 'opsz' 96;
-    color: var(--ta-color-bg-base);
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+  .ma-imagen-figure {
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
   }
+  .ma-imagen-img { display: block; }
+  .ma-imagen-link { text-decoration: none; }
 </style>

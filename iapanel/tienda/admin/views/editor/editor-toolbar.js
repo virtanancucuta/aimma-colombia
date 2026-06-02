@@ -1,11 +1,14 @@
-/* AIMMA Editor PRO-MAX Plan 3 · editor-toolbar.js v1
- * Top toolbar (56px): Volver | Desktop/Mobile | Undo/Redo | IA | Guardar
- * + Atajos teclado: Ctrl+Z (undo), Ctrl+Shift+Z (redo), Ctrl+S (save), Esc (deselect), Del (remove)
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-toolbar.js v2 (SCHEMA v3)
+ * Top toolbar: Volver | Escritorio/Celular | Undo/Redo | Vista previa | Guardar
+ * Atajos: Ctrl+Z (undo), Ctrl+Shift+Z (redo), Ctrl+S (publicar), Esc (deselect).
+ * "Vista previa" abre el preview_url en nueva pestana. Desktop/Mobile cambia el
+ * ancho simulado del contenedor del iframe (data-device en #editor-canvas).
+ * Marker: editor-plan4-v3-toolbar.
  */
 (function(window) {
   'use strict';
 
-  const state = { container: null, callbacks: {} };
+  const state = { container: null, callbacks: {}, keyHandler: null };
 
   function render(container, callbacks) {
     state.container = container;
@@ -15,7 +18,7 @@
     const btnBack = E('button', { type: 'button', class: 'ed-toolbar__btn',
       onClick: () => callbacks.onBack && callbacks.onBack() }, '← Volver');
 
-    const btnDesktop = E('button', { type: 'button', class: 'ed-toolbar__btn ed-toolbar__btn--ghost',
+    const btnDesktop = E('button', { type: 'button', class: 'ed-toolbar__btn ed-toolbar__btn--primary',
       'data-device': 'desktop',
       onClick: () => setDevice('desktop') }, 'Escritorio');
     const btnMobile = E('button', { type: 'button', class: 'ed-toolbar__btn ed-toolbar__btn--ghost',
@@ -23,31 +26,32 @@
       onClick: () => setDevice('mobile') }, 'Celular');
 
     const btnUndo = E('button', { type: 'button', class: 'ed-toolbar__btn',
-      id: 'ed-toolbar-undo',
+      id: 'ed-toolbar-undo', title: 'Deshacer (Ctrl+Z)',
       onClick: () => callbacks.onUndo && callbacks.onUndo() }, '↶');
     const btnRedo = E('button', { type: 'button', class: 'ed-toolbar__btn',
-      id: 'ed-toolbar-redo',
+      id: 'ed-toolbar-redo', title: 'Rehacer (Ctrl+Shift+Z)',
       onClick: () => callbacks.onRedo && callbacks.onRedo() }, '↷');
 
-    const btnIA = E('button', {
+    const btnPreview = E('button', {
       type: 'button',
       class: 'ed-toolbar__btn ed-toolbar__btn--ghost',
-      disabled: 'true',
-      title: 'Próximamente — Plan 4',
-    }, '✨ Generar con IA');
+      id: 'ed-toolbar-preview',
+      title: 'Abre tu tienda en una pestana nueva',
+      onClick: () => callbacks.onPreview && callbacks.onPreview(),
+    }, 'Vista previa');
 
     const btnSave = E('button', {
       type: 'button',
       class: 'ed-toolbar__btn ed-toolbar__btn--primary',
       id: 'ed-toolbar-save',
       onClick: () => callbacks.onSave && callbacks.onSave(),
-    }, 'Guardar');
+    }, 'Publicar');
 
     const saveInfo = E('span', { class: 'ed-toolbar__save-info', id: 'ed-toolbar-save-info' });
 
     const left = E('div', { class: 'ed-toolbar__group' }, [btnBack]);
     const center = E('div', { class: 'ed-toolbar__group' }, [btnDesktop, btnMobile, btnUndo, btnRedo]);
-    const right = E('div', { class: 'ed-toolbar__group' }, [btnIA, btnSave, saveInfo]);
+    const right = E('div', { class: 'ed-toolbar__group' }, [btnPreview, saveInfo, btnSave]);
 
     container.innerHTML = '';
     container.appendChild(left);
@@ -62,10 +66,16 @@
   function setDevice(d) {
     const canvas = document.getElementById('editor-canvas');
     if (canvas) canvas.setAttribute('data-device', d);
-    state.container.querySelectorAll('[data-device]').forEach(b => {
-      b.classList.toggle('ed-toolbar__btn--primary', b.getAttribute('data-device') === d);
-      b.classList.toggle('ed-toolbar__btn--ghost', b.getAttribute('data-device') !== d);
-    });
+    if (window.TiendaIA?.editorCanvas?.setDevice) {
+      window.TiendaIA.editorCanvas.setDevice(d);
+    }
+    if (state.container) {
+      state.container.querySelectorAll('[data-device]').forEach(b => {
+        const active = b.getAttribute('data-device') === d;
+        b.classList.toggle('ed-toolbar__btn--primary', active);
+        b.classList.toggle('ed-toolbar__btn--ghost', !active);
+      });
+    }
   }
 
   function updateButtons() {
@@ -83,7 +93,7 @@
         saveBtn.textContent = 'Guardando...';
         saveBtn.disabled = true;
       } else if (ES.dirty) {
-        saveBtn.innerHTML = 'Guardar <span class="ed-toolbar__badge"></span>';
+        saveBtn.innerHTML = 'Publicar <span class="ed-toolbar__badge"></span>';
         saveBtn.disabled = false;
       } else {
         saveBtn.textContent = 'Publicado ✓';
@@ -110,10 +120,14 @@
   }
 
   function bindKeyboard() {
-    document.addEventListener('keydown', e => {
+    if (state.keyHandler) document.removeEventListener('keydown', state.keyHandler);
+    state.keyHandler = function(e) {
       const editorEl = document.querySelector('.ed-view');
-      if (!editorEl || editorEl.hidden) return;
-      if (isTypingInField(e.target)) return;
+      if (!editorEl) return;
+      if (isTypingInField(e.target)) {
+        // Permitir Ctrl+S y Esc incluso escribiendo; el resto no.
+        if (!((e.ctrlKey || e.metaKey) && e.key === 's') && e.key !== 'Escape') return;
+      }
 
       const mod = e.ctrlKey || e.metaKey;
       const cbs = state.callbacks;
@@ -129,12 +143,16 @@
         cbs.onSave && cbs.onSave();
       } else if (e.key === 'Escape') {
         cbs.onDeselect && cbs.onDeselect();
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') &&
-                 window.TiendaIA.editorState.selection) {
-        e.preventDefault();
-        cbs.onDelete && cbs.onDelete();
       }
-    });
+    };
+    document.addEventListener('keydown', state.keyHandler);
+  }
+
+  function unbindKeyboard() {
+    if (state.keyHandler) {
+      document.removeEventListener('keydown', state.keyHandler);
+      state.keyHandler = null;
+    }
   }
 
   function formatRelative(date) {
@@ -148,5 +166,5 @@
   }
 
   window.TiendaIA = window.TiendaIA || {};
-  window.TiendaIA.editorToolbar = { render, updateButtons };
+  window.TiendaIA.editorToolbar = { render, updateButtons, unbindKeyboard };
 })(window);

@@ -120,15 +120,14 @@ serve(async (req) => {
     return json({ error: 'invalid_section' }, 400, origin);
   }
 
-  // 8) Mapear field_N -> labels reales segun declaracion
-  const formFields = sectionDecl.elementos
-    .filter((el: any) => el.tipo === 'form_field')
-    .map((el: any, idx: number) => ({
-      idx,
-      label: el.props.label as string,
-      tipo: el.props.tipo_campo as string,
-      requerido: !!el.props.requerido,
-    }));
+  // 8) Mapear field_N -> labels reales segun declaracion (schema v3: props.campos)
+  const campos = (sectionDecl.props?.campos ?? []) as any[];
+  const formFields = campos.map((c: any, idx: number) => ({
+    idx,
+    label: c.label as string,
+    tipo: c.tipo_campo as string,
+    requerido: !!c.requerido,
+  }));
 
   const fieldsLabeled: Record<string, string> = {};
   for (const def of formFields) {

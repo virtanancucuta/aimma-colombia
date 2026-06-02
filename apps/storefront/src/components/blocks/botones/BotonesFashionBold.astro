@@ -1,19 +1,50 @@
 ---
+// AIMMA Editor PRO-MAX · Botones (fila CTAs) · Fashion Bold · SCHEMA v3
+// Seccion auto-contenida: lee section.props { items: [{texto,url,estilo_visual,target,icono?}] }.
+// Fashion Bold: botones rect sharp (border-radius 0), uppercase, tracking amplio.
+// SIN grid 2D, SIN elementos, SIN _ElementRenderer.
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
+const p = (section as Extract<Section, { tipo: 'botones' }>).props;
+
+const iconPaths: Record<string, string> = {
+  arrow: 'M5 12h14M13 5l7 7-7 7',
+  whatsapp: 'M20 12a8 8 0 0 1-11.8 7L4 20l1.1-4A8 8 0 1 1 20 12z',
+  email: 'M3 6h18v12H3zM3 6l9 7 9-7',
+  phone: 'M4 4h4l2 5-3 2a12 12 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2z',
+  location: 'M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  link: 'M10 14a4 4 0 0 0 6 0l2-2a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-2 2a4 4 0 0 0 6 6l1-1',
+};
 ---
 
-<section class={`block-section ${padClass} fb-botones`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="botones" data-plantilla="fashion_bold">
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  <div class="fb-botones flex flex-wrap gap-4 items-center">
+    {p.items.map((btn, idx) => (
+      <a
+        href={btn.url}
+        target={btn.target}
+        rel={btn.target === '_blank' ? 'noopener' : undefined}
+        class={`fb-btn fb-btn--${btn.estilo_visual} group inline-flex items-center gap-2.5`}
+        data-field={`items.${idx}.texto`}
+      >
+        {btn.texto}
+        {btn.icono && (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-0.5">
+            <path d={iconPaths[btn.icono] ?? iconPaths.arrow} />
+          </svg>
+        )}
+      </a>
+    ))}
+  </div>
+</SectionShell>
 
 <style>
-  .fb-botones :global(.block-button) {
+  /* Fashion Bold botones: rect sharp, uppercase, tracking amplio */
+  .fb-btn {
     border-radius: 0;
     padding: 1.125rem 2.75rem;
     font-family: var(--ta-font-body);
@@ -21,5 +52,17 @@ const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fon
     letter-spacing: 0.08em;
     font-size: 0.875rem;
     font-weight: 600;
+    text-decoration: none;
+    transition: transform 200ms ease-out, opacity 200ms ease-out;
+    will-change: transform;
+  }
+  .fb-btn:hover { transform: translateY(-2px); opacity: 0.92; }
+  .fb-btn--primary { background: var(--ta-color-primary); color: var(--ta-color-on-primary); }
+  .fb-btn--secondary { background: var(--ta-color-accent); color: var(--ta-color-on-accent); }
+  .fb-btn--ghost { background: transparent; color: var(--ta-color-text-base); }
+  .fb-btn--outline { background: transparent; color: var(--ta-color-text-base); border: 2px solid var(--ta-color-text-base); }
+  @media (prefers-reduced-motion: reduce) {
+    .fb-btn { transition: none; }
+    .fb-btn:hover { transform: none; }
   }
 </style>

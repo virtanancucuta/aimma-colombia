@@ -1,14 +1,16 @@
 ---
-// AIMMA Editor PRO-MAX · BlockRenderer dispatcher · v2 Plan 2
-// Despacha por section.tipo + plantilla.slug.
-// 4 plantillas implementadas: industrial_clean | fashion_bold |
-// minimal_artesanal | editorial_magazine. Fallback a industrial_clean
-// si la plantilla no se reconoce.
+// AIMMA Editor PRO-MAX · BlockRenderer dispatcher · SCHEMA v3 (2026-06-02)
+// Despacha por section.tipo + plantilla.slug. Cada componente lee section.props
+// (modelo Shopify-style, sin grid 2D). Fallback a industrial_clean si la
+// plantilla no se reconoce. espacio y video son agnosticos (sin variante).
+//
+// Nota naming: el tipo 'banner' usa los archivos hero/Hero<Plantilla>.astro
+// (se conservo el nombre de carpeta/archivo de v2 para minimizar churn).
 
 import type { Section } from '@aimma/database';
 
-// Industrial Clean (Plan 1)
-import HeroIC from '~/components/blocks/hero/HeroIndustrialClean.astro';
+// Industrial Clean
+import BannerIC from '~/components/blocks/hero/HeroIndustrialClean.astro';
 import TextoIC from '~/components/blocks/texto/TextoIndustrialClean.astro';
 import ImagenIC from '~/components/blocks/imagen/ImagenIndustrialClean.astro';
 import BotonesIC from '~/components/blocks/botones/BotonesIndustrialClean.astro';
@@ -17,7 +19,7 @@ import GaleriaIC from '~/components/blocks/galeria/GaleriaIndustrialClean.astro'
 import FormularioIC from '~/components/blocks/formulario/FormularioIndustrialClean.astro';
 
 // Fashion Bold
-import HeroFB from '~/components/blocks/hero/HeroFashionBold.astro';
+import BannerFB from '~/components/blocks/hero/HeroFashionBold.astro';
 import TextoFB from '~/components/blocks/texto/TextoFashionBold.astro';
 import ImagenFB from '~/components/blocks/imagen/ImagenFashionBold.astro';
 import BotonesFB from '~/components/blocks/botones/BotonesFashionBold.astro';
@@ -26,7 +28,7 @@ import GaleriaFB from '~/components/blocks/galeria/GaleriaFashionBold.astro';
 import FormularioFB from '~/components/blocks/formulario/FormularioFashionBold.astro';
 
 // Minimal Artesanal
-import HeroMA from '~/components/blocks/hero/HeroMinimalArtesanal.astro';
+import BannerMA from '~/components/blocks/hero/HeroMinimalArtesanal.astro';
 import TextoMA from '~/components/blocks/texto/TextoMinimalArtesanal.astro';
 import ImagenMA from '~/components/blocks/imagen/ImagenMinimalArtesanal.astro';
 import BotonesMA from '~/components/blocks/botones/BotonesMinimalArtesanal.astro';
@@ -35,7 +37,7 @@ import GaleriaMA from '~/components/blocks/galeria/GaleriaMinimalArtesanal.astro
 import FormularioMA from '~/components/blocks/formulario/FormularioMinimalArtesanal.astro';
 
 // Editorial Magazine
-import HeroEM from '~/components/blocks/hero/HeroEditorialMagazine.astro';
+import BannerEM from '~/components/blocks/hero/HeroEditorialMagazine.astro';
 import TextoEM from '~/components/blocks/texto/TextoEditorialMagazine.astro';
 import ImagenEM from '~/components/blocks/imagen/ImagenEditorialMagazine.astro';
 import BotonesEM from '~/components/blocks/botones/BotonesEditorialMagazine.astro';
@@ -43,8 +45,9 @@ import ProductosEM from '~/components/blocks/productos/ProductosEditorialMagazin
 import GaleriaEM from '~/components/blocks/galeria/GaleriaEditorialMagazine.astro';
 import FormularioEM from '~/components/blocks/formulario/FormularioEditorialMagazine.astro';
 
-// Espaciador (agnostico, sin variantes por plantilla)
-import Espaciador from '~/components/blocks/espaciador/Espaciador.astro';
+// Agnosticos (sin variante por plantilla)
+import Espacio from '~/components/blocks/espaciador/Espaciador.astro';
+import Video from '~/components/blocks/video/Video.astro';
 
 interface Props {
   sections: Section[];
@@ -54,19 +57,19 @@ const { sections } = Astro.props;
 const { tienda } = Astro.locals;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
 
-// Tabla de dispatch: [tipo][plantilla] -> componente.
 const BLOCKS = {
-  hero: { industrial_clean: HeroIC, fashion_bold: HeroFB, minimal_artesanal: HeroMA, editorial_magazine: HeroEM },
-  texto: { industrial_clean: TextoIC, fashion_bold: TextoFB, minimal_artesanal: TextoMA, editorial_magazine: TextoEM },
-  imagen: { industrial_clean: ImagenIC, fashion_bold: ImagenFB, minimal_artesanal: ImagenMA, editorial_magazine: ImagenEM },
-  botones: { industrial_clean: BotonesIC, fashion_bold: BotonesFB, minimal_artesanal: BotonesMA, editorial_magazine: BotonesEM },
-  productos: { industrial_clean: ProductosIC, fashion_bold: ProductosFB, minimal_artesanal: ProductosMA, editorial_magazine: ProductosEM },
-  galeria: { industrial_clean: GaleriaIC, fashion_bold: GaleriaFB, minimal_artesanal: GaleriaMA, editorial_magazine: GaleriaEM },
+  banner:     { industrial_clean: BannerIC,     fashion_bold: BannerFB,     minimal_artesanal: BannerMA,     editorial_magazine: BannerEM },
+  texto:      { industrial_clean: TextoIC,      fashion_bold: TextoFB,      minimal_artesanal: TextoMA,      editorial_magazine: TextoEM },
+  imagen:     { industrial_clean: ImagenIC,     fashion_bold: ImagenFB,     minimal_artesanal: ImagenMA,     editorial_magazine: ImagenEM },
+  botones:    { industrial_clean: BotonesIC,    fashion_bold: BotonesFB,    minimal_artesanal: BotonesMA,    editorial_magazine: BotonesEM },
+  productos:  { industrial_clean: ProductosIC,  fashion_bold: ProductosFB,  minimal_artesanal: ProductosMA,  editorial_magazine: ProductosEM },
+  galeria:    { industrial_clean: GaleriaIC,    fashion_bold: GaleriaFB,    minimal_artesanal: GaleriaMA,    editorial_magazine: GaleriaEM },
   formulario: { industrial_clean: FormularioIC, fashion_bold: FormularioFB, minimal_artesanal: FormularioMA, editorial_magazine: FormularioEM },
 } as const;
 
 function pickBlock(tipo: Section['tipo'], plantillaSlug: string) {
-  if (tipo === 'espaciador') return Espaciador;
+  if (tipo === 'espacio') return Espacio;
+  if (tipo === 'video') return Video;
   const byTipo = BLOCKS[tipo as keyof typeof BLOCKS];
   if (!byTipo) return null;
   return byTipo[plantillaSlug as keyof typeof byTipo] ?? byTipo.industrial_clean;

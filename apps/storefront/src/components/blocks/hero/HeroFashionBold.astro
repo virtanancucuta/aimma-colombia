@@ -1,53 +1,131 @@
 ---
-// AIMMA Editor PRO-MAX · Hero · variant Fashion Bold · 2026-06-01
+// AIMMA Editor PRO-MAX · Banner (hero) · Fashion Bold · SCHEMA v3
+// Seccion auto-contenida: lee section.props { titulo, subtitulo?, imagen_fondo?, boton?, alineacion }.
+// Lenguaje visual Fashion Bold: Anton uppercase mega-type, edge-to-edge, border-radius 0,
+// alto contraste. Si imagen_fondo existe, se usa de fondo con overlay para legibilidad.
+// data-field para edicion inline (Plan 5). UN solo CTA.
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
 
 interface Props { section: Section; }
 const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'banner' }>).props;
 
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color'
-  ? `background-color:${section.fondo.valor};`
-  : section.fondo.tipo === 'imagen'
-    ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
-    : section.fondo.tipo === 'gradient'
-      ? `background-image:${section.fondo.valor};`
-      : '';
+const align = p.alineacion ?? 'left';
+const alignClass = align === 'center'
+  ? 'items-center text-center'
+  : align === 'right'
+    ? 'items-end text-right'
+    : 'items-start text-left';
+
+const tieneImagen = !!p.imagen_fondo;
+const imgObjClass = p.imagen_fondo?.objeto === 'contain' ? 'object-contain' : 'object-cover';
+
+// Iconos opcionales del CTA (Fashion Bold: trazo grueso, sharp).
+const iconPaths: Record<string, string> = {
+  arrow: 'M5 12h14M13 5l7 7-7 7',
+  whatsapp: 'M20 12a8 8 0 0 1-11.8 7L4 20l1.1-4A8 8 0 1 1 20 12z',
+  email: 'M3 6h18v12H3zM3 6l9 7 9-7',
+  phone: 'M4 4h4l2 5-3 2a12 12 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2z',
+  location: 'M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  link: 'M10 14a4 4 0 0 0 6 0l2-2a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-2 2a4 4 0 0 0 6 6l1-1',
+};
+const ctaIcon = p.boton?.icono ?? 'arrow';
 ---
 
-<section
-  class={`block-section ${padClass} fb-hero`}
-  style={`${heightStyle}${bgStyle}`}
-  data-section-id={section.id}
-  data-section-tipo="hero"
-  data-plantilla="fashion_bold"
->
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  <div class="fb-hero relative overflow-hidden">
+    {tieneImagen && (
+      <>
+        <img
+          src={p.imagen_fondo!.src}
+          alt={p.imagen_fondo!.alt}
+          class={`fb-hero-bg absolute inset-0 w-full h-full ${imgObjClass}`}
+          loading="eager"
+          decoding="async"
+        />
+        {/* Overlay para legibilidad del texto sobre la imagen */}
+        <div class="fb-hero-overlay absolute inset-0" aria-hidden="true"></div>
+      </>
+    )}
+
+    <div class={`fb-hero-content relative flex flex-col ${alignClass}`}>
+      <h1
+        class="fb-hero-title font-display uppercase leading-[0.86] tracking-[-0.04em] text-balance"
+        data-field="titulo"
+      >
+        {p.titulo}
+      </h1>
+
+      {p.subtitulo && (
+        <p
+          class="fb-hero-sub font-body leading-[1.5] max-w-[58ch]"
+          data-field="subtitulo"
+        >
+          {p.subtitulo}
+        </p>
+      )}
+
+      {p.boton && (
+        <a
+          href={p.boton.url}
+          target={p.boton.target}
+          rel={p.boton.target === '_blank' ? 'noopener' : undefined}
+          class="fb-hero-cta group inline-flex items-center gap-3 font-body font-bold tracking-tight transition-transform duration-200 ease-out will-change-transform hover:-translate-y-0.5"
+          data-field="boton.texto"
+        >
+          {p.boton.texto}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-1">
+            <path d={iconPaths[ctaIcon] ?? iconPaths.arrow} />
+          </svg>
+        </a>
+      )}
+    </div>
+  </div>
+</SectionShell>
 
 <style>
-  /* Fashion Bold hero: tipografia anton uppercase edge-to-edge */
-  .fb-hero :global(.block-text--size-3xl),
-  .fb-hero :global(.block-text--size-2xl) {
-    font-family: var(--ta-font-display);
-    text-transform: uppercase;
-    letter-spacing: -0.04em;
-    line-height: 0.88;
-    font-weight: 400;
+  .fb-hero {
+    background: var(--ta-color-primary);
+    color: var(--ta-color-on-primary);
+    min-height: clamp(420px, 60vh, 720px);
+    display: flex;
   }
-  .fb-hero :global(.block-text--size-xl) {
-    font-family: var(--ta-font-display);
-    text-transform: uppercase;
-    letter-spacing: -0.03em;
+  .fb-hero-bg { z-index: 0; }
+  .fb-hero-overlay {
+    z-index: 1;
+    background: linear-gradient(
+      to top,
+      color-mix(in oklab, var(--ta-color-primary) 78%, transparent),
+      color-mix(in oklab, var(--ta-color-primary) 30%, transparent)
+    );
   }
-  .fb-hero :global(.block-button) {
+  .fb-hero-content {
+    z-index: 2;
+    width: 100%;
+    justify-content: flex-end;
+    padding-block: clamp(2.5rem, 6vw, 5rem);
+  }
+  .fb-hero-title {
+    font-size: clamp(2.75rem, 10vw, 8rem);
+    margin: 0;
+  }
+  .fb-hero-sub {
+    margin-top: 1.5rem;
+    font-size: clamp(1rem, 1.6vw, 1.25rem);
+    opacity: 0.88;
+  }
+  .fb-hero-cta {
+    margin-top: clamp(2rem, 4vw, 3rem);
+    background: var(--ta-color-accent);
+    color: var(--ta-color-on-accent);
     border-radius: 0;
-    padding: 1rem 2.5rem;
-    font-family: var(--ta-font-body);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 0.85rem;
+    padding: 1.125rem 2.75rem;
+    font-size: clamp(0.875rem, 1.2vw, 1rem);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fb-hero-cta { transition: none; }
+    .fb-hero-cta:hover { transform: none; }
   }
 </style>

@@ -1,0 +1,49 @@
+---
+// AIMMA Editor PRO-MAX · _SectionShell · SCHEMA v3 (2026-06-02)
+// Wrapper comun de toda seccion v3: padding + ancho (completo/contenido) + fondo
+// + data-section-id (para el puente postMessage del editor). DRY de los 30 blocks.
+//
+// Uso: <SectionShell section={section}><!-- contenido del block --></SectionShell>
+
+import type { Section } from '@aimma/database';
+
+interface Props {
+  section: Section;
+}
+
+const { section } = Astro.props;
+
+const padClass = `block-section--pad-${section.padding}`;
+const innerClass = section.ancho === 'contenido'
+  ? 'block-inner block-inner--contenido'
+  : 'block-inner';
+
+// Fondo (mismas reglas CSS-safe ya validadas por el schema Zod)
+const bgStyle =
+  section.fondo.tipo === 'color'
+    ? `background-color:${section.fondo.valor};`
+    : section.fondo.tipo === 'imagen'
+      ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
+      : section.fondo.tipo === 'gradient'
+        ? `background-image:${section.fondo.valor};`
+        : '';
+
+const hasOverlay = !!section.fondo.overlay;
+const overlayStyle = hasOverlay
+  ? `background-color:${section.fondo.overlay!.color};opacity:${section.fondo.overlay!.opacity};`
+  : '';
+---
+
+<section
+  class={`block-section ${padClass}`}
+  style={bgStyle}
+  data-section-id={section.id}
+  data-section-tipo={section.tipo}
+>
+  {hasOverlay && (
+    <div class="absolute inset-0 pointer-events-none" style={overlayStyle} aria-hidden="true"></div>
+  )}
+  <div class={innerClass} style={hasOverlay ? 'position:relative;' : undefined}>
+    <slot />
+  </div>
+</section>

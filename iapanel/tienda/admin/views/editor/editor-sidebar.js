@@ -1,16 +1,18 @@
-/* AIMMA Editor PRO-MAX Plan 3 · editor-sidebar.js v1
- * Sidebar izquierdo: Pages section + Outline de sections actuales + boton +Agregar.
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-sidebar.js v2 (SCHEMA v3)
+ * Panel izquierdo: lista de secciones REORDENABLE con SortableJS (handle ⋮⋮).
+ * El orden del array = orden vertical. Click en item -> select. Boton +Agregar -> catalogo.
+ * Marker: editor-plan4-v3-sidebar.
  */
 (function(window) {
   'use strict';
 
   const SECTION_LABELS = {
-    hero: 'Banner principal', texto: 'Texto', imagen: 'Imagen',
-    botones: 'Botones', productos: 'Productos', galeria: 'Galería',
-    espaciador: 'Espacio en blanco', formulario: 'Formulario',
+    banner: 'Banner principal', texto: 'Texto', imagen: 'Imagen',
+    botones: 'Botones', productos: 'Productos', galeria: 'Galeria',
+    formulario: 'Formulario', espacio: 'Espacio en blanco', video: 'Video o mapa',
   };
 
-  const state = { container: null, callbacks: {} };
+  const state = { container: null, callbacks: {}, sortable: null, listEl: null };
 
   function render(container, callbacks) {
     state.container = container;
@@ -24,35 +26,76 @@
     const ES = window.TiendaIA.editorState;
     const container = state.container;
 
+    if (state.sortable) { try { state.sortable.destroy(); } catch (e) {} state.sortable = null; }
     container.innerHTML = '';
 
-    // Pages section
-    container.appendChild(E('p', { class: 'ed-sidebar__title' }, 'Páginas'));
-    container.appendChild(E('div', { class: 'ed-sidebar__page ed-sidebar__page--active' }, '🏠 Inicio'));
+    // Encabezado Paginas
+    container.appendChild(E('p', { class: 'ed-sidebar__title' }, 'Paginas'));
+    container.appendChild(E('div', { class: 'ed-sidebar__page ed-sidebar__page--active' }, 'Inicio'));
 
-    // Outline section
+    // Encabezado Secciones
     container.appendChild(E('p', { class: 'ed-sidebar__title', style: 'margin-top:1.25rem' }, 'Secciones'));
-    const outline = E('ul', { class: 'ed-sidebar__outline' });
+
+    const list = E('ul', { class: 'ed-sidebar__outline', id: 'editor-sidebar-list' });
     const sel = ES.selection;
-    ES.sections.forEach((sec, idx) => {
+    ES.sections.forEach((sec) => {
       const label = SECTION_LABELS[sec.tipo] || sec.tipo;
       const item = E('li', {
         class: 'ed-sidebar__outline-item' +
-          (sel && sel.tipo === 'section' && sel.id === sec.id ? ' ed-sidebar__outline-item--selected' : ''),
+          (sel && sel.sectionId === sec.id ? ' ed-sidebar__outline-item--selected' : ''),
         'data-section-id': sec.id,
-        onClick: () => ES.select('section', sec.id),
-      }, (idx + 1) + '. ' + label);
-      outline.appendChild(item);
+      }, [
+        E('span', {
+          class: 'ed-sidebar__handle',
+          'aria-label': 'Mover seccion',
+          title: 'Arrastra para reordenar',
+        }, '⋮⋮'),
+        E('span', {
+          class: 'ed-sidebar__outline-label',
+          onClick: () => {
+            ES.select(sec.id);
+            openInspectorDrawer();
+          },
+        }, label),
+      ]);
+      list.appendChild(item);
     });
-    container.appendChild(outline);
+    container.appendChild(list);
+    state.listEl = list;
+
+    if (ES.sections.length === 0) {
+      container.appendChild(E('p', { class: 'ed-sidebar__empty' },
+        'Tu pagina no tiene secciones todavia. Agrega la primera abajo.'));
+    }
+
+    // SortableJS reorder (vendorizado en lib/sortable.min.js)
+    if (window.Sortable && ES.sections.length > 1) {
+      state.sortable = new window.Sortable(list, {
+        handle: '.ed-sidebar__handle',
+        animation: 180,
+        ghostClass: 'ed-sidebar__outline-item--ghost',
+        onEnd: (evt) => {
+          if (evt.oldIndex !== evt.newIndex && evt.oldIndex != null && evt.newIndex != null) {
+            ES.reorderSections(evt.oldIndex, evt.newIndex);
+          }
+        },
+      });
+    }
 
     // Boton +Agregar seccion
     const addBtn = E('button', {
       type: 'button',
       class: 'ed-sidebar__add-btn',
       onClick: () => state.callbacks.onAddSection && state.callbacks.onAddSection(),
-    }, '+ Agregar sección');
+    }, '+ Agregar seccion');
     container.appendChild(addBtn);
+  }
+
+  function openInspectorDrawer() {
+    const insp = document.getElementById('editor-inspector');
+    if (insp && window.matchMedia('(max-width: 1100px)').matches) {
+      insp.classList.add('ed-inspector--open');
+    }
   }
 
   function bindStateListeners() {

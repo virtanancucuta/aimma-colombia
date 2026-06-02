@@ -1,29 +1,33 @@
-/* AIMMA Editor PRO-MAX Plan 3 · editor-canvas.js v1
- * Canvas: lista de sections con SortableJS reorder + GridStack por seccion.
- * Render visual de elements en grid.
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-canvas.js v2 (WYSIWYG iframe)
+ * El canvas ahora es un <iframe> que muestra el storefront REAL en modo preview.
+ * SIN mockups, SIN GridStack. Puente postMessage bidireccional con validacion de origin.
+ *  - Admin -> iframe: refresh() => postMessage({type:'reload'}, TENANT_ORIGIN)
+ *  - iframe -> admin: {type:'select',sectionId} => EditorState.select; {type:'preview-ready'}
+ * Marker: editor-plan4-v3-canvas.
  */
 (function(window) {
   'use strict';
 
-  const SECTION_LABELS = {
-    hero: 'Banner principal', texto: 'Texto', imagen: 'Imagen',
-    botones: 'Botones', productos: 'Productos', galeria: 'Galería',
-    espaciador: 'Espacio en blanco', formulario: 'Formulario',
-  };
+  const PREVIEW_TOKEN_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co/functions/v1/tienda-preview-token';
 
   const state = {
     container: null,
-    sectionsListEl: null,
-    sortable: null,
-    gridStacks: {}, // sectionId -> GridStack instance
     callbacks: {},
+    iframe: null,
+    frameWrap: null,
+    statusEl: null,
+    tenantOrigin: null,   // https://<slug>.tienda.aimma.com.co
+    previewUrl: null,
+    ready: false,
+    device: 'desktop',
+    messageHandler: null,
+    expiresAt: null,
   };
 
   function render(container, callbacks) {
     state.container = container;
     state.callbacks = callbacks || {};
     container.innerHTML = '';
-    container.setAttribute('data-edit-mode', 'true');
     container.setAttribute('data-device', 'desktop');
 
     const inner = document.createElement('div');
@@ -31,294 +35,177 @@
     inner.id = 'editor-canvas-inner';
     container.appendChild(inner);
 
-    const list = document.createElement('div');
-    list.id = 'editor-sections-list';
-    inner.appendChild(list);
-    state.sectionsListEl = list;
+    const frameWrap = document.createElement('div');
+    frameWrap.className = 'ed-frame-wrap';
+    frameWrap.id = 'editor-frame-wrap';
+    inner.appendChild(frameWrap);
+    state.frameWrap = frameWrap;
 
-    const addBtn = document.createElement('button');
-    addBtn.className = 'ed-add-section-cta';
-    addBtn.type = 'button';
-    addBtn.textContent = '+ Agregar sección';
-    addBtn.onclick = () => state.callbacks.onAddSection && state.callbacks.onAddSection();
-    inner.appendChild(addBtn);
+    const status = document.createElement('div');
+    status.className = 'ed-frame-status';
+    status.id = 'editor-frame-status';
+    status.textContent = 'Cargando vista previa de tu tienda...';
+    frameWrap.appendChild(status);
+    state.statusEl = status;
 
-    rebuild();
-    bindStateListeners();
+    bindMessageBridge();
+    loadPreview();
   }
 
-  function rebuild() {
-    destroyAllGridStacks();
-    if (state.sortable) { state.sortable.destroy(); state.sortable = null; }
-    state.sectionsListEl.innerHTML = '';
-
+  // ============================================================
+  // Preview token + iframe
+  // ============================================================
+  async function loadPreview() {
     const ES = window.TiendaIA.editorState;
-    ES.sections.forEach(sec => {
-      state.sectionsListEl.appendChild(renderSection(sec));
-    });
-    ES.sections.forEach(sec => initGridStackForSection(sec));
-
-    state.sortable = new window.Sortable(state.sectionsListEl, {
-      handle: '.ed-section-handle',
-      animation: 200,
-      ghostClass: 'ed-section-ghost',
-      onEnd: evt => {
-        if (evt.oldIndex !== evt.newIndex) {
-          ES.reorderSections(evt.oldIndex, evt.newIndex);
-        }
-      },
-    });
-
-    updateSelection();
-  }
-
-  function renderSection(sec) {
-    const article = document.createElement('article');
-    article.className = 'ed-section';
-    article.dataset.sectionId = sec.id;
-    article.dataset.tipo = sec.tipo;
-    article.setAttribute('data-edit-mode', 'true');
-    article.style.minHeight = (sec.altura_filas * 60) + 'px';
-    article.style.padding = sec.padding === 'sm' ? '1rem' :
-                            sec.padding === 'lg' ? '3rem' :
-                            sec.padding === 'xl' ? '4rem' : '2rem';
-
-    if (sec.fondo.tipo === 'color' && sec.fondo.valor) {
-      article.style.backgroundColor = sec.fondo.valor;
-    } else if (sec.fondo.tipo === 'imagen' && sec.fondo.valor) {
-      article.style.backgroundImage = 'url("' + cssEscape(sec.fondo.valor) + '")';
-      article.style.backgroundSize = 'cover';
-      article.style.backgroundPosition = 'center';
-    } else if (sec.fondo.tipo === 'gradient' && sec.fondo.valor) {
-      article.style.background = sec.fondo.valor;
-    }
-
-    article.onclick = e => {
-      if (e.target === article || e.target.classList.contains('grid-stack')) {
-        window.TiendaIA.editorState.select('section', sec.id);
-        e.stopPropagation();
+    setStatus('Cargando vista previa de tu tienda...', false);
+    try {
+      const session = window.TiendaIA?.getSession && window.TiendaIA.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setStatus('No pudimos validar tu sesion. Recarga la pagina e intenta de nuevo.', true);
+        return;
       }
-    };
-
-    const handle = document.createElement('button');
-    handle.type = 'button';
-    handle.className = 'ed-section-handle';
-    handle.setAttribute('aria-label', 'Mover sección');
-    handle.textContent = '⋮⋮';
-    article.appendChild(handle);
-
-    const toolbar = document.createElement('div');
-    toolbar.className = 'ed-section-toolbar';
-    toolbar.innerHTML =
-      '<span class="ed-section-toolbar__label">' + (SECTION_LABELS[sec.tipo] || sec.tipo) + '</span>' +
-      '<button type="button" class="ed-section-toolbar__btn" data-action="dup">Duplicar</button>' +
-      '<button type="button" class="ed-section-toolbar__btn ed-section-toolbar__btn--danger" data-action="del">Eliminar</button>';
-    toolbar.querySelector('[data-action="dup"]').onclick = e => {
-      e.stopPropagation();
-      window.TiendaIA.editorState.duplicateSection(sec.id);
-    };
-    toolbar.querySelector('[data-action="del"]').onclick = e => {
-      e.stopPropagation();
-      if (confirm('¿Eliminar esta sección?')) {
-        window.TiendaIA.editorState.removeSection(sec.id);
-      }
-    };
-    article.appendChild(toolbar);
-
-    const grid = document.createElement('div');
-    grid.className = 'grid-stack ed-section-grid';
-    grid.setAttribute('data-section-id', sec.id);
-    article.appendChild(grid);
-
-    return article;
-  }
-
-  function initGridStackForSection(sec) {
-    const gridEl = state.sectionsListEl.querySelector(
-      '.ed-section[data-section-id="' + sec.id + '"] .grid-stack'
-    );
-    if (!gridEl) return;
-
-    // Crear DOM de items ANTES de GridStack.init para que se enganche al constructor.
-    // Patron compatible con GridStack 11.x: items con gs-x/gs-y/gs-w/gs-h en el HTML +
-    // grid.makeWidget(el) post-init para enlazarlos.
-    const itemEls = [];
-    sec.elementos.forEach(el => {
-      const itemEl = document.createElement('div');
-      itemEl.className = 'grid-stack-item';
-      itemEl.setAttribute('gs-x', (el.grid.col_start || 1) - 1);
-      itemEl.setAttribute('gs-y', (el.grid.row_start || 1) - 1);
-      itemEl.setAttribute('gs-w', Math.max(1, (el.grid.col_end || 13) - (el.grid.col_start || 1)));
-      itemEl.setAttribute('gs-h', Math.max(1, (el.grid.row_end || 4) - (el.grid.row_start || 1)));
-      itemEl.setAttribute('data-element-id', el.id);
-
-      const contentEl = document.createElement('div');
-      contentEl.className = 'grid-stack-item-content';
-      contentEl.innerHTML = renderElementHTML(el);
-      itemEl.appendChild(contentEl);
-
-      gridEl.appendChild(itemEl);
-      itemEls.push({ el: itemEl, sectionId: sec.id, elementId: el.id });
-    });
-
-    const grid = window.GridStack.init({
-      column: 24,
-      cellHeight: 60,
-      margin: 0,
-      float: true,
-      animate: true,
-      // handle no especificado: GridStack usa toda la barra del item para drag.
-      // Asi el usuario puede arrastrar desde cualquier punto del bloque.
-      // El click selecciona el element via bindElementEvents (stopPropagation cuando es click corto).
-      resizable: { handles: 'se, sw, ne, nw, e, w, n, s' },
-      minRow: sec.altura_filas,
-      // Mobile collapse manejado por CSS @media en blocks.css, evitamos colision con GridStack.
-      column: 24,
-    }, gridEl);
-
-    // makeWidget enlaza los items DOM ya presentes con la instancia GridStack
-    // (drag/resize listo). En GridStack 11.x init() ya enlaza los items con
-    // atributos gs-* del HTML, pero llamar makeWidget explicito es defensa.
-    itemEls.forEach(({ el, sectionId, elementId }) => {
-      try { grid.makeWidget(el); } catch (e) { /* ya enlazado */ }
-      bindElementEvents(el, sectionId, elementId);
-    });
-
-    grid.on('change', (event, items) => {
-      items.forEach(item => {
-        const elementId = item.el.dataset.elementId;
-        if (!elementId) return;
-        window.TiendaIA.editorState.updateElementGrid(sec.id, elementId, {
-          col_start: item.x + 1,
-          col_end: item.x + item.w + 1,
-          row_start: item.y + 1,
-          row_end: item.y + item.h + 1,
-        });
+      const r = await fetch(PREVIEW_TOKEN_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tienda_id: ES.tienda_id }),
       });
-    });
-
-    state.gridStacks[sec.id] = grid;
-  }
-
-  function destroyAllGridStacks() {
-    Object.values(state.gridStacks).forEach(g => g.destroy(false));
-    state.gridStacks = {};
-  }
-
-  function bindElementEvents(node, sectionId, elementId) {
-    node.onclick = e => {
-      e.stopPropagation();
-      window.TiendaIA.editorState.select('element', elementId);
-    };
-
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'ed-element-delete';
-    delBtn.setAttribute('aria-label', 'Eliminar elemento');
-    delBtn.textContent = '×';
-    delBtn.onclick = e => {
-      e.stopPropagation();
-      window.TiendaIA.editorState.removeElement(elementId);
-    };
-    node.appendChild(delBtn);
-  }
-
-  function renderElementHTML(el) {
-    const sizeMap = { xs: '0.75rem', sm: '0.875rem', md: '1rem', lg: '1.25rem', xl: '1.75rem', '2xl': '2.25rem', '3xl': '3rem' };
-    const fontSize = sizeMap[el.estilo.tamaño || el.estilo.tamano || 'md'] || '1rem';
-    const weight = el.estilo.peso === 'bold' ? 700 : el.estilo.peso === 'semibold' ? 600 : el.estilo.peso === 'medium' ? 500 : 400;
-    const align = el.estilo.alineacion || 'left';
-    const color = el.estilo.color_texto || '#1a1a1a';
-
-    switch (el.tipo) {
-      case 'texto':
-        return '<div style="font-size:' + fontSize + ';font-weight:' + weight +
-          ';text-align:' + align + ';color:' + escapeAttr(color) + ';white-space:pre-wrap">' +
-          escapeHTML(el.props.contenido || '[texto vacío]') + '</div>';
-
-      case 'imagen': {
-        const src = el.props.src || '';
-        const safeSrc = /^https:\/\//.test(src) ? src : 'https://placehold.co/800x600';
-        return '<img src="' + escapeAttr(safeSrc) + '" alt="' + escapeAttr(el.props.alt || '') +
-          '" style="width:100%;height:100%;object-fit:' + (el.props.objeto || 'cover') + '" />';
+      const data = await r.json().catch(() => ({ error: 'parse_error' }));
+      if (!r.ok || !data.preview_url) {
+        console.error('[editor-canvas] preview-token error', data);
+        setStatus('No pudimos abrir la vista previa. Verifica que la tienda exista y vuelve a intentar.', true);
+        return;
       }
-
-      case 'boton': {
-        const txt = escapeHTML(el.props.texto || 'Botón');
-        const variant = el.props.estilo_visual || 'primary';
-        const bg = variant === 'primary' ? '#006d8b' : variant === 'secondary' ? '#4b5563' : 'transparent';
-        const col = variant === 'ghost' || variant === 'outline' ? '#1a1a1a' : 'white';
-        const border = variant === 'outline' ? '1.5px solid currentColor' : 'none';
-        return '<div style="display:inline-flex;padding:0.625rem 1.125rem;background:' + bg +
-          ';color:' + col + ';border:' + border + ';border-radius:0.375rem;font-weight:600;font-size:' + fontSize + '">' + txt + '</div>';
+      state.previewUrl = data.preview_url;
+      state.expiresAt = data.expires_at || null;
+      // Derivar TENANT_ORIGIN de la URL real (robusto vs construir el slug a mano).
+      try {
+        state.tenantOrigin = new URL(data.preview_url).origin;
+      } catch (e) {
+        setStatus('La URL de vista previa no es valida.', true);
+        return;
       }
-
-      case 'productos':
-        return '<div style="padding:0.5rem;border:1px dashed rgba(0,0,0,0.2);background:rgba(0,0,0,0.02);font-size:0.75rem;color:#666;text-align:center">' +
-          'Productos (' + (el.props.limite || 8) + ' · ' + (el.props.orden || 'recientes') + ' · ' + (el.props.columnas || 'auto') + ' col)</div>';
-
-      case 'galeria':
-        return '<div style="padding:0.5rem;border:1px dashed rgba(0,0,0,0.2);background:rgba(0,0,0,0.02);font-size:0.75rem;color:#666;text-align:center">' +
-          'Galería (' + (el.props.imagenes?.length || 0) + ' imágenes · ' + (el.props.layout || 'grid') + ')</div>';
-
-      case 'form_field':
-        return '<div style="font-size:' + fontSize + ';color:' + escapeAttr(color) + '">' +
-          '<label style="display:block;margin-bottom:0.25rem;font-weight:600">' + escapeHTML(el.props.label || 'Campo') +
-          (el.props.requerido ? ' *' : '') + '</label>' +
-          (el.props.tipo_campo === 'textarea'
-            ? '<textarea readonly placeholder="' + escapeAttr(el.props.placeholder || '') + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:4px"></textarea>'
-            : '<input type="' + escapeAttr(el.props.tipo_campo || 'text') + '" readonly placeholder="' +
-              escapeAttr(el.props.placeholder || '') + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:4px" />') +
-          '</div>';
-
-      case 'embed':
-        return '<div style="padding:1rem;border:1px dashed rgba(0,0,0,0.2);background:rgba(0,0,0,0.02);text-align:center;font-size:0.75rem;color:#666">Embed (' + (el.props.aspect_ratio || '16/9') + ')</div>';
-
-      case 'divisor':
-        return '<hr style="border:none;border-top:1px solid #ddd;margin:0" />';
-
-      default:
-        return '<div style="color:#999">' + escapeHTML(el.tipo) + '</div>';
+      mountIframe();
+    } catch (err) {
+      console.error('[editor-canvas] loadPreview error', err);
+      setStatus('Error de conexion al cargar la vista previa.', true);
     }
   }
 
-  function updateSelection() {
-    const ES = window.TiendaIA.editorState;
-    const sel = ES.selection;
+  function mountIframe() {
+    // Limpiar iframe previo si existe (reload de token).
+    if (state.iframe) {
+      try { state.iframe.remove(); } catch (e) { /* noop */ }
+      state.iframe = null;
+    }
+    state.ready = false;
 
-    document.querySelectorAll('.ed-section').forEach(art => {
-      art.classList.toggle('ed-section--selected',
-        sel && sel.tipo === 'section' && art.dataset.sectionId === sel.id);
+    const iframe = document.createElement('iframe');
+    iframe.className = 'ed-frame';
+    iframe.id = 'editor-frame';
+    iframe.title = 'Vista previa de tu tienda';
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    iframe.setAttribute('loading', 'eager');
+    iframe.src = state.previewUrl;
+    iframe.addEventListener('load', () => {
+      // 'preview-ready' del storefront es la senial canonica; load es respaldo.
+      setStatus('', false);
     });
-    document.querySelectorAll('.grid-stack-item').forEach(node => {
-      node.classList.toggle('ed-element--selected',
-        sel && sel.tipo === 'element' && node.dataset.elementId === sel.id);
-    });
+    state.frameWrap.appendChild(iframe);
+    state.iframe = iframe;
   }
 
-  function bindStateListeners() {
-    const ES = window.TiendaIA.editorState;
-    ES.subscribe('sections', rebuild);
-    ES.subscribe('selection', updateSelection);
+  function bindMessageBridge() {
+    if (state.messageHandler) {
+      window.removeEventListener('message', state.messageHandler);
+    }
+    state.messageHandler = function(event) {
+      // SEGURIDAD: validar origin SIEMPRE contra el tenant esperado.
+      if (!state.tenantOrigin || event.origin !== state.tenantOrigin) return;
+      const msg = event.data || {};
+      if (msg.type === 'select' && typeof msg.sectionId === 'string') {
+        const sec = window.TiendaIA.editorState.findSection(msg.sectionId);
+        if (sec) {
+          window.TiendaIA.editorState.select(msg.sectionId);
+          openInspectorDrawer();
+        }
+      } else if (msg.type === 'preview-ready') {
+        state.ready = true;
+        setStatus('', false);
+      }
+    };
+    window.addEventListener('message', state.messageHandler);
   }
 
-  function setEditMode(enabled) {
-    if (!state.container) return;
-    state.container.setAttribute('data-edit-mode', enabled ? 'true' : 'false');
-    state.sectionsListEl.querySelectorAll('.ed-section').forEach(a =>
-      a.setAttribute('data-edit-mode', enabled ? 'true' : 'false'));
+  // En layouts angostos (<1100px) el inspector es un drawer; al seleccionar desde
+  // el iframe lo abrimos para que el usuario vea los controles.
+  function openInspectorDrawer() {
+    const insp = document.getElementById('editor-inspector');
+    if (insp && window.matchMedia('(max-width: 1100px)').matches) {
+      insp.classList.add('ed-inspector--open');
+    }
   }
 
-  function escapeHTML(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  // ============================================================
+  // Refresh (Admin -> iframe). Llamado por editor.js tras autosave draft.
+  // ============================================================
+  function refresh() {
+    if (!state.iframe || !state.tenantOrigin) return;
+    const win = state.iframe.contentWindow;
+    if (!win) return;
+    try {
+      win.postMessage({ type: 'reload' }, state.tenantOrigin);
+    } catch (e) {
+      // Si postMessage falla (token expirado, etc.) recargamos via nuevo token.
+      console.warn('[editor-canvas] postMessage reload fallo, recargando preview', e);
+      reloadFull();
+    }
   }
-  function escapeAttr(s) { return escapeHTML(s); }
-  function cssEscape(s) {
-    return String(s).replace(/["\\<>`{}]/g, '');
+
+  // Recarga completa: pide un token nuevo y recrea el iframe.
+  // Util cuando el token de 15 min expira durante una sesion larga.
+  function reloadFull() {
+    loadPreview();
+  }
+
+  function setDevice(device) {
+    state.device = device === 'mobile' ? 'mobile' : 'desktop';
+    if (state.container) state.container.setAttribute('data-device', state.device);
+  }
+
+  function setStatus(text, isError) {
+    if (!state.statusEl) return;
+    if (!text) {
+      state.statusEl.hidden = true;
+      state.statusEl.textContent = '';
+      return;
+    }
+    state.statusEl.hidden = false;
+    state.statusEl.textContent = text;
+    state.statusEl.classList.toggle('ed-frame-status--error', !!isError);
+  }
+
+  function destroy() {
+    if (state.messageHandler) {
+      window.removeEventListener('message', state.messageHandler);
+      state.messageHandler = null;
+    }
+    state.iframe = null;
+    state.ready = false;
+  }
+
+  // No-op compat: el canvas v3 no reconstruye DOM de secciones (lo hace el iframe).
+  // Se conserva por si algun caller viejo lo invoca; refresca el iframe.
+  function rebuild() {
+    refresh();
   }
 
   window.TiendaIA = window.TiendaIA || {};
-  window.TiendaIA.editorCanvas = { render, rebuild, setEditMode };
+  window.TiendaIA.editorCanvas = {
+    render, refresh, reloadFull, setDevice, destroy, rebuild,
+    get previewUrl() { return state.previewUrl; },
+  };
 })(window);

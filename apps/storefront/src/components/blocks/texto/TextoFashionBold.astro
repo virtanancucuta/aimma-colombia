@@ -1,33 +1,56 @@
 ---
+// AIMMA Editor PRO-MAX · Texto · Fashion Bold · SCHEMA v3
+// Seccion auto-contenida: lee section.props { contenido, alineacion, tamanio }.
+// Fashion Bold: titulares (lg/xl) en Anton uppercase edge-to-edge; parrafo (sm/md) en Inter.
+// SIN grid 2D, SIN elementos. data-field="contenido" para edicion inline (Plan 5).
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
-  : section.fondo.tipo === 'imagen' ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
-  : section.fondo.tipo === 'gradient' ? `background-image:${section.fondo.valor};`
-  : '';
+const p = (section as Extract<Section, { tipo: 'texto' }>).props;
+
+const align = p.alineacion ?? 'left';
+const tam = p.tamanio ?? 'md';
+
+const alignClass = `block-text--align-${align}`;
+const sizeClass = `block-text--size-${tam}`;
+
+// Display (Anton) para titulares (lg/xl); body (Inter) para parrafo (sm/md).
+const esDisplay = tam === 'lg' || tam === 'xl';
+const fontClass = esDisplay ? 'font-display' : 'font-body';
 ---
 
-<section class={`block-section ${padClass} fb-texto`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="texto" data-plantilla="fashion_bold">
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  <div
+    class={`fb-texto ${fontClass} ${sizeClass} ${alignClass} text-[var(--ta-color-text-base)]`}
+    data-field="contenido"
+  >
+    {p.contenido}
+  </div>
+</SectionShell>
 
 <style>
-  .fb-texto :global(.block-text--size-3xl),
-  .fb-texto :global(.block-text--size-2xl),
-  .fb-texto :global(.block-text--size-xl) {
-    font-family: var(--ta-font-display);
+  .fb-texto {
+    color: var(--ta-color-text-base);
+    white-space: pre-line; /* respeta saltos de linea del contenido */
+  }
+  /* Titulares Fashion Bold: Anton uppercase, sharp, edge-to-edge */
+  .fb-texto.block-text--size-lg,
+  .fb-texto.block-text--size-xl {
     text-transform: uppercase;
     letter-spacing: -0.035em;
     line-height: 0.92;
+    font-weight: 400;
+    text-wrap: balance;
   }
-  .fb-texto :global(.block-text--size-md),
-  .fb-texto :global(.block-text--size-lg) {
-    font-family: var(--ta-font-body);
-    line-height: 1.55;
+  /* Parrafo: Inter, medida legible */
+  .fb-texto.block-text--size-sm,
+  .fb-texto.block-text--size-md {
+    line-height: 1.6;
     max-width: 68ch;
   }
+  .fb-texto.block-text--align-center { margin-inline: auto; }
+  .fb-texto.block-text--align-right { margin-inline: 0 0 0 auto; }
 </style>

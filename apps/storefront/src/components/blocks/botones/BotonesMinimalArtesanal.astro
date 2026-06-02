@@ -1,18 +1,44 @@
 ---
+// AIMMA Editor PRO-MAX · Botones (fila CTAs) · Minimal Artesanal · SCHEMA v3
+// Seccion auto-contenida: lee section.props { items: Boton[] } (1..6).
+// Lenguaje MA: pill border-radius 999px, body font, centrado generoso.
+// SIN grid 2D, SIN elementos.
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
+const p = (section as Extract<Section, { tipo: 'botones' }>).props;
+
+const iconPath: Record<string, string> = {
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  whatsapp: '', email: '', phone: '', location: '', link: '',
+};
 ---
 
-<section class={`block-section ${padClass} ma-botones`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="botones" data-plantilla="minimal_artesanal">
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  <div class="ma-botones flex flex-wrap items-center gap-4">
+    {p.items.map((boton) => (
+      <a
+        href={boton.url}
+        target={boton.target}
+        rel={boton.target === '_blank' ? 'noopener noreferrer' : undefined}
+        class={`block-button block-button--${boton.estilo_visual}`}
+      >
+        {boton.texto}
+        {boton.icono === 'arrow' && (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d={iconPath.arrow} />
+          </svg>
+        )}
+      </a>
+    ))}
+  </div>
+</SectionShell>
 
 <style>
+  /* Pill MA: redondea los botones base de blocks.css */
   .ma-botones :global(.block-button) {
     border-radius: 999px;
     padding: 0.875rem 2.25rem;

@@ -1,37 +1,79 @@
 ---
+// AIMMA Editor PRO-MAX · Texto · Editorial Magazine · SCHEMA v3
+// Seccion auto-contenida: lee section.props { contenido, alineacion, tamanio }.
+// Lenguaje Vogue/Kinfolk: display serif weight 300 en lg/xl con dropcap, body
+// en sm/md con medida editorial. SIN grid 2D, SIN elementos. data-field inline.
+
 import type { Section } from '@aimma/database';
-import ElementRenderer from '~/components/blocks/_ElementRenderer.astro';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};`
-  : section.fondo.tipo === 'imagen' ? `background-image:url(${section.fondo.valor});background-size:cover;background-position:center;`
-  : section.fondo.tipo === 'gradient' ? `background-image:${section.fondo.valor};`
-  : '';
+const p = (section as Extract<Section, { tipo: 'texto' }>).props;
+
+const align = p.alineacion ?? 'left';
+const tam = p.tamanio ?? 'md';
+
+const alignClass = `block-text--align-${align}`;
+const sizeClass = `block-text--size-${tam}`;
+
+// Display serif para titulares (lg/xl); body para parrafo de lectura (sm/md).
+const esDisplay = tam === 'lg' || tam === 'xl';
+const fontClass = esDisplay ? 'font-display' : 'font-body';
+
+// Dropcap solo en parrafos largos de lectura, alineados a la izquierda.
+const conDropcap = !esDisplay && align === 'left' && p.contenido.trim().length > 0;
+const firstLetter = conDropcap ? p.contenido.trimStart().charAt(0) : '';
+const rest = conDropcap ? p.contenido.trimStart().slice(1) : p.contenido;
 ---
 
-<section class={`block-section ${padClass} em-texto`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="texto" data-plantilla="editorial_magazine">
-  {section.elementos.map((el) => <ElementRenderer el={el} />)}
-</section>
+<SectionShell section={section}>
+  <div
+    class={`em-texto ${fontClass} ${sizeClass} ${alignClass} text-[var(--ta-color-text-base)]`}
+    data-field="contenido"
+  >
+    {conDropcap
+      ? (<><span class="em-dropcap" aria-hidden="true">{firstLetter}</span><span class="sr-only">{firstLetter}</span>{rest}</>)
+      : p.contenido}
+  </div>
+</SectionShell>
 
 <style>
-  .em-texto :global(.block-text--size-2xl),
-  .em-texto :global(.block-text--size-xl) {
-    font-family: var(--ta-font-display);
+  .em-texto {
+    color: var(--ta-color-text-base);
+    white-space: pre-line; /* respeta saltos de linea del contenido */
+  }
+  /* Titulares editoriales: serif liviano, tracking ajustado */
+  .em-texto.block-text--size-lg,
+  .em-texto.block-text--size-xl {
     font-weight: 300;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
+    letter-spacing: -0.012em;
+    line-height: 1.12;
+    text-wrap: balance;
   }
-  .em-texto :global(.block-text--size-md),
-  .em-texto :global(.block-text--size-lg) {
-    font-family: var(--ta-font-body);
-    line-height: 1.65;
-    max-width: 62ch;
-  }
-  .em-texto :global(.block-text--size-lg) {
-    font-family: var(--ta-font-display);
+  .em-texto.block-text--size-lg {
     font-style: italic;
     font-weight: 400;
+    color: var(--ta-color-accent);
+  }
+  /* Lectura: medida de revista */
+  .em-texto.block-text--size-sm,
+  .em-texto.block-text--size-md {
+    line-height: 1.7;
+    max-width: 62ch;
+  }
+  .em-texto.block-text--align-center { margin-inline: auto; }
+  .em-texto.block-text--align-right { margin-inline: 0 0 0 auto; }
+  /* Dropcap editorial */
+  .em-dropcap {
+    float: left;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ta-color-accent);
+    font-size: 3.4em;
+    line-height: 0.78;
+    padding-right: 0.08em;
+    margin-top: 0.04em;
   }
 </style>

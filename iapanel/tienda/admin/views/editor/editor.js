@@ -1,21 +1,22 @@
-/* AIMMA Editor PRO-MAX Plan 3 · editor.js v1
- * Entry. Monta UI 3 paneles, conecta callbacks, maneja auto-save + save manual.
- * Registra vista 'editor' en admin.js via window.TiendaIA.registerView.
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor.js v2 (SCHEMA v3 + WYSIWYG)
+ * Entry/wiring. Monta UI 3 paneles (sidebar | iframe | inspector).
+ * Autosave draft debounced (~1.5s) via guardar-layout mode:draft; tras success
+ * postMessage reload al iframe. Guardar = publish. Maneja 409 stale_layout.
+ * registerView('editor', mountEditor) — funcion directa (fix Plan 3).
+ * Marker: editor-plan4-v3-entry.
  */
 (function(window) {
   'use strict';
 
   const EF_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co/functions/v1/tienda-guardar-layout';
+  const AUTOSAVE_DEBOUNCE_MS = 1500;
 
   const state = {
     autoSaveTimer: null,
-    AUTO_SAVE_MS: 30000,
     mounted: false,
+    unsubs: [],
   };
 
-  // Registrar como view del panel admin
-  // FIX BUG LIVE: registerView espera funcion directa, no objeto {render, cleanup}.
-  // Cleanup se registra via T.registerCleanup() dentro de mountEditor.
   function whenReady(cb, attempts) {
     attempts = attempts || 0;
     if (window.TiendaIA && typeof window.TiendaIA.registerView === 'function') {
@@ -23,7 +24,7 @@
       return;
     }
     if (attempts >= 200) {
-      console.error('[editor.js] window.TiendaIA no inicializo en 10s. Verifica que admin.js cargo sin errores.');
+      console.error('[editor.js] window.TiendaIA no inicializo en 10s.');
       return;
     }
     setTimeout(() => whenReady(cb, attempts + 1), 50);
@@ -43,7 +44,6 @@
       container.innerHTML = '<div style="padding:2rem">No hay tienda asociada.</div>';
       return;
     }
-    // Registrar cleanup para cuando el user navegue fuera del editor
     if (typeof T.registerCleanup === 'function') {
       T.registerCleanup(unmountEditor);
     }
@@ -71,6 +71,7 @@
     const canvasEl = document.createElement('main');
     canvasEl.className = 'ed-canvas';
     canvasEl.id = 'editor-canvas';
+    canvasEl.setAttribute('data-device', 'desktop');
     shell.appendChild(canvasEl);
 
     const inspectorEl = document.createElement('aside');
@@ -78,9 +79,9 @@
     inspectorEl.id = 'editor-inspector';
     shell.appendChild(inspectorEl);
 
-    // Init state
+    // Init state v3
     window.TiendaIA.editorState.init(tienda.personalizaciones, tienda.id);
-    window.TiendaIA.editorState.subscribe('dirty', onDirtyChange);
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('dirty', onDirtyChange));
 
     // Render paneles
     window.TiendaIA.editorToolbar.render(toolbarEl, {
@@ -88,57 +89,48 @@
       onUndo: () => window.TiendaIA.editorState.undo(),
       onRedo: () => window.TiendaIA.editorState.redo(),
       onSave: () => savePublish(),
+      onPreview: () => openPreviewTab(),
       onDeselect: () => window.TiendaIA.editorState.deselect(),
-      onDelete: () => {
-        const sel = window.TiendaIA.editorState.selection;
-        if (!sel) return;
-        if (!confirm('¿Eliminar el elemento seleccionado?')) return;
-        if (sel.tipo === 'element') window.TiendaIA.editorState.removeElement(sel.id);
-        else window.TiendaIA.editorState.removeSection(sel.id);
-      },
     });
 
     window.TiendaIA.editorSidebar.render(sidebarEl, {
-      onAddSection: () => openCatalogForSection(),
+      onAddSection: () => openCatalog(),
     });
 
-    window.TiendaIA.editorCanvas.render(canvasEl, {
-      onAddSection: () => openCatalogForSection(),
-    });
+    window.TiendaIA.editorCanvas.render(canvasEl, {});
 
-    window.TiendaIA.editorInspector.render(inspectorEl, {
-      onAddElement: (sectionId) => openCatalogForElement(sectionId),
-    });
+    window.TiendaIA.editorInspector.render(inspectorEl, {});
 
-    // First-use check
-    if (!tienda.editor_first_choice_at) {
+    // First-use: si la pagina NO tiene secciones, ofrecer starter o desde cero.
+    // (Mas robusto que depender de la columna editor_first_choice_at, que no
+    //  siempre viene en el SELECT del admin.)
+    if (window.TiendaIA.editorState.sections.length === 0) {
       window.TiendaIA.editorFirstUse.showFirstUseModal((choice) => {
         if (choice === 'starter') {
           const starter = window.TiendaIA.editorFirstUse.createStarterPage();
           starter.forEach(sec => window.TiendaIA.editorState.sections.push(sec));
           window.TiendaIA.editorState.pushSnapshot();
           window.TiendaIA.editorState.markDirty();
-          window.TiendaIA.editorCanvas.rebuild();
+          // markDirty dispara onDirtyChange -> autosave -> reload del iframe.
+          // Notificamos sections para refrescar sidebar/toolbar.
+          window.TiendaIA.editorState.select(starter[0].id);
         }
         markFirstChoice();
-        if (!tienda.editor_tour_visto_at) {
-          window.TiendaIA.editorFirstUse.showTour(() => markTourSeen());
-        }
       });
-    } else if (!tienda.editor_tour_visto_at) {
-      window.TiendaIA.editorFirstUse.showTour(() => markTourSeen());
     }
 
     state.mounted = true;
-
-    // Warn al salir si dirty
     window.addEventListener('beforeunload', beforeUnloadGuard);
   }
 
   function unmountEditor() {
     state.mounted = false;
-    if (state.autoSaveTimer) clearTimeout(state.autoSaveTimer);
+    if (state.autoSaveTimer) { clearTimeout(state.autoSaveTimer); state.autoSaveTimer = null; }
+    state.unsubs.forEach(u => { try { u(); } catch (e) {} });
+    state.unsubs = [];
     window.removeEventListener('beforeunload', beforeUnloadGuard);
+    if (window.TiendaIA?.editorCanvas?.destroy) window.TiendaIA.editorCanvas.destroy();
+    if (window.TiendaIA?.editorToolbar?.unbindKeyboard) window.TiendaIA.editorToolbar.unbindKeyboard();
   }
 
   function beforeUnloadGuard(e) {
@@ -148,22 +140,27 @@
     }
   }
 
+  // Autosave debounced en cada cambio que ensucia el estado.
   function onDirtyChange(dirty) {
     if (!dirty) return;
     if (state.autoSaveTimer) clearTimeout(state.autoSaveTimer);
-    state.autoSaveTimer = setTimeout(saveDraft, state.AUTO_SAVE_MS);
+    state.autoSaveTimer = setTimeout(saveDraft, AUTOSAVE_DEBOUNCE_MS);
   }
 
-  function openCatalogForSection() {
+  function openCatalog() {
     window.TiendaIA.editorModalCatalog.open((tipo) => {
-      window.TiendaIA.editorState.insertSection(tipo);
+      const id = window.TiendaIA.editorState.addSection(tipo);
+      if (id) window.TiendaIA.editorState.select(id);
     });
   }
 
-  function openCatalogForElement(sectionId) {
-    window.TiendaIA.editorModalCatalog.open((tipo) => {
-      window.TiendaIA.editorState.insertElement(sectionId, tipo);
-    });
+  function openPreviewTab() {
+    const url = window.TiendaIA?.editorCanvas?.previewUrl;
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+    } else {
+      toast('La vista previa aun no esta lista. Espera unos segundos.', 'info');
+    }
   }
 
   // ============================================================
@@ -172,6 +169,7 @@
   async function saveDraft() {
     const ES = window.TiendaIA.editorState;
     if (ES.saving) return;
+    if (!ES.dirty) return;
     ES.markSaving(true);
     try {
       const body = {
@@ -184,7 +182,14 @@
       const r = await callEF(body);
       if (r && r.success) {
         ES.setLastDraftSavedAt(new Date());
-        toast('Borrador guardado', 'info');
+        // Refrescar el iframe del preview para reflejar el draft.
+        if (window.TiendaIA?.editorCanvas?.refresh) window.TiendaIA.editorCanvas.refresh();
+        // Tocar toolbar para actualizar "Borrador guardado hace ..."
+        if (window.TiendaIA?.editorToolbar?.updateButtons) window.TiendaIA.editorToolbar.updateButtons();
+      } else if (r && r.error === 'stale_layout') {
+        handleStale(r);
+      } else if (r && r.error) {
+        console.warn('[editor] saveDraft error', r.error);
       }
     } catch (err) {
       console.error('saveDraft error', err);
@@ -208,12 +213,16 @@
       const r = await callEF(body);
       if (r && r.success) {
         ES.markClean(r.updated_at);
+        if (window.TiendaIA?.editorCanvas?.refresh) window.TiendaIA.editorCanvas.refresh();
         toast('Tienda actualizada ✓', 'success');
       } else if (r && r.error === 'stale_layout') {
-        showConflictModal(r.server_personalizaciones);
+        handleStale(r);
       } else {
-        toast('No pudimos guardar. Intentá de nuevo.', 'error');
+        toast('No pudimos guardar. Intenta de nuevo.', 'error');
       }
+    } catch (err) {
+      console.error('savePublish error', err);
+      toast('No pudimos guardar. Intenta de nuevo.', 'error');
     } finally {
       ES.markSaving(false);
     }
@@ -237,44 +246,45 @@
     return await r.json().catch(() => ({ error: 'parse_error' }));
   }
 
-  function showConflictModal(serverPers) {
-    if (confirm('Otro dispositivo modificó esta tienda. ¿Cargar la versión del servidor y perder tus cambios locales?')) {
-      const ES = window.TiendaIA.editorState;
-      const home = serverPers?.pages?.home;
-      if (home) {
+  // 409 stale_layout: otro dispositivo publico. Avisar y recargar del server.
+  function handleStale(r) {
+    const ES = window.TiendaIA.editorState;
+    const serverPers = r.server_personalizaciones;
+    const ok = confirm(
+      'Otro dispositivo modifico esta tienda mientras editabas.\n\n' +
+      'Aceptar = cargar la version del servidor (perdes los cambios locales sin publicar).\n' +
+      'Cancelar = seguir editando (podras reintentar publicar luego).'
+    );
+    if (ok) {
+      if (serverPers) {
         ES.init(serverPers, ES.tienda_id);
+        if (window.TiendaIA?.editorCanvas?.reloadFull) window.TiendaIA.editorCanvas.reloadFull();
+        toast('Cargamos la version del servidor.', 'info');
+      } else {
+        toast('No recibimos la version del servidor. Recarga la pagina.', 'error');
       }
     }
   }
 
   async function markFirstChoice() {
-    // admin.js expone window.TiendaIA.supabase como factory function () => supabase.
+    // window.TiendaIA.supabase es factory: invocar con ?.()
     const supabase = window.TiendaIA?.supabase?.();
     if (!supabase) return;
     const ES = window.TiendaIA.editorState;
-    await supabase
-      .from('tiendas')
-      .update({ editor_first_choice_at: new Date().toISOString() })
-      .eq('id', ES.tienda_id);
-  }
-
-  async function markTourSeen() {
-    // admin.js expone window.TiendaIA.supabase como factory function () => supabase.
-    const supabase = window.TiendaIA?.supabase?.();
-    if (!supabase) return;
-    const ES = window.TiendaIA.editorState;
-    await supabase
-      .from('tiendas')
-      .update({ editor_tour_visto_at: new Date().toISOString() })
-      .eq('id', ES.tienda_id);
+    try {
+      await supabase
+        .from('tiendas')
+        .update({ editor_first_choice_at: new Date().toISOString() })
+        .eq('id', ES.tienda_id);
+    } catch (e) { /* columna opcional; no bloquear */ }
   }
 
   function handleBack() {
     const ES = window.TiendaIA.editorState;
     if (ES.dirty) {
-      if (!confirm('Tenés cambios sin publicar.\n\nTu borrador queda guardado y podrás retomarlo cuando vuelvas. ¿Salir igual?')) return;
+      if (!confirm('Tenes cambios sin publicar.\n\nTu borrador queda guardado y podras retomarlo cuando vuelvas. Salir igual?')) return;
     }
-    window.location.hash = '#/';
+    window.TiendaIA.navigateTo ? window.TiendaIA.navigateTo('') : (window.location.hash = '#/');
   }
 
   function toast(msg, kind) {

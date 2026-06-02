@@ -1,37 +1,58 @@
 ---
-import type { Section, Element } from '@aimma/database';
+// AIMMA Editor PRO-MAX · Galeria · Editorial Magazine · SCHEMA v3
+// Seccion auto-contenida: lee section.props { imagenes:[{src,alt}], layout, gap }.
+// layout carrusel/mosaico → grid responsive v1 (estable). gap → gap-2/gap-4/gap-8.
+// Lenguaje Vogue/Kinfolk: aspect 4/5, SIN border, "Pieza N" eyebrow, hover crossfade.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
 interface Props { section: Section; }
 const { section } = Astro.props;
-const padClass = `block-section--pad-${section.padding}`;
-const heightStyle = `min-height:${section.altura_filas * 60}px;`;
-const bgStyle = section.fondo.tipo === 'color' ? `background-color:${section.fondo.valor};` : '';
-const galEl = section.elementos.find(el => el.tipo === 'galeria') as Extract<Element, { tipo: 'galeria' }> | undefined;
-const gapClass = galEl?.props.gap === 'tight' ? 'gap-0'
-  : galEl?.props.gap === 'loose' ? 'gap-8'
-  : 'gap-2';
-const colsClass = galEl?.props.layout === 'carrusel'
-  ? 'flex overflow-x-auto snap-x snap-mandatory'
-  : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+const p = (section as Extract<Section, { tipo: 'galeria' }>).props;
+
+const gapClass = p.gap === 'tight' ? 'gap-2' : p.gap === 'loose' ? 'gap-8' : 'gap-4';
+
+// carrusel/mosaico colapsan a grid responsive editorial v1.
+const gridClass = 'grid grid-cols-2 lg:grid-cols-3';
 ---
 
-<section class={`block-section ${padClass} em-galeria`} style={`${heightStyle}${bgStyle}`} data-section-id={section.id} data-section-tipo="galeria" data-plantilla="editorial_magazine">
-  <div class={`${colsClass} ${gapClass}`} style="grid-column:1 / -1;">
-    {galEl?.props.imagenes.map((img) => (
-      <div class="em-galeria-item">
-        <img src={img.src} alt={img.alt} loading="lazy" class="w-full h-full object-cover" />
-      </div>
+<SectionShell section={section}>
+  <div class={`em-galeria-grid ${gridClass} ${gapClass}`}>
+    {p.imagenes.map((img, i) => (
+      <figure class="em-galeria-item group">
+        <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">
+          Pieza {String(i + 1).padStart(2, '0')}
+        </p>
+        <div class="em-galeria-frame">
+          <img
+            src={img.src}
+            alt={img.alt}
+            loading="lazy"
+            decoding="async"
+            class="w-full h-full object-cover"
+          />
+        </div>
+      </figure>
     ))}
   </div>
-</section>
+</SectionShell>
 
 <style>
-  /* Editorial Magazine galeria: aspect 4/5, NO border */
-  .em-galeria-item {
+  .em-galeria-item { margin: 0; }
+  .em-galeria-frame {
     aspect-ratio: 4 / 5;
     overflow: hidden;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
   }
-  .em-galeria :global(.flex.overflow-x-auto) .em-galeria-item {
-    flex: 0 0 280px;
-    scroll-snap-align: center;
+  .em-galeria-frame img {
+    display: block;
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .em-galeria-item:hover .em-galeria-frame img { transform: scale(1.04); }
+  @media (prefers-reduced-motion: reduce) {
+    .em-galeria-frame img { transition: none; }
+    .em-galeria-item:hover .em-galeria-frame img { transform: none; }
   }
 </style>

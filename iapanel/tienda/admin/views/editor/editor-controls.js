@@ -224,49 +224,11 @@
     return el('div', { class: 'ed-inspector__info' }, text);
   }
 
-  const SIZE_OPTIONS = [
-    { v: 'xs', l: 'Extra pequeño' }, { v: 'sm', l: 'Pequeño' },
-    { v: 'md', l: 'Mediano' }, { v: 'lg', l: 'Grande' },
-    { v: 'xl', l: 'Extra grande' }, { v: '2xl', l: '2x grande' },
-    { v: '3xl', l: '3x grande' },
-  ];
-
-  const WEIGHT_OPTIONS = [
-    { v: 'normal', l: 'Normal' }, { v: 'medium', l: 'Media' },
-    { v: 'semibold', l: 'Semi negrita' }, { v: 'bold', l: 'Negrita' },
-  ];
-
   const ALIGN_OPTIONS = [
     { v: 'left', l: 'Izquierda' },
     { v: 'center', l: 'Centro' },
     { v: 'right', l: 'Derecha' },
   ];
-
-  function commonStyleControls(el_, onUpdate) {
-    return [
-      selectCtrl('Tamaño', el_.estilo.tamaño || el_.estilo.tamano || 'md', SIZE_OPTIONS,
-        v => onUpdate('tamaño', v)),
-      selectCtrl('Peso', el_.estilo.peso || 'normal', WEIGHT_OPTIONS,
-        v => onUpdate('peso', v)),
-      selectCtrl('Alineación', el_.estilo.alineacion || 'left', ALIGN_OPTIONS,
-        v => onUpdate('alineacion', v)),
-      colorPicker('Color texto', el_.estilo.color_texto || '',
-        v => onUpdate('color_texto', v || null)),
-    ];
-  }
-
-  function commonGridControls(el_, onUpdate) {
-    return [
-      slider('Columna inicio', el_.grid.col_start || 1, 1, 24, 1,
-        v => onUpdate({ col_start: v })),
-      slider('Columna fin', el_.grid.col_end || 13, 2, 25, 1,
-        v => onUpdate({ col_end: v })),
-      slider('Fila inicio', el_.grid.row_start || 1, 1, 50, 1,
-        v => onUpdate({ row_start: v })),
-      slider('Fila fin', el_.grid.row_end || 4, 2, 51, 1,
-        v => onUpdate({ row_end: v })),
-    ];
-  }
 
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorControls = {
@@ -275,8 +237,7 @@
     colorPicker, slider,
     switch: switchCtrl,
     headerLabel, primaryButton, dangerButton, collapsibleSection, infoBox,
-    commonStyleControls, commonGridControls,
-    SIZE_OPTIONS, WEIGHT_OPTIONS, ALIGN_OPTIONS,
+    ALIGN_OPTIONS,
     el,
   };
 })(window);
