@@ -63,6 +63,18 @@ export function makeTienda(plantillaSlug: string): any {
   return { id: 'tienda-uuid', plantilla: { slug: plantillaSlug } };
 }
 
+// Section builder generico (tipo + props arbitrarias) para tipos sin fetch.
+export function makeSection(tipo: string, props: any): any {
+  return {
+    id: 'sec_pilot01',
+    tipo,
+    padding: 'md',
+    ancho: 'completo',
+    fondo: { tipo: 'color', valor: '#ffffff' },
+    props,
+  };
+}
+
 // ---- Normalizacion ----
 export function normalize(html: string): string {
   return html

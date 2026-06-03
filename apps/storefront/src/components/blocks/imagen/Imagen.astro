@@ -1,0 +1,127 @@
+---
+// AIMMA Editor PRO-MAX · Imagen · UNIFICADO (Fase A.2) · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// figure/img, envuelto en <a> si hay link_url). El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-imagen-*) -> selecciona el <style> activo
+//   (b) editorial_magazine agrega <figcaption> con el alt
+//   (c) los 4 <style> per-template, scopeados e inertes por prefijo
+// Salida BYTE-IDENTICA al renderer per-template viejo (validado por test/imagen.golden.test.ts).
+// Reemplaza Imagen{IndustrialClean,FashionBold,MinimalArtesanal,EditorialMagazine}.astro.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'imagen' }>).props;
+const { tienda } = Astro.locals;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+const objeto = p.objeto ?? 'cover';
+const objClass = objeto === 'contain' ? 'object-contain' : 'object-cover';
+
+// aspect_ratio opcional: si no viene, la imagen fluye con su ratio natural.
+const ratioStyle = p.aspect_ratio ? `aspect-ratio:${p.aspect_ratio};` : '';
+---
+
+<SectionShell section={section}>
+  {p.link_url ? (
+    <a href={p.link_url} class={`${prefix}-imagen-link block`}>
+      <figure class={`${prefix}-imagen-figure`} style={ratioStyle}>
+        <img
+          src={p.src}
+          alt={p.alt}
+          loading="lazy"
+          decoding="async"
+          class={`${prefix}-imagen-img w-full h-full ${objClass}`}
+          data-field="src"
+        />
+      </figure>
+    </a>
+  ) : (
+    <figure class={`${prefix}-imagen-figure`} style={ratioStyle}>
+      <img
+        src={p.src}
+        alt={p.alt}
+        loading="lazy"
+        decoding="async"
+        class={`${prefix}-imagen-img w-full h-full ${objClass}`}
+        data-field="src"
+      />
+    </figure>
+  )}
+  {plantilla === 'editorial_magazine' && p.alt && (
+    <figcaption class="em-imagen-caption font-body text-[11px] tracking-[0.06em] text-[var(--ta-color-text-base)]/55 mt-4 flex items-baseline gap-3">
+      <span class="block h-px w-8 bg-[var(--ta-color-accent)]"></span>
+      <span>{p.alt}</span>
+    </figcaption>
+  )}
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean ===== */
+  .ic-imagen-figure {
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
+  }
+  .ic-imagen-img {
+    display: block;
+  }
+  .ic-imagen-link {
+    text-decoration: none;
+  }
+
+  /* ===== fashion_bold ===== */
+  /* Fashion Bold imagen: edge-to-edge, sin borde, sin radius */
+  .fb-imagen-figure {
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 0;
+    background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent);
+  }
+  .fb-imagen-img {
+    display: block;
+  }
+  .fb-imagen-link {
+    text-decoration: none;
+  }
+
+  /* ===== minimal_artesanal ===== */
+  .ma-imagen-figure {
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
+  }
+  .ma-imagen-img { display: block; }
+  .ma-imagen-link { text-decoration: none; }
+
+  /* ===== editorial_magazine ===== */
+  .em-imagen-figure {
+    margin: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+  .em-imagen-img {
+    display: block;
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .em-imagen-link { text-decoration: none; }
+  .em-imagen-link:hover .em-imagen-img { transform: scale(1.03); }
+  @media (prefers-reduced-motion: reduce) {
+    .em-imagen-img { transition: none; }
+    .em-imagen-link:hover .em-imagen-img { transform: none; }
+  }
+</style>

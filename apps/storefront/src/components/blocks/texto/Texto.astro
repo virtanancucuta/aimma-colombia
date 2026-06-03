@@ -1,0 +1,160 @@
+---
+// AIMMA Editor PRO-MAX · Texto · UNIFICADO (Fase A.2) · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// div con fontClass/sizeClass/alignClass). El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-texto) -> selecciona el <style> activo
+//   (b) editorial_magazine agrega dropcap en parrafos de lectura (sm/md, align left)
+//   (c) los 4 <style> per-template, scopeados e inertes por prefijo
+// Salida BYTE-IDENTICA al renderer per-template viejo (validado por test/texto.golden.test.ts).
+// Reemplaza Texto{IndustrialClean,FashionBold,MinimalArtesanal,EditorialMagazine}.astro.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'texto' }>).props;
+const { tienda } = Astro.locals;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+const align = p.alineacion ?? 'left';
+const tam = p.tamanio ?? 'md';
+
+const alignClass = `block-text--align-${align}`;
+const sizeClass = `block-text--size-${tam}`;
+
+// Display para titulares (lg/xl); body para parrafo (sm/md).
+const esDisplay = tam === 'lg' || tam === 'xl';
+const fontClass = esDisplay ? 'font-display' : 'font-body';
+
+// editorial_magazine: dropcap solo en parrafos largos de lectura, alineados a la izquierda.
+const conDropcap = plantilla === 'editorial_magazine' && !esDisplay && align === 'left' && p.contenido.trim().length > 0;
+const firstLetter = conDropcap ? p.contenido.trimStart().charAt(0) : '';
+const rest = conDropcap ? p.contenido.trimStart().slice(1) : p.contenido;
+---
+
+<SectionShell section={section}>
+  <div
+    class={`${prefix}-texto ${fontClass} ${sizeClass} ${alignClass} text-[var(--ta-color-text-base)]`}
+    data-field="contenido"
+  >
+    {conDropcap
+      ? (<><span class="em-dropcap" aria-hidden="true">{firstLetter}</span><span class="sr-only">{firstLetter}</span>{rest}</>)
+      : p.contenido}
+  </div>
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean ===== */
+  .ic-texto {
+    color: var(--ta-color-text-base);
+    white-space: pre-line; /* respeta saltos de linea del contenido */
+  }
+  .ic-texto.block-text--size-lg,
+  .ic-texto.block-text--size-xl {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  .ic-texto.block-text--size-sm,
+  .ic-texto.block-text--size-md {
+    line-height: 1.6;
+    max-width: 65ch;
+  }
+  /* En alineacion centrada/derecha, max-width centra el bloque correctamente */
+  .ic-texto.block-text--align-center { margin-inline: auto; }
+  .ic-texto.block-text--align-right { margin-inline: 0 0 0 auto; }
+
+  /* ===== fashion_bold ===== */
+  .fb-texto {
+    color: var(--ta-color-text-base);
+    white-space: pre-line; /* respeta saltos de linea del contenido */
+  }
+  /* Titulares Fashion Bold: Anton uppercase, sharp, edge-to-edge */
+  .fb-texto.block-text--size-lg,
+  .fb-texto.block-text--size-xl {
+    text-transform: uppercase;
+    letter-spacing: -0.035em;
+    line-height: 0.92;
+    font-weight: 400;
+    text-wrap: balance;
+  }
+  /* Parrafo: Inter, medida legible */
+  .fb-texto.block-text--size-sm,
+  .fb-texto.block-text--size-md {
+    line-height: 1.6;
+    max-width: 68ch;
+  }
+  .fb-texto.block-text--align-center { margin-inline: auto; }
+  .fb-texto.block-text--align-right { margin-inline: 0 0 0 auto; }
+
+  /* ===== minimal_artesanal ===== */
+  .ma-texto {
+    color: var(--ta-color-text-base);
+    white-space: pre-line; /* respeta saltos de linea del contenido */
+  }
+  /* Titulares editoriales Fraunces italic (lg/xl) */
+  .ma-texto.block-text--size-lg,
+  .ma-texto.block-text--size-xl {
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.018em;
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+  .ma-texto.block-text--size-xl { font-variation-settings: 'opsz' 96; }
+  .ma-texto.block-text--size-lg { font-variation-settings: 'opsz' 48; }
+  /* Cuerpo (sm/md) */
+  .ma-texto.block-text--size-sm,
+  .ma-texto.block-text--size-md {
+    line-height: 1.7;
+    max-width: 58ch;
+  }
+  .ma-texto.block-text--align-center { margin-inline: auto; }
+  .ma-texto.block-text--align-right { margin-inline: 0 0 0 auto; }
+
+  /* ===== editorial_magazine ===== */
+  .em-texto {
+    color: var(--ta-color-text-base);
+    white-space: pre-line; /* respeta saltos de linea del contenido */
+  }
+  /* Titulares editoriales: serif liviano, tracking ajustado */
+  .em-texto.block-text--size-lg,
+  .em-texto.block-text--size-xl {
+    font-weight: 300;
+    letter-spacing: -0.012em;
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+  .em-texto.block-text--size-lg {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ta-color-accent);
+  }
+  /* Lectura: medida de revista */
+  .em-texto.block-text--size-sm,
+  .em-texto.block-text--size-md {
+    line-height: 1.7;
+    max-width: 62ch;
+  }
+  .em-texto.block-text--align-center { margin-inline: auto; }
+  .em-texto.block-text--align-right { margin-inline: 0 0 0 auto; }
+  /* Dropcap editorial */
+  .em-dropcap {
+    float: left;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ta-color-accent);
+    font-size: 3.4em;
+    line-height: 0.78;
+    padding-right: 0.08em;
+    margin-top: 0.04em;
+  }
+</style>
