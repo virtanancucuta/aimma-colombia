@@ -1398,8 +1398,12 @@ input, textarea, select { font-family: inherit; }
   color-scheme: light;  /* render claro del input aunque el movil este en modo oscuro */
   border: 1px solid var(--navy-line);
   border-radius: 8px;
-  color: var(--navy-deep);
-  -webkit-text-fill-color: var(--navy-deep);
+  /* Texto oscuro FIJO: el fondo del input es claro hardcodeado (#eef1f5), por eso
+     el color NO debe depender de --navy-deep (que en white-mode vale #fafafa = casi
+     blanco → texto invisible "se ve blanco al seleccionar la fecha"). Hardcodeado
+     igual que el placeholder .pf-empty::after para ser robusto a cambios de token. */
+  color: #1a1a1a;
+  -webkit-text-fill-color: #1a1a1a;
   padding: 11px 10px;
   min-height: 44px;
   font-family: var(--font-ui);
@@ -1416,8 +1420,8 @@ input, textarea, select { font-family: inherit; }
 /* El texto de la fecha dentro de la casilla: siempre oscuro y legible
    (defense-in-depth: color + text-fill-color en el input y en el datetime-edit). */
 .periodo-field input[type="date"]::-webkit-datetime-edit {
-  color: var(--navy-deep);
-  -webkit-text-fill-color: var(--navy-deep);
+  color: #1a1a1a;
+  -webkit-text-fill-color: #1a1a1a;
 }
 /* Icono del calendario: visible y clickeable sobre el fondo claro */
 .periodo-field input[type="date"]::-webkit-calendar-picker-indicator {
