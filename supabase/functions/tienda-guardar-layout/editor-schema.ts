@@ -1,20 +1,23 @@
-// supabase/functions/_shared/editor-schema.ts
+// packages/database/src/editor-schema.ts
 // AIMMA Editor PRO-MAX · Zod schemas compartidos · SCHEMA v3 (2026-06-02)
 // Modelo Shopify-style: secciones apiladas auto-contenidas con props tipadas.
 // SIN grid 2D, SIN elementos posicionados. El orden del array = orden vertical.
-// NOTA: el MCP Supabase no resuelve imports relativos ../_shared/ — esta copia es la
-// fuente de verdad; el body se INLINE en cada EF al deployar (deuda Plan 6: deno bundle).
+// Validado en: EF tienda-guardar-layout + Storefront BlockRenderer + Panel editor admin.
 
-import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { z } from 'zod';
 
 // ============================================================
 // Regex de seguridad (conservados de v1/v2 — hardening Plan 1)
 // ============================================================
 
+// CSS-safe color: bloquea CSS injection en style="color:${valor}".
 const CSS_COLOR_REGEX = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)<>]+\)|hsla?\([^)<>]+\)|ok(lch|lab)\([^)<>]+\)|[a-zA-Z]{3,30})$/;
+// CSS-safe gradient: solo linear/radial/conic-gradient.
 const CSS_GRADIENT_REGEX = /^(linear|radial|conic)-gradient\([^)<>"'`;{}@\\]{1,400}\)$/i;
+// CSS-safe https URL: bloquea javascript:, data:, etc.
 const HTTPS_URL_REGEX = /^https:\/\/[^"'<>`\s]{4,490}$/;
 
+// Embed: solo iframes de proveedores whitelisted (defense-in-depth XSS).
 const EMBED_ALLOWED_PROVIDERS = '(youtube\\.com|youtube-nocookie\\.com|vimeo\\.com|player\\.vimeo\\.com|codepen\\.io|codesandbox\\.io|maps\\.google\\.com|google\\.com\\/maps|open\\.spotify\\.com)';
 const EMBED_ALLOWED_ATTRS = '(width|height|frameborder|allow|allowfullscreen|loading|title|referrerpolicy)';
 const EMBED_WHITELIST_REGEX = new RegExp(
@@ -200,6 +203,10 @@ export const PersonalizacionesSchema = z.object({
 });
 
 export type Personalizaciones = z.infer<typeof PersonalizacionesSchema>;
+
+// ============================================================
+// Helper: parse safe (devuelve null si invalido para fallback graceful)
+// ============================================================
 
 export function parsePersonalizaciones(raw: unknown): Personalizaciones | null {
   const result = PersonalizacionesSchema.safeParse(raw);
