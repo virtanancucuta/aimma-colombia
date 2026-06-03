@@ -6,31 +6,12 @@
 (function(window) {
   'use strict';
 
-  // 4 esenciales (siempre visibles)
-  const ESENCIALES = [
-    { tipo: 'banner', icon: '★', title: 'Banner principal',
-      desc: 'La foto grande y el titulo que ve el cliente al entrar.' },
-    { tipo: 'productos', icon: '▦', title: 'Productos',
-      desc: 'La grilla con los productos de tu tienda.' },
-    { tipo: 'botones', icon: '◉', title: 'Botones',
-      desc: 'Botones de accion: WhatsApp, ubicacion, llamar.' },
-    { tipo: 'texto', icon: '¶', title: 'Texto',
-      desc: 'Un parrafo o titulo para contar algo de tu negocio.' },
-  ];
-
-  // Resto (se despliega con "Mas")
-  const AVANZADOS = [
-    { tipo: 'galeria', icon: '▤', title: 'Galeria',
-      desc: 'Varias fotos juntas en grilla, mosaico o carrusel.' },
-    { tipo: 'imagen', icon: '▢', title: 'Imagen',
-      desc: 'Una sola imagen destacada de tu negocio.' },
-    { tipo: 'espacio', icon: '⎵', title: 'Espacio en blanco',
-      desc: 'Un respiro vertical entre dos secciones.' },
-    { tipo: 'formulario', icon: '✎', title: 'Formulario',
-      desc: 'Para que los clientes te dejen sus datos y mensajes.' },
-    { tipo: 'video', icon: '▷', title: 'Video o mapa',
-      desc: 'Un video de YouTube/Vimeo o un mapa de Google.' },
-  ];
+  // Fase A.1: el catalogo deriva del registro unico section-defs.js (label + catalog).
+  // El ORDEN se preserva explicito (identico al hardcode anterior).
+  const D = window.TiendaIA.editorSectionDefs.defs;
+  const toCard = (tipo) => ({ tipo, icon: D[tipo].catalog.icon, title: D[tipo].label, desc: D[tipo].catalog.desc });
+  const ESENCIALES = ['banner', 'productos', 'botones', 'texto'].map(toCard);
+  const AVANZADOS = ['galeria', 'imagen', 'espacio', 'formulario', 'video'].map(toCard);
 
   let modalEl = null;
 

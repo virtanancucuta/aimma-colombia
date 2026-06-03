@@ -1,27 +1,17 @@
-/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-inspector.js v2 (SCHEMA v3)
- * Panel derecho contextual: edita la SECCION seleccionada (no hay elementos en v3).
- * Formularios de props por tipo usando helpers de editor-controls.js.
- * Sub-editores de lista para arrays: botones.items, galeria.imagenes, formulario.campos.
- * Marker: editor-plan4-v3-inspector.
+/* AIMMA Tienda IA · Editor PRO-MAX · Fase A.1 · editor-inspector.js v3 (schema-driven)
+ * Panel derecho contextual: edita la SECCION seleccionada. El form se AUTOGENERA
+ * leyendo window.TiendaIA.editorSectionDefs.defs[tipo].campos y mapeando cada campo
+ * a un control de editor-controls.js. Reemplaza los 9 renderXxxProps hardcodeados.
+ * Sub-generadores: renderToggleObject (objeto opcional) + renderList (sub-editor de arrays).
+ * Bloque "Apariencia" base y acciones (Duplicar/Eliminar) sin cambios.
+ * Marker: editor-a1-inspector-generator.
  */
 (function(window) {
   'use strict';
 
   const state = { container: null, callbacks: {} };
 
-  const SECTION_LABEL = {
-    banner: 'Banner principal', texto: 'Texto', imagen: 'Imagen',
-    botones: 'Botones', productos: 'Productos', galeria: 'Galeria',
-    formulario: 'Formulario', espacio: 'Espacio en blanco', video: 'Video o mapa',
-  };
-
-  const ALIGN_OPTS = [
-    { v: 'left', l: 'Izquierda' }, { v: 'center', l: 'Centro' }, { v: 'right', l: 'Derecha' },
-  ];
-  const TAMANIO_OPTS = [
-    { v: 'sm', l: 'Pequeno' }, { v: 'md', l: 'Mediano' },
-    { v: 'lg', l: 'Grande' }, { v: 'xl', l: 'Extra grande' },
-  ];
+  // Solo se conservan las opciones del bloque base "Apariencia" (no migrado a sectionDefs).
   const PADDING_OPTS = [
     { v: 'sm', l: 'Pequeno' }, { v: 'md', l: 'Medio' },
     { v: 'lg', l: 'Grande' }, { v: 'xl', l: 'Extra grande' },
@@ -29,23 +19,6 @@
   const ANCHO_OPTS = [
     { v: 'completo', l: 'Ancho completo (borde a borde)' },
     { v: 'contenido', l: 'Centrado (con margenes)' },
-  ];
-  const ESTILO_VISUAL_OPTS = [
-    { v: 'primary', l: 'Principal' }, { v: 'secondary', l: 'Secundario' },
-    { v: 'ghost', l: 'Fantasma' }, { v: 'outline', l: 'Borde' },
-  ];
-  const TARGET_OPTS = [
-    { v: '_self', l: 'Misma pestana' }, { v: '_blank', l: 'Nueva pestana' },
-  ];
-  const ICONO_OPTS = [
-    { v: '', l: 'Sin icono' }, { v: 'arrow', l: 'Flecha' }, { v: 'whatsapp', l: 'WhatsApp' },
-    { v: 'email', l: 'Email' }, { v: 'phone', l: 'Telefono' },
-    { v: 'location', l: 'Ubicacion' }, { v: 'link', l: 'Link' },
-  ];
-  const CAMPO_TIPO_OPTS = [
-    { v: 'text', l: 'Texto corto' }, { v: 'email', l: 'Email' }, { v: 'tel', l: 'Telefono' },
-    { v: 'textarea', l: 'Texto largo' }, { v: 'select', l: 'Lista de opciones' },
-    { v: 'checkbox', l: 'Casilla de verificacion' },
   ];
 
   function render(container, callbacks) {
@@ -81,16 +54,27 @@
   }
 
   // ============================================================
-  // SECTION (props por tipo + base)
+  // Helpers de acceso al registro
+  // ============================================================
+  function defsFor(tipo) {
+    return window.TiendaIA.editorSectionDefs.defs[tipo];
+  }
+  function optList(ref) {
+    return Array.isArray(ref) ? ref : window.TiendaIA.editorSectionDefs.OPTS[ref];
+  }
+
+  // ============================================================
+  // SECTION (props por tipo, generadas desde sectionDefs + base)
   // ============================================================
   function renderForSection(sec) {
     const C = window.TiendaIA.editorControls;
     const ES = window.TiendaIA.editorState;
+    const def = defsFor(sec.tipo);
     const wrap = C.el('div', { class: 'ed-inspector__body' });
 
     // Header con boton cerrar drawer (mobile).
     const header = C.el('div', { class: 'ed-inspector__head' }, [
-      C.el('h4', { class: 'ed-inspector__header' }, 'Seccion: ' + (SECTION_LABEL[sec.tipo] || sec.tipo)),
+      C.el('h4', { class: 'ed-inspector__header' }, 'Seccion: ' + (def ? def.label : sec.tipo)),
       C.el('button', {
         type: 'button',
         class: 'ed-inspector__close',
@@ -100,20 +84,9 @@
     ]);
     wrap.appendChild(header);
 
-    // ── Props especificas por tipo ──
-    const tipoRenderer = {
-      banner: renderBannerProps,
-      texto: renderTextoProps,
-      imagen: renderImagenProps,
-      botones: renderBotonesProps,
-      productos: renderProductosProps,
-      galeria: renderGaleriaProps,
-      formulario: renderFormularioProps,
-      espacio: renderEspacioProps,
-      video: renderVideoProps,
-    };
-    if (tipoRenderer[sec.tipo]) {
-      tipoRenderer[sec.tipo](wrap, sec, C, ES);
+    // ── Props especificas por tipo (autogeneradas desde campos[]) ──
+    if (def) {
+      def.campos.forEach((campo) => renderCampo(wrap, sec, campo, C, ES));
     }
 
     // ── Apariencia (base: ancho, fondo, padding) colapsable ──
@@ -160,266 +133,133 @@
   }
 
   // ============================================================
-  // Renderers de props por tipo
+  // Generador de UN campo -> control del toolkit
   // ============================================================
-  function renderBannerProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    wrap.appendChild(C.textInput('Titulo', p.titulo || '',
-      v => ES.updateSectionProps(sec.id, { titulo: v }), { maxLength: 200 }));
-    wrap.appendChild(C.textarea('Subtitulo (opcional)', p.subtitulo || '',
-      v => ES.updateSectionProps(sec.id, { subtitulo: v || undefined }), { maxLength: 500, rows: 3 }));
-    wrap.appendChild(C.select('Alineacion', p.alineacion || 'left', ALIGN_OPTS,
-      v => ES.updateSectionProps(sec.id, { alineacion: v })));
+  function setProp(ES, sec, key, value, campo) {
+    if (campo && campo.empty_to_undefined && !value) value = undefined;
+    if (campo && campo.empty_to_null && !value) value = null;
+    ES.updateSectionProps(sec.id, { [key]: value });
+  }
 
-    // Imagen de fondo del banner (opcional).
-    const tieneImg = !!p.imagen_fondo;
-    wrap.appendChild(C.switch('Usar imagen de fondo', tieneImg, on => {
-      if (on) {
-        ES.updateSectionProps(sec.id, { imagen_fondo: { src: 'https://placehold.co/1600x900', alt: '', objeto: 'cover' } });
-      } else {
-        ES.updateSectionProps(sec.id, { imagen_fondo: undefined });
-      }
+  function selectCurrent(p, campo) {
+    const v = p[campo.key];
+    return v == null ? (campo.default != null ? campo.default : '') : v;
+  }
+
+  function renderCampo(wrap, sec, campo, C, ES) {
+    if (campo.__info) { wrap.appendChild(C.infoBox(campo.__info)); return; }
+    const p = sec.props || {};
+    switch (campo.control) {
+      case 'text':
+        wrap.appendChild(C.textInput(campo.label, p[campo.key] || campo.display_fallback || '',
+          v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
+        break;
+      case 'textarea':
+        wrap.appendChild(C.textarea(campo.label, p[campo.key] || campo.display_fallback || '',
+          v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
+        break;
+      case 'url':
+        wrap.appendChild(C.urlInput(campo.label, p[campo.key] || '',
+          v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
+        break;
+      case 'select':
+        wrap.appendChild(C.select(campo.label, selectCurrent(p, campo), optList(campo.opts.options),
+          v => setProp(ES, sec, campo.key, campo.empty_to_undefined ? (v || undefined) : v, campo)));
+        break;
+      case 'switch':
+        wrap.appendChild(C.switch(campo.label, p[campo.key] !== false,
+          v => setProp(ES, sec, campo.key, v, campo)));
+        break;
+      case 'slider':
+        wrap.appendChild(C.slider(campo.label, p[campo.key] || campo.default, campo.opts.min, campo.opts.max, campo.opts.step,
+          v => setProp(ES, sec, campo.key, v, campo)));
+        break;
+      case 'toggle-object':
+        renderToggleObject(wrap, sec, campo, C, ES);
+        break;
+      case 'list':
+        renderList(wrap, sec, campo, C, ES);
+        break;
+      default:
+        break;
+    }
+  }
+
+  // ── toggle-object: switch ON/OFF de un objeto opcional + subcampos ──
+  function renderToggleObject(wrap, sec, campo, C, ES) {
+    const p = sec.props || {};
+    const obj = p[campo.key];
+    const tiene = !!obj;
+    wrap.appendChild(C.switch(campo.label, tiene, on => {
+      ES.updateSectionProps(sec.id, { [campo.key]: on ? structuredClone(campo.on_default) : undefined });
       rebuild();
     }));
-    if (tieneImg) {
-      const img = p.imagen_fondo;
-      wrap.appendChild(C.urlInput('URL imagen (https)', img.src || '',
-        v => ES.updateSectionProps(sec.id, { imagen_fondo: { ...img, src: v } })));
-      wrap.appendChild(C.textInput('Texto alternativo (alt)', img.alt || '',
-        v => ES.updateSectionProps(sec.id, { imagen_fondo: { ...img, alt: v } }), { maxLength: 200 }));
-    }
-
-    // Boton del banner (opcional).
-    const tieneBoton = !!p.boton;
-    wrap.appendChild(C.switch('Mostrar boton', tieneBoton, on => {
-      if (on) {
-        ES.updateSectionProps(sec.id, { boton: { texto: 'Ver productos', url: '#productos', estilo_visual: 'primary', target: '_self', icono: 'arrow' } });
-      } else {
-        ES.updateSectionProps(sec.id, { boton: undefined });
+    if (!tiene) return;
+    const upd = (patch) => ES.updateSectionProps(sec.id, { [campo.key]: { ...obj, ...patch } });
+    campo.subfields.forEach((sf) => {
+      const val = obj[sf.key] || '';
+      if (sf.control === 'url') {
+        wrap.appendChild(C.urlInput(sf.label, val, v => upd({ [sf.key]: v }), sf.opts || {}));
+      } else if (sf.control === 'text') {
+        wrap.appendChild(C.textInput(sf.label, val, v => upd({ [sf.key]: v }), sf.opts || {}));
+      } else if (sf.control === 'select') {
+        wrap.appendChild(C.select(sf.label, obj[sf.key] || (sf.fallback || ''), optList(sf.opts.options),
+          v => upd({ [sf.key]: sf.empty_to_undefined ? (v || undefined) : v })));
       }
-      rebuild();
-    }));
-    if (tieneBoton) {
-      const b = p.boton;
-      const updateBoton = (patch) => ES.updateSectionProps(sec.id, { boton: { ...b, ...patch } });
-      wrap.appendChild(C.textInput('Texto del boton', b.texto || '',
-        v => updateBoton({ texto: v }), { maxLength: 80 }));
-      wrap.appendChild(C.urlInput('URL (https / mailto / tel / # / /)', b.url || '',
-        v => updateBoton({ url: v })));
-      wrap.appendChild(C.select('Estilo del boton', b.estilo_visual || 'primary', ESTILO_VISUAL_OPTS,
-        v => updateBoton({ estilo_visual: v })));
-      wrap.appendChild(C.select('Icono', b.icono || '', ICONO_OPTS,
-        v => updateBoton({ icono: v || undefined })));
-      wrap.appendChild(C.select('Abrir en', b.target || '_self', TARGET_OPTS,
-        v => updateBoton({ target: v })));
-    }
+    });
   }
 
-  function renderTextoProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    wrap.appendChild(C.textarea('Contenido', p.contenido || '',
-      v => ES.updateSectionProps(sec.id, { contenido: v }), { maxLength: 5000, rows: 5 }));
-    wrap.appendChild(C.select('Alineacion', p.alineacion || 'left', ALIGN_OPTS,
-      v => ES.updateSectionProps(sec.id, { alineacion: v })));
-    wrap.appendChild(C.select('Tamano del texto', p.tamanio || 'md', TAMANIO_OPTS,
-      v => ES.updateSectionProps(sec.id, { tamanio: v })));
-  }
+  // ── list: sub-editor de array (botones/galeria/formulario) ──
+  function renderList(wrap, sec, campo, C, ES) {
+    const arr = Array.isArray(sec.props && sec.props[campo.key]) ? sec.props[campo.key] : [];
+    const replace = (next) => ES.updateSectionProps(sec.id, { [campo.key]: next });
 
-  function renderImagenProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    wrap.appendChild(C.urlInput('URL imagen (https)', p.src || '',
-      v => ES.updateSectionProps(sec.id, { src: v }), { placeholder: 'https://...' }));
-    wrap.appendChild(C.textInput('Texto alternativo (alt)', p.alt || '',
-      v => ES.updateSectionProps(sec.id, { alt: v }), { maxLength: 200 }));
-    wrap.appendChild(C.select('Ajuste', p.objeto || 'cover', [
-      { v: 'cover', l: 'Cubrir (recorta si hace falta)' },
-      { v: 'contain', l: 'Contener (sin recorte)' },
-    ], v => ES.updateSectionProps(sec.id, { objeto: v })));
-    wrap.appendChild(C.select('Proporcion', p.aspect_ratio || '', [
-      { v: '', l: 'Automatica' },
-      { v: '16/9', l: '16:9' }, { v: '4/3', l: '4:3' }, { v: '1/1', l: '1:1 (cuadrada)' },
-      { v: '3/4', l: '3:4 (vertical)' }, { v: '4/5', l: '4:5 (vertical)' },
-    ], v => ES.updateSectionProps(sec.id, { aspect_ratio: v || undefined })));
-    wrap.appendChild(C.urlInput('Link al hacer click (opcional)', p.link_url || '',
-      v => ES.updateSectionProps(sec.id, { link_url: v || undefined })));
-  }
-
-  function renderProductosProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    wrap.appendChild(C.textInput('ID de categoria (vacio = todas)', p.categoria_id || '',
-      v => ES.updateSectionProps(sec.id, { categoria_id: v || null })));
-    wrap.appendChild(C.slider('Cantidad de productos', p.limite || 8, 1, 12, 1,
-      v => ES.updateSectionProps(sec.id, { limite: v })));
-    wrap.appendChild(C.select('Ordenar por', p.orden || 'recientes', [
-      { v: 'recientes', l: 'Mas recientes' },
-      { v: 'precio_asc', l: 'Precio: menor a mayor' },
-      { v: 'precio_desc', l: 'Precio: mayor a menor' },
-      { v: 'manual', l: 'Manual' },
-    ], v => ES.updateSectionProps(sec.id, { orden: v })));
-    wrap.appendChild(C.select('Columnas', p.columnas == null ? 'auto' : p.columnas, [
-      { v: 'auto', l: 'Automatico' }, { v: 2, l: '2 columnas' },
-      { v: 3, l: '3 columnas' }, { v: 4, l: '4 columnas' },
-    ], v => ES.updateSectionProps(sec.id, { columnas: v })));
-    wrap.appendChild(C.switch('Mostrar precio', p.mostrar_precio !== false,
-      v => ES.updateSectionProps(sec.id, { mostrar_precio: v })));
-  }
-
-  function renderEspacioProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    wrap.appendChild(C.select('Altura del espacio', p.altura || 'md', TAMANIO_OPTS,
-      v => ES.updateSectionProps(sec.id, { altura: v })));
-  }
-
-  function renderVideoProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    wrap.appendChild(C.textarea('Codigo del video (iframe)', p.html || '',
-      v => ES.updateSectionProps(sec.id, { html: v }),
-      { maxLength: 2000, rows: 6, placeholder: '<iframe src="https://www.youtube.com/embed/..."></iframe>' }));
-    wrap.appendChild(C.infoBox('Solo se permiten videos o mapas de: YouTube, Vimeo, CodePen, CodeSandbox, Google Maps o Spotify.'));
-    wrap.appendChild(C.select('Proporcion', p.aspect_ratio || '16/9', [
-      { v: '16/9', l: '16:9 (video)' }, { v: '4/3', l: '4:3' }, { v: '1/1', l: '1:1 (cuadrado)' },
-    ], v => ES.updateSectionProps(sec.id, { aspect_ratio: v })));
-  }
-
-  // ── Botones: sub-editor de lista (items 1..6) ──
-  function renderBotonesProps(wrap, sec, C, ES) {
-    const items = Array.isArray(sec.props?.items) ? sec.props.items : [];
-
-    const replaceItems = (next) => ES.updateSectionProps(sec.id, { items: next });
-
-    items.forEach((it, idx) => {
-      const card = listItemCard(C, 'Boton ' + (idx + 1), {
-        idx, total: items.length,
-        onUp: () => { replaceItems(moveItem(items, idx, idx - 1)); rebuild(); },
-        onDown: () => { replaceItems(moveItem(items, idx, idx + 1)); rebuild(); },
-        onRemove: items.length > 1 ? () => { replaceItems(items.filter((_, i) => i !== idx)); rebuild(); } : null,
+    arr.forEach((it, idx) => {
+      const card = listItemCard(C, campo.item_label + ' ' + (idx + 1), {
+        idx, total: arr.length,
+        onUp: () => { replace(moveItem(arr, idx, idx - 1)); rebuild(); },
+        onDown: () => { replace(moveItem(arr, idx, idx + 1)); rebuild(); },
+        onRemove: arr.length > campo.min ? () => { replace(arr.filter((_, i) => i !== idx)); rebuild(); } : null,
       });
-      const update = (patch) => {
-        const next = items.map((x, i) => i === idx ? { ...x, ...patch } : x);
-        replaceItems(next);
-      };
-      card.body.appendChild(C.textInput('Texto', it.texto || '',
-        v => update({ texto: v }), { maxLength: 80 }));
-      card.body.appendChild(C.urlInput('URL', it.url || '',
-        v => update({ url: v })));
-      card.body.appendChild(C.select('Estilo', it.estilo_visual || 'primary', ESTILO_VISUAL_OPTS,
-        v => update({ estilo_visual: v })));
-      card.body.appendChild(C.select('Icono', it.icono || '', ICONO_OPTS,
-        v => update({ icono: v || undefined })));
-      card.body.appendChild(C.select('Abrir en', it.target || '_self', TARGET_OPTS,
-        v => update({ target: v })));
+      const upd = (patch) => replace(arr.map((x, i) => i === idx ? { ...x, ...patch } : x));
+      campo.item.forEach((sf) => {
+        if (sf.when && it[sf.when.field] !== sf.when.eq) return;
+        if (sf.control === 'text') {
+          card.body.appendChild(C.textInput(sf.label, it[sf.key] || '',
+            v => upd({ [sf.key]: sf.empty_to_undefined ? (v || undefined) : v }), sf.opts || {}));
+        } else if (sf.control === 'url') {
+          card.body.appendChild(C.urlInput(sf.label, it[sf.key] || '', v => upd({ [sf.key]: v }), sf.opts || {}));
+        } else if (sf.control === 'textarea' && sf.transform === 'lines') {
+          card.body.appendChild(C.textarea(sf.label, (Array.isArray(it[sf.key]) ? it[sf.key] : []).join('\n'),
+            v => upd({ [sf.key]: v.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20) }), sf.opts || {}));
+        } else if (sf.control === 'select') {
+          card.body.appendChild(C.select(sf.label, it[sf.key] || '', optList(sf.opts.options),
+            v => { upd({ [sf.key]: sf.empty_to_undefined ? (v || undefined) : v }); if (sf.rebuild_on_change) rebuild(); }));
+        } else if (sf.control === 'switch') {
+          card.body.appendChild(C.switch(sf.label, !!it[sf.key], v => upd({ [sf.key]: v })));
+        }
+      });
       wrap.appendChild(card.root);
     });
 
-    if (items.length < 6) {
-      wrap.appendChild(C.primaryButton('+ Agregar boton', () => {
-        replaceItems(items.concat([{ texto: 'Nuevo boton', url: '#', estilo_visual: 'secondary', target: '_self' }]));
+    if (arr.length < campo.max) {
+      wrap.appendChild(C.primaryButton(campo.add_label, () => {
+        const item = campo.add_default_fn === 'galeria_img'
+          ? { src: 'https://placehold.co/800x800/eee/666?text=' + (arr.length + 1), alt: '' }
+          : structuredClone(campo.add_default);
+        replace(arr.concat([item]));
         rebuild();
       }));
     } else {
-      wrap.appendChild(C.infoBox('Maximo 6 botones por seccion.'));
+      wrap.appendChild(C.infoBox(campo.max_note));
     }
-  }
-
-  // ── Galeria: sub-editor de imagenes (3..12) ──
-  function renderGaleriaProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    const imgs = Array.isArray(p.imagenes) ? p.imagenes : [];
-
-    wrap.appendChild(C.select('Disposicion', p.layout || 'grid', [
-      { v: 'grid', l: 'Grilla uniforme' },
-      { v: 'carrusel', l: 'Carrusel horizontal' },
-      { v: 'mosaico', l: 'Mosaico' },
-    ], v => ES.updateSectionProps(sec.id, { layout: v })));
-    wrap.appendChild(C.select('Espaciado', p.gap || 'normal', [
-      { v: 'tight', l: 'Compacto' }, { v: 'normal', l: 'Normal' }, { v: 'loose', l: 'Aireado' },
-    ], v => ES.updateSectionProps(sec.id, { gap: v })));
-
-    const replaceImgs = (next) => ES.updateSectionProps(sec.id, { imagenes: next });
-
-    imgs.forEach((im, idx) => {
-      const card = listItemCard(C, 'Imagen ' + (idx + 1), {
-        idx, total: imgs.length,
-        onUp: () => { replaceImgs(moveItem(imgs, idx, idx - 1)); rebuild(); },
-        onDown: () => { replaceImgs(moveItem(imgs, idx, idx + 1)); rebuild(); },
-        onRemove: imgs.length > 3 ? () => { replaceImgs(imgs.filter((_, i) => i !== idx)); rebuild(); } : null,
-      });
-      const update = (patch) => {
-        const next = imgs.map((x, i) => i === idx ? { ...x, ...patch } : x);
-        replaceImgs(next);
-      };
-      card.body.appendChild(C.urlInput('URL imagen (https)', im.src || '',
-        v => update({ src: v })));
-      card.body.appendChild(C.textInput('Texto alternativo (alt)', im.alt || '',
-        v => update({ alt: v }), { maxLength: 200 }));
-      wrap.appendChild(card.root);
-    });
-
-    if (imgs.length < 12) {
-      wrap.appendChild(C.primaryButton('+ Agregar imagen', () => {
-        replaceImgs(imgs.concat([{ src: 'https://placehold.co/800x800/eee/666?text=' + (imgs.length + 1), alt: '' }]));
-        rebuild();
-      }));
-    } else {
-      wrap.appendChild(C.infoBox('Maximo 12 imagenes en la galeria.'));
-    }
-    if (imgs.length < 3) {
-      wrap.appendChild(C.infoBox('La galeria necesita al menos 3 imagenes para verse bien.'));
-    }
-  }
-
-  // ── Formulario: titulo + boton + sub-editor de campos (1..8) ──
-  function renderFormularioProps(wrap, sec, C, ES) {
-    const p = sec.props || {};
-    const campos = Array.isArray(p.campos) ? p.campos : [];
-
-    wrap.appendChild(C.textInput('Titulo (opcional)', p.titulo || '',
-      v => ES.updateSectionProps(sec.id, { titulo: v || undefined }), { maxLength: 200 }));
-    wrap.appendChild(C.textInput('Texto del boton', p.boton_texto || 'Enviar',
-      v => ES.updateSectionProps(sec.id, { boton_texto: v }), { maxLength: 80 }));
-
-    const replaceCampos = (next) => ES.updateSectionProps(sec.id, { campos: next });
-
-    campos.forEach((cp, idx) => {
-      const card = listItemCard(C, 'Campo ' + (idx + 1), {
-        idx, total: campos.length,
-        onUp: () => { replaceCampos(moveItem(campos, idx, idx - 1)); rebuild(); },
-        onDown: () => { replaceCampos(moveItem(campos, idx, idx + 1)); rebuild(); },
-        onRemove: campos.length > 1 ? () => { replaceCampos(campos.filter((_, i) => i !== idx)); rebuild(); } : null,
-      });
-      const update = (patch) => {
-        const next = campos.map((x, i) => i === idx ? { ...x, ...patch } : x);
-        replaceCampos(next);
-      };
-      card.body.appendChild(C.textInput('Etiqueta', cp.label || '',
-        v => update({ label: v }), { maxLength: 120 }));
-      card.body.appendChild(C.select('Tipo de campo', cp.tipo_campo || 'text', CAMPO_TIPO_OPTS,
-        v => { update({ tipo_campo: v }); rebuild(); }));
-      card.body.appendChild(C.textInput('Placeholder (opcional)', cp.placeholder || '',
-        v => update({ placeholder: v || undefined }), { maxLength: 200 }));
-      if (cp.tipo_campo === 'select') {
-        const opciones = Array.isArray(cp.opciones) ? cp.opciones : [];
-        card.body.appendChild(C.textarea('Opciones (una por linea)', opciones.join('\n'),
-          v => update({ opciones: v.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20) }),
-          { rows: 3, placeholder: 'Opcion 1\nOpcion 2' }));
-      }
-      card.body.appendChild(C.switch('Requerido', !!cp.requerido,
-        v => update({ requerido: v })));
-      wrap.appendChild(card.root);
-    });
-
-    if (campos.length < 8) {
-      wrap.appendChild(C.primaryButton('+ Agregar campo', () => {
-        replaceCampos(campos.concat([{ tipo_campo: 'text', label: 'Nuevo campo', requerido: false }]));
-        rebuild();
-      }));
-    } else {
-      wrap.appendChild(C.infoBox('Maximo 8 campos en el formulario.'));
+    if (campo.min_note && arr.length < campo.min) {
+      wrap.appendChild(C.infoBox(campo.min_note));
     }
   }
 
   // ============================================================
-  // Helpers de sub-editor de lista
+  // Helpers de sub-editor de lista (sin cambios respecto a v2)
   // ============================================================
   function moveItem(arr, from, to) {
     if (to < 0 || to >= arr.length) return arr.slice();
@@ -429,7 +269,6 @@
     return next;
   }
 
-  // Devuelve { root, body } — root es la tarjeta con cabecera (titulo + mover/quitar).
   function listItemCard(C, title, opts) {
     const body = C.el('div', { class: 'ed-list-item__body' });
     const actions = [];
@@ -457,10 +296,6 @@
 
   function bindStateListeners() {
     const ES = window.TiendaIA.editorState;
-    // Solo reconstruir al cambiar la seleccion. Los cambios de props que origina
-    // el propio inspector NO deben reconstruirlo (perderia el foco del input
-    // mientras se escribe). Los cambios estructurales (agregar/quitar/mover item)
-    // llaman rebuild() explicitamente. Tras undo/redo se limpia selection -> rebuild.
     ES.subscribe('selection', rebuild);
   }
 

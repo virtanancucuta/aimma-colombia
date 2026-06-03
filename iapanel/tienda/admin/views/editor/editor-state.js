@@ -92,69 +92,31 @@
   // ============================================================
   // Factory de props por defecto por tipo (SCHEMA v3)
   // ============================================================
+  function sectionDef(tipo) {
+    return window.TiendaIA.editorSectionDefs.defs[tipo];
+  }
+
+  // Props por defecto DERIVADAS del registro sectionDefs (campo.default por campo).
+  // Fase A.1: fuente unica = section-defs.js (antes era un switch hardcodeado aqui).
   function defaultProps(tipo) {
-    switch (tipo) {
-      case 'banner':
-        return {
-          titulo: 'Tu titulo aqui',
-          subtitulo: 'Una frase corta que describa tu negocio.',
-          boton: { texto: 'Ver productos', url: '#productos', estilo_visual: 'primary', target: '_self', icono: 'arrow' },
-          alineacion: 'left',
-        };
-      case 'texto':
-        return { contenido: 'Escribi aqui tu texto.', alineacion: 'left', tamanio: 'md' };
-      case 'imagen':
-        return { src: 'https://placehold.co/1200x600', alt: 'Imagen', objeto: 'cover' };
-      case 'botones':
-        return {
-          items: [
-            { texto: 'WhatsApp', url: 'https://wa.me/57XXXXXXXXXX', estilo_visual: 'primary', target: '_blank', icono: 'whatsapp' },
-            { texto: 'Ubicacion', url: 'https://maps.google.com', estilo_visual: 'secondary', target: '_blank', icono: 'location' },
-          ],
-        };
-      case 'productos':
-        return { categoria_id: null, limite: 8, orden: 'recientes', columnas: 'auto', mostrar_precio: true };
-      case 'galeria':
-        return {
-          imagenes: [
-            { src: 'https://placehold.co/800x800/eee/666?text=1', alt: 'Imagen 1' },
-            { src: 'https://placehold.co/800x800/eee/666?text=2', alt: 'Imagen 2' },
-            { src: 'https://placehold.co/800x800/eee/666?text=3', alt: 'Imagen 3' },
-          ],
-          layout: 'grid',
-          gap: 'normal',
-        };
-      case 'formulario':
-        return {
-          titulo: 'Escribinos',
-          campos: [
-            { tipo_campo: 'text', label: 'Nombre', requerido: true },
-            { tipo_campo: 'email', label: 'Email', requerido: true },
-            { tipo_campo: 'textarea', label: 'Mensaje', requerido: false },
-          ],
-          boton_texto: 'Enviar',
-        };
-      case 'espacio':
-        return { altura: 'md' };
-      case 'video':
-        return { html: '', aspect_ratio: '16/9' };
-      default:
-        return {};
-    }
+    const def = sectionDef(tipo);
+    if (!def) return {};
+    const props = {};
+    def.campos.forEach((c) => {
+      if (c.__info) return;
+      if (c.default !== undefined) props[c.key] = structuredClone(c.default);
+    });
+    return props;
   }
 
   function defaultPadding(tipo) {
-    if (tipo === 'banner') return 'lg';
-    if (tipo === 'espacio') return 'sm';
-    return 'md';
+    const d = sectionDef(tipo);
+    return d ? d.padding_default : 'md';
   }
 
   function defaultAncho(tipo) {
-    // banner/imagen/galeria/video lucen mejor full-bleed; el resto centrado.
-    if (tipo === 'banner' || tipo === 'imagen' || tipo === 'galeria' || tipo === 'video' || tipo === 'productos') {
-      return 'completo';
-    }
-    return 'contenido';
+    const d = sectionDef(tipo);
+    return d ? d.ancho_default : 'completo';
   }
 
   function createSectionDefault(tipo) {
