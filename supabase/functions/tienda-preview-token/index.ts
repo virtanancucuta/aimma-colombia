@@ -34,13 +34,14 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
-  // Auth JWT
+  // Auth JWT (gateway verify_jwt=true + la funcion revalida via getUser(jwt))
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
+  const jwt = authHeader.replace('Bearer ', '');
   const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data: { user }, error: authErr } = await supabaseUser.auth.getUser();
+  const { data: { user }, error: authErr } = await supabaseUser.auth.getUser(jwt);
   if (authErr || !user) return json({ error: 'unauthorized' }, 401);
 
   // Body
