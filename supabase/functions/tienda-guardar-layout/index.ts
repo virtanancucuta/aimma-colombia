@@ -1,8 +1,9 @@
 // supabase/functions/tienda-guardar-layout/index.ts
 // AIMMA Tienda IA · Editor PRO-MAX · SCHEMA v3
-// verify_jwt=false: la funcion valida el JWT ella misma via getUser() (GoTrue,
-// soporta ES256) + ownership. El gateway con verify_jwt=true rechazaba los
-// tokens ES256 (signing keys asimetricas) -> 'Invalid JWT'.
+// verify_jwt=true: el gateway valida el JWT (defensa en profundidad) y la funcion
+// ADEMAS revalida via getUser(jwt) + ownership. (Fase A.1 revierte el downgrade
+// temporal a false de Fase 0, cuyo diagnostico de "el gateway rechaza ES256"
+// estaba confundido: el fix real fue getUser(jwt), no bajar verify_jwt.)
 //
 // Fase A.1 (dedupe Zod): el schema YA NO se inlinea. Se importa de ./editor-schema.ts,
 // que es un mirror byte-identico de packages/database/src/editor-schema.ts (verificado
@@ -76,7 +77,7 @@ serve(async (req) => {
     return json({ error: 'method_not_allowed' }, 405);
   }
 
-  // 1) Auth JWT (la funcion valida; verify_jwt del gateway en false por ES256)
+  // 1) Auth JWT (gateway verify_jwt=true + la funcion revalida via getUser(jwt))
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
     return json({ error: 'unauthorized' }, 401);
