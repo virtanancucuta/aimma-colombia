@@ -1,0 +1,185 @@
+{
+  "banner": {
+    "id": "sec_GOLDEN",
+    "tipo": "banner",
+    "ancho": "completo",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "lg",
+    "props": {
+      "titulo": "Tu titulo aqui",
+      "subtitulo": "Una frase corta que describa tu negocio.",
+      "boton": {
+        "texto": "Ver productos",
+        "url": "#productos",
+        "estilo_visual": "primary",
+        "target": "_self",
+        "icono": "arrow"
+      },
+      "alineacion": "left"
+    }
+  },
+  "texto": {
+    "id": "sec_GOLDEN",
+    "tipo": "texto",
+    "ancho": "contenido",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "contenido": "Escribi aqui tu texto.",
+      "alineacion": "left",
+      "tamanio": "md"
+    }
+  },
+  "imagen": {
+    "id": "sec_GOLDEN",
+    "tipo": "imagen",
+    "ancho": "completo",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "src": "https://placehold.co/1200x600",
+      "alt": "Imagen",
+      "objeto": "cover"
+    }
+  },
+  "botones": {
+    "id": "sec_GOLDEN",
+    "tipo": "botones",
+    "ancho": "contenido",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "items": [
+        {
+          "texto": "WhatsApp",
+          "url": "https://wa.me/57XXXXXXXXXX",
+          "estilo_visual": "primary",
+          "target": "_blank",
+          "icono": "whatsapp"
+        },
+        {
+          "texto": "Ubicacion",
+          "url": "https://maps.google.com",
+          "estilo_visual": "secondary",
+          "target": "_blank",
+          "icono": "location"
+        }
+      ]
+    }
+  },
+  "productos": {
+    "id": "sec_GOLDEN",
+    "tipo": "productos",
+    "ancho": "completo",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "categoria_id": null,
+      "limite": 8,
+      "orden": "recientes",
+      "columnas": "auto",
+      "mostrar_precio": true
+    }
+  },
+  "galeria": {
+    "id": "sec_GOLDEN",
+    "tipo": "galeria",
+    "ancho": "completo",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "imagenes": [
+        {
+          "src": "https://placehold.co/800x800/eee/666?text=1",
+          "alt": "Imagen 1"
+        },
+        {
+          "src": "https://placehold.co/800x800/eee/666?text=2",
+          "alt": "Imagen 2"
+        },
+        {
+          "src": "https://placehold.co/800x800/eee/666?text=3",
+          "alt": "Imagen 3"
+        }
+      ],
+      "layout": "grid",
+      "gap": "normal"
+    }
+  },
+  "formulario": {
+    "id": "sec_GOLDEN",
+    "tipo": "formulario",
+    "ancho": "contenido",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "titulo": "Escribinos",
+      "campos": [
+        {
+          "tipo_campo": "text",
+          "label": "Nombre",
+          "requerido": true
+        },
+        {
+          "tipo_campo": "email",
+          "label": "Email",
+          "requerido": true
+        },
+        {
+          "tipo_campo": "textarea",
+          "label": "Mensaje",
+          "requerido": false
+        }
+      ],
+      "boton_texto": "Enviar"
+    }
+  },
+  "espacio": {
+    "id": "sec_GOLDEN",
+    "tipo": "espacio",
+    "ancho": "contenido",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "sm",
+    "props": {
+      "altura": "md"
+    }
+  },
+  "video": {
+    "id": "sec_GOLDEN",
+    "tipo": "video",
+    "ancho": "completo",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "html": "",
+      "aspect_ratio": "16/9"
+    }
+  }
+}
