@@ -1,4 +1,9 @@
-/* AIMMA · Tienda IA · views/vista-previa.js · v5 · 2026-05-31
+/* AIMMA · Tienda IA · views/vista-previa.js · v6 · 2026-06-03
+   v6 (fix/preview-cortesia): cache-buster pasa de ?preview= a ?_cb=. El Plan 4
+   le dio a ?preview= el significado de TOKEN efimero (validate_preview_token);
+   un timestamp no es uuid valido -> el storefront respondia 403 "Preview token
+   invalido o expirado". Vista Previa muestra la tienda PUBLICADA (no el draft),
+   asi que usa un param neutro que el storefront ignora.
    v5 (Fase 6 paridad LIVE): la vista previa ahora muestra un <iframe>
    apuntando a la URL real del storefront (<slug>.tienda.aimma.com.co).
    Esto garantiza paridad 100% — el cliente ve EXACTAMENTE lo que vera
@@ -72,8 +77,9 @@
       return;
     }
 
-    // Construir URL del storefront con cache buster
-    const url = 'https://' + tienda.slug + '.' + SUBDOMAIN_BASE + '/?preview=' + Date.now();
+    // Construir URL del storefront con cache buster (param neutro, NO ?preview=
+    // que ahora es un token del editor; ver nota de cabecera v6).
+    const url = 'https://' + tienda.slug + '.' + SUBDOMAIN_BASE + '/?_cb=' + Date.now();
 
     view.innerHTML = renderHeaderHTML(url) + renderIframeHTML(url);
     wireToolbarEvents(tienda);
@@ -132,7 +138,7 @@
       btnRefresh.addEventListener('click', () => {
         const iframe = document.getElementById('vp-iframe');
         if (!iframe) return;
-        const newUrl = 'https://' + tienda.slug + '.' + SUBDOMAIN_BASE + '/?preview=' + Date.now();
+        const newUrl = 'https://' + tienda.slug + '.' + SUBDOMAIN_BASE + '/?_cb=' + Date.now();
         iframe.src = newUrl;
       });
     }
