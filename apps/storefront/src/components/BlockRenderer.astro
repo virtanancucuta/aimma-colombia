@@ -11,28 +11,26 @@
 
 import type { Section } from '@aimma/database';
 
-// Per-template (banner bespoke + botones + formulario)
+// Per-template (banner bespoke + botones). banner es bespoke por diseno; botones
+// queda per-template (geometria/sets de iconos reales, no rinde unificar).
 import BannerIC from '~/components/blocks/hero/HeroIndustrialClean.astro';
 import BotonesIC from '~/components/blocks/botones/BotonesIndustrialClean.astro';
-import FormularioIC from '~/components/blocks/formulario/FormularioIndustrialClean.astro';
 
 import BannerFB from '~/components/blocks/hero/HeroFashionBold.astro';
 import BotonesFB from '~/components/blocks/botones/BotonesFashionBold.astro';
-import FormularioFB from '~/components/blocks/formulario/FormularioFashionBold.astro';
 
 import BannerMA from '~/components/blocks/hero/HeroMinimalArtesanal.astro';
 import BotonesMA from '~/components/blocks/botones/BotonesMinimalArtesanal.astro';
-import FormularioMA from '~/components/blocks/formulario/FormularioMinimalArtesanal.astro';
 
 import BannerEM from '~/components/blocks/hero/HeroEditorialMagazine.astro';
 import BotonesEM from '~/components/blocks/botones/BotonesEditorialMagazine.astro';
-import FormularioEM from '~/components/blocks/formulario/FormularioEditorialMagazine.astro';
 
 // Unificados (Fase A.2): un renderer resuelve la plantilla internamente. 4 archivos -> 1.
 import Productos from '~/components/blocks/productos/Productos.astro';
 import Texto from '~/components/blocks/texto/Texto.astro';
 import Imagen from '~/components/blocks/imagen/Imagen.astro';
 import Galeria from '~/components/blocks/galeria/Galeria.astro';
+import Formulario from '~/components/blocks/formulario/Formulario.astro';
 
 // Agnosticos (sin variante por plantilla)
 import Espacio from '~/components/blocks/espaciador/Espaciador.astro';
@@ -52,12 +50,12 @@ const UNIFIED = {
   texto: Texto,
   imagen: Imagen,
   galeria: Galeria,
+  formulario: Formulario,
 } as const;
 
 const BLOCKS = {
-  banner:     { industrial_clean: BannerIC,     fashion_bold: BannerFB,     minimal_artesanal: BannerMA,     editorial_magazine: BannerEM },
-  botones:    { industrial_clean: BotonesIC,    fashion_bold: BotonesFB,    minimal_artesanal: BotonesMA,    editorial_magazine: BotonesEM },
-  formulario: { industrial_clean: FormularioIC, fashion_bold: FormularioFB, minimal_artesanal: FormularioMA, editorial_magazine: FormularioEM },
+  banner:  { industrial_clean: BannerIC,  fashion_bold: BannerFB,  minimal_artesanal: BannerMA,  editorial_magazine: BannerEM },
+  botones: { industrial_clean: BotonesIC, fashion_bold: BotonesFB, minimal_artesanal: BotonesMA, editorial_magazine: BotonesEM },
 } as const;
 
 function pickBlock(tipo: Section['tipo'], plantillaSlug: string) {

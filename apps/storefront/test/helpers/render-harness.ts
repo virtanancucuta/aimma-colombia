@@ -92,12 +92,13 @@ export async function renderNormalized(
   Component: AstroComponentFactory,
   section: any,
   tienda: any,
-  rows: any[]
+  rows: any[],
+  extraLocals: Record<string, any> = {}
 ): Promise<string> {
   const container = await AstroContainer.create();
-  // locals: any -> el harness inyecta solo lo que el renderer consume (tienda + supabase);
-  // App.Locals real exige tiendaSlug/runtime que el renderer de productos no usa.
-  const locals: any = { tienda, supabase: stubSupabase(rows) };
+  // locals: any -> el harness inyecta solo lo que el renderer consume (tienda + supabase
+  // + extraLocals como tiendaSlug para formulario); App.Locals real exige mas campos.
+  const locals: any = { tienda, supabase: stubSupabase(rows), ...extraLocals };
   const html = await container.renderToString(Component, {
     props: { section },
     locals,

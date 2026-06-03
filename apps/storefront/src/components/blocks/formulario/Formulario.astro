@@ -1,0 +1,501 @@
+---
+// AIMMA Editor PRO-MAX · Formulario · UNIFICADO (Fase A.2) · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// form + honeypot + titulo + map de campos + submit + form-message + handler).
+// El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-form-*) -> selecciona el <style> activo
+//   (b) quirks per-template reproducidos FIEL (no se "arreglan", son deuda Fase B):
+//       - fashion_bold: fallback boton_texto -> 'Enviar'
+//       - minimal_artesanal: <button> sin data-field="boton_texto"
+//       - industrial_clean/editorial_magazine: asterisco de requerido en label de checkbox
+//   (c) FIX inertness: las reglas .form-message{,--success,--error} eran DESNUDAS y
+//       colisionaban al unificar. Se scopean por el padre prefijado .X-form-inner
+//       (el <p class="form-message"> NO cambia -> HTML byte-0; el _FormSubmitHandler,
+//       que hace msgEl.className='form-message ...', queda intacto).
+// Salida HTML BYTE-IDENTICA al per-template viejo (validado por test/formulario.golden.test.ts).
+// Reemplaza Formulario{IndustrialClean,FashionBold,MinimalArtesanal,EditorialMagazine}.astro.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+import FormSubmitHandler from './_FormSubmitHandler.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'formulario' }>).props;
+const { tienda } = Astro.locals;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+// En prod el middleware SIEMPRE setea locals.tiendaSlug (middleware.ts:49), asi que
+// las variantes (?? tienda.slug / || '') de los renderers viejos son equivalentes.
+const tiendaSlug = Astro.locals.tiendaSlug ?? Astro.locals.tienda?.slug ?? '';
+
+// fashion_bold: fallback 'Enviar' si boton_texto vacio (reproducido fiel).
+const botonTexto = plantilla === 'fashion_bold' ? (p.boton_texto || 'Enviar') : p.boton_texto;
+
+// IC/EM formatean labels multilinea (con whitespace) + asterisco en checkbox; FB/MA
+// son compactos (single-line) + checkbox sin asterisco. Se reproduce FIEL por grupo
+// (es inconsistencia de formato source pre-existente, visualmente equivalente).
+const compactLabels = plantilla === 'fashion_bold' || plantilla === 'minimal_artesanal';
+---
+
+<SectionShell section={section}>
+  <form
+    class={`${prefix}-form-inner`}
+    novalidate
+    data-form-section-id={section.id}
+    data-tienda-slug={tiendaSlug}
+  >
+    {/* Honeypot anti-spam (oculto fuera de pantalla) */}
+    <input
+      type="text"
+      name="honeypot"
+      tabindex="-1"
+      autocomplete="off"
+      aria-hidden="true"
+      style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"
+    />
+
+    {p.titulo && (
+      <h3 class={`${prefix}-form-title`} data-field="titulo">{p.titulo}</h3>
+    )}
+
+    {p.campos.map((campo, idx) => {
+      const fieldId = `${section.id}_field_${idx}`;
+      const fieldName = `field_${idx}`;
+
+      if (campo.tipo_campo === 'textarea') {
+        return (
+          <div class={`${prefix}-form-field`}>
+            {compactLabels ? (
+              <label for={fieldId}>{campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
+            ) : (
+              <label for={fieldId}>
+                {campo.label}
+                {campo.requerido && <span class={`${prefix}-required`}>*</span>}
+              </label>
+            )}
+            <textarea
+              id={fieldId}
+              name={fieldName}
+              placeholder={campo.placeholder ?? ''}
+              required={campo.requerido}
+              rows={4}
+            ></textarea>
+          </div>
+        );
+      }
+
+      if (campo.tipo_campo === 'select') {
+        return (
+          <div class={`${prefix}-form-field`}>
+            {compactLabels ? (
+              <label for={fieldId}>{campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
+            ) : (
+              <label for={fieldId}>
+                {campo.label}
+                {campo.requerido && <span class={`${prefix}-required`}>*</span>}
+              </label>
+            )}
+            <select id={fieldId} name={fieldName} required={campo.requerido}>
+              <option value="">{campo.placeholder ?? 'Selecciona...'}</option>
+              {(campo.opciones ?? []).map((opt) => (
+                <option value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+        );
+      }
+
+      if (campo.tipo_campo === 'checkbox') {
+        return (
+          <div class={`${prefix}-form-field ${prefix}-form-field--check`}>
+            <input id={fieldId} name={fieldName} type="checkbox" required={campo.requerido} />
+            {compactLabels ? (
+              <label for={fieldId}>{campo.label}</label>
+            ) : (
+              <label for={fieldId}>
+                {campo.label}
+                {campo.requerido && <span class={`${prefix}-required`}>*</span>}
+              </label>
+            )}
+          </div>
+        );
+      }
+
+      // text / email / tel
+      return (
+        <div class={`${prefix}-form-field`}>
+          {compactLabels ? (
+            <label for={fieldId}>{campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
+          ) : (
+            <label for={fieldId}>
+              {campo.label}
+              {campo.requerido && <span class={`${prefix}-required`}>*</span>}
+            </label>
+          )}
+          <input
+            id={fieldId}
+            name={fieldName}
+            type={campo.tipo_campo}
+            placeholder={campo.placeholder ?? ''}
+            required={campo.requerido}
+          />
+        </div>
+      );
+    })}
+
+    {plantilla === 'minimal_artesanal' ? (
+      <button type="submit" class={`${prefix}-form-submit`}>{botonTexto}</button>
+    ) : (
+      <button type="submit" class={`${prefix}-form-submit`} data-field="boton_texto">
+        {botonTexto}
+      </button>
+    )}
+
+    <p class="form-message" hidden role="status" aria-live="polite"></p>
+  </form>
+
+  <FormSubmitHandler />
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean ===== */
+  .ic-form-inner {
+    max-width: 580px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    font-family: var(--ta-font-body);
+  }
+  .ic-form-title {
+    font-family: var(--ta-font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--ta-color-text-base);
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.02em;
+  }
+  .ic-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .ic-form-field label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ta-color-text-base);
+  }
+  .ic-required {
+    color: #d72c0d;
+    margin-left: 4px;
+  }
+  .ic-form-field input,
+  .ic-form-field textarea,
+  .ic-form-field select {
+    padding: 0.75rem 1rem;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent);
+    border-radius: 2px;
+    background: var(--ta-color-bg-base);
+    color: var(--ta-color-text-base);
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: border-color 200ms;
+  }
+  .ic-form-field input:focus,
+  .ic-form-field textarea:focus,
+  .ic-form-field select:focus {
+    outline: none;
+    border-color: var(--ta-color-primary);
+  }
+  .ic-form-field--check {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .ic-form-field--check input {
+    width: auto;
+    flex: 0 0 auto;
+  }
+  .ic-form-submit {
+    padding: 0.875rem 2rem;
+    background: var(--ta-color-primary);
+    color: var(--ta-color-on-primary);
+    border: none;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 200ms;
+  }
+  .ic-form-submit:hover { opacity: 0.85; }
+  .ic-form-inner .form-message {
+    margin-top: 1rem;
+    padding: 0.875rem 1.125rem;
+    border-radius: 0.375rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+  .ic-form-inner .form-message--success {
+    background: rgba(16, 185, 129, 0.1);
+    color: rgb(6, 95, 70);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .ic-form-inner .form-message--error {
+    background: rgba(239, 68, 68, 0.1);
+    color: rgb(127, 29, 29);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  /* ===== fashion_bold ===== */
+  .fb-form-inner {
+    max-width: 580px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    font-family: var(--ta-font-body);
+  }
+  .fb-form-title {
+    font-family: var(--ta-font-display);
+    text-transform: uppercase;
+    letter-spacing: -0.035em;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 0.92;
+    color: var(--ta-color-text-base);
+    margin: 0 0 0.5rem 0;
+  }
+  .fb-form-field { display: flex; flex-direction: column; gap: 0.5rem; }
+  .fb-form-field label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ta-color-text-base);
+    font-weight: 600;
+  }
+  .fb-required { color: var(--ta-color-accent); margin-left: 4px; }
+  .fb-form-field input,
+  .fb-form-field textarea,
+  .fb-form-field select {
+    padding: 0.875rem 1rem;
+    border: none;
+    border-bottom: 2px solid var(--ta-color-text-base);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ta-color-text-base);
+    font-family: inherit;
+    font-size: 1rem;
+  }
+  .fb-form-field input:focus,
+  .fb-form-field textarea:focus,
+  .fb-form-field select:focus {
+    outline: none;
+    border-bottom-color: var(--ta-color-accent);
+  }
+  .fb-form-field--check { flex-direction: row; align-items: center; gap: 0.5rem; }
+  .fb-form-field--check input { border: 2px solid var(--ta-color-text-base); padding: 0; height: 18px; width: 18px; }
+  .fb-form-submit {
+    padding: 1.125rem 2.75rem;
+    background: var(--ta-color-text-base);
+    color: var(--ta-color-bg-base);
+    border: none;
+    border-radius: 0;
+    font-family: var(--ta-font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .fb-form-submit:hover { opacity: 0.85; }
+  .fb-form-inner .form-message {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .fb-form-inner .form-message--success {
+    background: var(--ta-color-success-bg, rgba(16, 185, 129, 0.08));
+    color: var(--ta-color-success-fg, rgb(6, 95, 70));
+  }
+  .fb-form-inner .form-message--error {
+    background: var(--ta-color-error-bg, rgba(239, 68, 68, 0.08));
+    color: var(--ta-color-error-fg, rgb(127, 29, 29));
+  }
+
+  /* ===== minimal_artesanal ===== */
+  .ma-form-inner {
+    max-width: 580px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    font-family: var(--ta-font-body);
+  }
+  .ma-form-title {
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 48;
+    letter-spacing: -0.018em;
+    font-size: 2rem;
+    line-height: 1.18;
+    color: var(--ta-color-text-base);
+    margin: 0 0 0.5rem 0;
+  }
+  .ma-form-field { display: flex; flex-direction: column; gap: 0.5rem; }
+  .ma-form-field label {
+    font-size: 0.8125rem;
+    color: var(--ta-color-text-base);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .ma-required { color: var(--ta-color-accent); margin-left: 4px; }
+  .ma-form-field input,
+  .ma-form-field textarea,
+  .ma-form-field select {
+    padding: 0.875rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--ta-color-text-base) 15%, transparent);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ta-color-text-base);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: border-color 200ms ease-out;
+  }
+  .ma-form-field input:focus,
+  .ma-form-field textarea:focus,
+  .ma-form-field select:focus {
+    outline: none;
+    border-color: var(--ta-color-accent);
+  }
+  .ma-form-field--check { flex-direction: row; align-items: center; gap: 0.5rem; }
+  .ma-form-field--check input { border: 1px solid var(--ta-color-text-base); padding: 0; height: 18px; width: 18px; border-radius: 2px; }
+  .ma-form-submit {
+    padding: 0.875rem 2.25rem;
+    background: var(--ta-color-text-base);
+    color: var(--ta-color-bg-base);
+    border: none;
+    border-radius: 999px;
+    font-family: var(--ta-font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    align-self: flex-start;
+    transition: opacity 300ms ease-out;
+  }
+  .ma-form-submit:hover { opacity: 0.85; }
+  .ma-form-inner .form-message {
+    margin-top: 1.25rem;
+    padding: 0.875rem 1.5rem;
+    border-radius: 999px;
+    font-size: 0.9375rem;
+    font-family: var(--ta-font-body, inherit);
+    font-style: italic;
+    text-align: center;
+  }
+  .ma-form-inner .form-message--success { background: rgba(16,185,129,0.08); color: rgb(6,95,70); }
+  .ma-form-inner .form-message--error   { background: rgba(239,68,68,0.08); color: rgb(127,29,29); }
+
+  /* ===== editorial_magazine ===== */
+  .em-form-inner {
+    max-width: 580px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    font-family: var(--ta-font-body);
+  }
+  .em-form-title {
+    font-family: var(--ta-font-display);
+    font-weight: 300;
+    letter-spacing: -0.012em;
+    font-size: 2.25rem;
+    line-height: 1.05;
+    color: var(--ta-color-text-base);
+    margin: 0 0 0.5rem 0;
+  }
+  .em-form-title :global(span),
+  .em-form-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ta-color-accent);
+  }
+  .em-form-field { display: flex; flex-direction: column; gap: 0.5rem; }
+  .em-form-field label {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    color: var(--ta-color-text-base);
+    font-weight: 500;
+    font-family: var(--ta-font-body);
+  }
+  .em-required { color: var(--ta-color-accent); margin-left: 4px; }
+  .em-form-field input,
+  .em-form-field textarea,
+  .em-form-field select {
+    padding: 0.75rem 0;
+    border: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--ta-color-text-base) 25%, transparent);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ta-color-text-base);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: border-color 200ms;
+  }
+  .em-form-field input:focus,
+  .em-form-field textarea:focus,
+  .em-form-field select:focus {
+    outline: none;
+    border-bottom-color: var(--ta-color-accent);
+  }
+  .em-form-field--check { flex-direction: row; align-items: center; gap: 0.5rem; }
+  .em-form-field--check input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    border: 1px solid var(--ta-color-text-base);
+    padding: 0;
+  }
+  .em-form-submit {
+    padding: 1rem 2rem;
+    background: var(--ta-color-accent);
+    color: var(--ta-color-bg-base);
+    border: none;
+    border-radius: 0;
+    font-family: var(--ta-font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    align-self: flex-start;
+    transition: opacity 200ms;
+  }
+  .em-form-submit:hover { opacity: 0.88; }
+  .em-form-inner .form-message {
+    margin-top: 1rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: 0;
+    font-size: 0.9375rem;
+    font-family: var(--ta-font-display, inherit);
+    font-weight: 300;
+    border-left: 2px solid currentColor;
+  }
+  .em-form-inner .form-message--success { color: rgb(6,95,70); background: rgba(16,185,129,0.05); }
+  .em-form-inner .form-message--error   { color: rgb(127,29,29); background: rgba(239,68,68,0.05); }
+</style>
