@@ -260,7 +260,7 @@ serve(async (req) => {
   const supabaseSvc = createClient(SUPABASE_URL, SERVICE_ROLE);
   const { data: tienda, error: tErr } = await supabaseSvc
     .from('tiendas')
-    .select('id, user_id, slug, subdominio, personalizaciones')
+    .select('id, user_id, slug, personalizaciones')
     .eq('id', body.tienda_id)
     .single();
   if (tErr || !tienda) {
@@ -307,9 +307,9 @@ serve(async (req) => {
     return json({ error: 'upsert_failed' }, 500);
   }
 
-  // 8) Si publish, invalidate KV best-effort
-  if (body.mode === 'publish' && tienda.subdominio) {
-    invalidateKV(tienda.subdominio).catch((e) =>
+  // 8) Si publish, invalidate KV best-effort (slug = subdominio del storefront)
+  if (body.mode === 'publish' && tienda.slug) {
+    invalidateKV(tienda.slug).catch((e) =>
       console.error('kv_invalidate_async_failed', String(e))
     );
   }

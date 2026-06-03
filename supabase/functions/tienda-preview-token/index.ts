@@ -56,7 +56,7 @@ serve(async (req) => {
   const svc = createClient(SUPABASE_URL, SERVICE_ROLE);
   const { data: tienda, error: tErr } = await svc
     .from('tiendas')
-    .select('id, user_id, subdominio, slug')
+    .select('id, user_id, slug')
     .eq('id', body.tienda_id)
     .single();
   if (tErr || !tienda) return json({ error: 'tienda_not_found' }, 404);
@@ -74,7 +74,8 @@ serve(async (req) => {
     return json({ error: 'token_failed' }, 500);
   }
 
-  const slug = tienda.subdominio || tienda.slug;
+  // El subdominio del storefront es el slug de la tienda (<slug>.tienda.aimma.com.co).
+  const slug = tienda.slug;
   return json({
     token: tok.token,
     expires_at: tok.expires_at,

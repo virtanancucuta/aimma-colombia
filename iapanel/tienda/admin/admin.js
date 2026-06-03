@@ -403,6 +403,21 @@
     // Plan 3: cache de sesion sincrono para editor.js y otras views
     _lastSession: null,
     getSession: () => window.TiendaIA._lastSession,
+    // fix/preview-cortesia: token FRESCO garantizado para llamadas a Edge Functions.
+    // getSession() devuelve un cache sincrono (_lastSession) que puede estar vencido o
+    // ser previo a un refresh -> las EFs lo rechazan con 401. getAccessToken() fuerza
+    // supabase.auth.getSession(), que valida expiracion y refresca el token si hace falta.
+    // Si el refresh falla (refresh token invalido), devuelve null y el caller degrada
+    // pidiendo recargar la pagina (re-login), sin mandar un token muerto a la EF.
+    getAccessToken: async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        return data?.session?.access_token || null;
+      } catch (e) {
+        console.error('[getAccessToken] error', e);
+        return null;
+      }
+    },
   };
 
   // ============================================================

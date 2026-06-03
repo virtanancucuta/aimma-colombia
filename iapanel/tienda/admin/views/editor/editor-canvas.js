@@ -59,8 +59,10 @@
     const ES = window.TiendaIA.editorState;
     setStatus('Cargando vista previa de tu tienda...', false);
     try {
-      const session = window.TiendaIA?.getSession && window.TiendaIA.getSession();
-      const token = session?.access_token;
+      // fix/preview-cortesia: token fresco (auto-refresh) en vez del cache sincrono stale.
+      const token = window.TiendaIA?.getAccessToken
+        ? await window.TiendaIA.getAccessToken()
+        : null;
       if (!token) {
         setStatus('No pudimos validar tu sesion. Recarga la pagina e intenta de nuevo.', true);
         return;

@@ -229,8 +229,10 @@
   }
 
   async function callEF(body) {
-    const session = window.TiendaIA?.getSession && window.TiendaIA.getSession();
-    const token = session?.access_token;
+    // fix/preview-cortesia: token fresco (auto-refresh) en vez del cache sincrono stale.
+    const token = window.TiendaIA?.getAccessToken
+      ? await window.TiendaIA.getAccessToken()
+      : null;
     if (!token) {
       console.error('callEF: sin token');
       return { error: 'unauthorized' };
