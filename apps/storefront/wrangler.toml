@@ -34,3 +34,7 @@ PUBLIC_SUBDOMAIN_BASE = "tienda.aimma.com.co"
 PUBLIC_SUPABASE_URL = "https://rsmxklkxqsaptchcjszd.supabase.co"
 PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_VKKJmeQ6SVszVdD422h3qQ_KkDPeLH1"
 PUBLIC_SITE_BASE = "https://tienda.aimma.com.co"
+# Gate de Cloudflare Image Resizing (/cdn-cgi/image/) en OptimizedImage. "false" =>
+# sirve la URL cruda de Supabase (la feature NO esta habilitada en la zona -> daria 404).
+# Para reactivar: habilitar Image Resizing en la zona + poner "true" aqui + redeploy.
+CF_IMAGE_RESIZING = "false"

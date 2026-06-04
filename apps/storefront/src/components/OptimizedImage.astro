@@ -1,13 +1,15 @@
 ---
-// AIMMA Storefront · OptimizedImage.astro · 2026-05-31
-// Wrapper de <img> que usa Cloudflare Image Resizing via URL pattern
-// /cdn-cgi/image/<options>/<source-url> cuando la URL es absoluta.
+// AIMMA Storefront · OptimizedImage.astro · 2026-05-31 (img-fix 2026-06-03)
+// Wrapper de <img>. Por DEFAULT sirve la URL CRUDA de la imagen (sin transform).
 //
-// En dev local sin proxy Cloudflare, sirve la URL original (no optimiza).
-// En produccion detras de aimma.com.co, Cloudflare resizing aplica.
-//
-// Devuelve srcset responsive auto + format=auto (negocia WebP/AVIF segun
-// Accept header del cliente).
+// Cloudflare Image Resizing (/cdn-cgi/image/<options>/<source-url>) esta DESACTIVADO
+// por default: requiere la feature habilitada en la zona Cloudflare (Pro+), que hoy NO
+// lo esta -> esos paths dan 404 (imagenes rotas). Por eso el wrapper queda detras del
+// flag CF_IMAGE_RESIZING (env, default false). Para reactivarlo:
+//   1) habilitar Image Resizing en la zona aimma.com.co (Cloudflare dashboard), y
+//   2) setear CF_IMAGE_RESIZING="true" (wrangler.toml [vars] o `wrangler secret put`).
+// Con el flag ON: srcset responsive + format=auto (negocia WebP/AVIF). Con OFF: URL cruda.
+// cfImage() es el UNICO lugar donde se construye la URL de imagen.
 
 interface Props {
   src: string;
@@ -31,13 +33,13 @@ const {
   transitionName,
 } = Astro.props;
 
-// Cloudflare Image Resizing pattern. Solo aplica si:
-//   1) src es URL absoluta (http/https)
-//   2) estamos en host bajo aimma.com.co (CF proxy activo)
-//
-// En SSR podemos detectar el host:
+// Cloudflare Image Resizing pattern. Solo aplica si las TRES condiciones:
+//   1) flag CF_IMAGE_RESIZING="true" (la feature esta habilitada en la zona)
+//   2) src es URL absoluta (http/https)
+//   3) estamos en host bajo aimma.com.co (CF proxy activo)
+const cfResizing = Astro.locals.runtime?.env?.CF_IMAGE_RESIZING === 'true';
 const host = Astro.request.headers.get('host') || '';
-const cfActive = host.endsWith('aimma.com.co');
+const cfActive = cfResizing && host.endsWith('aimma.com.co');
 
 function cfImage(srcUrl: string, w: number, quality = 85): string {
   if (!cfActive || !srcUrl.startsWith('http')) return srcUrl;

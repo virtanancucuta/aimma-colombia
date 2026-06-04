@@ -12,6 +12,9 @@ interface Env {
   HTML_CACHE?: KVNamespace;
   PUBLIC_SUBDOMAIN_BASE: string;
   INVALIDATE_SECRET?: string;
+  // Gate de Cloudflare Image Resizing (/cdn-cgi/image/). "true" solo si la feature
+  // esta habilitada en la zona; default ausente/"false" -> OptimizedImage sirve URL cruda.
+  CF_IMAGE_RESIZING?: string;
 }
 
 declare global {
