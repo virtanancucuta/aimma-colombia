@@ -44,3 +44,23 @@ describe('Texto unificado == snapshot', () => {
     }
   }
 });
+
+const CONTENIDO_HTML =
+  '<b>Negrita</b> y <a href="https://aimma.com.co">enlace</a>.<ul><li>Punto uno</li><li>Punto dos</li></ul>';
+
+describe('Texto rich-text (set:html) == snapshot', () => {
+  for (const slug of TEMPLATES) {
+    test(`${slug} · html-md-left`, async () => {
+      const section = makeSection('texto', {
+        contenido: CONTENIDO_HTML,
+        alineacion: 'left',
+        tamanio: 'md',
+      });
+      const tienda = makeTienda(slug);
+      const html = await renderNormalized(Texto, section, tienda, []);
+      await expect(html).toMatchFileSnapshot(
+        fileURLToPath(new URL(`./__snapshots__/texto/${slug}__html-md-left.html`, import.meta.url))
+      );
+    });
+  }
+});
