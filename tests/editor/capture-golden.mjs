@@ -11,7 +11,7 @@ mkdirSync(GOLD, { recursive: true });
 
 const TIPOS = ['banner', 'texto', 'imagen', 'botones', 'productos', 'galeria', 'formulario', 'espacio', 'video'];
 
-const win = bootWindow(['editor-controls.js', 'editor-state.js', 'editor-inspector.js']);
+const win = bootWindow(['editor-controls.js', 'section-defs.js', 'editor-state.js', 'editor-inspector.js']);
 const T = win.TiendaIA;
 
 const norm = (h) => h.replace(/sec_[a-z0-9]{4,}/g, 'sec_X').trim();

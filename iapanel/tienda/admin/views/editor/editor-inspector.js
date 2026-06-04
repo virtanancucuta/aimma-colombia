@@ -162,6 +162,10 @@
         wrap.appendChild(C.urlInput(campo.label, p[campo.key] || '',
           v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
         break;
+      case 'image':
+        wrap.appendChild(C.imagePicker(campo.label, p[campo.key] || '',
+          v => setProp(ES, sec, campo.key, v, campo), { ...(campo.opts || {}), tiendaId: ES.tienda_id }));
+        break;
       case 'select':
         wrap.appendChild(C.select(campo.label, selectCurrent(p, campo), optList(campo.opts.options),
           v => setProp(ES, sec, campo.key, campo.empty_to_undefined ? (v || undefined) : v, campo)));

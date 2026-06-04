@@ -71,7 +71,7 @@
       context: null, render_strategy: 'unified',
       ancho_default: 'completo', padding_default: 'md',
       campos: [
-        { key: 'src', control: 'url', label: 'URL imagen (https)', default: 'https://placehold.co/1200x600', opts: { placeholder: 'https://...' } },
+        { key: 'src', control: 'image', label: 'Imagen', default: 'https://placehold.co/1200x600' },
         { key: 'alt', control: 'text', label: 'Texto alternativo (alt)', default: 'Imagen', opts: { maxLength: 200 } },
         { key: 'objeto', control: 'select', label: 'Ajuste', default: 'cover', opts: { options: 'OBJETO' } },
         { key: 'aspect_ratio', control: 'select', label: 'Proporcion', default: undefined, optional: true, opts: { options: 'ASPECT_IMG' }, empty_to_undefined: true },

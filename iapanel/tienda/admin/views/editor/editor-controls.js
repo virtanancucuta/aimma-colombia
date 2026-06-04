@@ -155,6 +155,37 @@
     return fieldWrapper(label, wrap, errorEl);
   }
 
+  // image-picker (Fase B-controles): preview + boton que abre editorModalImage
+  // (browse Storage + upload). El VALOR es una URL https (mismo shape que urlInput
+  // -> Clase A: sin cambio de Zod/storefront). NO llama supabase en el render (solo
+  // el modal, en el click) para que el inspector renderee sin cliente (tests jsdom).
+  function imagePicker(label, value, onChange, opts) {
+    opts = opts || {};
+    const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
+    const preview = el('div', { class: 'ed-imgpicker__preview' });
+    const renderPreview = (url) => {
+      preview.innerHTML = '';
+      preview.appendChild(url
+        ? el('img', { class: 'ed-imgpicker__thumb', src: url, alt: '' })
+        : el('span', { class: 'ed-imgpicker__empty' }, 'Sin imagen'));
+    };
+    renderPreview(value);
+    const btn = el('button', {
+      type: 'button',
+      class: 'ed-btn ed-btn--secondary ed-imgpicker__btn',
+      onClick: () => {
+        const modal = window.TiendaIA && window.TiendaIA.editorModalImage;
+        if (!modal) return;
+        modal.open({ tiendaId: opts.tiendaId }, (url) => {
+          renderPreview(url);
+          btn.textContent = 'Cambiar imagen';
+          onChange(url);
+        });
+      },
+    }, value ? 'Cambiar imagen' : 'Elegir o subir imagen');
+    return fieldWrapper(label, el('div', { class: 'ed-imgpicker' }, [preview, btn]), errorEl);
+  }
+
   function slider(label, value, min, max, step, onChange) {
     const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
     const wrap = el('div', { class: 'ed-ctrl__slider-wrap' });
@@ -234,7 +265,7 @@
   window.TiendaIA.editorControls = {
     textInput, textarea, urlInput,
     select: selectCtrl,
-    colorPicker, slider,
+    colorPicker, imagePicker, slider,
     switch: switchCtrl,
     headerLabel, primaryButton, dangerButton, collapsibleSection, infoBox,
     ALIGN_OPTIONS,

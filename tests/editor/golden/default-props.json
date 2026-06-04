@@ -11,14 +11,14 @@
     "props": {
       "titulo": "Tu titulo aqui",
       "subtitulo": "Una frase corta que describa tu negocio.",
+      "alineacion": "left",
       "boton": {
         "texto": "Ver productos",
         "url": "#productos",
         "estilo_visual": "primary",
         "target": "_self",
         "icono": "arrow"
-      },
-      "alineacion": "left"
+      }
     }
   },
   "texto": {
@@ -106,6 +106,8 @@
     },
     "padding": "md",
     "props": {
+      "layout": "grid",
+      "gap": "normal",
       "imagenes": [
         {
           "src": "https://placehold.co/800x800/eee/666?text=1",
@@ -119,9 +121,7 @@
           "src": "https://placehold.co/800x800/eee/666?text=3",
           "alt": "Imagen 3"
         }
-      ],
-      "layout": "grid",
-      "gap": "normal"
+      ]
     }
   },
   "formulario": {
@@ -135,6 +135,7 @@
     "padding": "md",
     "props": {
       "titulo": "Escribinos",
+      "boton_texto": "Enviar",
       "campos": [
         {
           "tipo_campo": "text",
@@ -151,8 +152,7 @@
           "label": "Mensaje",
           "requerido": false
         }
-      ],
-      "boton_texto": "Enviar"
+      ]
     }
   },
   "espacio": {
