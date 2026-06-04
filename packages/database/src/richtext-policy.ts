@@ -1,7 +1,9 @@
 // AIMMA Editor PRO-MAX · B-controles #4 rich-text · Politica canonica lib-agnostica.
-// UNA fuente de verdad para la allowlist. Dos adaptadores: sanitize-html (EF autoritativa)
-// y DOMPurify (storefront defensa en profundidad + admin best-effort). Mirror byte-identico
-// en supabase/functions/tienda-guardar-layout/richtext-policy.ts (sync-test 10).
+// UNA fuente de verdad para la allowlist. UN solo adaptador: toSanitizeHtml, usado por la EF
+// (autoritativa) Y el storefront (defensa en profundidad). DOMPurify NO corre en el runtime del
+// Worker (ni en Deno) -> ambas capas usan sanitize-html. El admin client-side usa DOMPurify-CDN en
+// el navegador (donde SI funciona) como best-effort UX, con su propio mirror browser (no este archivo).
+// Mirror byte-identico en supabase/functions/tienda-guardar-layout/richtext-policy.ts (sync-test 10).
 // NO importa ninguna lib (datos + funciones puras) -> Deno-compatible + bundleable por Vite.
 
 export const RICHTEXT_POLICY = {
@@ -24,20 +26,6 @@ export function toSanitizeHtml(policy = RICHTEXT_POLICY) {
     allowedSchemes: [...policy.schemes],
     allowProtocolRelative: policy.allowProtocolRelative,
     disallowedTagsMode: 'discard' as const,
-  };
-}
-
-// Adaptador DOMPurify (storefront + admin). ALLOWED_ATTR es global; como href solo aplica a <a>
-// y solo <a> esta en ALLOWED_TAGS, equivale al por-tag de sanitize-html. URI solo https/mailto/tel.
-export function toDOMPurify(policy = RICHTEXT_POLICY) {
-  const attrs = [...new Set(Object.values(policy.attrs).flat())];
-  return {
-    ALLOWED_TAGS: [...policy.tags],
-    ALLOWED_ATTR: attrs,
-    ALLOWED_URI_REGEXP: new RegExp('^(' + policy.schemes.join(':|') + ':)', 'i'),
-    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'svg', 'math'],
-    FORBID_ATTR: ['style', 'class', 'id', 'target'],
-    ALLOW_DATA_ATTR: false,
   };
 }
 

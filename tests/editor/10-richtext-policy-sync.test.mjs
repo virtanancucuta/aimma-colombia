@@ -3,27 +3,20 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RICHTEXT_POLICY, toSanitizeHtml, toDOMPurify } from '../../packages/database/src/richtext-policy.ts';
+import { RICHTEXT_POLICY, toSanitizeHtml } from '../../packages/database/src/richtext-policy.ts';
 import { bootWindow } from './harness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-// Fidelidad: ambos adaptadores derivan FIELMENTE del canonico -> atrapa drift en cualquiera.
+// Fidelidad: UN solo adaptador (toSanitizeHtml) deriva FIELMENTE del canonico. Lo usan la EF
+// (autoritativa) Y el storefront (defensa en profundidad), ambos con sanitize-html. DOMPurify
+// no corre en Worker/Deno -> no hay toDOMPurify en el canonico (el admin tiene el suyo en browser).
 test('policy-sync: toSanitizeHtml deriva del canonico', () => {
   const a = toSanitizeHtml(RICHTEXT_POLICY);
   assert.deepEqual(a.allowedTags, RICHTEXT_POLICY.tags, 'allowedTags != policy.tags');
   assert.deepEqual(a.allowedAttributes, RICHTEXT_POLICY.attrs, 'allowedAttributes != policy.attrs');
   assert.deepEqual(a.allowedSchemes, RICHTEXT_POLICY.schemes, 'allowedSchemes != policy.schemes');
   assert.equal(a.disallowedTagsMode, 'discard');
-});
-
-test('policy-sync: toDOMPurify deriva del canonico', () => {
-  const d = toDOMPurify(RICHTEXT_POLICY);
-  assert.deepEqual(d.ALLOWED_TAGS, RICHTEXT_POLICY.tags, 'ALLOWED_TAGS != policy.tags');
-  assert.deepEqual(d.ALLOWED_ATTR, ['href'], 'ALLOWED_ATTR != uniq(flatten(attrs))');
-  assert.equal(d.ALLOWED_URI_REGEXP.source, '^(https:|mailto:|tel:)', 'regex de schemes drifteo');
-  assert.equal(d.ALLOWED_URI_REGEXP.flags, 'i');
-  assert.equal(d.ALLOW_DATA_ATTR, false);
 });
 
 test('policy-sync: EF richtext-policy.ts es mirror byte-identico del canonico', () => {
@@ -33,23 +26,21 @@ test('policy-sync: EF richtext-policy.ts es mirror byte-identico del canonico', 
     'la copia del EF drifteo. Re-sincronizar: cp packages/database/src/richtext-policy.ts supabase/functions/tienda-guardar-layout/richtext-policy.ts');
 });
 
-test('policy-sync: el mirror JS del admin coincide en valores con el canonico', () => {
+test('policy-sync: el mirror JS del admin (POLICY) coincide en valores con el canonico', () => {
   const win = bootWindow(['richtext-policy.js']);
   const P = win.TiendaIA.richtextPolicy;
   assert.ok(P, 'window.TiendaIA.richtextPolicy no existe');
+  // La POLICY del admin (la parte de seguridad) DEBE coincidir con el canonico.
   assert.deepEqual(P.POLICY.tags, RICHTEXT_POLICY.tags, 'tags del admin difieren');
   assert.deepEqual(P.POLICY.attrs, RICHTEXT_POLICY.attrs, 'attrs del admin difieren');
   assert.deepEqual(P.POLICY.schemes, RICHTEXT_POLICY.schemes, 'schemes del admin difieren');
-  // El adaptador DOMPurify del admin == el canonico (campo por campo; RegExp por source/flags).
+  // El admin usa DOMPurify-CDN en el navegador (best-effort UX). Su toDOMPurify NO se compara
+  // contra un canonico (ya no existe) sino que debe ser auto-consistente con SU propia POLICY.
   const adm = P.toDOMPurify();
-  const can = toDOMPurify(RICHTEXT_POLICY);
-  assert.deepEqual(adm.ALLOWED_TAGS, can.ALLOWED_TAGS);
-  assert.deepEqual(adm.ALLOWED_ATTR, can.ALLOWED_ATTR);
-  assert.equal(adm.ALLOWED_URI_REGEXP.source, can.ALLOWED_URI_REGEXP.source);
-  assert.equal(adm.ALLOWED_URI_REGEXP.flags, can.ALLOWED_URI_REGEXP.flags);
-  assert.deepEqual(adm.FORBID_TAGS, can.FORBID_TAGS);
-  assert.deepEqual(adm.FORBID_ATTR, can.FORBID_ATTR);
-  assert.equal(adm.ALLOW_DATA_ATTR, can.ALLOW_DATA_ATTR);
+  assert.deepEqual(adm.ALLOWED_TAGS, P.POLICY.tags, 'admin toDOMPurify.ALLOWED_TAGS != su POLICY.tags');
+  assert.deepEqual(adm.ALLOWED_ATTR, ['href'], 'admin ALLOWED_ATTR != href');
+  assert.equal(adm.ALLOWED_URI_REGEXP.source, '^(https:|mailto:|tel:)', 'admin regex de schemes drifteo');
+  assert.equal(adm.ALLOW_DATA_ATTR, false);
 });
 
 test('richtext: el control renderea un contenteditable con el valor y toolbar', () => {

@@ -1,13 +1,13 @@
 ---
 // AIMMA Storefront · /legales/[tipo] · 2026-05-31
 // Paginas legales (Garantias / Datos / Contacto). Render desde tabla
-// paginas_legales con DOMPurify sanitization para campo contenido_html.
+// paginas_legales con sanitize-html sanitization para campo contenido_html.
 //
 // La tabla guarda tanto contenido_html (legacy) como secciones (jsonb v3.7.b).
 // Preferimos secciones si existen.
 
 import Layout from '~/layouts/Layout.astro';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 import { getPaginaLegal } from '~/lib/catalogo';
 
 const TIPOS_VALIDOS = ['garantias', 'datos', 'contacto'] as const;
@@ -37,9 +37,12 @@ const secciones: Seccion[] = Array.isArray(pagina?.secciones)
   : [];
 
 // Sanitizar HTML legacy (campo contenido_html). Solo si no hay secciones.
+// sanitize-html (defaults = set amplio de HTML seguro: encabezados/parrafos/listas/enlaces/negrita,
+// strip de script/style/iframe/on*). DOMPurify NO corre en el runtime del Worker -> sanitize-html.
+// Es un set MAS permisivo que el rich-text de texto.contenido (paginas legales necesitan h2/h3/etc.).
 const contenidoHtmlSafe =
   secciones.length === 0 && pagina?.contenido_html
-    ? DOMPurify.sanitize(pagina.contenido_html, { USE_PROFILES: { html: true } })
+    ? sanitizeHtml(pagina.contenido_html)
     : null;
 
 const ultimaActualiz = pagina?.ultima_actualiz

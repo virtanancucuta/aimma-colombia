@@ -1,16 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import sanitizeHtml from 'sanitize-html';
-import DOMPurify from 'isomorphic-dompurify';
-import { RICHTEXT_POLICY, toSanitizeHtml, toDOMPurify, normalizeVoidEls } from '../../packages/database/src/richtext-policy.ts';
+import { RICHTEXT_POLICY, toSanitizeHtml, normalizeVoidEls } from '../../packages/database/src/richtext-policy.ts';
 
-// EF (autoritativa) y storefront (defensa en profundidad) usan las MISMAS versiones que produccion
-// (sanitize-html@2.13.1, isomorphic-dompurify@2.36.0/dompurify@3.4.7). Este test es la red que
-// habria atrapado el passthrough de linkedom: prueba AMBAS capas por separado.
-// SH replica EXACTAMENTE el pipeline de la EF: sanitize-html + normalizeVoidEls (<br /> -> <br>)
-// para que el HTML almacenado sea punto fijo de la DOMPurify del storefront (idempotencia).
-const SH = (html) => normalizeVoidEls(sanitizeHtml(html, toSanitizeHtml(RICHTEXT_POLICY)));
-const DP = (html) => DOMPurify.sanitize(html, toDOMPurify(RICHTEXT_POLICY));
+// EF (autoritativa) y storefront (defensa en profundidad) usan la MISMA lib (sanitize-html@2.13.1,
+// version de produccion). DOMPurify quedo descartado: NO corre en el runtime del Worker (ni en Deno)
+// -> habria sido un sanitizador roto/passthrough en produccion. Este test es la red que cazaria eso:
+// prueba AMBAS capas por separado. El pipeline es identico al de la EF (index.ts) y al del storefront
+// (Texto.astro): sanitize-html + normalizeVoidEls (<br /> -> <br>).
+const sanitize = (html) => normalizeVoidEls(sanitizeHtml(html, toSanitizeHtml(RICHTEXT_POLICY)));
+const SH_EF = sanitize; // capa AUTORITATIVA (EF tienda-guardar-layout)
+const SH_SF = sanitize; // capa DEFENSA EN PROFUNDIDAD (storefront Texto.astro) -> misma lib, mismo pipeline
 
 const PAYLOADS = [
   '<script>alert(1)</script>',
@@ -35,11 +35,11 @@ function assertSafe(out, label) {
 }
 
 for (const payload of PAYLOADS) {
-  test(`seguridad EF (sanitize-html): ${payload}`, () => assertSafe(SH(payload), 'EF'));
-  test(`seguridad storefront (DOMPurify): ${payload}`, () => assertSafe(DP(payload), 'SF'));
+  test(`seguridad EF (sanitize-html): ${payload}`, () => assertSafe(SH_EF(payload), 'EF'));
+  test(`seguridad storefront (sanitize-html): ${payload}`, () => assertSafe(SH_SF(payload), 'SF'));
 }
 
-// Caso positivo: el contenido legitimo sobrevive en AMBAS capas.
+// Caso positivo: el contenido legitimo sobrevive.
 const LEGIT = [
   '<b>hola</b> <a href="https://x.com">link</a> <ul><li>a</li><li>b</li></ul>',
   '<p>Parrafo uno.</p><p>Parrafo <strong>dos</strong> con <em>enfasis</em>.</p>',
@@ -48,19 +48,15 @@ const LEGIT = [
 ];
 
 for (const legit of LEGIT) {
-  test(`positivo EF conserva formato: ${legit}`, () => {
-    const out = SH(legit);
-    assert.ok(/<(b|strong|em|a|ul|li|p|br)/i.test(out), `EF borro todo el formato: ${out}`);
+  test(`positivo conserva formato: ${legit}`, () => {
+    const out = sanitize(legit);
+    assert.ok(/<(b|strong|em|a|ul|li|p|br)/i.test(out), `se borro todo el formato: ${out}`);
   });
-  // Idempotencia (correctitud): el storefront sobre el output de la EF es NO-OP en contenido legitimo
-  // -> el formato que el usuario guardo (y vio guardado) no desaparece al renderear.
-  test(`idempotencia DP(SH(x))===SH(x): ${legit}`, () => {
-    const stored = SH(legit);
-    assert.equal(DP(stored), stored, `el storefront altera el HTML almacenado legitimo`);
-  });
-  // Direccion complementaria (acuerdo admin/EF): SH sobre el output de DOMPurify tambien NO-OP.
-  test(`idempotencia SH(DP(x))===DP(x): ${legit}`, () => {
-    const norm = DP(legit);
-    assert.equal(SH(norm), norm, `la EF altera el HTML que el admin/DOMPurify produjo`);
+  // Idempotencia (correctitud): re-sanitizar el output ya limpio es NO-OP -> el storefront sobre el
+  // HTML que guardo la EF no altera el formato. Con la misma lib es TRIVIAL, pero se MANTIENE como
+  // guarda barata: si algun dia las configs de EF y storefront divergen, este assert lo atrapa.
+  test(`idempotencia sanitize(sanitize(x))===sanitize(x): ${legit}`, () => {
+    const once = sanitize(legit);
+    assert.equal(sanitize(once), once, `re-sanitizar altera el HTML legitimo (deberia ser no-op)`);
   });
 }

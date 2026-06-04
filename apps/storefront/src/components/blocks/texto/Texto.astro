@@ -10,8 +10,8 @@
 
 import type { Section } from '@aimma/database';
 import SectionShell from '~/components/blocks/_SectionShell.astro';
-import DOMPurify from 'isomorphic-dompurify';
-import { RICHTEXT_POLICY, toDOMPurify } from '@aimma/database';
+import sanitizeHtml from 'sanitize-html';
+import { RICHTEXT_POLICY, toSanitizeHtml, normalizeVoidEls } from '@aimma/database';
 
 interface Props { section: Section; }
 const { section } = Astro.props;
@@ -34,8 +34,11 @@ const sizeClass = `block-text--size-${tam}`;
 const esDisplay = tam === 'lg' || tam === 'xl';
 const fontClass = esDisplay ? 'font-display' : 'font-body';
 
-// Rich-text: el contenido es HTML. Defensa en profundidad (la EF ya sanitiza al guardar).
-const contenidoSafe = DOMPurify.sanitize(p.contenido, toDOMPurify(RICHTEXT_POLICY));
+// Rich-text: el contenido es HTML. Defensa en profundidad con sanitize-html (la MISMA lib que la EF;
+// DOMPurify/isomorphic-dompurify NO corre en el runtime del Worker -> usamos el pipeline exacto de la EF).
+// Sobre contenido ya sanitizado por la EF es un no-op idempotente (SH(SH(x))=SH(x)); cubre el caso de
+// que algun path escriba a la BD sin pasar por la EF.
+const contenidoSafe = normalizeVoidEls(sanitizeHtml(p.contenido, toSanitizeHtml(RICHTEXT_POLICY)));
 ---
 
 <SectionShell section={section}>
