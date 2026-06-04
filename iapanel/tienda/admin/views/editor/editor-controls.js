@@ -210,6 +210,16 @@
     return fieldWrapper(label, el('div', { class: 'ed-catpicker' }, [current, btn]), errorEl);
   }
 
+  // Iconos SVG de la toolbar rich-text (estilo Notion/Docs, currentColor, sin deps). Modulo-level
+  // para no recrear strings por render.
+  const RT_ICONS = {
+    bold: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7a4 4 0 0 1 0 8H6z"/><path d="M6 12h8a4 4 0 0 1 0 8H6z"/></svg>',
+    italic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+    ul: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>',
+    ol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4" stroke-width="1.8"/><path d="M4 10h2" stroke-width="1.8"/><path d="M4.2 16.2a1 1 0 1 1 1.6 1.2L4 20h2" stroke-width="1.6"/></svg>',
+  };
+
   // richText (Fase B-controles #4): toolbar + contenteditable -> HTML.
   // Normaliza con DOMPurify (CDN, window.DOMPurify) + la policy del admin para que el WYSIWYG sea
   // honesto (lo que se ve == lo que la EF guardara). La EF es la capa AUTORITATIVA al guardar.
@@ -231,6 +241,7 @@
       role: 'textbox',
       'aria-multiline': 'true',
       'aria-label': label,
+      'data-placeholder': 'Escribí aquí tu texto.',
     });
     editor.innerHTML = normalize(value);
 
@@ -243,6 +254,7 @@
       document.execCommand(command, false, null);
       editor.focus();
       fire();
+      syncActive();
     }
     function addLink() {
       const url = window.prompt('URL del enlace (https / mailto / tel):', 'https://');
@@ -258,17 +270,46 @@
       fire();
     }
 
-    const mkBtn = (txt, title, onClick) => el('button', {
-      type: 'button', class: 'ed-rt__btn', title, onClick,
-    }, txt);
+    // preventDefault en mousedown: el contenteditable conserva foco+seleccion al ejecutar el comando
+    // (sin esto el click roba el foco y la seleccion colapsa -> el comando corre sin seleccion).
+    // Aplica a los 5 (incluido link). data-cmd = comando para el estado activo (queryCommandState).
+    const mkBtn = (svg, title, onClick, cmdName) => {
+      const b = el('button', {
+        type: 'button', class: 'ed-rt__btn', title, 'aria-label': title,
+        'data-cmd': cmdName || false,
+        onMousedown: (e) => e.preventDefault(),
+        onClick,
+      });
+      b.innerHTML = svg;
+      return b;
+    };
+    const sep = () => el('span', { class: 'ed-rt__sep', 'aria-hidden': 'true' });
+
+    const btnBold = mkBtn(RT_ICONS.bold, 'Negrita', () => cmd('bold'), 'bold');
+    const btnItalic = mkBtn(RT_ICONS.italic, 'Itálica', () => cmd('italic'), 'italic');
+    const btnLink = mkBtn(RT_ICONS.link, 'Insertar enlace', addLink);
+    const btnUl = mkBtn(RT_ICONS.ul, 'Lista con viñetas', () => cmd('insertUnorderedList'), 'insertUnorderedList');
+    const btnOl = mkBtn(RT_ICONS.ol, 'Lista numerada', () => cmd('insertOrderedList'), 'insertOrderedList');
 
     const toolbar = el('div', { class: 'ed-rt__toolbar' }, [
-      mkBtn('B', 'Negrita', () => cmd('bold')),
-      mkBtn('I', 'Itálica', () => cmd('italic')),
-      mkBtn('🔗', 'Enlace', addLink),
-      mkBtn('• Lista', 'Lista con viñetas', () => cmd('insertUnorderedList')),
-      mkBtn('1. Lista', 'Lista numerada', () => cmd('insertOrderedList')),
+      btnBold, btnItalic, sep(), btnLink, sep(), btnUl, btnOl,
     ]);
+
+    // Estado activo: refleja el formato de la seleccion. Listeners EN EL EDITOR (no document) para
+    // no leakear al re-renderear el inspector. Link no tiene queryCommandState -> no se marca.
+    const activeBtns = [btnBold, btnItalic, btnUl, btnOl];
+    function syncActive() {
+      const selObj = window.getSelection && window.getSelection();
+      const inEditor = !!(selObj && selObj.anchorNode && editor.contains(selObj.anchorNode));
+      activeBtns.forEach((b) => {
+        let on = false;
+        if (inEditor) { try { on = document.queryCommandState(b.getAttribute('data-cmd')); } catch (_) { on = false; } }
+        b.classList.toggle('is-active', on);
+      });
+    }
+    editor.addEventListener('keyup', syncActive);
+    editor.addEventListener('mouseup', syncActive);
+    editor.addEventListener('focus', syncActive);
 
     // Pegar como texto plano: evita traer markup sucio de Word/web (la EF igual sanitiza).
     editor.addEventListener('paste', (e) => {
@@ -277,8 +318,11 @@
       document.execCommand('insertText', false, text);
     });
     editor.addEventListener('input', fire);
-    // Al perder foco, normalizar el DOM visible para que coincida con lo que se guardara.
-    editor.addEventListener('blur', () => { editor.innerHTML = normalize(editor.innerHTML); });
+    // Al perder foco, normalizar el DOM visible para que coincida con lo que se guardara + limpiar activo.
+    editor.addEventListener('blur', () => {
+      editor.innerHTML = normalize(editor.innerHTML);
+      activeBtns.forEach((b) => b.classList.remove('is-active'));
+    });
 
     return fieldWrapper(label, el('div', { class: 'ed-richtext' }, [toolbar, editor]), errorEl);
   }
