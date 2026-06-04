@@ -51,3 +51,16 @@ test('policy-sync: el mirror JS del admin coincide en valores con el canonico', 
   assert.deepEqual(adm.FORBID_ATTR, can.FORBID_ATTR);
   assert.equal(adm.ALLOW_DATA_ATTR, can.ALLOW_DATA_ATTR);
 });
+
+test('richtext: el control renderea un contenteditable con el valor y toolbar', () => {
+  const win = bootWindow(['richtext-policy.js', 'editor-controls.js']);
+  const C = win.TiendaIA.editorControls;
+  let changed = null;
+  const node = C.richText('Contenido', '<b>hola</b>', (v) => { changed = v; }, { maxLength: 5000 });
+  const editor = node.querySelector('.ed-ctrl__richtext');
+  assert.ok(editor, 'no renderizo el contenteditable');
+  assert.equal(editor.getAttribute('contenteditable'), 'true');
+  assert.ok(node.querySelector('.ed-rt__toolbar'), 'no renderizo la toolbar');
+  // En jsdom no hay window.DOMPurify -> normalize cae al fallback (devuelve el valor tal cual).
+  assert.ok(editor.innerHTML.includes('hola'), 'no cargo el valor inicial');
+});
