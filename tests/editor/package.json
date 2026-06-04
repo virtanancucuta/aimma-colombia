@@ -6,7 +6,9 @@
     "test": "node --import tsx --test"
   },
   "devDependencies": {
+    "isomorphic-dompurify": "2.36.0",
     "jsdom": "^25.0.1",
+    "sanitize-html": "2.13.1",
     "tsx": "^4.19.2",
     "zod": "3.25.76"
   }
