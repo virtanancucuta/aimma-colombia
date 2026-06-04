@@ -1,0 +1,4 @@
+# Los snapshots golden se comparan contra el render de Astro, que SIEMPRE es LF.
+# Forzar LF en el working tree (sobre-escribe core.autocrlf=true del repo) para que
+# un clone en cualquier maquina checkee LF y toMatchFileSnapshot no falle por CRLF.
+*.html eol=lf
