@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RICHTEXT_POLICY, toSanitizeHtml, toDOMPurify } from '../../packages/database/src/richtext-policy.ts';
+import { bootWindow } from './harness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -30,4 +31,23 @@ test('policy-sync: EF richtext-policy.ts es mirror byte-identico del canonico', 
   const efCopy = readFileSync(resolve(HERE, '../../supabase/functions/tienda-guardar-layout/richtext-policy.ts'), 'utf8');
   assert.equal(efCopy, canonical,
     'la copia del EF drifteo. Re-sincronizar: cp packages/database/src/richtext-policy.ts supabase/functions/tienda-guardar-layout/richtext-policy.ts');
+});
+
+test('policy-sync: el mirror JS del admin coincide en valores con el canonico', () => {
+  const win = bootWindow(['richtext-policy.js']);
+  const P = win.TiendaIA.richtextPolicy;
+  assert.ok(P, 'window.TiendaIA.richtextPolicy no existe');
+  assert.deepEqual(P.POLICY.tags, RICHTEXT_POLICY.tags, 'tags del admin difieren');
+  assert.deepEqual(P.POLICY.attrs, RICHTEXT_POLICY.attrs, 'attrs del admin difieren');
+  assert.deepEqual(P.POLICY.schemes, RICHTEXT_POLICY.schemes, 'schemes del admin difieren');
+  // El adaptador DOMPurify del admin == el canonico (campo por campo; RegExp por source/flags).
+  const adm = P.toDOMPurify();
+  const can = toDOMPurify(RICHTEXT_POLICY);
+  assert.deepEqual(adm.ALLOWED_TAGS, can.ALLOWED_TAGS);
+  assert.deepEqual(adm.ALLOWED_ATTR, can.ALLOWED_ATTR);
+  assert.equal(adm.ALLOWED_URI_REGEXP.source, can.ALLOWED_URI_REGEXP.source);
+  assert.equal(adm.ALLOWED_URI_REGEXP.flags, can.ALLOWED_URI_REGEXP.flags);
+  assert.deepEqual(adm.FORBID_TAGS, can.FORBID_TAGS);
+  assert.deepEqual(adm.FORBID_ATTR, can.FORBID_ATTR);
+  assert.equal(adm.ALLOW_DATA_ATTR, can.ALLOW_DATA_ATTR);
 });
