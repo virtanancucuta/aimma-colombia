@@ -38,7 +38,7 @@
         { key: 'imagen_fondo', control: 'toggle-object', label: 'Usar imagen de fondo', default: undefined, optional: true,
           on_default: { src: 'https://placehold.co/1600x900', alt: '', objeto: 'cover' },
           subfields: [
-            { key: 'src', control: 'url', label: 'URL imagen (https)' },
+            { key: 'src', control: 'image', label: 'Imagen' },
             { key: 'alt', control: 'text', label: 'Texto alternativo (alt)', opts: { maxLength: 200 } },
           ] },
         { key: 'boton', control: 'toggle-object', label: 'Mostrar boton', default: { texto: 'Ver productos', url: '#productos', estilo_visual: 'primary', target: '_self', icono: 'arrow' }, optional: true,
@@ -134,7 +134,7 @@
             { src: 'https://placehold.co/800x800/eee/666?text=3', alt: 'Imagen 3' },
           ],
           item: [
-            { key: 'src', control: 'url', label: 'URL imagen (https)' },
+            { key: 'src', control: 'image', label: 'Imagen' },
             { key: 'alt', control: 'text', label: 'Texto alternativo (alt)', opts: { maxLength: 200 } },
           ] },
       ],
