@@ -43,7 +43,7 @@ test('policy-sync: el mirror JS del admin (POLICY) coincide en valores con el ca
   assert.equal(adm.ALLOW_DATA_ATTR, false);
 });
 
-test('richtext: el control renderea un contenteditable con el valor y toolbar', () => {
+test('richtext: el control renderea toolbar (5 botones) + contenteditable con el valor', () => {
   const win = bootWindow(['richtext-policy.js', 'editor-controls.js']);
   const C = win.TiendaIA.editorControls;
   let changed = null;
@@ -51,7 +51,13 @@ test('richtext: el control renderea un contenteditable con el valor y toolbar', 
   const editor = node.querySelector('.ed-ctrl__richtext');
   assert.ok(editor, 'no renderizo el contenteditable');
   assert.equal(editor.getAttribute('contenteditable'), 'true');
-  assert.ok(node.querySelector('.ed-rt__toolbar'), 'no renderizo la toolbar');
+  const toolbar = node.querySelector('.ed-rt__toolbar');
+  assert.ok(toolbar, 'no renderizo la toolbar');
+  // Los 5 botones: negrita, italica, enlace, lista vinetas, lista numerada.
+  const btns = toolbar.querySelectorAll('.ed-rt__btn');
+  assert.equal(btns.length, 5, `la toolbar debe tener 5 botones, tiene ${btns.length}`);
+  // El runtime (bold-on-seleccion, estado activo) NO es testeable en jsdom (sin execCommand/seleccion
+  // reales) -> validacion final en vivo. Aca cubrimos la regresion estructural del markup.
   // En jsdom no hay window.DOMPurify -> normalize cae al fallback (devuelve el valor tal cual).
   assert.ok(editor.innerHTML.includes('hola'), 'no cargo el valor inicial');
 });
