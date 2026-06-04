@@ -2,12 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import sanitizeHtml from 'sanitize-html';
 import DOMPurify from 'isomorphic-dompurify';
-import { RICHTEXT_POLICY, toSanitizeHtml, toDOMPurify } from '../../packages/database/src/richtext-policy.ts';
+import { RICHTEXT_POLICY, toSanitizeHtml, toDOMPurify, normalizeVoidEls } from '../../packages/database/src/richtext-policy.ts';
 
 // EF (autoritativa) y storefront (defensa en profundidad) usan las MISMAS versiones que produccion
 // (sanitize-html@2.13.1, isomorphic-dompurify@2.36.0/dompurify@3.4.7). Este test es la red que
 // habria atrapado el passthrough de linkedom: prueba AMBAS capas por separado.
-const SH = (html) => sanitizeHtml(html, toSanitizeHtml(RICHTEXT_POLICY));
+// SH replica EXACTAMENTE el pipeline de la EF: sanitize-html + normalizeVoidEls (<br /> -> <br>)
+// para que el HTML almacenado sea punto fijo de la DOMPurify del storefront (idempotencia).
+const SH = (html) => normalizeVoidEls(sanitizeHtml(html, toSanitizeHtml(RICHTEXT_POLICY)));
 const DP = (html) => DOMPurify.sanitize(html, toDOMPurify(RICHTEXT_POLICY));
 
 const PAYLOADS = [

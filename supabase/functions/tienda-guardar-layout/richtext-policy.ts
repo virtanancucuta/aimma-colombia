@@ -12,8 +12,9 @@ export const RICHTEXT_POLICY = {
 };
 
 // Adaptador sanitize-html (EF). disallowedTagsMode 'discard' elimina tag + (script/style) su texto.
-// selfClosing: [] -> void elements (<br>) se emiten SIN auto-cierre, igual que DOMPurify, para que
-// el HTML guardado sea punto fijo de la DOMPurify del storefront (idempotencia, test 11).
+// Dejamos selfClosing en su default (auto-cierra <br> como `<br />`); NO lo forzamos a [] porque eso
+// emitiria `<br></br>` y DOMPurify lo re-parsea como dos saltos. normalizeVoidEls() abajo pasa
+// `<br />` a la forma HTML5 `<br>`, punto fijo de la DOMPurify del storefront (idempotencia, test 11).
 export function toSanitizeHtml(policy = RICHTEXT_POLICY) {
   return {
     allowedTags: [...policy.tags],
@@ -23,7 +24,6 @@ export function toSanitizeHtml(policy = RICHTEXT_POLICY) {
     allowedSchemes: [...policy.schemes],
     allowProtocolRelative: policy.allowProtocolRelative,
     disallowedTagsMode: 'discard' as const,
-    selfClosing: [] as string[],
   };
 }
 
@@ -39,4 +39,12 @@ export function toDOMPurify(policy = RICHTEXT_POLICY) {
     FORBID_ATTR: ['style', 'class', 'id', 'target'],
     ALLOW_DATA_ATTR: false,
   };
+}
+
+// sanitize-html serializa void elements como `<br />` (XML); DOMPurify como `<br>` (HTML5).
+// Normaliza la salida sanitizada a la forma HTML5 para que el HTML que la EF almacena sea punto
+// fijo de la DOMPurify del storefront (idempotencia). Alineacion de FORMATO, NO de seguridad:
+// opera sobre HTML ya sanitizado, no toca tags/attrs/schemes. <br> es el unico void del allowlist.
+export function normalizeVoidEls(html: string): string {
+  return html.replace(/<br\s*\/>/gi, '<br>');
 }
