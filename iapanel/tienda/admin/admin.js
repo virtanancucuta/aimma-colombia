@@ -158,7 +158,7 @@
     // Tienda del user (1:1 en MVP)
     const { data: tienda, error: tErr } = await supabase
       .from('tiendas')
-      .select('id, user_id, slug, nombre_negocio, logo_url, plantilla_id, paleta_id, estado, idioma, whatsapp_dueno, mostrar_agotados, nombre_legal, nit, direccion, ciudad_negocio, email_contacto, telefono_contacto, sync_dashboard_excel_activo, cortesia_razon, plan_tienda, horario_atencion, easypanel_domain_id, subdominio_publicado_at, created_at, updated_at')
+      .select('id, user_id, slug, nombre_negocio, logo_url, plantilla_id, paleta_id, estado, idioma, whatsapp_dueno, mostrar_agotados, nombre_legal, nit, direccion, ciudad_negocio, email_contacto, telefono_contacto, sync_dashboard_excel_activo, cortesia_razon, plan_tienda, horario_atencion, easypanel_domain_id, subdominio_publicado_at, created_at, updated_at, personalizaciones')
       .eq('user_id', userId)
       .maybeSingle();
     if (tErr) throw tErr;

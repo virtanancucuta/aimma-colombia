@@ -182,6 +182,7 @@
       const r = await callEF(body);
       if (r && r.success) {
         ES.setLastDraftSavedAt(new Date());
+        syncTiendaCache('draft', r.home); // refresca state.tienda para re-entrar sin recargar
         // Refrescar el iframe del preview para reflejar el draft.
         if (window.TiendaIA?.editorCanvas?.refresh) window.TiendaIA.editorCanvas.refresh();
         // Tocar toolbar para actualizar "Borrador guardado hace ..."
@@ -213,6 +214,7 @@
       const r = await callEF(body);
       if (r && r.success) {
         ES.markClean(r.updated_at);
+        syncTiendaCache('publish', r.home); // refresca state.tienda para re-entrar sin recargar
         if (window.TiendaIA?.editorCanvas?.refresh) window.TiendaIA.editorCanvas.refresh();
         toast('Tienda actualizada ✓', 'success');
       } else if (r && r.error === 'stale_layout') {
@@ -246,6 +248,25 @@
       body: JSON.stringify(body),
     });
     return await r.json().catch(() => ({ error: 'parse_error' }));
+  }
+
+  // Mantiene T.state.tienda.personalizaciones en sync con lo recien guardado, para que
+  // re-entrar al editor en la misma sesion (sin recargar la pagina) cargue el dato fresco
+  // en vez del valor de carga del admin. savedPage = r.home (pagina autoritativa de la EF,
+  // con su updated_at -> evita falsos 409 en el siguiente guardado). draft toca home_draft;
+  // publish reemplaza home y borra home_draft (igual que la EF).
+  function syncTiendaCache(mode, savedPage) {
+    const T = window.TiendaIA;
+    if (!T || !T.state || !T.state.tienda || !savedPage) return;
+    const cur = T.state.tienda.personalizaciones || { schema_version: 3, pages: {} };
+    const next = { schema_version: 3, theme: T.editorState.serialize().theme, pages: { ...(cur.pages || {}) } };
+    if (mode === 'publish') {
+      next.pages.home = savedPage;
+      delete next.pages.home_draft;
+    } else {
+      next.pages.home_draft = savedPage;
+    }
+    T.state.tienda.personalizaciones = next;
   }
 
   // 409 stale_layout: otro dispositivo publico. Avisar y recargar del server.
