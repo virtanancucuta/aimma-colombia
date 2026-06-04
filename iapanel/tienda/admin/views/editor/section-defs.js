@@ -108,7 +108,7 @@
       context: 'product', render_strategy: 'unified',
       ancho_default: 'completo', padding_default: 'md',
       campos: [
-        { key: 'categoria_id', control: 'text', label: 'ID de categoria (vacio = todas)', default: null, nullable: true, empty_to_null: true },
+        { key: 'categoria_id', control: 'category', label: 'Categoria de productos', default: null, nullable: true, empty_to_null: true },
         { key: 'limite', control: 'slider', label: 'Cantidad de productos', default: 8, opts: { min: 1, max: 12, step: 1 } },
         { key: 'orden', control: 'select', label: 'Ordenar por', default: 'recientes', opts: { options: 'ORDEN' } },
         { key: 'columnas', control: 'select', label: 'Columnas', default: 'auto', opts: { options: 'COLUMNAS' } },

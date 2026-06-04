@@ -166,6 +166,14 @@
         wrap.appendChild(C.imagePicker(campo.label, p[campo.key] || '',
           v => setProp(ES, sec, campo.key, v, campo), { ...(campo.opts || {}), tiendaId: ES.tienda_id }));
         break;
+      case 'category':
+        wrap.appendChild(C.categoryPicker(campo.label, p[campo.key] || null,
+          v => setProp(ES, sec, campo.key, v, campo), { tiendaId: ES.tienda_id }));
+        break;
+      case 'color':
+        wrap.appendChild(C.colorPicker(campo.label, p[campo.key] || campo.default || '#000000',
+          v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
+        break;
       case 'select':
         wrap.appendChild(C.select(campo.label, selectCurrent(p, campo), optList(campo.opts.options),
           v => setProp(ES, sec, campo.key, campo.empty_to_undefined ? (v || undefined) : v, campo)));

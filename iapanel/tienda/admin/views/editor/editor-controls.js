@@ -186,6 +186,30 @@
     return fieldWrapper(label, el('div', { class: 'ed-imgpicker' }, [preview, btn]), errorEl);
   }
 
+  // category picker (Fase B-controles): elige una categoria (o "Todas") visualmente
+  // en vez de tipear el uuid. El VALOR es categoria_id (uuid|null, mismo shape que el
+  // control 'text' de hoy -> Clase A). Patron bendecido: el modal (y supabase) se abren
+  // en el click, no en el render. El nombre real aparece tras elegir / al abrir el modal.
+  function categoryPicker(label, value, onChange, opts) {
+    opts = opts || {};
+    const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
+    const current = el('span', { class: 'ed-catpicker__current' },
+      value ? 'Categoria seleccionada' : 'Todas las categorias');
+    const btn = el('button', {
+      type: 'button',
+      class: 'ed-btn ed-btn--secondary ed-catpicker__btn',
+      onClick: () => {
+        const modal = window.TiendaIA && window.TiendaIA.editorModalCategory;
+        if (!modal) return;
+        modal.open({ tiendaId: opts.tiendaId, current: value || null }, (id, nombre) => {
+          current.textContent = id ? (nombre || 'Categoria seleccionada') : 'Todas las categorias';
+          onChange(id || null);
+        });
+      },
+    }, 'Elegir categoria');
+    return fieldWrapper(label, el('div', { class: 'ed-catpicker' }, [current, btn]), errorEl);
+  }
+
   function slider(label, value, min, max, step, onChange) {
     const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
     const wrap = el('div', { class: 'ed-ctrl__slider-wrap' });
@@ -265,7 +289,7 @@
   window.TiendaIA.editorControls = {
     textInput, textarea, urlInput,
     select: selectCtrl,
-    colorPicker, imagePicker, slider,
+    colorPicker, imagePicker, categoryPicker, slider,
     switch: switchCtrl,
     headerLabel, primaryButton, dangerButton, collapsibleSection, infoBox,
     ALIGN_OPTIONS,
