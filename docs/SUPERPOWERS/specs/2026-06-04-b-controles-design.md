@@ -68,3 +68,34 @@ Agregar 4 controles nuevos al toolkit del inspector del editor (hoy 7), todos **
 
 ## DoD (por control)
 Renderea en inspector · round-trip guardar→recargar→idéntico · drift-guard verde · golden sin cambios (Clase A) o diff intencional (rich-text) · storefront ok (rich-text sin XSS) · agregar un control = render fn + case + 1 entry de campo.
+
+## Persistencia de las guardas de seguridad del upload (reproducibilidad a escala)
+Estado: estas guardas están **aplicadas y verificadas en la BD** (proyecto rsmxklkxqsaptchcjszd) pero **NO estaban en una migración del repo** (fueron aplicadas a mano al crear el bucket en una fase anterior). Se capturan aquí para reproducibilidad (rebuilds / 100k tiendas). Definiciones EXACTAS verificadas vía `pg_policies` + `storage.buckets`:
+
+**Bucket `tienda-productos`** (config server-side, gobierna también el upload de fotos de producto por ser compartido):
+```sql
+update storage.buckets set
+  public = true,
+  file_size_limit = 5242880,                                  -- 5 MB
+  allowed_mime_types = array['image/jpeg','image/jpg','image/png','image/webp']
+where id = 'tienda-productos';
+```
+
+**RLS de `storage.objects`** (path-scoped por dueño; el primer segmento del path = tienda_id):
+```sql
+-- INSERT: solo el dueño de la tienda puede escribir bajo <tienda_id>/
+create policy tienda_productos_insert_dueno on storage.objects for insert to authenticated
+  with check (bucket_id = 'tienda-productos'
+    and (is_admin_or_cofounder() or tienda_ia_es_dueno((string_to_array(name,'/'))[1]::uuid)));
+-- UPDATE + DELETE: idem (mismo check de dueño)
+create policy tienda_productos_update_dueno on storage.objects for update to authenticated
+  using (bucket_id = 'tienda-productos'
+    and (is_admin_or_cofounder() or tienda_ia_es_dueno((string_to_array(name,'/'))[1]::uuid)));
+create policy tienda_productos_delete_dueno on storage.objects for delete to authenticated
+  using (bucket_id = 'tienda-productos'
+    and (is_admin_or_cofounder() or tienda_ia_es_dueno((string_to_array(name,'/'))[1]::uuid)));
+-- SELECT: público (bucket público, lectura abierta)
+create policy tienda_productos_select_publico on storage.objects for select to public
+  using (bucket_id = 'tienda-productos');
+```
+Funciones `is_admin_or_cofounder()` y `tienda_ia_es_dueno(uuid)` son pre-existentes (core, usadas en otras policies). **Follow-up recomendado:** migración formal idempotente (DO-block guards) en `supabase/migrations/` para rebuilds automáticos — parqueado, no bloquea el piloto.
