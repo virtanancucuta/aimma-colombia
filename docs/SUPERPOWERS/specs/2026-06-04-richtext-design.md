@@ -40,7 +40,8 @@ export const RICHTEXT_POLICY = {
 };
 ```
 Dos adaptadores derivados del canónico (mismo archivo o `richtext-adapters.ts`):
-- **`toSanitizeHtml(POLICY)`** → `{ allowedTags: POLICY.tags, allowedAttributes: POLICY.attrs, allowedSchemes: POLICY.schemes, allowProtocolRelative: false, disallowedTagsMode: 'discard' }` + opciones de salida void-element alineadas a DOMPurify (ver §3 idempotencia).
+- **`toSanitizeHtml(POLICY)`** → `{ allowedTags: POLICY.tags, allowedAttributes: POLICY.attrs, allowedSchemes: POLICY.schemes, allowProtocolRelative: false, disallowedTagsMode: 'discard' }` (selfClosing en su default — NO forzar a `[]`: emitiría `<br></br>`). La alineación void-element con DOMPurify la hace `normalizeVoidEls()` (ver §3 idempotencia).
+- **`normalizeVoidEls(html)`** → post-procesador puro `html.replace(/<br\s*\/>/gi, '<br>')`. Pasa `<br />` (XML, lo que emite sanitize-html) a `<br>` (HTML5, lo que emite DOMPurify) sobre HTML YA sanitizado. Alineación de FORMATO, no de seguridad.
 - **`toDOMPurify(POLICY)`** → `{ ALLOWED_TAGS: POLICY.tags, ALLOWED_ATTR: [...uniq(flatten(POLICY.attrs))] (=['href']), ALLOWED_URI_REGEXP: new RegExp('^(' + POLICY.schemes.join(':|') + ':)', 'i'), FORBID_TAGS:['script','style','iframe','object','embed','form','input','svg','math'], FORBID_ATTR:['style','class','id','target'], ALLOW_DATA_ATTR:false }`.
 
 **Mirror EF:** la política canónica + `toSanitizeHtml` se espejan byte-idéntico en `supabase/functions/tienda-guardar-layout/richtext-policy.ts` (igual que el mirror de editor-schema.ts de A.1). **Sync-test** (`tests/editor/`, modelado en 04-ef-schema-sync) valida: (a) EF policy == canónico byte-idéntico; (b) `toSanitizeHtml(canónico)` y `toDOMPurify(canónico)` derivan fielmente del canónico (mismos tags, attrs, schemes) → atrapa drift en CUALQUIERA de los dos adaptadores.
@@ -56,7 +57,7 @@ Dos adaptadores derivados del canónico (mismo archivo o `richtext-adapters.ts`)
 ```
 DOMPurify(sanitizeHtml(legit, toSanitizeHtml(POLICY)), toDOMPurify(POLICY)) === sanitizeHtml(legit, toSanitizeHtml(POLICY))
 ```
-La asimetría ayuda: sanitize-html es más estricta por-tag (href solo en `<a>`) y corre PRIMERO; DOMPurify (que corre después) no recorta lo que sanitize-html ya dejó pasar. El riesgo residual es **formato de salida** (void elements: sanitize-html emite `<br />`, DOMPurify emite `<br>`). Se cierra configurando la salida de sanitize-html para emitir void-elements estilo DOMPurify (no auto-cerrados) → el stored es punto fijo. **Test de idempotencia obligatorio** sobre fixtures legítimos lo verifica; si aparece divergencia, se alinea la config de sanitize-html (NO se relaja la seguridad).
+La asimetría ayuda: sanitize-html es más estricta por-tag (href solo en `<a>`) y corre PRIMERO; DOMPurify (que corre después) no recorta lo que sanitize-html ya dejó pasar. El riesgo residual es **formato de salida** (void elements: sanitize-html emite `<br />`, DOMPurify emite `<br>`). **Resuelto empíricamente (T4):** el pipeline de la EF es `normalizeVoidEls(sanitizeHtml(...))` → `<br>`, que es punto fijo de DOMPurify → idempotencia en AMBAS direcciones. (Hallazgo: forzar `selfClosing: []` emitía `<br></br>` y DOMPurify lo re-parseaba como dos saltos — por eso se usa el default de sanitize-html + normalizeVoidEls.) **Test de idempotencia obligatorio** sobre fixtures legítimos lo verifica (verde 61/61); si aparece divergencia, se alinea SOLO el formato (NO se relaja la seguridad).
 
 ## 4. Zod + mirror — NO cambia
 `contenido` sigue `z.string().max(5000)` (HTML es string ≤5000). La sanitización es un **transform de la EF**, NO una constraint del Zod. → **drift-guard + ef-schema-sync VERDES por construcción** (Zod intacto). Lo nuevo a sync-testear es la **política/adaptadores** (capa aparte).
