@@ -210,6 +210,79 @@
     return fieldWrapper(label, el('div', { class: 'ed-catpicker' }, [current, btn]), errorEl);
   }
 
+  // richText (Fase B-controles #4): toolbar + contenteditable -> HTML.
+  // Normaliza con DOMPurify (CDN, window.DOMPurify) + la policy del admin para que el WYSIWYG sea
+  // honesto (lo que se ve == lo que la EF guardara). La EF es la capa AUTORITATIVA al guardar.
+  // No llama nada async en el render; en jsdom (sin DOMPurify) normalize() cae al fallback.
+  function richText(label, value, onChange, opts) {
+    opts = opts || {};
+    const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
+
+    function normalize(html) {
+      const P = window.TiendaIA && window.TiendaIA.richtextPolicy;
+      const DP = window.DOMPurify;
+      if (DP && P) return DP.sanitize(html || '', P.toDOMPurify());
+      return html || ''; // fallback: la EF sanitiza autoritativamente igual
+    }
+
+    const editor = el('div', {
+      class: 'ed-ctrl__richtext',
+      contenteditable: 'true',
+      role: 'textbox',
+      'aria-multiline': 'true',
+      'aria-label': label,
+    });
+    editor.innerHTML = normalize(value);
+
+    const fire = debounce(() => {
+      const clean = normalize(editor.innerHTML);
+      onChange(clean);
+    }, DEBOUNCE_MS);
+
+    function cmd(command) {
+      document.execCommand(command, false, null);
+      editor.focus();
+      fire();
+    }
+    function addLink() {
+      const url = window.prompt('URL del enlace (https / mailto / tel):', 'https://');
+      if (!url) return;
+      if (!/^(https:|mailto:|tel:)/i.test(url)) {
+        errorEl.textContent = 'URL no permitida (solo https / mailto / tel)';
+        errorEl.hidden = false;
+        return;
+      }
+      errorEl.hidden = true;
+      document.execCommand('createLink', false, url);
+      editor.focus();
+      fire();
+    }
+
+    const mkBtn = (txt, title, onClick) => el('button', {
+      type: 'button', class: 'ed-rt__btn', title, onClick,
+    }, txt);
+
+    const toolbar = el('div', { class: 'ed-rt__toolbar' }, [
+      mkBtn('B', 'Negrita', () => cmd('bold')),
+      mkBtn('I', 'Itálica', () => cmd('italic')),
+      mkBtn('🔗', 'Enlace', addLink),
+      mkBtn('• Lista', 'Lista con viñetas', () => cmd('insertUnorderedList')),
+      mkBtn('1. Lista', 'Lista numerada', () => cmd('insertOrderedList')),
+    ]);
+
+    // Pegar como texto plano: evita traer markup sucio de Word/web (la EF igual sanitiza).
+    editor.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+    editor.addEventListener('input', fire);
+    // Al perder foco, normalizar el DOM visible para que coincida con lo que se guardara.
+    editor.addEventListener('blur', () => { editor.innerHTML = normalize(editor.innerHTML); });
+
+    return fieldWrapper(label, el('div', { class: 'ed-richtext' }, [toolbar, editor]), errorEl);
+  }
+
   function slider(label, value, min, max, step, onChange) {
     const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
     const wrap = el('div', { class: 'ed-ctrl__slider-wrap' });
@@ -289,7 +362,7 @@
   window.TiendaIA.editorControls = {
     textInput, textarea, urlInput,
     select: selectCtrl,
-    colorPicker, imagePicker, categoryPicker, slider,
+    colorPicker, imagePicker, categoryPicker, richText, slider,
     switch: switchCtrl,
     headerLabel, primaryButton, dangerButton, collapsibleSection, infoBox,
     ALIGN_OPTIONS,

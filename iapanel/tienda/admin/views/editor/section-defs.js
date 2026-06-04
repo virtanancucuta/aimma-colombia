@@ -59,7 +59,7 @@
       context: null, render_strategy: 'unified',
       ancho_default: 'contenido', padding_default: 'md',
       campos: [
-        { key: 'contenido', control: 'textarea', label: 'Contenido', default: 'Escribi aqui tu texto.', opts: { maxLength: 5000, rows: 5 } },
+        { key: 'contenido', control: 'richtext', label: 'Contenido', default: 'Escribi aqui tu texto.', opts: { maxLength: 5000, rows: 5 } },
         { key: 'alineacion', control: 'select', label: 'Alineacion', default: 'left', opts: { options: 'ALIGN' } },
         { key: 'tamanio', control: 'select', label: 'Tamano del texto', default: 'md', opts: { options: 'TAMANIO' } },
       ],

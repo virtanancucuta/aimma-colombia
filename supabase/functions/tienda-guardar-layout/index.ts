@@ -14,6 +14,8 @@ import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { z } from 'zod';
 import { PersonalizacionesSchema } from './editor-schema.ts';
+import sanitizeHtml from 'sanitize-html';
+import { RICHTEXT_POLICY, toSanitizeHtml, normalizeVoidEls } from './richtext-policy.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -41,6 +43,20 @@ const BodySchema = z.object({
 });
 
 const MAX_PAYLOAD_BYTES = 2_000_000;
+
+const RICHTEXT_OPTS = toSanitizeHtml(RICHTEXT_POLICY);
+
+// Sanitize-and-store AUTORITATIVO: limpia el HTML de cada seccion 'texto' antes de persistir.
+// La BD nunca guarda HTML sucio, aunque alguien postee directo a la EF. Mutar in-place el home.
+// normalizeVoidEls: <br /> -> <br> para que lo almacenado sea punto fijo de la DOMPurify del storefront.
+function sanitizeHome(home: any): void {
+  if (!home || !Array.isArray(home.sections)) return;
+  for (const sec of home.sections) {
+    if (sec && sec.tipo === 'texto' && sec.props && typeof sec.props.contenido === 'string') {
+      sec.props.contenido = normalizeVoidEls(sanitizeHtml(sec.props.contenido, RICHTEXT_OPTS));
+    }
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -105,6 +121,9 @@ serve(async (req) => {
     const detail = e instanceof z.ZodError ? e.errors : String(e);
     return json({ error: 'invalid_body', detail }, 400);
   }
+
+  // 3.5) Sanitizar HTML de secciones texto (autoritativo, antes de construir el JSON a guardar)
+  sanitizeHome(body.personalizaciones.pages.home);
 
   // 4) Ownership check
   const supabaseSvc = createClient(SUPABASE_URL, SERVICE_ROLE);

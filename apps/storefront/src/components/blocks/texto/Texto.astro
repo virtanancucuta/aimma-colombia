@@ -10,6 +10,8 @@
 
 import type { Section } from '@aimma/database';
 import SectionShell from '~/components/blocks/_SectionShell.astro';
+import sanitizeHtml from 'sanitize-html';
+import { RICHTEXT_POLICY, toSanitizeHtml, normalizeVoidEls } from '@aimma/database';
 
 interface Props { section: Section; }
 const { section } = Astro.props;
@@ -32,21 +34,19 @@ const sizeClass = `block-text--size-${tam}`;
 const esDisplay = tam === 'lg' || tam === 'xl';
 const fontClass = esDisplay ? 'font-display' : 'font-body';
 
-// editorial_magazine: dropcap solo en parrafos largos de lectura, alineados a la izquierda.
-const conDropcap = plantilla === 'editorial_magazine' && !esDisplay && align === 'left' && p.contenido.trim().length > 0;
-const firstLetter = conDropcap ? p.contenido.trimStart().charAt(0) : '';
-const rest = conDropcap ? p.contenido.trimStart().slice(1) : p.contenido;
+// Rich-text: el contenido es HTML. Defensa en profundidad con sanitize-html (la MISMA lib que la EF;
+// DOMPurify/isomorphic-dompurify NO corre en el runtime del Worker -> usamos el pipeline exacto de la EF).
+// Sobre contenido ya sanitizado por la EF es un no-op idempotente (SH(SH(x))=SH(x)); cubre el caso de
+// que algun path escriba a la BD sin pasar por la EF.
+const contenidoSafe = normalizeVoidEls(sanitizeHtml(p.contenido, toSanitizeHtml(RICHTEXT_POLICY)));
 ---
 
 <SectionShell section={section}>
   <div
     class={`${prefix}-texto ${fontClass} ${sizeClass} ${alignClass} text-[var(--ta-color-text-base)]`}
     data-field="contenido"
-  >
-    {conDropcap
-      ? (<><span class="em-dropcap" aria-hidden="true">{firstLetter}</span><span class="sr-only">{firstLetter}</span>{rest}</>)
-      : p.contenido}
-  </div>
+    set:html={contenidoSafe}
+  />
 </SectionShell>
 
 <style>
@@ -145,8 +145,10 @@ const rest = conDropcap ? p.contenido.trimStart().slice(1) : p.contenido;
   }
   .em-texto.block-text--align-center { margin-inline: auto; }
   .em-texto.block-text--align-right { margin-inline: 0 0 0 auto; }
-  /* Dropcap editorial */
-  .em-dropcap {
+  /* Dropcap editorial: primer caracter de parrafos de lectura (sm/md) alineados a la izquierda.
+     Antes era un <span> recortado en JS; ahora ::first-letter (compatible con HTML rich-text). */
+  .em-texto.block-text--size-sm.block-text--align-left::first-letter,
+  .em-texto.block-text--size-md.block-text--align-left::first-letter {
     float: left;
     font-family: var(--ta-font-display);
     font-style: italic;

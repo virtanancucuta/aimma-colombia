@@ -158,6 +158,10 @@
         wrap.appendChild(C.textarea(campo.label, p[campo.key] || campo.display_fallback || '',
           v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
         break;
+      case 'richtext':
+        wrap.appendChild(C.richText(campo.label, p[campo.key] || campo.display_fallback || '',
+          v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
+        break;
       case 'url':
         wrap.appendChild(C.urlInput(campo.label, p[campo.key] || '',
           v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));

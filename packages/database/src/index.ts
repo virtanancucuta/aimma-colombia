@@ -29,3 +29,4 @@ export type Paleta = Tables<'paletas'>;
 export type PaginaLegal = Tables<'paginas_legales'>;
 
 export * from './editor-schema';
+export * from './richtext-policy';
