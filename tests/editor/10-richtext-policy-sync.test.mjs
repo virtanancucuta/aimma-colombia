@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { RICHTEXT_POLICY, toSanitizeHtml, toDOMPurify } from '../../packages/database/src/richtext-policy.ts';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // Fidelidad: ambos adaptadores derivan FIELMENTE del canonico -> atrapa drift en cualquiera.
 test('policy-sync: toSanitizeHtml deriva del canonico', () => {
@@ -18,4 +23,11 @@ test('policy-sync: toDOMPurify deriva del canonico', () => {
   assert.equal(d.ALLOWED_URI_REGEXP.source, '^(https:|mailto:|tel:)', 'regex de schemes drifteo');
   assert.equal(d.ALLOWED_URI_REGEXP.flags, 'i');
   assert.equal(d.ALLOW_DATA_ATTR, false);
+});
+
+test('policy-sync: EF richtext-policy.ts es mirror byte-identico del canonico', () => {
+  const canonical = readFileSync(resolve(HERE, '../../packages/database/src/richtext-policy.ts'), 'utf8');
+  const efCopy = readFileSync(resolve(HERE, '../../supabase/functions/tienda-guardar-layout/richtext-policy.ts'), 'utf8');
+  assert.equal(efCopy, canonical,
+    'la copia del EF drifteo. Re-sincronizar: cp packages/database/src/richtext-policy.ts supabase/functions/tienda-guardar-layout/richtext-policy.ts');
 });
