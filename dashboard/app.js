@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-05-28.1-hardening-multihoja-warnings-filtros';
+const APP_VERSION = '2026-06-05.1-gastos-resumen-2col';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -589,6 +589,76 @@ function esFilaTotalKubap(rawObj, parsed, category, rawRow) {
   return false;
 }
 
+// === FALLBACK GASTOS: formato "resumen 2 columnas" (concepto | monto) ===
+// Informes operacionales internos (ej Maraldo Laureles "GASTOS OPERACIONALES")
+// que NO traen encabezados POS ni proveedor/factura/IVA/fecha: solo una columna
+// de concepto y otra de monto. Se detecta y parsea SOLO como fallback aditivo
+// cuando el camino normal por encabezados no encontro ninguna fila (ver parseExcel).
+// Robustez aditiva, nunca restrictiva: el path POS existente queda intacto.
+
+// ¿La celda parece un monto de dinero? (numero, "-" contable = 0, o "$1.234.567")
+function pareceMonto(v) {
+  if (typeof v === 'number') return isFinite(v);
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  if (s === '') return false;
+  if (s === '-' || s === '$-' || s === '$ -') return true; // dash contable = 0
+  // opcional $, miles con . o , , decimales, negativos contables (1.234)
+  return /^\$?\s*-?\(?\s*\d[\d.,\s]*\)?\s*$/.test(s);
+}
+
+// ¿La celda parece un concepto de gasto? (texto con al menos una letra)
+function pareceConcepto(v) {
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  return s.length > 0 && /[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(s);
+}
+
+// Deriva una fecha (mes/año) desde texto libre: nombre de archivo o título de hoja.
+// "...Mayo2026", "MAYO 2026", "gastos_mayo_2026" -> Date(2026, 4, 1). null si no detecta.
+function parseMesAnioTexto(str) {
+  if (!str) return null;
+  let s = String(str).toLowerCase().replace(/[^a-záéíóúñ0-9]+/g, ' ');
+  // separar letras pegadas a dígitos: "mayo2026" -> "mayo 2026"
+  s = s.replace(/([a-záéíóúñ])(\d)/g, '$1 $2').replace(/(\d)([a-záéíóúñ])/g, '$1 $2');
+  const ym = s.match(/(?:^|\s)(20\d{2})(?:\s|$)/);
+  if (!ym) return null;
+  const anio = parseInt(ym[1], 10);
+  // tokens largos primero (mayo antes que may) para no cortar el mes
+  const tokens = Object.keys(MES_TXT).sort((a, b) => b.length - a.length);
+  for (const tok of tokens) {
+    const re = new RegExp('(?:^|\\s)' + tok + '(?:\\s|$)');
+    if (re.test(s)) return new Date(anio, MES_TXT[tok], 1);
+  }
+  return null;
+}
+
+// Extrae filas {obj, rawRow} de una matriz 2D con formato concepto|monto.
+// Por fila: primera celda que parece concepto + última celda (a su derecha) que
+// parece monto. Tolera columnas vacías/índice a la izquierda. La fila título
+// (sin monto) y las filas "TOTAL ..." se descartan despues por el pipeline normal
+// (filtro subtotal/total === 0 y esFilaTotalKubap).
+function extraerResumenGastos2Col(rows2D, fecha) {
+  const out = [];
+  for (const row of rows2D) {
+    if (!Array.isArray(row)) continue;
+    let conceptoCell = null, conceptoIdx = -1;
+    for (let c = 0; c < row.length; c++) {
+      if (pareceConcepto(row[c])) { conceptoCell = row[c]; conceptoIdx = c; break; }
+    }
+    if (conceptoIdx === -1) continue;
+    let montoCell = null;
+    for (let c = row.length - 1; c > conceptoIdx; c--) {
+      if (pareceMonto(row[c])) { montoCell = row[c]; break; }
+    }
+    if (montoCell === null) continue;
+    const obj = { concepto: String(conceptoCell).trim(), total: montoCell };
+    if (fecha) obj.fecha = fecha;
+    out.push({ obj, rawRow: row });
+  }
+  return out;
+}
+
 async function parseExcel(file, category) {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: 'array', cellDates: true });
@@ -642,6 +712,27 @@ async function parseExcel(file, category) {
       // pueda detectar "TOTAL <PROVEEDOR>" en cells NO mapeadas (col fuera
       // de headers, ej col 1 de BUV que tiene los subtotales por proveedor).
       allRows.push({ obj, rawRow: row });
+    }
+  }
+
+  // FALLBACK aditivo (solo gastos): formato "resumen 2 columnas" (concepto | monto).
+  // Se activa SOLO si el camino normal por encabezados no encontró NINGUNA fila, así
+  // que no puede alterar ningún archivo POS que ya parsea bien. Deriva el mes del
+  // nombre del archivo (o del título de la hoja) para que el gasto caiga en el mes
+  // correcto y sobreviva el filtro por mes; si no detecta mes queda sin fecha
+  // (visible solo en "Todos los meses").
+  if (category === 'gastos' && allRows.length === 0) {
+    let fechaResumen = parseMesAnioTexto(file.name);
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      const rows2D = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+      if (!fechaResumen) {
+        for (let i = 0; i < Math.min(5, rows2D.length) && !fechaResumen; i++) {
+          fechaResumen = parseMesAnioTexto((rows2D[i] || []).join(' '));
+        }
+      }
+      const detalle = extraerResumenGastos2Col(rows2D, fechaResumen);
+      if (detalle.length >= 3) { allRows.push(...detalle); break; } // primera hoja válida
     }
   }
 
