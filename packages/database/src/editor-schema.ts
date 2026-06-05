@@ -5,6 +5,7 @@
 // Validado en: EF tienda-guardar-layout + Storefront BlockRenderer + Panel editor admin.
 
 import { z } from 'zod';
+import { FONT_PAIRING_IDS } from './font-pairings';
 
 // ============================================================
 // Regex de seguridad (conservados de v1/v2 — hardening Plan 1)
@@ -189,16 +190,23 @@ export const PageSchema = z.object({
 
 export type Page = z.infer<typeof PageSchema>;
 
+// Colores: reusa CSS_COLOR_REGEX (definido arriba) -> bloquea inyeccion CSS. partial = override parcial.
+const ThemeColorsSchema = z.object({
+  primary: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+  accent: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+  text_base: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+  bg_base: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+}).partial();
+
 const ThemeSchema = z.object({
-  color_primary: z.string().nullable().optional(),
-  color_accent: z.string().nullable().optional(),
-  font_display_url: z.string().url().nullable().optional(),
-  font_body_url: z.string().url().nullable().optional(),
+  colors: ThemeColorsSchema.optional(),
+  font_pairing: z.enum(FONT_PAIRING_IDS as [string, ...string[]]).optional(),
 });
 
 export const PersonalizacionesSchema = z.object({
   schema_version: z.literal(3),
   theme: ThemeSchema.optional(),
+  theme_draft: ThemeSchema.optional(),
   pages: z.record(z.string(), PageSchema),
 });
 

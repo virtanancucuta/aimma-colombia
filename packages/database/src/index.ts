@@ -30,3 +30,4 @@ export type PaginaLegal = Tables<'paginas_legales'>;
 
 export * from './editor-schema';
 export * from './richtext-policy';
+export * from './font-pairings';
