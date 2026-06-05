@@ -10,10 +10,10 @@
 
 **Branch:** `feat/b-tema-global` (desde main `8b796a2`). Spec: `docs/SUPERPOWERS/specs/2026-06-05-b-tema-global-design.md`.
 
-**GATES POR SUPERFICIE (cada deploy = OK de Jorge con diff + verificación):**
-- G1 (Task 1-2): schema + EF → deploy EF (MCP, verify_jwt=TRUE).
-- G2 (Task 3): storefront Layout → `wrangler deploy` + verificación en vivo (render de theme + preview draft).
-- G3 (Task 4-5): admin → merge `--no-ff` a main → Jorge redeploya Easypanel + prueba en vivo (preview-al-click + draft/publish).
+**GATES POR SUPERFICIE — OBLIGATORIOS (Jorge #4): cada uno requiere OK de Jorge + diff + VERIFICACIÓN EN VIVO, independiente de la ejecución por subagentes. NO avanzar de gate sin eso.**
+- **G1 (Task 1-2): EF a PROD.** Backward-compat (Jorge #1): la EF es recurso compartido; el admin nuevo recién llega en G3. La lógica draft→theme_draft / publish→promote DEBE ser segura con el admin VIEJO vivo (G1→G3) — un save/publish del admin viejo NO puede borrar/corromper un theme publicado. Confirmar explícitamente (ver Task 2 Step 0).
+- **G2 (Task 3): storefront a PROD — NO REGRESIÓN (Jorge #2, = incidente rich-text).** El Layout nuevo va a TODAS las tiendas. Verificación en vivo = **(a)** una tienda existente/sin-theme renderea **IDÉNTICO** que antes (cero regresión: colores `?? paleta`, fuentes = `template.fonts` exacto) **Y (b)** una con theme_draft previsualiza bien. LAS DOS.
+- **G3 (Task 4-5): admin a MAIN + Easypanel.** Verificar que la SEGURIDAD del bridge FUNCIONA en el runtime real (Jorge #3, no solo construida): origin malo → rechazado; fuente del allowlist (no URL cruda); color malo → rechazado antes de setProperty. Probarlo de verdad (lección rich-text: aislado pasa, bundleado falla). + prueba en vivo preview-al-click + draft/publish.
 
 ---
 
@@ -33,13 +33,16 @@ Create `packages/database/src/font-pairings.ts` (datos puros, sin imports):
 // AIMMA B-tema global · allowlist CURADO de pares de fuentes. Fuente de verdad para el storefront
 // (carga + tokens) y el admin (preview + selector). El ID es el unico valor que cruza limites
 // (postMessage / Zod enum); la URL/family se DERIVA de aca server-side -> sin URL libre.
+// CERO-REGRESION G2 (Jorge #2): los 4 default-por-plantilla son COPIA EXACTA de template-styles.ts
+// (display/body/url byte-identicos) -> una tienda sin theme renderea IGUAL (mismas fuentes/pesos/
+// italica/Mono). moderno/geometrico son los 2 NUEVOS. Al copiar, verificar contra template-styles.ts.
 export const FONT_PAIRINGS = {
-  industrial: { display: '"IBM Plex Sans",system-ui,sans-serif', body: '"Inter",system-ui,sans-serif', url: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap', label: 'Industrial', cat: 'Sans' },
-  moderno:    { display: '"Inter",system-ui,sans-serif', body: '"Inter",system-ui,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap', label: 'Moderno limpio', cat: 'Sans' },
-  geometrico: { display: '"Poppins",system-ui,sans-serif', body: '"Inter",system-ui,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap', label: 'Geométrico amigable', cat: 'Sans' },
-  impacto:    { display: '"Anton",system-ui,sans-serif', body: '"Inter",system-ui,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;900&display=swap', label: 'Impacto', cat: 'Display' },
-  editorial:  { display: '"Fraunces","Playfair Display",Georgia,serif', body: '"Inter",system-ui,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap', label: 'Editorial cálido', cat: 'Serif' },
-  elegante:   { display: '"Cormorant Garamond","Playfair Display",Georgia,serif', body: '"Inter",system-ui,sans-serif', url: 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap', label: 'Elegante clásico', cat: 'Serif' },
+  industrial: { display: '"IBM Plex Sans", system-ui, sans-serif', body: '"Inter", system-ui, -apple-system, sans-serif', url: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap', label: 'Industrial', cat: 'Sans' },
+  moderno:    { display: '"Inter", system-ui, sans-serif', body: '"Inter", system-ui, -apple-system, sans-serif', url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap', label: 'Moderno limpio', cat: 'Sans' },
+  geometrico: { display: '"Poppins", system-ui, sans-serif', body: '"Inter", system-ui, -apple-system, sans-serif', url: 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap', label: 'Geométrico amigable', cat: 'Sans' },
+  impacto:    { display: '"Anton", system-ui, sans-serif', body: '"Inter", system-ui, -apple-system, sans-serif', url: 'https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;900&display=swap', label: 'Impacto', cat: 'Display' },
+  editorial:  { display: '"Fraunces", "Cormorant Garamond", "Playfair Display", Georgia, serif', body: '"Inter", system-ui, -apple-system, sans-serif', url: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@300;400;500&display=swap', label: 'Editorial cálido', cat: 'Serif' },
+  elegante:   { display: '"Cormorant Garamond", "Playfair Display", "Times New Roman", Georgia, serif', body: '"Inter", system-ui, -apple-system, sans-serif', url: 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Inter:wght@400;500;600&display=swap', label: 'Elegante clásico', cat: 'Serif' },
 } as const;
 
 export type FontPairingId = keyof typeof FONT_PAIRINGS;
@@ -158,6 +161,10 @@ git commit -m "feat(tema): ThemeSchema colors(regex)+font_pairing(enum)+theme_dr
 
 **Files:** Modify `supabase/functions/tienda-guardar-layout/index.ts`
 
+- [ ] **Step 0: Confirmar backward-compat con el admin VIEJO (Jorge #1, ventana G1→G3)**
+
+Razonar + documentar en el reporte del gate: el admin viejo lee `state.theme = pers.theme || {}` (no theme_draft) y manda `theme: state.theme` (= el theme publicado existente, o `{}` si no hay). Con la nueva EF: (i) **draft** del admin viejo → `next.theme_draft = (theme publicado existente)` → NO toca `next.theme` (el publicado se preserva por `structuredClone(tienda.personalizaciones)`); (ii) **publish** del admin viejo → `next.theme = (lo que mandó = el publicado existente, sin cambios) ; delete next.theme_draft`. → **un save/publish del admin viejo NUNCA borra/corrompe un theme publicado** (lo re-escribe igual o lo deja `{}`≡ausente, que rinde idéntico vía fallback paleta). Empírico: 0/3 tiendas con theme → riesgo nulo, pero la lógica es segura por construcción. (Mismo patrón que la EF v7 "inofensiva con admin viejo".)
+
 - [ ] **Step 1: Cambiar el manejo de theme en el paso 6**
 
 En `index.ts` paso 6 (líneas ~155-167), HOY:
@@ -229,9 +236,14 @@ const primary = tc.primary || p?.color_primary || '#1a1a1a';
 const accent = tc.accent || p?.color_accent || '#ff6b35';
 const textBase = tc.text_base || p?.color_text_base || '#1a1a1a';
 const bgBase = tc.bg_base || p?.color_bg_base || '#ffffff';
-const pairing = FONT_PAIRINGS[themeActivo.font_pairing] || FONT_PAIRINGS[pairingForTemplate(tienda.plantilla?.slug)];
+// CERO-REGRESION (Jorge #2): SIN font_pairing -> usa template.fonts EXACTO (path actual, byte-identico).
+// Con font_pairing -> overridea con el allowlist. El pairing default-por-plantilla matchea template.fonts.
+const pairing = themeActivo.font_pairing ? FONT_PAIRINGS[themeActivo.font_pairing] : null;
+const displayFamily = pairing ? pairing.display : template.fonts.displayFamily;
+const bodyFamily = pairing ? pairing.body : template.fonts.bodyFamily;
+const fontUrl = pairing ? pairing.url : template.fonts.googleFontsUrl;
 ```
-Cambiar `--ta-font-display/body` a `pairing.display/pairing.body` y el `<link rel=stylesheet href={template.fonts.googleFontsUrl}>` a `href={pairing.url}`. (auto-contrast `on-*` sigue derivando de primary/accent/bgBase.)
+Cambiar `--ta-font-display/body` a `displayFamily/bodyFamily` y el `<link rel=stylesheet href={template.fonts.googleFontsUrl}>` a `href={fontUrl}`. (auto-contrast `on-*` sigue derivando de primary/accent/bgBase.) Para los COLORES, idem: sin `theme.colors` → `paleta.color_x` exacto (el `tc.x || p?.color_x` ya lo hace).
 
 Agregar `isPreview` a `interface Props` (boolean, default false).
 
@@ -353,7 +365,9 @@ git commit -m "feat(tema): panel Tema admin + preview en vivo (bridge seguro) + 
 
 - [ ] **Step 2: Suite completa** `tests/editor` + `apps/storefront` verdes.
 
-- [ ] **Step 3: GATE G3 — merge `--no-ff` a main + Easypanel (OK de Jorge).** Diff completo + tests + golden. Jorge redeploya Easypanel. **Prueba en vivo:** (a) click en preset/pairing → canvas cambia AL INSTANTE sin guardar; (b) guardar borrador → la tienda publicada NO cambia; (c) Publicar → la tienda publicada toma el theme; (d) un texto plano / look existente intactos. Rollback = `git revert -m 1` + Easypanel redeploy.
+- [ ] **Step 3: GATE G3 — merge `--no-ff` a main + Easypanel (OK de Jorge).** Diff completo + tests + golden. Jorge redeploya Easypanel.
+  **Prueba en vivo del flujo:** (a) click en preset/pairing → canvas cambia AL INSTANTE sin guardar; (b) guardar borrador → la tienda publicada NO cambia; (c) Publicar → la tienda publicada toma el theme; (d) look existente intacto.
+  **Prueba en vivo de la SEGURIDAD del bridge en el runtime real (Jorge #3 — no solo construida; lección rich-text aislado-vs-bundleado):** desde la consola del navegador del preview iframe (o un origin de prueba), confirmar empíricamente: (1) `postMessage` de un origin != `https://aimma.com.co` → **ignorado** (no cambia nada); (2) `font_pairing` fuera del allowlist (ej. `'evil'` o una url) → **ignorado** (no inyecta `<link>`, no cambia fuente); (3) un color con `url()`/inyección (ej. `'red;}body{...'`) → **NO se aplica** (regex lo rechaza antes de setProperty). Reportar los 3 resultados. Rollback = `git revert -m 1` + Easypanel redeploy.
 
 ---
 
