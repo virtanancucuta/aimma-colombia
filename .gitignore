@@ -22,3 +22,6 @@ e2e-tests/
 keepalive_workflow.json
 .audit-screenshots/
 .playwright-cli/
+
+# Supabase CLI local cache
+supabase/.temp/

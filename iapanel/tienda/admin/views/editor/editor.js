@@ -10,9 +10,13 @@
 
   const EF_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co/functions/v1/tienda-guardar-layout';
   const AUTOSAVE_DEBOUNCE_MS = 1500;
+  const ERROR_RETRY_MS = 4000;
 
   const state = {
     autoSaveTimer: null,
+    errorRetryTimer: null,
+    resaveQueued: false,    // hubo un cambio mientras un save estaba in-flight -> re-guardar al terminar
+    saveErrorRetried: false, // ya se hizo el reintento auto tras un error (no loopear)
     mounted: false,
     unsubs: [],
   };
@@ -81,7 +85,12 @@
 
     // Init state v3
     window.TiendaIA.editorState.init(tienda.personalizaciones, tienda.id);
-    state.unsubs.push(window.TiendaIA.editorState.subscribe('dirty', onDirtyChange));
+    // Autosave re-armado en CADA cambio de contenido (fix del latch: antes solo se
+    // suscribia a 'dirty', que notifica solo en la transicion false->true -> sub-guardaba).
+    // 'sections'/'theme' notifican en cada mutacion; 'dirty' cubre el primer cambio / starter.
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('sections', scheduleAutosave));
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('theme', scheduleAutosave));
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('dirty', scheduleAutosave));
 
     // Render paneles
     window.TiendaIA.editorToolbar.render(toolbarEl, {
@@ -114,8 +123,7 @@
           starter.forEach(sec => window.TiendaIA.editorState.sections.push(sec));
           window.TiendaIA.editorState.pushSnapshot();
           window.TiendaIA.editorState.markDirty();
-          // markDirty dispara onDirtyChange -> autosave -> reload del iframe.
-          // Notificamos sections para refrescar sidebar/toolbar.
+          // markDirty -> notify('dirty') -> scheduleAutosave (el starter se persiste).
           window.TiendaIA.editorState.select(starter[0].id);
         }
         markFirstChoice();
@@ -129,6 +137,7 @@
   function unmountEditor() {
     state.mounted = false;
     if (state.autoSaveTimer) { clearTimeout(state.autoSaveTimer); state.autoSaveTimer = null; }
+    if (state.errorRetryTimer) { clearTimeout(state.errorRetryTimer); state.errorRetryTimer = null; }
     state.unsubs.forEach(u => { try { u(); } catch (e) {} });
     state.unsubs = [];
     window.removeEventListener('beforeunload', beforeUnloadGuard);
@@ -143,11 +152,23 @@
     }
   }
 
-  // Autosave debounced en cada cambio que ensucia el estado.
-  function onDirtyChange(dirty) {
-    if (!dirty) return;
+  // Autosave debounced, re-armado en CADA cambio (no solo en la transicion dirty).
+  // Coalescing: el timer se reinicia con cada cambio -> 1 save ~1.5s tras quedar inactivo.
+  function scheduleAutosave() {
+    if (!window.TiendaIA.editorState.dirty) return; // markClean (publish) tambien notifica 'dirty'
     if (state.autoSaveTimer) clearTimeout(state.autoSaveTimer);
     state.autoSaveTimer = setTimeout(saveDraft, AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  // Un reintento auto tras un error (blip de red). Si vuelve a fallar queda en 'error'
+  // y el proximo cambio del usuario re-arma. saveErrorRetried evita el loop infinito.
+  function scheduleErrorRetry() {
+    if (state.saveErrorRetried) return;
+    state.saveErrorRetried = true;
+    if (state.errorRetryTimer) clearTimeout(state.errorRetryTimer);
+    state.errorRetryTimer = setTimeout(() => {
+      if (window.TiendaIA.editorState.dirty) saveDraft();
+    }, ERROR_RETRY_MS);
   }
 
   function openCatalog() {
@@ -171,9 +192,12 @@
   // ============================================================
   async function saveDraft() {
     const ES = window.TiendaIA.editorState;
-    if (ES.saving) return;
     if (!ES.dirty) return;
+    // Si hay un save in-flight, NO lo descartamos: encolamos un re-guardado para no perder
+    // el cambio que llego durante el save (antes 'return' silencioso = perdida de datos).
+    if (ES.saving) { state.resaveQueued = true; return; }
     ES.markSaving(true);
+    ES.setDraftSaveStatus('saving');
     try {
       const body = {
         tienda_id: ES.tienda_id,
@@ -185,6 +209,8 @@
       const r = await callEF(body);
       if (r && r.success) {
         ES.setLastDraftSavedAt(new Date());
+        ES.setDraftSaveStatus('saved');
+        state.saveErrorRetried = false;
         syncTiendaCache('draft', r.home); // refresca state.tienda para re-entrar sin recargar
         // Refrescar el iframe del preview para reflejar el draft.
         if (window.TiendaIA?.editorCanvas?.refresh) window.TiendaIA.editorCanvas.refresh();
@@ -192,13 +218,22 @@
         if (window.TiendaIA?.editorToolbar?.updateButtons) window.TiendaIA.editorToolbar.updateButtons();
       } else if (r && r.error === 'stale_layout') {
         handleStale(r);
-      } else if (r && r.error) {
-        console.warn('[editor] saveDraft error', r.error);
+        ES.setDraftSaveStatus('saved'); // resuelto el stale, no dejamos el chip en error
+      } else {
+        // VISIBLE, no silencioso. callEF ya reintento 1x el 401 con token fresco.
+        // dirty sigue true -> el cambio NO se pierde; reintento auto + re-arme en proximo cambio.
+        ES.setDraftSaveStatus('error');
+        console.warn('[editor] saveDraft error', r && r.error);
+        scheduleErrorRetry();
       }
     } catch (err) {
+      ES.setDraftSaveStatus('error');
       console.error('saveDraft error', err);
+      scheduleErrorRetry();
     } finally {
       ES.markSaving(false);
+      // Cambio llegado durante el save -> re-guardar ahora (cero perdida por concurrencia).
+      if (state.resaveQueued) { state.resaveQueued = false; scheduleAutosave(); }
     }
   }
 
@@ -217,6 +252,8 @@
       const r = await callEF(body);
       if (r && r.success) {
         ES.markClean(r.updated_at);
+        ES.setDraftSaveStatus('saved');
+        state.saveErrorRetried = false;
         syncTiendaCache('publish', r.home); // refresca state.tienda para re-entrar sin recargar
         if (window.TiendaIA?.editorCanvas?.refresh) window.TiendaIA.editorCanvas.refresh();
         toast('Tienda actualizada ✓', 'success');
@@ -233,12 +270,13 @@
     }
   }
 
-  async function callEF(body) {
-    // fix/preview-cortesia: token fresco (auto-refresh) en vez del cache sincrono stale.
+  // _retry: en el reintento fuerza un refresh REAL del token (getAccessToken(true)).
+  async function callEF(body, _retry) {
     const token = window.TiendaIA?.getAccessToken
-      ? await window.TiendaIA.getAccessToken()
+      ? await window.TiendaIA.getAccessToken(_retry === true)
       : null;
     if (!token) {
+      if (!_retry) return callEF(body, true); // sin token -> forzar refresh + reintentar 1x
       console.error('callEF: sin token');
       return { error: 'unauthorized' };
     }
@@ -250,6 +288,10 @@
       },
       body: JSON.stringify(body),
     });
+    // retry-on-401: token stale/expirado en la ventana de carrera -> token fresco + 1 reintento.
+    if (r.status === 401 && !_retry) {
+      return callEF(body, true);
+    }
     return await r.json().catch(() => ({ error: 'parse_error' }));
   }
 

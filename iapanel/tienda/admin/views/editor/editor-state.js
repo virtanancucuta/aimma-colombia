@@ -20,12 +20,15 @@
     selection: null,          // { sectionId } | null
     dirty: false,
     saving: false,
+    // Estado del autosave de BORRADOR (separado de dirty=cambios-sin-publicar):
+    // 'idle' | 'saving' | 'saved' | 'error'. Lo consume el chip de la toolbar.
+    draftSaveStatus: 'idle',
     lastDraftSavedAt: null,
     lastPublishedAt: null,
     base_updated_at: null,
     snapshots: [],
     snapshotIdx: -1,
-    _listeners: { sections: [], selection: [], dirty: [], saving: [], theme: [] },
+    _listeners: { sections: [], selection: [], dirty: [], saving: [], theme: [], draftsave: [] },
     _typingTimers: {},
   };
 
@@ -61,6 +64,7 @@
                     : channel === 'dirty' ? state.dirty
                     : channel === 'saving' ? state.saving
                     : channel === 'theme' ? state.theme
+                    : channel === 'draftsave' ? state.draftSaveStatus
                     : null;
         fn(value);
       } catch (err) { console.error('editor-state listener error', err); }
@@ -312,6 +316,12 @@
     notify('saving');
   }
 
+  // Estado del autosave de borrador (para el chip de la toolbar). No toca dirty.
+  function setDraftSaveStatus(s) {
+    state.draftSaveStatus = s;
+    notify('draftsave');
+  }
+
   // SCHEMA v3: schema_version:3, page.version:2.
   function serialize() {
     return {
@@ -338,6 +348,7 @@
     get selection() { return state.selection; },
     get dirty() { return state.dirty; },
     get saving() { return state.saving; },
+    get draftSaveStatus() { return state.draftSaveStatus; },
     get tienda_id() { return state.tienda_id; },
     get base_updated_at() { return state.base_updated_at; },
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
@@ -348,7 +359,7 @@
     updateSectionProps, updateSectionBase,
     select, deselect,
     undo, redo, canUndo, canRedo, pushSnapshot,
-    markDirty, markClean, markSaving,
+    markDirty, markClean, markSaving, setDraftSaveStatus,
     serialize,
   };
 })(window);
