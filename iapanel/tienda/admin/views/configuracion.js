@@ -1,4 +1,14 @@
-/* AIMMA · Tienda IA · views/configuracion.js · v4 · 2026-05-31
+/* AIMMA · Tienda IA · views/configuracion.js · v5 · 2026-06-05
+   v5 (Tema global): Consolida theming en el panel de Tema del editor.
+   - Quita el <select> de paleta + swatches de la seccion Plantilla y paleta.
+   - El paleta_id se sigue enviando en el patch (backward-compat con fallback
+     de storefront cuando no hay theme.colors). Se trackea internamente en
+     cstate.paletaIdSel: al cambiar plantilla, se auto-selecciona la primera
+     paleta de esa plantilla (sin select visible) y se avisa al usuario que
+     puede ajustar colores en el editor de Tema.
+   - Agrega link "Editar colores y fuentes" -> #/editor.
+   - Elimina renderSwatchesHTML y refreshSwatchesBox (sin uso).
+   v4 (Fase 4 #41 SSL auto): al pasar estado a "publicada" por primera vez,
    v4 (Fase 4 #41 SSL auto): al pasar estado a "publicada" por primera vez,
    guardar() invoca la EF tienda-publicar-subdominio ANTES del UPDATE para
    crear <slug>.tienda.aimma.com.co en Easypanel. Si la EF falla, abortamos
@@ -42,6 +52,7 @@
   const cstate = {
     plantillas: [],
     paletas: [],
+    paletaIdSel: null,
     dirty: false,
     guardando: false,
     subiendoLogo: false,
@@ -177,52 +188,21 @@
       '</section>';
   }
 
-  // v4 (Fase 6+): helper reutilizable. Genera el HTML de los 4 swatches.
-  // Usado en initial render y en re-render reactivo al cambiar el select.
-  function renderSwatchesHTML(paleta) {
-    if (!paleta) return '';
-    return '' +
-      '<div class="ta-cfg-swatches">' +
-        '<span title="Color primario" style="background:' + safeColor(paleta.color_primary, '#888') + ';"></span>' +
-        '<span title="Color accent" style="background:' + safeColor(paleta.color_accent, '#888') + ';"></span>' +
-        '<span title="Color texto" style="background:' + safeColor(paleta.color_text_base, '#888') + ';"></span>' +
-        '<span title="Color fondo" style="background:' + safeColor(paleta.color_bg_base, '#888') + ';border:1px solid var(--ta-border);"></span>' +
-        '<span class="ta-cfg-swatches__name">' + window.TiendaIA.escapeHtml(paleta.nombre || '') + '</span>' +
-      '</div>';
-  }
-
-  function refreshSwatchesBox(paletaId) {
-    const box = document.getElementById('cfg-swatches-box');
-    if (!box) return;
-    const paleta = cstate.paletas.find(p => p.id === paletaId);
-    box.innerHTML = paleta ? renderSwatchesHTML(paleta) : '';
-  }
-
   function renderSeccionPlantillaPaleta(t) {
     const T = window.TiendaIA;
+    // v5: inicializar paletaIdSel al valor actual de la tienda en cada render.
+    cstate.paletaIdSel = t.paleta_id || null;
+
     const plantilla = cstate.plantillas.find(p => p.id === t.plantilla_id);
-    const paleta = cstate.paletas.find(p => p.id === t.paleta_id);
-    const paletasFiltradas = t.plantilla_id ? cstate.paletas.filter(p => p.plantilla_id === t.plantilla_id) : [];
 
     const opcionesPlantilla = cstate.plantillas.map(p =>
       '<option value="' + T.escapeHtml(p.id) + '"' + (t.plantilla_id === p.id ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>'
     ).join('');
-    const opcionesPaleta = paletasFiltradas.map(p =>
-      '<option value="' + T.escapeHtml(p.id) + '"' + (t.paleta_id === p.id ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>'
-    ).join('');
-
-    // v4 fix (Fase 6+): wrapeamos swatches en un container con ID para que el
-    // handler change del select paleta pueda re-renderizarlos sin esperar a
-    // que el user haga Guardar. Tambien usado por cascade plantilla->paleta.
-    const previewSwatches =
-      '<div id="cfg-swatches-box" class="ta-cfg-swatches-wrap">' +
-        (paleta ? renderSwatchesHTML(paleta) : '') +
-      '</div>';
 
     return '' +
       '<section class="ta-card ta-cfg-section">' +
-        '<h2 class="ta-cfg-section__h">Plantilla y paleta</h2>' +
-        '<p class="ta-cfg-section__desc">Define el look de tu tienda. Puedes cambiarlas cuando quieras sin perder productos.</p>' +
+        '<h2 class="ta-cfg-section__h">Plantilla y colores</h2>' +
+        '<p class="ta-cfg-section__desc">Define el look de tu tienda. Puedes cambiarla cuando quieras sin perder productos.</p>' +
 
         '<div class="ta-field">' +
           '<label class="ta-field__label" for="cfg-plantilla">Plantilla actual</label>' +
@@ -231,9 +211,9 @@
         '</div>' +
 
         '<div class="ta-field">' +
-          '<label class="ta-field__label" for="cfg-paleta">Paleta de colores</label>' +
-          '<select id="cfg-paleta" class="ta-select">' + opcionesPaleta + '</select>' +
-          previewSwatches +
+          '<label class="ta-field__label">Colores y tipografia</label>' +
+          '<p class="ta-cfg-section__desc" style="margin:4px 0 8px;">La paleta de colores y la tipografia de tu tienda se editan en el editor de Tema, con vista previa en vivo.</p>' +
+          '<a href="#/editor" class="ta-btn ta-btn--primary">Editar colores y fuentes</a>' +
         '</div>' +
 
         '<div style="margin-top:8px;">' +
@@ -327,37 +307,25 @@
       el.addEventListener('change', marcarDirty);
     });
 
-    // Cascade plantilla -> paleta
-    // v2 HIGH #2 fix: seleccionar explicitamente la primera paleta y avisar
-    // al user. Antes el cascade dejaba el select sin "selected" y al guardar
-    // borrador/pausada se persistia paleta_id=null silenciosamente.
+    // Cascade plantilla -> paleta (interno, sin select visible)
+    // v5: el select de paleta fue retirado del DOM. Se trackea la paleta_id
+    // internamente en cstate.paletaIdSel para seguir mandando paleta_id en
+    // el patch (backward-compat con fallback de color del storefront).
+    // v2 HIGH #2 fix preservado: se auto-selecciona la primera paleta de la
+    // nueva plantilla y se avisa al usuario.
     const selPlantilla = view.querySelector('#cfg-plantilla');
-    const selPaleta = view.querySelector('#cfg-paleta');
-    if (selPlantilla && selPaleta) {
+    if (selPlantilla) {
       selPlantilla.addEventListener('change', () => {
         const plantillaId = selPlantilla.value;
         const paletasFiltradas = cstate.paletas.filter(p => p.plantilla_id === plantillaId);
         if (paletasFiltradas.length === 0) {
-          selPaleta.innerHTML = '<option value="">— Sin paletas disponibles —</option>';
-          selPaleta.disabled = true;
-          refreshSwatchesBox(null);
+          cstate.paletaIdSel = null;
           T.toast('Esta plantilla no tiene paletas configuradas todavia.', 'error');
         } else {
-          selPaleta.disabled = false;
-          selPaleta.innerHTML = paletasFiltradas.map((p, i) =>
-            '<option value="' + T.escapeHtml(p.id) + '"' + (i === 0 ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>'
-          ).join('');
-          // v4 fix: refrescar swatches a la primera paleta auto-seleccionada
-          refreshSwatchesBox(paletasFiltradas[0].id);
-          T.toast('Paleta seleccionada automaticamente: ' + paletasFiltradas[0].nombre + '. Puedes cambiarla.', 'success');
+          cstate.paletaIdSel = paletasFiltradas[0].id;
+          T.toast('Colores base actualizados para la nueva plantilla. Ajustalos en el editor de Tema.', 'success');
         }
         marcarDirty();
-      });
-
-      // v4 fix (Jorge 2026-05-31): al cambiar la paleta, actualizar swatches
-      // en tiempo real (sin esperar Guardar).
-      selPaleta.addEventListener('change', () => {
-        refreshSwatchesBox(selPaleta.value);
       });
     }
 
@@ -497,7 +465,8 @@
     const idioma = view.querySelector('#cfg-idioma').value;
     const mostrarAgotados = view.querySelector('#cfg-agotados').value;
     const plantillaId = view.querySelector('#cfg-plantilla').value;
-    const paletaId = view.querySelector('#cfg-paleta').value;
+    // v5: paletaId se lee del estado interno (no del DOM — el select fue retirado).
+    const paletaId = cstate.paletaIdSel || tienda.paleta_id || null;
 
     const nombreLegal = view.querySelector('#cfg-razon-social').value.trim();
     const nit = view.querySelector('#cfg-nit').value.trim();
