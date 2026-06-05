@@ -32,6 +32,10 @@
       id: 'ed-toolbar-redo', title: 'Rehacer (Ctrl+Shift+Z)',
       onClick: () => callbacks.onRedo && callbacks.onRedo() }, '↷');
 
+    const btnTheme = E('button', { type: 'button', class: 'ed-toolbar__btn ed-toolbar__btn--ghost',
+      id: 'ed-toolbar-theme', title: 'Color y tipografia de toda la tienda',
+      onClick: () => callbacks.onTheme && callbacks.onTheme() }, 'Tema');
+
     const btnPreview = E('button', {
       type: 'button',
       class: 'ed-toolbar__btn ed-toolbar__btn--ghost',
@@ -50,7 +54,7 @@
     const saveInfo = E('span', { class: 'ed-toolbar__save-info', id: 'ed-toolbar-save-info' });
 
     const left = E('div', { class: 'ed-toolbar__group' }, [btnBack]);
-    const center = E('div', { class: 'ed-toolbar__group' }, [btnDesktop, btnMobile, btnUndo, btnRedo]);
+    const center = E('div', { class: 'ed-toolbar__group' }, [btnDesktop, btnMobile, btnUndo, btnRedo, btnTheme]);
     const right = E('div', { class: 'ed-toolbar__group' }, [btnPreview, saveInfo, btnSave]);
 
     container.innerHTML = '';
