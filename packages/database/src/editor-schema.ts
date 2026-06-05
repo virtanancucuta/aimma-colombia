@@ -5,7 +5,6 @@
 // Validado en: EF tienda-guardar-layout + Storefront BlockRenderer + Panel editor admin.
 
 import { z } from 'zod';
-import { FONT_PAIRING_IDS } from './font-pairings';
 
 // ============================================================
 // Regex de seguridad (conservados de v1/v2 — hardening Plan 1)
@@ -198,9 +197,14 @@ const ThemeColorsSchema = z.object({
   bg_base: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
 }).partial();
 
+// IDs del enum INLINE (no import de ./font-pairings): el mirror EF es Deno, que exige extension .ts
+// en imports relativos -> un import romperia el bundle. font-pairings.ts (storefront/admin) es la
+// fuente de verdad del allowlist; drift-guard en tests/editor/12 verifica que estos 6 == sus IDs.
+const THEME_FONT_PAIRINGS = ['industrial', 'moderno', 'geometrico', 'impacto', 'editorial', 'elegante'] as const;
+
 const ThemeSchema = z.object({
   colors: ThemeColorsSchema.optional(),
-  font_pairing: z.enum(FONT_PAIRING_IDS as [string, ...string[]]).optional(),
+  font_pairing: z.enum(THEME_FONT_PAIRINGS).optional(),
 });
 
 export const PersonalizacionesSchema = z.object({

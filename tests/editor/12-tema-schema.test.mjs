@@ -27,3 +27,14 @@ test('tema: theme_draft acepta la misma forma', () => {
   assert.ok(r.success);
 });
 test('tema: 6 pairings en el allowlist', () => { assert.equal(FONT_PAIRING_IDS.length, 6); });
+
+// DRIFT-GUARD: el enum INLINE del editor-schema (THEME_FONT_PAIRINGS) debe cubrir EXACTO los IDs del
+// allowlist font-pairings.ts (que NO se mirror-ea al EF). Si alguien agrega un pairing al allowlist
+// pero olvida el enum (o viceversa), esto falla.
+test('tema: el enum del schema cubre EXACTO los IDs del allowlist font-pairings', () => {
+  for (const id of FONT_PAIRING_IDS) {
+    assert.ok(PersonalizacionesSchema.safeParse({ ...base, theme: { font_pairing: id } }).success, `el schema debe aceptar '${id}'`);
+  }
+  // y ninguno de mas: un id que NO esta en el allowlist es rechazado (cubierto arriba con 'evil', + count)
+  assert.equal(FONT_PAIRING_IDS.length, 6, 'el allowlist debe tener 6 (sino el enum inline esta desfasado)');
+});
