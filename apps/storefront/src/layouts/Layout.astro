@@ -8,6 +8,7 @@ import Header from '~/components/Header.astro';
 import Footer from '~/components/Footer.astro';
 import { getContrastText } from '~/lib/contrast';
 import { getTemplateStyle } from '~/lib/template-styles';
+import { FONT_PAIRINGS, pairingForTemplate } from '@aimma/database';
 import '~/styles/global.css';
 import '~/styles/blocks.css';
 
@@ -18,6 +19,7 @@ interface Props {
   canonical?: string;
   noindex?: boolean;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  isPreview?: boolean;
 }
 
 const { tienda } = Astro.locals;
@@ -28,6 +30,7 @@ const {
   canonical,
   noindex = false,
   jsonLd,
+  isPreview = false,
 } = Astro.props;
 
 // Defaults sensatos por tienda
@@ -47,10 +50,13 @@ const ogImg = ogImage || tienda.logo_url || undefined;
 
 // Theming: CSS vars desde paleta. Defaults conservadores si paleta es null.
 const p = tienda.paleta;
-const primary = p?.color_primary || '#1a1a1a';
-const accent = p?.color_accent || '#ff6b35';
-const textBase = p?.color_text_base || '#1a1a1a';
-const bgBase = p?.color_bg_base || '#ffffff';
+const pers: any = (tienda as any).personalizaciones;
+const themeActivo = (isPreview ? (pers?.theme_draft ?? pers?.theme) : pers?.theme) || {};
+const tc = themeActivo.colors || {};
+const primary = tc.primary || p?.color_primary || '#1a1a1a';
+const accent = tc.accent || p?.color_accent || '#ff6b35';
+const textBase = tc.text_base || p?.color_text_base || '#1a1a1a';
+const bgBase = tc.bg_base || p?.color_bg_base || '#ffffff';
 
 // Auto-contrast WCAG: cada color de fondo recibe su `--ta-color-on-*` calculado
 // server-side por luminancia W3C. Esto evita el bug de `text-white` sobre
@@ -64,6 +70,12 @@ const onBg = getContrastText(bgBase);
 // Defaults a industrial_clean si plantilla null o slug desconocido.
 const template = getTemplateStyle(tienda.plantilla?.slug);
 
+// CERO-REGRESION: SIN font_pairing -> template.fonts EXACTO (path actual). Con font_pairing -> override.
+const pairing = themeActivo.font_pairing ? FONT_PAIRINGS[themeActivo.font_pairing as keyof typeof FONT_PAIRINGS] : null;
+const displayFamily = pairing ? pairing.display : template.fonts.displayFamily;
+const bodyFamily = pairing ? pairing.body : template.fonts.bodyFamily;
+const fontUrl = pairing ? pairing.url : template.fonts.googleFontsUrl;
+
 // CSS vars en el style attribute del <html> = declaraciones validas + heredadas
 // por todos los descendientes. Incluye theming (paleta) + auto-contrast + fonts.
 const themeStyle =
@@ -74,8 +86,8 @@ const themeStyle =
   `--ta-color-on-primary:${onPrimary};` +
   `--ta-color-on-accent:${onAccent};` +
   `--ta-color-on-bg:${onBg};` +
-  `--ta-font-display:${template.fonts.displayFamily};` +
-  `--ta-font-body:${template.fonts.bodyFamily};`;
+  `--ta-font-display:${displayFamily};` +
+  `--ta-font-body:${bodyFamily};`;
 ---
 
 <!doctype html>
@@ -115,7 +127,7 @@ const themeStyle =
     {/* Google Fonts segun plantilla. Preconnect para reducir RTT. */}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href={template.fonts.googleFontsUrl} />
+    <link rel="stylesheet" href={fontUrl} />
 
     {/* Theming dinamico: CSS vars inyectadas en el style del <html> (arriba).
         Esto evita el bug con is:inline + define:vars que generaba CSS invalido. */}
