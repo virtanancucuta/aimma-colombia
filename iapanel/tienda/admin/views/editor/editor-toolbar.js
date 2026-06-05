@@ -87,7 +87,6 @@
     const undoBtn = document.getElementById('ed-toolbar-undo');
     const redoBtn = document.getElementById('ed-toolbar-redo');
     const saveBtn = document.getElementById('ed-toolbar-save');
-    const saveInfo = document.getElementById('ed-toolbar-save-info');
 
     if (undoBtn) undoBtn.disabled = !ES.canUndo();
     if (redoBtn) redoBtn.disabled = !ES.canRedo();
@@ -104,15 +103,32 @@
         saveBtn.disabled = false;
       }
     }
-    if (saveInfo) {
+    updateSaveStatus();
+  }
+
+  // Chip de estado del autosave de borrador. Callado en exito; prominente cuando el
+  // trabajo esta en riesgo (error/reintentando). Lo alimenta editorState.draftSaveStatus.
+  function updateSaveStatus() {
+    const ES = window.TiendaIA.editorState;
+    const el = document.getElementById('ed-toolbar-save-info');
+    if (!el) return;
+    el.classList.remove('ed-toolbar__save-info--error');
+    const st = ES.draftSaveStatus;
+    if (st === 'saving') {
+      el.textContent = 'Guardando...';
+    } else if (st === 'error') {
+      el.textContent = 'Sin conexion, reintentando...';
+      el.classList.add('ed-toolbar__save-info--error');
+    } else {
       const last = ES.lastDraftSavedAt;
-      saveInfo.textContent = last ? 'Borrador guardado ' + formatRelative(last) : '';
+      el.textContent = last ? 'Borrador guardado ' + formatRelative(last) : '';
     }
   }
 
   function bindStateListeners() {
     const ES = window.TiendaIA.editorState;
     ES.subscribe('dirty', updateButtons);
+    ES.subscribe('draftsave', updateSaveStatus);
     ES.subscribe('saving', updateButtons);
     ES.subscribe('sections', updateButtons);
   }

@@ -409,8 +409,15 @@
     // supabase.auth.getSession(), que valida expiracion y refresca el token si hace falta.
     // Si el refresh falla (refresh token invalido), devuelve null y el caller degrada
     // pidiendo recargar la pagina (re-login), sin mandar un token muerto a la EF.
-    getAccessToken: async () => {
+    getAccessToken: async (forceRefresh) => {
       try {
+        if (forceRefresh) {
+          // retry-on-401: forzar un refresh REAL (no solo leer el cache de getSession).
+          // Cubre la ventana de carrera donde el access token expiro/esta por expirar y
+          // la EF (verify_jwt=true) lo rechaza con 401.
+          const { data: rd } = await supabase.auth.refreshSession();
+          if (rd?.session?.access_token) return rd.session.access_token;
+        }
         const { data } = await supabase.auth.getSession();
         return data?.session?.access_token || null;
       } catch (e) {

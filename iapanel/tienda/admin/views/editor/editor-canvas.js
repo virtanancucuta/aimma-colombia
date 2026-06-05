@@ -9,6 +9,9 @@
   'use strict';
 
   const PREVIEW_TOKEN_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co/functions/v1/tienda-preview-token';
+  // El preview-token vence a los 15 min. Re-minteamos con 90s de margen (proactivo) y
+  // tratamos como "stale" todo lo que esté dentro de ese margen (reactivo, en refresh()).
+  const REMINT_MARGIN_MS = 90000;
 
   const state = {
     container: null,
@@ -22,6 +25,7 @@
     device: 'desktop',
     messageHandler: null,
     expiresAt: null,
+    remintTimer: null,
   };
 
   function render(container, callbacks) {
@@ -91,6 +95,7 @@
         return;
       }
       mountIframe();
+      scheduleRemint(); // re-mint proactivo antes de que el token venza (evita el 403 en canvas)
     } catch (err) {
       console.error('[editor-canvas] loadPreview error', err);
       setStatus('Error de conexion al cargar la vista previa.', true);
@@ -156,6 +161,9 @@
   // ============================================================
   function refresh() {
     if (!state.iframe || !state.tenantOrigin) return;
+    // Si el preview-token esta por vencer, NO recargamos con el viejo (daria 403
+    // "Preview token invalido o expirado" dentro del canvas): re-minteamos primero.
+    if (tokenIsStale()) { reloadFull(); return; }
     const win = state.iframe.contentWindow;
     if (!win) return;
     try {
@@ -165,6 +173,21 @@
       console.warn('[editor-canvas] postMessage reload fallo, recargando preview', e);
       reloadFull();
     }
+  }
+
+  // El token de la URL del iframe esta vencido o dentro del margen -> hay que re-mintear.
+  function tokenIsStale() {
+    if (!state.expiresAt) return false;
+    return (new Date(state.expiresAt).getTime() - Date.now()) < REMINT_MARGIN_MS;
+  }
+
+  // Re-mint proactivo: agenda un reloadFull (token fresco + iframe nuevo) ~90s antes de vencer,
+  // para que la URL del iframe nunca quede con un token muerto. Se re-agenda en cada loadPreview.
+  function scheduleRemint() {
+    if (state.remintTimer) { clearTimeout(state.remintTimer); state.remintTimer = null; }
+    if (!state.expiresAt) return;
+    const ms = new Date(state.expiresAt).getTime() - Date.now() - REMINT_MARGIN_MS;
+    state.remintTimer = setTimeout(() => { reloadFull(); }, Math.max(ms, 1000));
   }
 
   // Recarga completa: pide un token nuevo y recrea el iframe.
@@ -195,6 +218,7 @@
       window.removeEventListener('message', state.messageHandler);
       state.messageHandler = null;
     }
+    if (state.remintTimer) { clearTimeout(state.remintTimer); state.remintTimer = null; }
     state.iframe = null;
     state.ready = false;
   }

@@ -99,6 +99,11 @@
   margin-right: 0.5rem;
   font-variant-numeric: tabular-nums;
 }
+/* Estado en riesgo (error/reintentando): prominente + coloreado. */
+.ed-toolbar__save-info--error {
+  color: #c0392b;
+  font-weight: 600;
+}
 
 /* ============================================================
    Shell (3 paneles): sidebar | iframe | inspector
