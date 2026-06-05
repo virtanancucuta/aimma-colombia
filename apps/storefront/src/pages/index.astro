@@ -9,7 +9,7 @@ import Hero from '~/components/Hero.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
 import BlockRenderer from '~/components/BlockRenderer.astro';
 import { getProductosPorTienda } from '~/lib/catalogo';
-import { parsePersonalizaciones } from '@aimma/database';
+import { parsePersonalizaciones, FONT_PAIRINGS, CSS_COLOR_REGEX } from '@aimma/database';
 
 const { tienda, supabase } = Astro.locals;
 const plantillaSlug = tienda.plantilla?.slug;
@@ -155,7 +155,7 @@ const jsonLd = {
 </Layout>
 
 {isPreview && (
-  <script is:inline define:vars={{ ADMIN_ORIGIN }}>
+  <script is:inline define:vars={{ ADMIN_ORIGIN, PAIRINGS: FONT_PAIRINGS, COLOR_RE: CSS_COLOR_REGEX.source }}>
     // Puente Editor PRO-MAX (solo en preview). Click en seccion -> avisa al panel.
     // Recibe {type:'reload'} -> recarga. Valida origin en ambos sentidos.
     document.addEventListener('click', (e) => {
@@ -170,6 +170,27 @@ const jsonLd = {
       if (e.origin !== ADMIN_ORIGIN) return;
       const msg = e.data || {};
       if (msg.type === 'reload') location.reload();
+      if (msg.type === 'theme' && msg.colors && typeof msg.colors === 'object') {
+        const re = new RegExp(COLOR_RE);
+        for (const k in msg.colors) {
+          const v = msg.colors[k];
+          // Solo vars --ta-color-* con valor que pasa el MISMO regex que el Zod (preview == guardado).
+          if (typeof k === 'string' && k.indexOf('--ta-color-') === 0 && typeof v === 'string' && re.test(v)) {
+            document.documentElement.style.setProperty(k, v);
+          }
+        }
+        // Fuente: SOLO el ID del allowlist; la url/family se DERIVAN server-side de PAIRINGS (nunca URL cruda).
+        const p = PAIRINGS[msg.font_pairing];
+        if (p) {
+          document.documentElement.style.setProperty('--ta-font-display', p.display);
+          document.documentElement.style.setProperty('--ta-font-body', p.body);
+          if (!document.querySelector('link[data-theme-font="' + msg.font_pairing + '"]')) {
+            const l = document.createElement('link');
+            l.rel = 'stylesheet'; l.href = p.url; l.setAttribute('data-theme-font', msg.font_pairing);
+            document.head.appendChild(l);
+          }
+        }
+      }
     });
 
     // Avisar al panel que el preview esta listo.

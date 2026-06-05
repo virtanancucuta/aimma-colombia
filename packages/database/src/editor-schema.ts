@@ -11,7 +11,7 @@ import { z } from 'zod';
 // ============================================================
 
 // CSS-safe color: bloquea CSS injection en style="color:${valor}".
-const CSS_COLOR_REGEX = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)<>]+\)|hsla?\([^)<>]+\)|ok(lch|lab)\([^)<>]+\)|[a-zA-Z]{3,30})$/;
+export const CSS_COLOR_REGEX = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)<>]+\)|hsla?\([^)<>]+\)|ok(lch|lab)\([^)<>]+\)|[a-zA-Z]{3,30})$/;
 // CSS-safe gradient: solo linear/radial/conic-gradient.
 const CSS_GRADIENT_REGEX = /^(linear|radial|conic)-gradient\([^)<>"'`;{}@\\]{1,400}\)$/i;
 // CSS-safe https URL: bloquea javascript:, data:, etc.

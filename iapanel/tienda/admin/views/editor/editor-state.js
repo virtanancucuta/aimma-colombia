@@ -25,7 +25,7 @@
     base_updated_at: null,
     snapshots: [],
     snapshotIdx: -1,
-    _listeners: { sections: [], selection: [], dirty: [], saving: [] },
+    _listeners: { sections: [], selection: [], dirty: [], saving: [], theme: [] },
     _typingTimers: {},
   };
 
@@ -75,7 +75,7 @@
     // En el editor priorizamos el borrador si existe, si no la home publicada.
     const home = pers.pages?.home_draft || pers.pages?.home || null;
     state.sections = Array.isArray(home?.sections) ? structuredClone(home.sections) : [];
-    state.theme = pers.theme ? structuredClone(pers.theme) : {};
+    state.theme = normalizeTheme(pers.theme_draft || pers.theme);
     // base_updated_at: usamos el de la home PUBLICADA para el locking optimista
     // (el draft no participa del locking; guardar-layout compara contra home).
     state.base_updated_at = pers.pages?.home?.updated_at || home?.updated_at || null;
@@ -206,6 +206,19 @@
     notify('sections');
   }
 
+  // Backward-compat: conserva SOLO la forma nueva (colors/font_pairing); descarta claves viejas
+  // (color_primary/font_*_url del theme vestigial) para que serialize no re-emita muertas.
+  function normalizeTheme(t) {
+    if (!t || typeof t !== 'object') return {};
+    const out = {};
+    if (t.colors && typeof t.colors === 'object') out.colors = structuredClone(t.colors);
+    if (typeof t.font_pairing === 'string') out.font_pairing = t.font_pairing;
+    return out;
+  }
+  function setThemeColors(partial) { state.theme.colors = { ...(state.theme.colors || {}), ...partial }; pushSnapshot(); markDirty(); notify('theme'); }
+  function setThemePalette(colors4) { state.theme.colors = { ...colors4 }; pushSnapshot(); markDirty(); notify('theme'); }
+  function setThemeFontPairing(id) { state.theme.font_pairing = id; pushSnapshot(); markDirty(); notify('theme'); }
+
   function findSection(sectionId) {
     return state.sections.find(s => s.id === sectionId) || null;
   }
@@ -328,6 +341,7 @@
     get base_updated_at() { return state.base_updated_at; },
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
+    setThemeColors, setThemePalette, setThemeFontPairing,
     findSection,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
