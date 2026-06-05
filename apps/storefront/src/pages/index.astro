@@ -180,7 +180,8 @@ const jsonLd = {
           }
         }
         // Fuente: SOLO el ID del allowlist; la url/family se DERIVAN server-side de PAIRINGS (nunca URL cruda).
-        const p = PAIRINGS[msg.font_pairing];
+        // hasOwnProperty: un id como 'constructor'/'__proto__' NO debe resolver a una cadena del prototipo.
+        const p = (typeof msg.font_pairing === 'string' && Object.prototype.hasOwnProperty.call(PAIRINGS, msg.font_pairing)) ? PAIRINGS[msg.font_pairing] : null;
         if (p) {
           document.documentElement.style.setProperty('--ta-font-display', p.display);
           document.documentElement.style.setProperty('--ta-font-body', p.body);

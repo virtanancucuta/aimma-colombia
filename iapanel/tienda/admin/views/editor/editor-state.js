@@ -60,6 +60,7 @@
                     : channel === 'selection' ? state.selection
                     : channel === 'dirty' ? state.dirty
                     : channel === 'saving' ? state.saving
+                    : channel === 'theme' ? state.theme
                     : null;
         fn(value);
       } catch (err) { console.error('editor-state listener error', err); }
