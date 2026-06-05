@@ -91,6 +91,7 @@
       onSave: () => savePublish(),
       onPreview: () => openPreviewTab(),
       onDeselect: () => window.TiendaIA.editorState.deselect(),
+      onTheme: () => window.TiendaIA.editorThemePanel.toggle(),
     });
 
     window.TiendaIA.editorSidebar.render(sidebarEl, {
@@ -100,6 +101,8 @@
     window.TiendaIA.editorCanvas.render(canvasEl, {});
 
     window.TiendaIA.editorInspector.render(inspectorEl, {});
+
+    window.TiendaIA.editorThemePanel.render(shell);
 
     // First-use: si la pagina NO tiene secciones, ofrecer starter o desde cero.
     // (Mas robusto que depender de la columna editor_first_choice_at, que no
@@ -259,11 +262,16 @@
     const T = window.TiendaIA;
     if (!T || !T.state || !T.state.tienda || !savedPage) return;
     const cur = T.state.tienda.personalizaciones || { schema_version: 3, pages: {} };
-    const next = { schema_version: 3, theme: T.editorState.serialize().theme, pages: { ...(cur.pages || {}) } };
+    const draftTheme = T.editorState.serialize().theme; // el theme que se edita ES el borrador
+    const next = { schema_version: 3, pages: { ...(cur.pages || {}) } };
     if (mode === 'publish') {
+      next.theme = draftTheme;          // promueve
+      // theme_draft se elimina (no se copia)
       next.pages.home = savedPage;
       delete next.pages.home_draft;
     } else {
+      next.theme = cur.theme;           // preserva el publicado intacto
+      next.theme_draft = draftTheme;    // borrador
       next.pages.home_draft = savedPage;
     }
     T.state.tienda.personalizaciones = next;

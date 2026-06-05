@@ -154,8 +154,14 @@ serve(async (req) => {
   const now = new Date().toISOString();
   const next: any = structuredClone(tienda.personalizaciones || { schema_version: 3, pages: {} });
   next.schema_version = 3;
-  if (body.personalizaciones.theme) {
-    next.theme = body.personalizaciones.theme;
+  const themeFromClient = body.personalizaciones.theme;
+  if (body.mode === 'draft') {
+    // Borrador: escribe SOLO theme_draft; NO toca el theme publicado (preservado via structuredClone).
+    if (themeFromClient !== undefined) next.theme_draft = themeFromClient;
+  } else {
+    // Publicar: promueve el theme + limpia el borrador.
+    if (themeFromClient !== undefined) next.theme = themeFromClient;
+    delete next.theme_draft;
   }
 
   const homeFromClient = body.personalizaciones.pages.home;
@@ -188,5 +194,7 @@ serve(async (req) => {
     mode: body.mode,
     updated_at: now,
     home: body.mode === 'publish' ? next.pages.home : next.pages.home_draft,
+    theme: next.theme,
+    theme_draft: next.theme_draft,
   });
 });

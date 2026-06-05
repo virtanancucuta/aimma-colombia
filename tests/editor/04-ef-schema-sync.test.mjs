@@ -8,6 +8,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const canonical = readFileSync(resolve(HERE, '../../packages/database/src/editor-schema.ts'), 'utf8');
 const efCopy = readFileSync(resolve(HERE, '../../supabase/functions/tienda-guardar-layout/editor-schema.ts'), 'utf8');
 
+// NOTA: font-pairings.ts NO se mirror-ea al EF — el editor-schema inlinea los IDs del enum (Deno
+// exige extension .ts en imports relativos, que rompe el bundle). El drift IDs<->allowlist se cubre en 12.
+
 // Dedupe del Zod: una sola fuente autorada (packages/database). El EF necesita el schema
 // como archivo Deno en su carpeta (el deploy MCP no resuelve imports fuera del dir). Esa
 // copia es un MIRROR byte-identico, NO hand-maintained: este test falla si driftea.

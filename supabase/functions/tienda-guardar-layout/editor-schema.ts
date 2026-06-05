@@ -11,7 +11,7 @@ import { z } from 'zod';
 // ============================================================
 
 // CSS-safe color: bloquea CSS injection en style="color:${valor}".
-const CSS_COLOR_REGEX = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)<>]+\)|hsla?\([^)<>]+\)|ok(lch|lab)\([^)<>]+\)|[a-zA-Z]{3,30})$/;
+export const CSS_COLOR_REGEX = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)<>]+\)|hsla?\([^)<>]+\)|ok(lch|lab)\([^)<>]+\)|[a-zA-Z]{3,30})$/;
 // CSS-safe gradient: solo linear/radial/conic-gradient.
 const CSS_GRADIENT_REGEX = /^(linear|radial|conic)-gradient\([^)<>"'`;{}@\\]{1,400}\)$/i;
 // CSS-safe https URL: bloquea javascript:, data:, etc.
@@ -189,16 +189,28 @@ export const PageSchema = z.object({
 
 export type Page = z.infer<typeof PageSchema>;
 
+// Colores: reusa CSS_COLOR_REGEX (definido arriba) -> bloquea inyeccion CSS. partial = override parcial.
+const ThemeColorsSchema = z.object({
+  primary: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+  accent: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+  text_base: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+  bg_base: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido'),
+}).partial();
+
+// IDs del enum INLINE (no import de ./font-pairings): el mirror EF es Deno, que exige extension .ts
+// en imports relativos -> un import romperia el bundle. font-pairings.ts (storefront/admin) es la
+// fuente de verdad del allowlist; drift-guard en tests/editor/12 verifica que estos 6 == sus IDs.
+const THEME_FONT_PAIRINGS = ['industrial', 'moderno', 'geometrico', 'impacto', 'editorial', 'elegante'] as const;
+
 const ThemeSchema = z.object({
-  color_primary: z.string().nullable().optional(),
-  color_accent: z.string().nullable().optional(),
-  font_display_url: z.string().url().nullable().optional(),
-  font_body_url: z.string().url().nullable().optional(),
+  colors: ThemeColorsSchema.optional(),
+  font_pairing: z.enum(THEME_FONT_PAIRINGS).optional(),
 });
 
 export const PersonalizacionesSchema = z.object({
   schema_version: z.literal(3),
   theme: ThemeSchema.optional(),
+  theme_draft: ThemeSchema.optional(),
   pages: z.record(z.string(), PageSchema),
 });
 

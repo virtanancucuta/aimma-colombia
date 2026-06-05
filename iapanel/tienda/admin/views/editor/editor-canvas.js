@@ -199,6 +199,15 @@
     state.ready = false;
   }
 
+  // Preview en vivo del theme: postea los --ta-* (colores) + el ID del pairing al iframe.
+  // targetOrigin = tenantOrigin (nunca '*'). El bridge del storefront valida origin + regex + allowlist.
+  function applyThemePreview(colors, fontPairingId) {
+    if (!state.iframe || !state.tenantOrigin) return;
+    try {
+      state.iframe.contentWindow.postMessage({ type: 'theme', colors: colors, font_pairing: fontPairingId }, state.tenantOrigin);
+    } catch (e) { /* noop */ }
+  }
+
   // No-op compat: el canvas v3 no reconstruye DOM de secciones (lo hace el iframe).
   // Se conserva por si algun caller viejo lo invoca; refresca el iframe.
   function rebuild() {
@@ -207,7 +216,7 @@
 
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
-    render, refresh, reloadFull, setDevice, destroy, rebuild,
+    render, refresh, reloadFull, setDevice, destroy, rebuild, applyThemePreview,
     get previewUrl() { return state.previewUrl; },
   };
 })(window);
