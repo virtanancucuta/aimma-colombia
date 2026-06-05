@@ -740,9 +740,12 @@
    Panel de Tema Global (T4b) — drawer overlay derecho
    ============================================================ */
 
-/* El shell debe ser position:relative para anclar el panel */
+/* El shell debe ser position:relative para anclar el panel.
+   overflow-x:clip recorta el drawer cerrado (translateX(100%)) sin scroll horizontal
+   y sin forzar overflow-y a auto (clip != hidden). */
 .ed-shell {
   position: relative;
+  overflow-x: clip;
 }
 
 .ed-theme-panel {

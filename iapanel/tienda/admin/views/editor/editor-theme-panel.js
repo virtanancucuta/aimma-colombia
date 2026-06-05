@@ -299,8 +299,10 @@
         card.type = 'button';
         card.className = 'ed-theme-pair' + (isSel ? ' is-sel' : '');
 
-        // display font-family viene del allowlist de font-pairings.js — no es input del usuario, es seguro
-        var displayFont = pairing.display || 'inherit';
+        // display font-family viene del allowlist de font-pairings.js — no es input del usuario.
+        // Las familias traen comillas dobles ('"IBM Plex Sans",...'); dentro de un style="" en
+        // innerHTML romperian el atributo -> normalizamos a comillas simples para que el "Aa" rendere.
+        var displayFont = (pairing.display || 'inherit').replace(/"/g, "'");
         var labelText = escHtml(pairing.label || id);
         var catText = escHtml(pairing.cat || '');
 
@@ -331,9 +333,24 @@
   }
 
   // ============================================================
+  // Carga (idempotente) de las 6 fuentes display para que los previews "Aa" se vean
+  // reales. El admin usa Exo 2; sin esto las cards caerian a fuente de sistema pese
+  // al font-family. Solo se inyecta al abrir el panel (no en cada carga del admin).
+  // ============================================================
+  function ensurePreviewFonts() {
+    if (document.getElementById('ed-theme-preview-fonts')) return;
+    var l = document.createElement('link');
+    l.id = 'ed-theme-preview-fonts';
+    l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&family=Anton&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Cormorant+Garamond:wght@500;600&family=IBM+Plex+Sans:wght@500;600;700&display=swap';
+    document.head.appendChild(l);
+  }
+
+  // ============================================================
   // open / close / toggle
   // ============================================================
   async function open() {
+    ensurePreviewFonts();
     await loadPaletas();
     pstate.open = true;
     if (pstate.panelEl) pstate.panelEl.classList.add('ed-theme-panel--open');
