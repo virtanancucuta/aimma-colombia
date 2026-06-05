@@ -9,7 +9,6 @@
    - Agrega link "Editar colores y fuentes" -> #/editor.
    - Elimina renderSwatchesHTML y refreshSwatchesBox (sin uso).
    v4 (Fase 4 #41 SSL auto): al pasar estado a "publicada" por primera vez,
-   v4 (Fase 4 #41 SSL auto): al pasar estado a "publicada" por primera vez,
    guardar() invoca la EF tienda-publicar-subdominio ANTES del UPDATE para
    crear <slug>.tienda.aimma.com.co en Easypanel. Si la EF falla, abortamos
    el cambio de estado y mostramos toast con el detalle. Idempotente: si la
