@@ -192,6 +192,29 @@ const jsonLd = {
           }
         }
       }
+      if (msg.type === 'section-patch') {
+        // Origin ya validado arriba (=== exacto). Shape ESTRICTO antes de tocar el DOM.
+        const OPS = { replace: 1, insert: 1, remove: 1, move: 1 };
+        if (!OPS[msg.op]) return;
+        if (typeof msg.sectionId !== 'string' || !/^sec_[a-z0-9]{4,}$/.test(msg.sectionId)) return;
+        const first = document.querySelector('[data-section-id]');
+        const cont = first ? first.parentElement : null;
+        const el = document.querySelector('[data-section-id="' + msg.sectionId + '"]');
+        if (msg.op === 'remove') { if (el) el.remove(); return; }
+        if (msg.op === 'move') {
+          if (el && cont && Number.isInteger(msg.toIndex)) cont.insertBefore(el, cont.children[msg.toIndex] || null);
+          return;
+        }
+        // replace/insert: el html es NUESTRO SSR (sanitizado por la fn compartida) + origin-gated -> confiable, sin re-sanitizar (Q4.3).
+        if (typeof msg.html !== 'string') return;
+        if (msg.op === 'replace') { if (el) el.outerHTML = msg.html; return; }
+        if (msg.op === 'insert' && cont && Number.isInteger(msg.index)) {
+          const t = document.createElement('template');
+          t.innerHTML = msg.html.trim();
+          const node = t.content.firstElementChild;
+          if (node) cont.insertBefore(node, cont.children[msg.index] || null);
+        }
+      }
     });
 
     // Avisar al panel que el preview esta listo.
