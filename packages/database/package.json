@@ -17,6 +17,7 @@
     "src"
   ],
   "dependencies": {
+    "sanitize-html": "2.13.1",
     "zod": "^3.25.76"
   }
 }

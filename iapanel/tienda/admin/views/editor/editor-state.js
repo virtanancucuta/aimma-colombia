@@ -1,8 +1,8 @@
-/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-state.js v2 (SCHEMA v3)
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-state.js v3 (carril patch)
  * Singleton state. Modelo Shopify-style: secciones APILADAS (orden = orden vertical).
  * SIN grid 2D, SIN elementos posicionados. Cada seccion: {id,tipo,ancho,fondo,padding,props}.
  * Mantiene: snapshots/undo/redo (structuredClone), dirty, base_updated_at, locking optimista.
- * Observer pattern para listeners de cambios.
+ * Observer pattern para listeners de cambios. Canal 'patch' notifica lastOp (kind + meta).
  * Marker: editor-plan4-v3-state.
  */
 
@@ -28,7 +28,8 @@
     base_updated_at: null,
     snapshots: [],
     snapshotIdx: -1,
-    _listeners: { sections: [], selection: [], dirty: [], saving: [], theme: [], draftsave: [] },
+    lastOp: null,
+    _listeners: { sections: [], selection: [], dirty: [], saving: [], theme: [], draftsave: [], patch: [] },
     _typingTimers: {},
   };
 
@@ -65,6 +66,7 @@
                     : channel === 'saving' ? state.saving
                     : channel === 'theme' ? state.theme
                     : channel === 'draftsave' ? state.draftSaveStatus
+                    : channel === 'patch' ? state.lastOp
                     : null;
         fn(value);
       } catch (err) { console.error('editor-state listener error', err); }
@@ -151,7 +153,9 @@
     }
     pushSnapshot();
     markDirty();
+    state.lastOp = { kind: 'insert', sectionId: section.id, index: (typeof atIndex === 'number' && atIndex >= 0 && atIndex <= state.sections.length - 1 ? atIndex : state.sections.length - 1) };
     notify('sections');
+    notify('patch');
     return section.id;
   }
 
@@ -160,7 +164,9 @@
     if (state.selection?.sectionId === sectionId) state.selection = null;
     pushSnapshot();
     markDirty();
+    state.lastOp = { kind: 'remove', sectionId: sectionId };
     notify('sections');
+    notify('patch');
     notify('selection');
   }
 
@@ -172,7 +178,9 @@
     state.sections.splice(toIdx, 0, moved);
     pushSnapshot();
     markDirty();
+    state.lastOp = { kind: 'move', sectionId: moved.id, toIndex: toIdx };
     notify('sections');
+    notify('patch');
   }
 
   function duplicateSection(sectionId) {
@@ -187,7 +195,9 @@
     state.sections.splice(idx + 1, 0, copy);
     pushSnapshot();
     markDirty();
+    state.lastOp = { kind: 'insert', sectionId: copy.id, index: idx + 1 };
     notify('sections');
+    notify('patch');
     return copy.id;
   }
 
@@ -198,7 +208,9 @@
     sec.props = { ...sec.props, ...partialProps };
     debouncedSnapshot(sectionId + ':props');
     markDirty();
+    state.lastOp = { kind: 'replace', sectionId: sectionId };
     notify('sections');
+    notify('patch');
   }
 
   // Actualiza una propiedad base de la seccion (fondo, padding, ancho).
@@ -208,7 +220,9 @@
     sec[key] = value;
     debouncedSnapshot(sectionId + ':base:' + key);
     markDirty();
+    state.lastOp = { kind: 'replace', sectionId: sectionId };
     notify('sections');
+    notify('patch');
   }
 
   // Backward-compat: conserva SOLO la forma nueva (colors/font_pairing); descarta claves viejas
@@ -289,6 +303,8 @@
     notify('sections');
     notify('selection');
     notify('dirty');
+    state.lastOp = { kind: 'reload' };
+    notify('patch');
   }
 
   function canUndo() { return state.snapshotIdx > 0; }
@@ -352,6 +368,7 @@
     get tienda_id() { return state.tienda_id; },
     get base_updated_at() { return state.base_updated_at; },
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
+    get lastOp() { return state.lastOp; },
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
     setThemeColors, setThemePalette, setThemeFontPairing,
     findSection,

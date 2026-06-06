@@ -1,8 +1,10 @@
-/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-canvas.js v2 (WYSIWYG iframe)
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-canvas.js v3 (carril patch)
  * El canvas ahora es un <iframe> que muestra el storefront REAL en modo preview.
  * SIN mockups, SIN GridStack. Puente postMessage bidireccional con validacion de origin.
  *  - Admin -> iframe: refresh() => postMessage({type:'reload'}, TENANT_ORIGIN)
+ *  - Admin -> iframe: applyPatch(op, opts) => postMessage({type:'section-patch',...}, TENANT_ORIGIN)
  *  - iframe -> admin: {type:'select',sectionId} => EditorState.select; {type:'preview-ready'}
+ * renderFragment: stash KV -> pagina GET -> DOMParser -> outerHTML limpio (sin execute de scripts).
  * Marker: editor-plan4-v3-canvas.
  */
 (function(window) {
@@ -238,9 +240,53 @@
     refresh();
   }
 
+  // ============================================================
+  // Carril patch (Task 5 Fase C)
+  // ============================================================
+
+  // Renderiza una seccion via el SSR real (stash KV -> pagina GET) y extrae el nodo limpio.
+  // DOMParser NO ejecuta scripts -> extraccion segura del outerHTML del [data-section-id].
+  async function renderFragment(section) {
+    if (!state.tenantOrigin || !state.previewUrl) throw new Error('no_preview');
+    const token = new URL(state.previewUrl).searchParams.get('preview');
+    if (!token) throw new Error('no_token');
+    const sres = await fetch(
+      state.tenantOrigin + '/internal/stash-fragment?preview=' + encodeURIComponent(token),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section: section }),
+      }
+    );
+    if (!sres.ok) throw new Error('stash_' + sres.status);
+    const sj = await sres.json();
+    if (!sj || !sj.nonce) throw new Error('no_nonce');
+    const rres = await fetch(
+      state.tenantOrigin + '/internal/render-fragment?preview=' + encodeURIComponent(token) +
+      '&nonce=' + encodeURIComponent(sj.nonce)
+    );
+    if (!rres.ok) throw new Error('render_' + rres.status);
+    const pageHtml = await rres.text();
+    const doc = new DOMParser().parseFromString(pageHtml, 'text/html');
+    const node = doc.querySelector('[data-section-id]');
+    if (!node) throw new Error('no_node');
+    return node.outerHTML;
+  }
+
+  // Postea un patch al iframe (el bridge valida origin + shape). targetOrigin = tenantOrigin, nunca '*'.
+  function applyPatch(op, opts) {
+    if (!state.iframe || !state.tenantOrigin) return;
+    try {
+      var msg = { type: 'section-patch', op: op };
+      for (var k in opts) msg[k] = opts[k];
+      state.iframe.contentWindow.postMessage(msg, state.tenantOrigin);
+    } catch (e) { /* noop */ }
+  }
+
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
     render, refresh, reloadFull, setDevice, destroy, rebuild, applyThemePreview,
+    renderFragment, applyPatch,
     get previewUrl() { return state.previewUrl; },
   };
 })(window);

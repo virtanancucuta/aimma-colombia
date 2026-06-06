@@ -1,0 +1,45 @@
+---
+// AIMMA Fase C — render-fragment (GET page): renderiza UNA seccion via BlockRenderer por el
+// page-render path (el unico que anda en workerd; Container API crashea). La seccion viene del KV
+// stash (nonce). token-gated (autoridad unica), tienda PURAMENTE del token (A1), sanitize FUENTE
+// UNICA (== save) ANTES de render, supabase ANON+RLS (mismo scope que pagina publica).
+// Output: <!DOCTYPE html><link><script> + <section data-section-id> -> el admin extrae el nodo (DOMParser).
+import BlockRenderer from '~/components/BlockRenderer.astro';
+import { getSupabase } from '~/lib/supabase';
+import { validateAndSanitizeSection } from '@aimma/database';
+
+export const prerender = false;
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
+const token = Astro.url.searchParams.get('preview');
+if (!token) return new Response('forbidden', { status: 403, headers: NO_STORE });
+const supabase = getSupabase(); // ANON + RLS
+const { data: tiendaId, error } = await supabase.rpc('validate_preview_token', { p_token: token });
+if (error || !tiendaId) return new Response('forbidden', { status: 403, headers: NO_STORE });
+
+const nonce = Astro.url.searchParams.get('nonce');
+if (!nonce) return new Response('bad request', { status: 400, headers: NO_STORE });
+const kv: any = (Astro.locals as any).runtime?.env?.TENANT_CACHE;
+const raw = kv ? await kv.get('frag:' + nonce) : null;
+if (!raw) return new Response('KV_MISS', { status: 404, headers: NO_STORE });
+let parsed: any;
+try { parsed = JSON.parse(raw); } catch { return new Response('bad request', { status: 400, headers: NO_STORE }); }
+// scope: el nonce debe pertenecer a la tienda del token (otra sesion no lee tu fragmento).
+if (parsed.tienda_id !== tiendaId) return new Response('forbidden', { status: 403, headers: NO_STORE });
+
+// tienda PURAMENTE del token (A1). anon RLS -> no accede a mas data que la pagina publica.
+const { data: tienda } = await supabase
+  .from('tiendas').select('*, plantilla:plantillas(*), paleta:paletas(*)').eq('id', tiendaId).single();
+if (!tienda) return new Response('not found', { status: 404, headers: NO_STORE });
+
+// sanitize FUENTE UNICA (== save) ANTES de renderizar.
+let section: any;
+try { section = validateAndSanitizeSection(parsed.section); } catch { return new Response('bad request', { status: 400, headers: NO_STORE }); }
+
+// locals para el render: anon+RLS, mismo scope que la pagina publica.
+(Astro.locals as any).tienda = tienda;
+(Astro.locals as any).supabase = supabase;
+(Astro.locals as any).tiendaSlug = (tienda as any).slug;
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+<BlockRenderer sections={[section]} />

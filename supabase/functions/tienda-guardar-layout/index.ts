@@ -14,8 +14,7 @@ import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { z } from 'zod';
 import { PersonalizacionesSchema } from './editor-schema.ts';
-import sanitizeHtml from 'sanitize-html';
-import { RICHTEXT_POLICY, toSanitizeHtml, normalizeVoidEls } from './richtext-policy.ts';
+import { validateAndSanitizeSection } from './validate-section.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -44,18 +43,13 @@ const BodySchema = z.object({
 
 const MAX_PAYLOAD_BYTES = 2_000_000;
 
-const RICHTEXT_OPTS = toSanitizeHtml(RICHTEXT_POLICY);
-
-// Sanitize-and-store AUTORITATIVO: limpia el HTML de cada seccion 'texto' antes de persistir.
-// La BD nunca guarda HTML sucio, aunque alguien postee directo a la EF. Mutar in-place el home.
-// normalizeVoidEls: <br /> -> <br> para que lo almacenado sea punto fijo de la DOMPurify del storefront.
+// Sanitize-and-store AUTORITATIVO: parse Zod + limpia el HTML de cada seccion 'texto' antes de persistir.
+// La BD nunca guarda HTML sucio, aunque alguien postee directo a la EF. Fuente unica: validate-section.ts
+// (mirror byte-identico del canonico packages/database/src/validate-section.ts, test 15 prueba byte-inalterado).
 function sanitizeHome(home: any): void {
   if (!home || !Array.isArray(home.sections)) return;
-  for (const sec of home.sections) {
-    if (sec && sec.tipo === 'texto' && sec.props && typeof sec.props.contenido === 'string') {
-      sec.props.contenido = normalizeVoidEls(sanitizeHtml(sec.props.contenido, RICHTEXT_OPTS));
-    }
-  }
+  // Fuente unica: parse(Zod)+sanitize por seccion (test 15 prueba byte-inalterado del save).
+  home.sections = home.sections.map(validateAndSanitizeSection);
 }
 
 function json(body: unknown, status = 200) {
