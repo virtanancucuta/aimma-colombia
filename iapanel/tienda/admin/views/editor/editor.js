@@ -25,8 +25,8 @@
     mounted: false,
     unsubs: [],
     patchTimers: {},        // debounce por sectionId para ops 'replace'
-    patchInFlight: {},      // un render de patch in-flight por sectionId (serializa)
-    rePatchQueued: {},      // llego un cambio durante un patch in-flight -> re-patchear al terminar
+    patchQueue: [],         // cola FIFO de patches -> drain SERIAL (aplican EN ORDEN al iframe, sin drift cross-op)
+    patchDraining: false,
   };
 
   function whenReady(cb, attempts) {
@@ -152,8 +152,8 @@
     if (state.errorRetryTimer) { clearTimeout(state.errorRetryTimer); state.errorRetryTimer = null; }
     Object.keys(state.patchTimers).forEach(function(k) { clearTimeout(state.patchTimers[k]); });
     state.patchTimers = {};
-    state.patchInFlight = {};
-    state.rePatchQueued = {};
+    state.patchQueue = [];
+    state.patchDraining = false;
     state.unsubs.forEach(u => { try { u(); } catch (e) {} });
     state.unsubs = [];
     window.removeEventListener('beforeunload', beforeUnloadGuard);
@@ -171,45 +171,58 @@
   // ============================================================
   // Carril patch (Task 5 Fase C): dispatcher + async fetch
   // ============================================================
+  // onPatch: ENCOLA el op (replace debounced por seccion; resto inmediato) -> drain SERIAL en orden.
   function onPatch() {
     const ES = window.TiendaIA.editorState;
-    const canvas = window.TiendaIA.editorCanvas;
     const op = ES.lastOp;
-    if (!op || !canvas) return;
-    if (op.kind === 'reload') { if (canvas.reloadFull) canvas.reloadFull(); return; }
-    if (op.kind === 'remove') { canvas.applyPatch && canvas.applyPatch('remove', { sectionId: op.sectionId }); return; }
-    if (op.kind === 'move')   { canvas.applyPatch && canvas.applyPatch('move', { sectionId: op.sectionId, toIndex: op.toIndex }); return; }
-    if (op.kind === 'insert') { doPatch('insert', op.sectionId, op.index); return; }
+    if (!op) return;
     if (op.kind === 'replace') {
       clearTimeout(state.patchTimers[op.sectionId]);
-      state.patchTimers[op.sectionId] = setTimeout(function() { doPatch('replace', op.sectionId); }, PATCH_DEBOUNCE_MS);
+      state.patchTimers[op.sectionId] = setTimeout(function() {
+        enqueuePatch({ kind: 'replace', sectionId: op.sectionId });
+      }, PATCH_DEBOUNCE_MS);
+    } else {
+      // insert/remove/move/reload: encolar AHORA (preserva el orden relativo entre ops estructurales)
+      enqueuePatch({ kind: op.kind, sectionId: op.sectionId, index: op.index, toIndex: op.toIndex });
     }
   }
 
-  async function doPatch(op, sectionId, index) {
+  function enqueuePatch(item) {
+    state.patchQueue.push(item);
+    drainPatches();
+  }
+
+  // Drain SERIAL: un patch a la vez, EN ORDEN. El iframe converge al estado de editorState sin races
+  // ni drift cross-op (los ops estructurales aplican secuencial sobre un DOM consistente).
+  async function drainPatches() {
+    if (state.patchDraining) return;
+    state.patchDraining = true;
+    try {
+      while (state.patchQueue.length) {
+        await applyOnePatch(state.patchQueue.shift());
+      }
+    } finally {
+      state.patchDraining = false;
+    }
+  }
+
+  async function applyOnePatch(item) {
     const ES = window.TiendaIA.editorState;
     const canvas = window.TiendaIA.editorCanvas;
-    // Serializa por seccion (analogo a resaveQueued del carril SAVE): un render in-flight por sectionId.
-    // Un cambio durante el vuelo (~677ms stash+render) NO dispara un 2do render concurrente (que podria
-    // aplicar out-of-order y pisar al nuevo con estado viejo) -> encola un re-patch que renderiza el
-    // estado MAS reciente al terminar. Asi el ultimo edit SIEMPRE alcanza la previa (fix lag/stick).
-    if (state.patchInFlight[sectionId]) { state.rePatchQueued[sectionId] = true; return; }
-    const section = ES.findSection(sectionId);
+    if (!canvas) return;
+    if (item.kind === 'reload') { state.patchQueue.length = 0; if (canvas.reloadFull) canvas.reloadFull(); return; }
+    if (item.kind === 'remove') { if (canvas.applyPatch) canvas.applyPatch('remove', { sectionId: item.sectionId }); return; }
+    if (item.kind === 'move')   { if (canvas.applyPatch) canvas.applyPatch('move', { sectionId: item.sectionId, toIndex: item.toIndex }); return; }
+    // replace / insert: render del estado ACTUAL (findSection al PROCESAR -> lo mas reciente) + apply
+    const section = ES.findSection(item.sectionId);
     if (!section || !canvas.renderFragment) return;
-    state.patchInFlight[sectionId] = true;
     try {
       const html = await canvas.renderFragment(section);
-      if (op === 'insert') canvas.applyPatch('insert', { sectionId: sectionId, html: html, index: index });
-      else canvas.applyPatch('replace', { sectionId: sectionId, html: html });
+      canvas.applyPatch(item.kind === 'insert' ? 'insert' : 'replace', { sectionId: item.sectionId, html: html, index: item.index });
     } catch (e) {
       console.warn('[editor] patch fallo -> reload', e && e.message);
+      state.patchQueue.length = 0;
       if (canvas.reloadFull) canvas.reloadFull();
-    } finally {
-      state.patchInFlight[sectionId] = false;
-      if (state.rePatchQueued[sectionId]) {
-        state.rePatchQueued[sectionId] = false;
-        doPatch('replace', sectionId); // re-patch con el estado actual (el nodo ya existe -> replace)
-      }
     }
   }
 

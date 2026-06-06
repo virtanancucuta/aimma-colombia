@@ -7,8 +7,19 @@ import { getSupabase } from '~/lib/supabase';
 
 export const prerender = false;
 
-const NO_STORE = { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' };
+// CORS: el admin (aimma.com.co) fetchea este endpoint cross-origin (esta en *.tienda.aimma.com.co).
+// Sin esto el browser bloquea el fetch (preflight del POST con Content-Type:application/json).
+const CORS = {
+  'Access-Control-Allow-Origin': 'https://aimma.com.co',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400',
+};
+const NO_STORE = { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...CORS };
 const fail = (status: number, msg: string) => new Response(msg, { status, headers: NO_STORE });
+
+// Preflight CORS (el POST con application/json lo dispara).
+export const OPTIONS: APIRoute = () => new Response(null, { status: 204, headers: CORS });
 
 export const POST: APIRoute = async ({ request, url, locals }) => {
   // 1) token PRIMERO (fail-fast). anon supabase = scope publico, NUNCA service_role.
@@ -29,6 +40,6 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const nonce = crypto.randomUUID();
   await kv.put('frag:' + nonce, JSON.stringify({ tienda_id: tiendaId, section: body.section }), { expirationTtl: 60 });
   return new Response(JSON.stringify({ nonce }), {
-    status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...CORS },
   });
 };

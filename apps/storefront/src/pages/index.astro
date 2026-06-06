@@ -202,7 +202,13 @@ const jsonLd = {
         const el = document.querySelector('[data-section-id="' + msg.sectionId + '"]');
         if (msg.op === 'remove') { if (el) el.remove(); return; }
         if (msg.op === 'move') {
-          if (el && cont && Number.isInteger(msg.toIndex)) cont.insertBefore(el, cont.children[msg.toIndex] || null);
+          // splice semantics (== editorState.reorderSections): sacar el nodo PRIMERO y recien
+          // insertar en toIndex sobre el array ya sin el. Sin el remove previo, insertBefore con
+          // from<toIndex queda corrido (children[toIndex] cuenta a el todavia presente).
+          if (el && cont && Number.isInteger(msg.toIndex)) {
+            el.remove();
+            cont.insertBefore(el, cont.children[msg.toIndex] || null);
+          }
           return;
         }
         // replace/insert: el html es NUESTRO SSR (sanitizado por la fn compartida) + origin-gated.

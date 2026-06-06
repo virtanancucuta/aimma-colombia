@@ -9,7 +9,9 @@ import { getSupabase } from '~/lib/supabase';
 import { validateAndSanitizeSection } from '@aimma/database';
 
 export const prerender = false;
-const NO_STORE = { 'Cache-Control': 'no-store' };
+// CORS: el admin (aimma.com.co) fetchea esta pagina cross-origin. GET simple -> sin preflight, pero
+// la respuesta necesita Access-Control-Allow-Origin para que el JS del admin pueda leerla.
+const NO_STORE = { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': 'https://aimma.com.co' };
 
 const token = Astro.url.searchParams.get('preview');
 if (!token) return new Response('forbidden', { status: 403, headers: NO_STORE });
@@ -41,5 +43,6 @@ try { section = validateAndSanitizeSection(parsed.section); } catch { return new
 (Astro.locals as any).supabase = supabase;
 (Astro.locals as any).tiendaSlug = (tienda as any).slug;
 Astro.response.headers.set('Cache-Control', 'no-store');
+Astro.response.headers.set('Access-Control-Allow-Origin', 'https://aimma.com.co');
 ---
 <BlockRenderer sections={[section]} />
