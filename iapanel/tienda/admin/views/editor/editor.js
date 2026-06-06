@@ -25,6 +25,8 @@
     mounted: false,
     unsubs: [],
     patchTimers: {},        // debounce por sectionId para ops 'replace'
+    patchInFlight: {},      // un render de patch in-flight por sectionId (serializa)
+    rePatchQueued: {},      // llego un cambio durante un patch in-flight -> re-patchear al terminar
   };
 
   function whenReady(cb, attempts) {
@@ -150,6 +152,8 @@
     if (state.errorRetryTimer) { clearTimeout(state.errorRetryTimer); state.errorRetryTimer = null; }
     Object.keys(state.patchTimers).forEach(function(k) { clearTimeout(state.patchTimers[k]); });
     state.patchTimers = {};
+    state.patchInFlight = {};
+    state.rePatchQueued = {};
     state.unsubs.forEach(u => { try { u(); } catch (e) {} });
     state.unsubs = [];
     window.removeEventListener('beforeunload', beforeUnloadGuard);
@@ -185,8 +189,14 @@
   async function doPatch(op, sectionId, index) {
     const ES = window.TiendaIA.editorState;
     const canvas = window.TiendaIA.editorCanvas;
+    // Serializa por seccion (analogo a resaveQueued del carril SAVE): un render in-flight por sectionId.
+    // Un cambio durante el vuelo (~677ms stash+render) NO dispara un 2do render concurrente (que podria
+    // aplicar out-of-order y pisar al nuevo con estado viejo) -> encola un re-patch que renderiza el
+    // estado MAS reciente al terminar. Asi el ultimo edit SIEMPRE alcanza la previa (fix lag/stick).
+    if (state.patchInFlight[sectionId]) { state.rePatchQueued[sectionId] = true; return; }
     const section = ES.findSection(sectionId);
     if (!section || !canvas.renderFragment) return;
+    state.patchInFlight[sectionId] = true;
     try {
       const html = await canvas.renderFragment(section);
       if (op === 'insert') canvas.applyPatch('insert', { sectionId: sectionId, html: html, index: index });
@@ -194,6 +204,12 @@
     } catch (e) {
       console.warn('[editor] patch fallo -> reload', e && e.message);
       if (canvas.reloadFull) canvas.reloadFull();
+    } finally {
+      state.patchInFlight[sectionId] = false;
+      if (state.rePatchQueued[sectionId]) {
+        state.rePatchQueued[sectionId] = false;
+        doPatch('replace', sectionId); // re-patch con el estado actual (el nodo ya existe -> replace)
+      }
     }
   }
 
