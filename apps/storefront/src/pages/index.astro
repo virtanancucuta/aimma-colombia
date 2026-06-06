@@ -205,14 +205,18 @@ const jsonLd = {
           if (el && cont && Number.isInteger(msg.toIndex)) cont.insertBefore(el, cont.children[msg.toIndex] || null);
           return;
         }
-        // replace/insert: el html es NUESTRO SSR (sanitizado por la fn compartida) + origin-gated -> confiable, sin re-sanitizar (Q4.3).
+        // replace/insert: el html es NUESTRO SSR (sanitizado por la fn compartida) + origin-gated.
+        // SHAPE estricto del html ANTES del DOM: exactamente UN <section data-section-id=msg.sectionId>.
+        // NO re-sanitiza (Q4.3); valida que sea EL nodo section esperado -> nunca corrompe el DOM con
+        // html inesperado (caza render-bugs). Usa el nodo parseado (no outerHTML con string crudo).
         if (typeof msg.html !== 'string') return;
-        if (msg.op === 'replace') { if (el) el.outerHTML = msg.html; return; }
+        const t = document.createElement('template');
+        t.innerHTML = msg.html.trim();
+        const node = t.content.children.length === 1 ? t.content.firstElementChild : null;
+        if (!node || node.tagName !== 'SECTION' || node.getAttribute('data-section-id') !== msg.sectionId) return;
+        if (msg.op === 'replace') { if (el) el.replaceWith(node); return; }
         if (msg.op === 'insert' && cont && Number.isInteger(msg.index)) {
-          const t = document.createElement('template');
-          t.innerHTML = msg.html.trim();
-          const node = t.content.firstElementChild;
-          if (node) cont.insertBefore(node, cont.children[msg.index] || null);
+          cont.insertBefore(node, cont.children[msg.index] || null);
         }
       }
     });
