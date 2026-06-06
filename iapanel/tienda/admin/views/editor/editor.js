@@ -1,7 +1,11 @@
-/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor.js v2 (SCHEMA v3 + WYSIWYG)
+/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor.js v3 (carril patch)
  * Entry/wiring. Monta UI 3 paneles (sidebar | iframe | inspector).
- * Autosave draft debounced (~1.5s) via guardar-layout mode:draft; tras success
- * postMessage reload al iframe. Guardar = publish. Maneja 409 stale_layout.
+ * Autosave draft debounced (~1.5s) via guardar-layout mode:draft.
+ * Carril patch: cada edit de seccion -> renderFragment(stash+render) -> applyPatch al iframe,
+ * SIN recargar. remove/move = inmediato sin fetch; replace = debounced 300ms; insert = fetch inmediato.
+ * restoreFromSnapshot (undo/redo) = reloadFull. saveDraft ya NO recarga el iframe.
+ * savePublish conserva refresh() (punto de sync explicito).
+ * Guardar = publish. Maneja 409 stale_layout.
  * registerView('editor', mountEditor) — funcion directa (fix Plan 3).
  * Marker: editor-plan4-v3-entry.
  */
@@ -11,6 +15,7 @@
   const EF_URL = 'https://rsmxklkxqsaptchcjszd.supabase.co/functions/v1/tienda-guardar-layout';
   const AUTOSAVE_DEBOUNCE_MS = 1500;
   const ERROR_RETRY_MS = 4000;
+  const PATCH_DEBOUNCE_MS = 300;
 
   const state = {
     autoSaveTimer: null,
@@ -19,6 +24,7 @@
     saveErrorRetried: false, // ya se hizo el reintento auto tras un error (no loopear)
     mounted: false,
     unsubs: [],
+    patchTimers: {},        // debounce por sectionId para ops 'replace'
   };
 
   function whenReady(cb, attempts) {
@@ -91,6 +97,8 @@
     state.unsubs.push(window.TiendaIA.editorState.subscribe('sections', scheduleAutosave));
     state.unsubs.push(window.TiendaIA.editorState.subscribe('theme', scheduleAutosave));
     state.unsubs.push(window.TiendaIA.editorState.subscribe('dirty', scheduleAutosave));
+    // Carril patch: cada mutacion de seccion notifica 'patch' -> actualiza iframe sin reload.
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('patch', onPatch));
 
     // Render paneles
     window.TiendaIA.editorToolbar.render(toolbarEl, {
@@ -125,6 +133,8 @@
           window.TiendaIA.editorState.markDirty();
           // markDirty -> notify('dirty') -> scheduleAutosave (el starter se persiste).
           window.TiendaIA.editorState.select(starter[0].id);
+          // Starter mete varias secciones de una -> reload completo (no N inserts individuales).
+          if (window.TiendaIA?.editorCanvas?.reloadFull) window.TiendaIA.editorCanvas.reloadFull();
         }
         markFirstChoice();
       });
@@ -138,6 +148,8 @@
     state.mounted = false;
     if (state.autoSaveTimer) { clearTimeout(state.autoSaveTimer); state.autoSaveTimer = null; }
     if (state.errorRetryTimer) { clearTimeout(state.errorRetryTimer); state.errorRetryTimer = null; }
+    Object.keys(state.patchTimers).forEach(function(k) { clearTimeout(state.patchTimers[k]); });
+    state.patchTimers = {};
     state.unsubs.forEach(u => { try { u(); } catch (e) {} });
     state.unsubs = [];
     window.removeEventListener('beforeunload', beforeUnloadGuard);
@@ -149,6 +161,39 @@
     if (window.TiendaIA.editorState.dirty) {
       e.preventDefault();
       e.returnValue = '';
+    }
+  }
+
+  // ============================================================
+  // Carril patch (Task 5 Fase C): dispatcher + async fetch
+  // ============================================================
+  function onPatch() {
+    const ES = window.TiendaIA.editorState;
+    const canvas = window.TiendaIA.editorCanvas;
+    const op = ES.lastOp;
+    if (!op || !canvas) return;
+    if (op.kind === 'reload') { if (canvas.reloadFull) canvas.reloadFull(); return; }
+    if (op.kind === 'remove') { canvas.applyPatch && canvas.applyPatch('remove', { sectionId: op.sectionId }); return; }
+    if (op.kind === 'move')   { canvas.applyPatch && canvas.applyPatch('move', { sectionId: op.sectionId, toIndex: op.toIndex }); return; }
+    if (op.kind === 'insert') { doPatch('insert', op.sectionId, op.index); return; }
+    if (op.kind === 'replace') {
+      clearTimeout(state.patchTimers[op.sectionId]);
+      state.patchTimers[op.sectionId] = setTimeout(function() { doPatch('replace', op.sectionId); }, PATCH_DEBOUNCE_MS);
+    }
+  }
+
+  async function doPatch(op, sectionId, index) {
+    const ES = window.TiendaIA.editorState;
+    const canvas = window.TiendaIA.editorCanvas;
+    const section = ES.findSection(sectionId);
+    if (!section || !canvas.renderFragment) return;
+    try {
+      const html = await canvas.renderFragment(section);
+      if (op === 'insert') canvas.applyPatch('insert', { sectionId: sectionId, html: html, index: index });
+      else canvas.applyPatch('replace', { sectionId: sectionId, html: html });
+    } catch (e) {
+      console.warn('[editor] patch fallo -> reload', e && e.message);
+      if (canvas.reloadFull) canvas.reloadFull();
     }
   }
 
@@ -212,8 +257,7 @@
         ES.setDraftSaveStatus('saved');
         state.saveErrorRetried = false;
         syncTiendaCache('draft', r.home); // refresca state.tienda para re-entrar sin recargar
-        // Refrescar el iframe del preview para reflejar el draft.
-        if (window.TiendaIA?.editorCanvas?.refresh) window.TiendaIA.editorCanvas.refresh();
+        // El carril patch mantiene el iframe en sync: NO refrescamos aqui (evita reload cada autosave).
         // Tocar toolbar para actualizar "Borrador guardado hace ..."
         if (window.TiendaIA?.editorToolbar?.updateButtons) window.TiendaIA.editorToolbar.updateButtons();
       } else if (r && r.error === 'stale_layout') {
