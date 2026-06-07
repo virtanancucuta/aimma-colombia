@@ -10,7 +10,7 @@ test('isSimpleTextField: acepta solo el set y rechaza el resto', () => {
   // rechazos:
   expect(isSimpleTextField('botones', 'items.x.texto')).toBe(false);   // indice no numerico
   expect(isSimpleTextField('texto', 'contenido')).toBe(false);          // rich-text -> inspector
-  expect(isSimpleTextField('banner', 'subtitulo')).toBe(false);         // textarea -> inspector
+  expect(isSimpleTextField('banner', 'subtitulo')).toBe(true);          // textarea pero render 1-linea -> inline
   expect(isSimpleTextField('banner', 'boton.url')).toBe(false);         // no es texto-simple
   expect(isSimpleTextField('productos', 'titulo')).toBe(false);         // tipo sin campos
   expect(isSimpleTextField('banner', '__proto__')).toBe(false);

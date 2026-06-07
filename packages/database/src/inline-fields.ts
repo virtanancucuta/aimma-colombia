@@ -5,7 +5,9 @@
 // Patron de ruta: dot-path en props; '*' = indice de array. Ej: 'items.*.texto', 'campos.*.label'.
 
 export const SIMPLE_TEXT_FIELDS: Record<string, readonly string[]> = {
-  banner: ['titulo', 'boton.texto'],
+  // subtitulo es textarea en el inspector pero se RENDERIZA en una sola linea (sin white-space:pre-line)
+  // -> inline single-line es fiel al display; el inspector sigue para multilinea si hace falta.
+  banner: ['titulo', 'subtitulo', 'boton.texto'],
   botones: ['items.*.texto'],
   formulario: ['titulo', 'boton_texto', 'campos.*.label'],
 };

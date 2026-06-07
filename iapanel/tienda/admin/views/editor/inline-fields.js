@@ -8,7 +8,8 @@
   'use strict';
 
   var SIMPLE_TEXT_FIELDS = {
-    banner: ['titulo', 'boton.texto'],
+    // subtitulo: textarea en inspector pero se renderiza en UNA linea -> inline single-line fiel al display.
+    banner: ['titulo', 'subtitulo', 'boton.texto'],
     botones: ['items.*.texto'],
     formulario: ['titulo', 'boton_texto', 'campos.*.label'],
   };
