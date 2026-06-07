@@ -84,3 +84,16 @@ test('section-action remove: SOLO abre el modal, NO borra directo', () => {
   assert.equal(opened.length, 1, 'debe abrir el modal de confirmacion');
   assert.equal(opened[0], a);
 });
+
+// Punto de gate (hotfix): el camino de DESELECCION (label con sectionId null) NO debe tirar.
+test('selectionLabel: null y desconocido -> "" sin tirar; conocido -> label del def', () => {
+  const win = boot();
+  const { a } = setup3(win);
+  const C = win.TiendaIA.editorCanvas;
+  assert.equal(C.selectionLabel(null), '', 'deseleccion: nunca accede defs[tipo] con tipo undefined');
+  assert.equal(C.selectionLabel(undefined), '');
+  assert.equal(C.selectionLabel('sec_zzzzzz'), '', 'seccion desconocida -> "" sin tirar');
+  const lbl = C.selectionLabel(a);
+  assert.equal(typeof lbl, 'string');
+  assert.ok(lbl.length > 0, 'seccion conocida -> label no vacio desde sectionDefs');
+});

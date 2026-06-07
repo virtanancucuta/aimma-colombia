@@ -220,7 +220,7 @@
   function pendingSelectAfterPatch(id) {
     if (!id) return;
     if (!state.patchDraining && state.patchQueue.length === 0) {
-      window.TiendaIA.editorState.select(id);
+      try { window.TiendaIA.editorState.select(id); } catch (e) {} // defensivo: no propagar al caller
     } else {
       state.pendingSelect = id;
     }

@@ -193,21 +193,25 @@
     }
   }
 
-  // set-selection (admin -> iframe). label desde sectionDefs (fuente unica A.1); origin = tenantOrigin.
+  // Label de la seccion desde sectionDefs (fuente unica A.1). NULL-SAFE: '' si no hay seccion
+  // (deseleccion: sectionId null) o tipo desconocido -> NUNCA accede defs[undefined] (no tira).
+  function selectionLabel(sectionId) {
+    if (!sectionId) return '';
+    const sec = window.TiendaIA.editorState.findSection(sectionId);
+    if (!sec) return '';
+    const defs = window.TiendaIA.editorSectionDefs && window.TiendaIA.editorSectionDefs.defs;
+    const def = defs && defs[sec.tipo];
+    return (def && def.label) ? def.label : sec.tipo;
+  }
+
+  // set-selection (admin -> iframe). origin = tenantOrigin. DEFENSIVO: todo el cuerpo (label +
+  // postMessage) va en try/catch -> postSelection NUNCA tira al caller. Critico porque la
+  // deseleccion postSelection(null) corre en cada click-en-vacio (y el emit post-drain en el finally).
   function postSelection(sectionId) {
     if (!state.iframe || !state.tenantOrigin) return;
-    let label = '';
-    if (sectionId) {
-      const sec = window.TiendaIA.editorState.findSection(sectionId);
-      if (sec) {
-        const defs = window.TiendaIA.editorSectionDefs && window.TiendaIA.editorSectionDefs.defs;
-        const def = defs && defs[sec.tipo];
-        label = def ? def.label : sec.tipo;
-      }
-    }
     try {
       state.iframe.contentWindow.postMessage(
-        { type: 'set-selection', sectionId: sectionId || null, label: label },
+        { type: 'set-selection', sectionId: sectionId || null, label: selectionLabel(sectionId) },
         state.tenantOrigin
       );
     } catch (e) { /* noop */ }
@@ -351,7 +355,7 @@
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
     render, refresh, reloadFull, setDevice, destroy, rebuild, applyThemePreview,
-    renderFragment, applyPatch, handleSectionAction, postSelection,
+    renderFragment, applyPatch, handleSectionAction, postSelection, selectionLabel,
     get previewUrl() { return state.previewUrl; },
   };
 })(window);
