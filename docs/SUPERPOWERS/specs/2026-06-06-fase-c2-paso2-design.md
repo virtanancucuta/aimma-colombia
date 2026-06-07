@@ -107,3 +107,19 @@ Origin: `ADMIN_ORIGIN=https://aimma.com.co`, `tenantOrigin=https://<slug>.tienda
 - Tras un commit inline (patch salteado), un patch **POSTERIOR** a esa sección renderiza el campo correcto (snap al valor limpio, sin doblar ni perder).
 - Tras reload, el campo editado **byte-matchea el render SSR** (paridad a nivel nodo).
 - Adversarial chromium-real sobre los 4 mensajes: origin / action fuera de enum / sección desconocida / **fieldPath fuera del registro** / value no-string → **rechazados ANTES de mutar**.
+
+## 10. Fase A — decisiones de ejecución (gate Opción A)
+**Hallazgo:** `data-field` ya existe INCONDICIONAL en los renderers y está en el PÚBLICO (verificado curl), pero es **groundwork MUERTO**: ningún JS (`getAttribute`/`querySelector('[data-field]')`) ni CSS (`[data-field`) lo lee. Inconsistente (botones sin índice/MA sin marca, labels de formulario sin marca, boton_texto MA omitido).
+
+**Opción A elegida:** consolidar a preview-gated.
+1. **Muerto confirmado** (JS + CSS): su remoción del público es invisible al visitante.
+2. **Re-encuadre del byte-compare público (actualiza el no-negociable)**: el público VA A CAMBIAR = **remoción del `data-field` muerto**. Ese es el diff ESPERADO. A5 verifica que el ÚNICO cambio en el público sea esa remoción (+ redistribución de CSS-chunk benigna si aparece, como 7a) y NADA más (sin cambios de layout/contenido/reglas CSS). Criterio nuevo = **"público SIN marcadores tras Fase A"**, no "byte-idéntico al actual".
+3. **Gateo TODO `data-field` a `isPreview`** (público limpio). Solo el subset de `SIMPLE_TEXT_FIELDS` se vuelve contenteditable; los demás (subtitulo/contenido/imagenes/productos/botones-nivel-array) quedan como marcador preview INERTE (no editable inline).
+4. **`SIMPLE_TEXT_FIELDS` (registro, fuente única storefront+admin):**
+   - `banner`: `titulo`, `boton.texto`
+   - `botones`: `items.*.texto`
+   - `formulario`: `titulo`, `boton_texto`, `campos.*.label`
+   - **Excluidos** (siguen por inspector): `texto.contenido` (richtext), `banner.subtitulo` (textarea), `*.alt`/`*.placeholder` (atributos), imagen/galeria/productos.
+   - **Nodo limpio**: el marcador editable va en el elemento cuyo contenido es SOLO el texto. Donde el valor convive con íconos/`*` (banner.boton.texto con svg, botones items con icono, formulario label con asterisco), se **envuelve en un `<span data-field=...>` limpio**.
+   - **EM titulo**: `<h1>` con dropcap (hijos) → NO se marca (inspector-only en EM); IC/FB/MA sí. El registro valida `banner.titulo`; la editabilidad la da la presencia del marcador (omitido en EM).
+   - **Arreglo de inconsistencias** SOLO en los campos editables: índices en BotonesIC/EM/MA, labels de formulario, boton_texto MA.
