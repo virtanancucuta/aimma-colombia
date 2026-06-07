@@ -145,6 +145,37 @@ const VideoProps = z.object({
   aspect_ratio: z.enum(['16/9', '4/3', '1/1']).default('16/9'),
 });
 
+// ---- B-secciones Lote 1 (2026-06-07) ----
+
+// Iconos de la seccion caracteristicas (11). El renderer resuelve cada uno a un SVG path.
+const FEATURE_ICONS = ['envio', 'garantia', 'pago', 'calidad', 'soporte', 'reloj', 'estrella', 'check', 'regalo', 'corazon', 'devoluciones'] as const;
+
+const ImagenConTextoProps = z.object({
+  src: z.string().url().regex(/^https:\/\//, 'imagen debe ser https'),
+  alt: z.string().max(200),
+  titulo: z.string().max(200),
+  texto: z.string().max(2000).optional(),       // parrafo PLANO (sin richtext)
+  boton: BotonSchema.optional(),
+  posicion_imagen: z.enum(['izquierda', 'derecha']).default('izquierda'),
+});
+
+const CaracteristicaItemSchema = z.object({
+  icono: z.enum(FEATURE_ICONS),
+  titulo: z.string().max(120),
+  texto: z.string().max(300).optional(),
+});
+const CaracteristicasProps = z.object({
+  titulo: z.string().max(200).optional(),
+  columnas: z.union([z.literal(2), z.literal(3), z.literal(4)]).default(3),
+  items: z.array(CaracteristicaItemSchema).min(1).max(8),
+});
+
+const CitaProps = z.object({
+  texto: z.string().max(500),
+  autor: z.string().max(120).optional(),
+  alineacion: AlineacionEnum.default('center'),
+});
+
 // ============================================================
 // Section (discriminated union por tipo)
 // ============================================================
@@ -172,6 +203,9 @@ export const SectionSchema = z.discriminatedUnion('tipo', [
   SectionBase.extend({ tipo: z.literal('formulario'), props: FormularioProps }),
   SectionBase.extend({ tipo: z.literal('espacio'), props: EspacioProps }),
   SectionBase.extend({ tipo: z.literal('video'), props: VideoProps }),
+  SectionBase.extend({ tipo: z.literal('imagen_con_texto'), props: ImagenConTextoProps }),
+  SectionBase.extend({ tipo: z.literal('caracteristicas'), props: CaracteristicasProps }),
+  SectionBase.extend({ tipo: z.literal('cita'), props: CitaProps }),
 ]);
 
 export type Section = z.infer<typeof SectionSchema>;

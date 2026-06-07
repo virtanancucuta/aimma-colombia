@@ -31,6 +31,10 @@ import Texto from '~/components/blocks/texto/Texto.astro';
 import Imagen from '~/components/blocks/imagen/Imagen.astro';
 import Galeria from '~/components/blocks/galeria/Galeria.astro';
 import Formulario from '~/components/blocks/formulario/Formulario.astro';
+// B-secciones Lote 1
+import ImagenConTexto from '~/components/blocks/imagen_con_texto/ImagenConTexto.astro';
+import Caracteristicas from '~/components/blocks/caracteristicas/Caracteristicas.astro';
+import Cita from '~/components/blocks/cita/Cita.astro';
 
 // Agnosticos (sin variante por plantilla)
 import Espacio from '~/components/blocks/espaciador/Espaciador.astro';
@@ -51,6 +55,9 @@ const UNIFIED = {
   imagen: Imagen,
   galeria: Galeria,
   formulario: Formulario,
+  imagen_con_texto: ImagenConTexto,
+  caracteristicas: Caracteristicas,
+  cita: Cita,
 } as const;
 
 const BLOCKS = {

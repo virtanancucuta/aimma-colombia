@@ -1,0 +1,192 @@
+---
+// AIMMA Editor PRO-MAX · Cita · UNIFICADO · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// <blockquote> con <p> [frase grande] + <cite> opcional [autor]). El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-cita-*) -> selecciona el <style> activo
+//   (b) los 4 <style> per-template, scopeados e inertes por prefijo, donde se nota
+//       la personalidad de cada plantilla (IBM Plex / Anton / Fraunces italic / Fraunces 300).
+// data-field gateado por isPreview: publico SIN marcador, preview con data-field en p y cite.
+// p y cite son nodos limpios (sin spans nuevos) -> data-field directo.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'cita' }>).props;
+const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+const alignClass = ({ left: 'text-left', center: 'text-center', right: 'text-right' } as const)[p.alineacion];
+---
+
+<SectionShell section={section}>
+  <blockquote class={`${prefix}-cita ${alignClass}`}>
+    <p class={`${prefix}-cita-texto`} data-field={isPreview ? 'texto' : undefined}>{p.texto}</p>
+    {p.autor && (
+      <cite class={`${prefix}-cita-autor`} data-field={isPreview ? 'autor' : undefined}>{p.autor}</cite>
+    )}
+  </blockquote>
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean ===== */
+  /* IBM Plex: frase grande semibold, cite mono pequeño con guion antes. */
+  .ic-cita {
+    margin: 0;
+    max-width: 62ch;
+  }
+  .ic-cita.text-center { margin-inline: auto; }
+  .ic-cita.text-right { margin-inline: 0 0 0 auto; }
+  .ic-cita-texto {
+    margin: 0;
+    font-family: var(--ta-font-display);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 1.1rem + 1.9vw, 2.5rem);
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--ta-color-text-base);
+    text-wrap: balance;
+  }
+  .ic-cita-autor {
+    display: block;
+    margin-top: 1.25rem;
+    font-family: ui-monospace, 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+    font-style: normal;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    color: var(--ta-color-text-muted);
+  }
+  .ic-cita-autor::before { content: '— '; }
+
+  /* ===== fashion_bold ===== */
+  /* Anton uppercase ENORME, alto contraste, cite tracking amplio. */
+  .fb-cita {
+    margin: 0;
+    max-width: 18ch;
+  }
+  .fb-cita.text-center { margin-inline: auto; }
+  .fb-cita.text-right { margin-inline: 0 0 0 auto; }
+  .fb-cita-texto {
+    margin: 0;
+    font-family: var(--ta-font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: clamp(2.5rem, 1.4rem + 5.2vw, 6rem);
+    line-height: 0.9;
+    letter-spacing: -0.025em;
+    color: var(--ta-color-text-base);
+    text-wrap: balance;
+  }
+  .fb-cita-autor {
+    display: block;
+    margin-top: 1.75rem;
+    font-style: normal;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: var(--ta-color-accent);
+  }
+
+  /* ===== minimal_artesanal ===== */
+  /* Fraunces italic opsz alto, comilla decorativa suave grande de fondo, cite delicado. */
+  .ma-cita {
+    position: relative;
+    margin: 0;
+    max-width: 50ch;
+    padding-top: 0.5rem;
+  }
+  .ma-cita.text-center { margin-inline: auto; }
+  .ma-cita.text-right { margin-inline: 0 0 0 auto; }
+  .ma-cita::before {
+    content: '\201C';
+    position: absolute;
+    top: -0.35em;
+    left: -0.12em;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-size: clamp(6rem, 3rem + 14vw, 12rem);
+    line-height: 1;
+    color: var(--ta-color-accent);
+    opacity: 0.1;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ma-cita.text-center::before { left: 50%; transform: translateX(-50%); }
+  .ma-cita.text-right::before { left: auto; right: -0.12em; }
+  .ma-cita-texto {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 96;
+    font-size: clamp(1.5rem, 1rem + 2.4vw, 2.75rem);
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    color: var(--ta-color-text-base);
+    text-wrap: balance;
+  }
+  .ma-cita-autor {
+    position: relative;
+    z-index: 1;
+    display: block;
+    margin-top: 1.5rem;
+    font-family: var(--ta-font-body);
+    font-style: normal;
+    font-size: 0.875rem;
+    letter-spacing: 0.04em;
+    color: var(--ta-color-text-muted);
+  }
+
+  /* ===== editorial_magazine ===== */
+  /* Fraunces 300 italic, una comilla/acento decorativo, cite serif elegante. */
+  .em-cita {
+    position: relative;
+    margin: 0;
+    max-width: 54ch;
+    padding-top: 1.5rem;
+  }
+  .em-cita.text-center { margin-inline: auto; }
+  .em-cita.text-right { margin-inline: 0 0 0 auto; }
+  .em-cita::before {
+    content: '\201C';
+    display: block;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 3.5rem;
+    line-height: 0.4;
+    color: var(--ta-color-accent);
+    margin-bottom: 0.5rem;
+  }
+  .em-cita-texto {
+    margin: 0;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(1.375rem, 0.95rem + 2vw, 2.375rem);
+    line-height: 1.32;
+    letter-spacing: -0.01em;
+    color: var(--ta-color-text-base);
+    text-wrap: balance;
+  }
+  .em-cita-autor {
+    display: block;
+    margin-top: 1.5rem;
+    font-family: var(--ta-font-display);
+    font-style: normal;
+    font-weight: 400;
+    font-size: 0.9375rem;
+    letter-spacing: 0.02em;
+    color: var(--ta-color-accent);
+  }
+</style>

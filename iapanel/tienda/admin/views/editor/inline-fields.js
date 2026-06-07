@@ -12,6 +12,10 @@
     banner: ['titulo', 'subtitulo', 'boton.texto'],
     botones: ['items.*.texto'],
     formulario: ['titulo', 'boton_texto', 'campos.*.label'],
+    // B-secciones Lote 1
+    imagen_con_texto: ['titulo', 'boton.texto'],
+    caracteristicas: ['titulo', 'items.*.titulo'],
+    cita: ['texto', 'autor'],
   };
 
   var SEG_RE = /^[a-z_][a-z0-9_]*$/i;

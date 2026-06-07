@@ -23,6 +23,15 @@
     COLUMNAS: [{ v: 'auto', l: 'Automatico' }, { v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }, { v: 4, l: '4 columnas' }],
     GALERIA_LAYOUT: [{ v: 'grid', l: 'Grilla uniforme' }, { v: 'carrusel', l: 'Carrusel horizontal' }, { v: 'mosaico', l: 'Mosaico' }],
     GALERIA_GAP: [{ v: 'tight', l: 'Compacto' }, { v: 'normal', l: 'Normal' }, { v: 'loose', l: 'Aireado' }],
+    // B-secciones Lote 1
+    POSICION_IMAGEN: [{ v: 'izquierda', l: 'Imagen a la izquierda' }, { v: 'derecha', l: 'Imagen a la derecha' }],
+    COLUMNAS_FIJAS: [{ v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }, { v: 4, l: '4 columnas' }],
+    FEATURE_ICONOS: [
+      { v: 'envio', l: 'Envio' }, { v: 'garantia', l: 'Garantia' }, { v: 'pago', l: 'Pago seguro' },
+      { v: 'calidad', l: 'Calidad' }, { v: 'soporte', l: 'Soporte' }, { v: 'reloj', l: 'Rapidez' },
+      { v: 'estrella', l: 'Estrella' }, { v: 'check', l: 'Check' }, { v: 'regalo', l: 'Regalo' },
+      { v: 'corazon', l: 'Corazon' }, { v: 'devoluciones', l: 'Devoluciones' },
+    ],
   };
 
   const defs = {
@@ -185,6 +194,66 @@
         { key: 'html', control: 'textarea', label: 'Codigo del video (iframe)', default: '', opts: { maxLength: 2000, rows: 6, placeholder: '<iframe src="https://www.youtube.com/embed/..."></iframe>' } },
         { __info: 'Solo se permiten videos o mapas de: YouTube, Vimeo, CodePen, CodeSandbox, Google Maps o Spotify.' },
         { key: 'aspect_ratio', control: 'select', label: 'Proporcion', default: '16/9', opts: { options: 'ASPECT_VIDEO' } },
+      ],
+    },
+
+    // ---- B-secciones Lote 1 (keys + opcionalidad en sync con editor-schema.ts; drift-guard 03) ----
+    imagen_con_texto: {
+      label: 'Imagen con texto',
+      catalog: { group: 'esencial', icon: '◧', desc: 'Una imagen al lado de un titulo y texto, con boton opcional.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'lg',
+      campos: [
+        { key: 'src', control: 'image', label: 'Imagen', default: 'https://placehold.co/800x600' },
+        { key: 'alt', control: 'text', label: 'Texto alternativo (alt)', default: 'Imagen', opts: { maxLength: 200 } },
+        { key: 'titulo', control: 'text', label: 'Titulo', default: 'Un titulo que acompana la imagen', opts: { maxLength: 200 } },
+        { key: 'texto', control: 'textarea', label: 'Texto (opcional)', default: 'Conta algo de tu producto o servicio en pocas lineas.', optional: true, opts: { maxLength: 2000, rows: 4 }, empty_to_undefined: true },
+        { key: 'posicion_imagen', control: 'select', label: 'Posicion de la imagen', default: 'izquierda', opts: { options: 'POSICION_IMAGEN' } },
+        { key: 'boton', control: 'toggle-object', label: 'Mostrar boton', default: undefined, optional: true,
+          on_default: { texto: 'Ver mas', url: '#', estilo_visual: 'primary', target: '_self', icono: 'arrow' },
+          subfields: [
+            { key: 'texto', control: 'text', label: 'Texto del boton', opts: { maxLength: 80 } },
+            { key: 'url', control: 'url', label: 'URL (https / mailto / tel / # / /)' },
+            { key: 'estilo_visual', control: 'select', label: 'Estilo del boton', opts: { options: 'ESTILO_VISUAL' } },
+            { key: 'icono', control: 'select', label: 'Icono', opts: { options: 'ICONO' }, empty_to_undefined: true },
+            { key: 'target', control: 'select', label: 'Abrir en', opts: { options: 'TARGET' } },
+          ] },
+      ],
+    },
+
+    caracteristicas: {
+      label: 'Caracteristicas',
+      catalog: { group: 'avanzado', icon: '✦', desc: 'Grilla de beneficios con icono: envio, garantia, pago seguro.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'lg',
+      campos: [
+        { key: 'titulo', control: 'text', label: 'Titulo (opcional)', default: 'Por que elegirnos', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
+        { key: 'columnas', control: 'select', label: 'Columnas', default: 3, opts: { options: 'COLUMNAS_FIJAS' } },
+        { key: 'items', control: 'list', min: 1, max: 8, item_label: 'Caracteristica',
+          add_label: '+ Agregar caracteristica', add_default: { icono: 'check', titulo: 'Nueva caracteristica', texto: '' },
+          max_note: 'Maximo 8 caracteristicas.',
+          default: [
+            { icono: 'envio', titulo: 'Envio a todo el pais', texto: 'Recibi tu pedido donde estes.' },
+            { icono: 'garantia', titulo: 'Garantia', texto: 'Productos con garantia real.' },
+            { icono: 'pago', titulo: 'Pago seguro', texto: 'Compra con confianza.' },
+          ],
+          item: [
+            { key: 'icono', control: 'select', label: 'Icono', opts: { options: 'FEATURE_ICONOS' } },
+            { key: 'titulo', control: 'text', label: 'Titulo', opts: { maxLength: 120 } },
+            { key: 'texto', control: 'textarea', label: 'Texto (opcional)', opts: { maxLength: 300, rows: 2 }, empty_to_undefined: true },
+          ] },
+      ],
+    },
+
+    cita: {
+      label: 'Cita destacada',
+      catalog: { group: 'avanzado', icon: '❝', desc: 'Una frase grande destacada, con autor opcional.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'xl',
+      campos: [
+        { key: 'texto', control: 'textarea', label: 'Frase', default: 'Una frase que inspire a tus clientes.', opts: { maxLength: 500, rows: 3 } },
+        { key: 'autor', control: 'text', label: 'Autor (opcional)', default: undefined, optional: true, opts: { maxLength: 120 }, empty_to_undefined: true },
+        { key: 'alineacion', control: 'select', label: 'Alineacion', default: 'center', opts: { options: 'ALIGN' } },
       ],
     },
   };
