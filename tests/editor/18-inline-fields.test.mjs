@@ -49,5 +49,5 @@ test('SYNC: el mirror JS coincide con el registro TS (packages/database/inline-f
       assert.ok(ts.includes("'" + path + "'"), 'TS no tiene la ruta ' + path);
     }
   }
-  assert.deepEqual(Object.keys(f.SIMPLE_TEXT_FIELDS).sort(), ['banner', 'botones', 'formulario']);
+  assert.deepEqual(Object.keys(f.SIMPLE_TEXT_FIELDS).sort(), ['banner', 'botones', 'caracteristicas', 'cita', 'formulario', 'imagen_con_texto']);
 });

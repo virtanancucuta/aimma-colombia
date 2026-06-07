@@ -1,0 +1,182 @@
+---
+// AIMMA Editor PRO-MAX · Imagen con texto · UNIFICADO · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// grid 2 columnas: celda imagen / celda texto). El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-imgtxt*) -> selecciona el <style> activo
+//   (b) los 4 <style> per-template, scopeados e inertes por prefijo
+// data-field gateado por isPreview: en publico (isPreview=false) NO hay ningun
+// data-field ni span nuevo (solo texto pelado); en preview, data-field en el h2
+// y en el span del boton. El parrafo (p.texto) y el alt van por inspector (sin marcador).
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'imagen_con_texto' }>).props;
+const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+// posicion_imagen: en desktop invertimos el ORDEN VISUAL via CSS (order), nunca el
+// orden del DOM. En movil el DOM manda: imagen siempre arriba, texto abajo.
+const imgRight = p.posicion_imagen === 'derecha';
+const imgOrderClass = imgRight ? 'md:order-2' : 'md:order-1';
+const txtOrderClass = imgRight ? 'md:order-1' : 'md:order-2';
+
+const iconPath: Record<string, string> = {
+  arrow: 'M5 12h14M12 5l7 7-7 7',
+};
+---
+
+<SectionShell section={section}>
+  <div class={`${prefix}-imgtxt grid grid-cols-1 md:grid-cols-2 items-center`}>
+    <div class={`${prefix}-imgtxt-imgcell ${imgOrderClass}`}>
+      <img
+        src={p.src}
+        alt={p.alt}
+        loading="lazy"
+        decoding="async"
+        class={`${prefix}-imgtxt-img w-full`}
+      />
+    </div>
+
+    <div class={`${prefix}-imgtxt-txtcell ${txtOrderClass}`}>
+      <h2
+        class={`${prefix}-imgtxt-title font-display text-[var(--ta-color-text-base)] text-balance`}
+        data-field={isPreview ? 'titulo' : undefined}
+      >
+        {p.titulo}
+      </h2>
+
+      {p.texto && (
+        <div class={`${prefix}-imgtxt-text font-body text-[var(--ta-color-text-base)] whitespace-pre-line`}>
+          {p.texto}
+        </div>
+      )}
+
+      {p.boton && (
+        <a
+          href={p.boton.url}
+          target={p.boton.target}
+          rel={p.boton.target === '_blank' ? 'noopener' : undefined}
+          class={`${prefix}-imgtxt-btn block-button block-button--${p.boton.estilo_visual}`}
+        >
+          {isPreview ? <span data-field="boton.texto">{p.boton.texto}</span> : p.boton.texto}
+          {p.boton.icono === 'arrow' && (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d={iconPath.arrow} />
+            </svg>
+          )}
+        </a>
+      )}
+    </div>
+  </div>
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean ===== */
+  /* IBM Plex, h2 semibold tracking ajustado, imagen con borde sutil + radius 2px, gap generoso, boton solido */
+  .ic-imgtxt { gap: 3rem; }
+  .ic-imgtxt-img {
+    display: block;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
+  }
+  .ic-imgtxt-title {
+    font-weight: 600;
+    font-size: clamp(1.6rem, 3.2vw, 2.6rem);
+    line-height: 1.1;
+    letter-spacing: -0.028em;
+  }
+  .ic-imgtxt-text {
+    margin-top: 1.25rem;
+    opacity: 0.74;
+    line-height: 1.65;
+    font-size: clamp(1rem, 1.4vw, 1.125rem);
+  }
+  .ic-imgtxt-btn { margin-top: 2rem; border-radius: 2px; }
+
+  /* ===== fashion_bold ===== */
+  /* Anton uppercase en h2, imagen edge-to-edge sin radius, alto contraste, boton rectangular */
+  .fb-imgtxt { gap: 2.5rem; }
+  .fb-imgtxt-img {
+    display: block;
+    border-radius: 0;
+    background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent);
+  }
+  .fb-imgtxt-title {
+    text-transform: uppercase;
+    font-weight: 400;
+    font-size: clamp(2rem, 4.6vw, 3.8rem);
+    line-height: 0.98;
+    letter-spacing: 0.005em;
+  }
+  .fb-imgtxt-text {
+    margin-top: 1.25rem;
+    opacity: 0.82;
+    line-height: 1.55;
+    font-size: clamp(1rem, 1.4vw, 1.125rem);
+  }
+  .fb-imgtxt-btn { margin-top: 2rem; border-radius: 0; }
+
+  /* ===== minimal_artesanal ===== */
+  /* Fraunces en h2, radius 4px, mucho aire, boton pill */
+  .ma-imgtxt { gap: 3.5rem; }
+  .ma-imgtxt-img {
+    display: block;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
+  }
+  .ma-imgtxt-title {
+    font-weight: 400;
+    font-size: clamp(1.7rem, 3.4vw, 2.8rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+  }
+  .ma-imgtxt-text {
+    margin-top: 1.5rem;
+    opacity: 0.72;
+    line-height: 1.75;
+    font-size: clamp(1rem, 1.4vw, 1.125rem);
+  }
+  .ma-imgtxt-btn { margin-top: 2.25rem; border-radius: 999px; }
+
+  /* ===== editorial_magazine ===== */
+  /* Fraunces 300 + acento italic, hairline/accent, imagen con hover-scale sutil */
+  .em-imgtxt { gap: 3rem; }
+  .em-imgtxt-imgcell { overflow: hidden; }
+  .em-imgtxt-img {
+    display: block;
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .em-imgtxt-imgcell:hover .em-imgtxt-img { transform: scale(1.03); }
+  .em-imgtxt-title {
+    font-weight: 300;
+    font-size: clamp(1.8rem, 3.6vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.012em;
+  }
+  .em-imgtxt-title em,
+  .em-imgtxt-title i { font-style: italic; color: var(--ta-color-accent); }
+  .em-imgtxt-text {
+    margin-top: 1.5rem;
+    opacity: 0.7;
+    line-height: 1.7;
+    font-size: clamp(1rem, 1.4vw, 1.15rem);
+    padding-left: 1.25rem;
+    border-left: 1px solid color-mix(in oklab, var(--ta-color-accent) 60%, transparent);
+  }
+  .em-imgtxt-btn { margin-top: 2rem; }
+  @media (prefers-reduced-motion: reduce) {
+    .em-imgtxt-img { transition: none; }
+    .em-imgtxt-imgcell:hover .em-imgtxt-img { transform: none; }
+  }
+</style>
