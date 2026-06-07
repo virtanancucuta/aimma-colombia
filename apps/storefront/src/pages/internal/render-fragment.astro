@@ -42,6 +42,8 @@ try { section = validateAndSanitizeSection(parsed.section); } catch { return new
 (Astro.locals as any).tienda = tienda;
 (Astro.locals as any).supabase = supabase;
 (Astro.locals as any).tiendaSlug = (tienda as any).slug;
+// C.2 Paso 2: render-fragment ES preview -> el nodo patcheado emite data-field IDENTICO al render inicial.
+(Astro.locals as any).isPreview = true;
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('Access-Control-Allow-Origin', 'https://aimma.com.co');
 ---

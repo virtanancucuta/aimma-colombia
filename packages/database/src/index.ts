@@ -32,3 +32,4 @@ export * from './editor-schema';
 export * from './richtext-policy';
 export * from './validate-section';
 export * from './font-pairings';
+export * from './inline-fields';
