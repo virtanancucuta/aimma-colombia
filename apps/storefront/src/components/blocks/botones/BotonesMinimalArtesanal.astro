@@ -10,6 +10,7 @@ import SectionShell from '~/components/blocks/_SectionShell.astro';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'botones' }>).props;
+const isPreview = Astro.locals?.isPreview;
 
 const iconPath: Record<string, string> = {
   arrow: 'M5 12h14M13 6l6 6-6 6',
@@ -19,14 +20,14 @@ const iconPath: Record<string, string> = {
 
 <SectionShell section={section}>
   <div class="ma-botones flex flex-wrap items-center gap-4">
-    {p.items.map((boton) => (
+    {p.items.map((boton, idx) => (
       <a
         href={boton.url}
         target={boton.target}
         rel={boton.target === '_blank' ? 'noopener noreferrer' : undefined}
         class={`block-button block-button--${boton.estilo_visual}`}
       >
-        {boton.texto}
+        {isPreview ? <span data-field={`items.${idx}.texto`}>{boton.texto}</span> : boton.texto}
         {boton.icono === 'arrow' && (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <path d={iconPath.arrow} />

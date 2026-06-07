@@ -20,6 +20,7 @@ interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'productos' }>).props;
 const { tienda, supabase } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
 
 // Esqueleto compartido: fetch con try/catch -> empty state, nunca 500.
@@ -94,7 +95,7 @@ if (plantilla === 'fashion_bold') {
       <div class="ic-empty">Sin productos disponibles</div>
     )
   ) : (
-    <div class={gridClass} data-field={dataField}>
+    <div class={gridClass} data-field={isPreview ? dataField : undefined}>
       {productos.map((prod, i) => (
         plantilla === 'minimal_artesanal' ? (
           <div class={`ma-grid-item ${i % 6 === 1 || i % 6 === 4 ? 'lg:translate-y-12' : ''}`}>

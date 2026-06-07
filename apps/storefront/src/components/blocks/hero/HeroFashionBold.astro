@@ -11,6 +11,7 @@ import SectionShell from '~/components/blocks/_SectionShell.astro';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'banner' }>).props;
+const isPreview = Astro.locals?.isPreview;
 
 const align = p.alineacion ?? 'left';
 const alignClass = align === 'center'
@@ -53,7 +54,7 @@ const ctaIcon = p.boton?.icono ?? 'arrow';
     <div class={`fb-hero-content relative flex flex-col ${alignClass}`}>
       <h1
         class="fb-hero-title font-display uppercase leading-[0.86] tracking-[-0.04em] text-balance"
-        data-field="titulo"
+        data-field={isPreview ? 'titulo' : undefined}
       >
         {p.titulo}
       </h1>
@@ -61,7 +62,7 @@ const ctaIcon = p.boton?.icono ?? 'arrow';
       {p.subtitulo && (
         <p
           class="fb-hero-sub font-body leading-[1.5] max-w-[58ch]"
-          data-field="subtitulo"
+          data-field={isPreview ? 'subtitulo' : undefined}
         >
           {p.subtitulo}
         </p>
@@ -73,9 +74,8 @@ const ctaIcon = p.boton?.icono ?? 'arrow';
           target={p.boton.target}
           rel={p.boton.target === '_blank' ? 'noopener' : undefined}
           class="fb-hero-cta group inline-flex items-center gap-3 font-body font-bold tracking-tight transition-transform duration-200 ease-out will-change-transform hover:-translate-y-0.5"
-          data-field="boton.texto"
         >
-          {p.boton.texto}
+          {isPreview ? <span data-field="boton.texto">{p.boton.texto}</span> : p.boton.texto}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-1">
             <path d={iconPaths[ctaIcon] ?? iconPaths.arrow} />
           </svg>

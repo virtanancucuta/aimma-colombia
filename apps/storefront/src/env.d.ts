@@ -26,6 +26,9 @@ declare global {
         paleta?: Paleta | null;
       };
       tiendaSlug: string;
+      // C.2 Paso 2: modo preview del editor. Los renderers emiten data-field SOLO si true
+      // (publico = false -> sin marcadores). Lo setean index.astro (segun token) y render-fragment (=true).
+      isPreview?: boolean;
       // Supabase client (creado en middleware o on-demand).
       supabase: import('@supabase/supabase-js').SupabaseClient;
     }

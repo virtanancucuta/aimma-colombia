@@ -9,6 +9,7 @@ import Hero from '~/components/Hero.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
 import BlockRenderer from '~/components/BlockRenderer.astro';
 import PreviewChrome from '~/components/PreviewChrome.astro';
+import InlineEdit from '~/components/InlineEdit.astro';
 import { getProductosPorTienda } from '~/lib/catalogo';
 import { parsePersonalizaciones, FONT_PAIRINGS, CSS_COLOR_REGEX } from '@aimma/database';
 
@@ -43,6 +44,9 @@ if (previewToken) {
     .single();
   persRaw = fresh?.personalizaciones ?? tienda.personalizaciones;
 }
+
+// C.2 Paso 2: los renderers emiten data-field SOLO en preview (publico sin marcadores).
+Astro.locals.isPreview = isPreview;
 
 const pers = parsePersonalizaciones(persRaw);
 // En preview priorizar home_draft; en publico, home.
@@ -241,3 +245,4 @@ const jsonLd = {
 )}
 
 {isPreview && <PreviewChrome />}
+{isPreview && <InlineEdit />}

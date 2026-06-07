@@ -17,6 +17,7 @@ interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'texto' }>).props;
 const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
 
 const prefix = plantilla === 'fashion_bold' ? 'fb'
@@ -44,7 +45,7 @@ const contenidoSafe = normalizeVoidEls(sanitizeHtml(p.contenido, toSanitizeHtml(
 <SectionShell section={section}>
   <div
     class={`${prefix}-texto ${fontClass} ${sizeClass} ${alignClass} text-[var(--ta-color-text-base)]`}
-    data-field="contenido"
+    data-field={isPreview ? 'contenido' : undefined}
     set:html={contenidoSafe}
   />
 </SectionShell>

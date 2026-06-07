@@ -23,6 +23,7 @@ interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'formulario' }>).props;
 const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
 
 const prefix = plantilla === 'fashion_bold' ? 'fb'
@@ -61,7 +62,7 @@ const compactLabels = plantilla === 'fashion_bold' || plantilla === 'minimal_art
     />
 
     {p.titulo && (
-      <h3 class={`${prefix}-form-title`} data-field="titulo">{p.titulo}</h3>
+      <h3 class={`${prefix}-form-title`} data-field={isPreview ? 'titulo' : undefined}>{p.titulo}</h3>
     )}
 
     {p.campos.map((campo, idx) => {
@@ -72,10 +73,10 @@ const compactLabels = plantilla === 'fashion_bold' || plantilla === 'minimal_art
         return (
           <div class={`${prefix}-form-field`}>
             {compactLabels ? (
-              <label for={fieldId}>{campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
+              <label for={fieldId}>{isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
             ) : (
               <label for={fieldId}>
-                {campo.label}
+                {isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}
                 {campo.requerido && <span class={`${prefix}-required`}>*</span>}
               </label>
             )}
@@ -94,10 +95,10 @@ const compactLabels = plantilla === 'fashion_bold' || plantilla === 'minimal_art
         return (
           <div class={`${prefix}-form-field`}>
             {compactLabels ? (
-              <label for={fieldId}>{campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
+              <label for={fieldId}>{isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
             ) : (
               <label for={fieldId}>
-                {campo.label}
+                {isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}
                 {campo.requerido && <span class={`${prefix}-required`}>*</span>}
               </label>
             )}
@@ -116,10 +117,10 @@ const compactLabels = plantilla === 'fashion_bold' || plantilla === 'minimal_art
           <div class={`${prefix}-form-field ${prefix}-form-field--check`}>
             <input id={fieldId} name={fieldName} type="checkbox" required={campo.requerido} />
             {compactLabels ? (
-              <label for={fieldId}>{campo.label}</label>
+              <label for={fieldId}>{isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}</label>
             ) : (
               <label for={fieldId}>
-                {campo.label}
+                {isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}
                 {campo.requerido && <span class={`${prefix}-required`}>*</span>}
               </label>
             )}
@@ -131,10 +132,10 @@ const compactLabels = plantilla === 'fashion_bold' || plantilla === 'minimal_art
       return (
         <div class={`${prefix}-form-field`}>
           {compactLabels ? (
-            <label for={fieldId}>{campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
+            <label for={fieldId}>{isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}{campo.requerido && <span class={`${prefix}-required`}>*</span>}</label>
           ) : (
             <label for={fieldId}>
-              {campo.label}
+              {isPreview ? <span data-field={`campos.${idx}.label`}>{campo.label}</span> : campo.label}
               {campo.requerido && <span class={`${prefix}-required`}>*</span>}
             </label>
           )}
@@ -150,9 +151,9 @@ const compactLabels = plantilla === 'fashion_bold' || plantilla === 'minimal_art
     })}
 
     {plantilla === 'minimal_artesanal' ? (
-      <button type="submit" class={`${prefix}-form-submit`}>{botonTexto}</button>
+      <button type="submit" class={`${prefix}-form-submit`} data-field={isPreview ? 'boton_texto' : undefined}>{botonTexto}</button>
     ) : (
-      <button type="submit" class={`${prefix}-form-submit`} data-field="boton_texto">
+      <button type="submit" class={`${prefix}-form-submit`} data-field={isPreview ? 'boton_texto' : undefined}>
         {botonTexto}
       </button>
     )}

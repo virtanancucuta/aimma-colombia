@@ -15,6 +15,7 @@ interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'imagen' }>).props;
 const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
 
 const prefix = plantilla === 'fashion_bold' ? 'fb'
@@ -39,7 +40,7 @@ const ratioStyle = p.aspect_ratio ? `aspect-ratio:${p.aspect_ratio};` : '';
           loading="lazy"
           decoding="async"
           class={`${prefix}-imagen-img w-full h-full ${objClass}`}
-          data-field="src"
+          data-field={isPreview ? 'src' : undefined}
         />
       </figure>
     </a>
@@ -51,7 +52,7 @@ const ratioStyle = p.aspect_ratio ? `aspect-ratio:${p.aspect_ratio};` : '';
         loading="lazy"
         decoding="async"
         class={`${prefix}-imagen-img w-full h-full ${objClass}`}
-        data-field="src"
+        data-field={isPreview ? 'src' : undefined}
       />
     </figure>
   )}
