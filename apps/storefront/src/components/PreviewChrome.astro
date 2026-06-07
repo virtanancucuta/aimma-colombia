@@ -1,0 +1,133 @@
+---
+// AIMMA Storefront · PreviewChrome.astro — chrome de seleccion del Editor PRO-MAX.
+// SOLO se renderiza en modo preview ({isPreview && <PreviewChrome/>}) -> CERO presencia en la
+// tienda publicada (condicion a; verificado por byte-compare publico en el deploy).
+// Overlay FLOTANTE anclado al DOCUMENTO (no se inyecta dentro de la seccion -> el nodo de la
+// seccion queda byte-identico al SSR / paridad A3 intacta; no se recorta por overflow; sobrevive
+// el replace-patch de C.1 como hermano que solo re-posiciona).
+//  - admin -> iframe: {type:'set-selection', sectionId|null, label}  (reflector: dibuja/limpia SOLO aca)
+//  - iframe -> admin: {type:'section-action', action:'up|down|duplicate|remove', sectionId}
+// El click de seleccion y la deseleccion los maneja el bridge de index.astro (este componente
+// es PURO reflector: nunca pinta chrome por su cuenta, solo al recibir set-selection).
+const ADMIN_ORIGIN = 'https://aimma.com.co';
+---
+<script is:inline define:vars={{ ADMIN_ORIGIN }}>
+  (function () {
+    'use strict';
+    var ID_RE = /^sec_[a-z0-9]{4,}$/;
+    var selId = null;
+    var root, box, bar, lblEl, btnUp, btnDown;
+
+    function mkBtn(glyph, title, action) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.title = title;
+      b.textContent = glyph;
+      b.setAttribute('data-ed-action', action);
+      b.style.cssText = 'pointer-events:auto;cursor:pointer;background:transparent;border:0;color:#fff;font:inherit;padding:2px 7px;border-radius:4px;line-height:1;';
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (b.disabled || !selId) return;
+        try { parent.postMessage({ type: 'section-action', action: action, sectionId: selId }, ADMIN_ORIGIN); } catch (_) {}
+      });
+      return b;
+    }
+
+    function build() {
+      if (root) return;
+      root = document.createElement('div');
+      root.setAttribute('data-ed-chrome', '');
+      // anclado al documento (position:absolute) -> scrollea solo con el contenido, sin listener de scroll.
+      root.style.cssText = 'position:absolute;top:0;left:0;z-index:2147483000;pointer-events:none;display:none;';
+
+      box = document.createElement('div');
+      box.setAttribute('data-ed-chrome-box', '');
+      // recuadro: pointer-events:none -> clicks y scroll PASAN a la seccion (seguir seleccionando/scrolleando).
+      box.style.cssText = 'position:absolute;inset:0;border:2px solid #2563eb;border-radius:4px;pointer-events:none;box-sizing:border-box;';
+
+      bar = document.createElement('div');
+      bar.setAttribute('data-ed-chrome-bar', '');
+      // barrita: pointer-events:auto -> clickeable.
+      bar.style.cssText = 'position:absolute;top:-34px;left:0;display:flex;align-items:center;gap:1px;background:#2563eb;color:#fff;border-radius:6px;padding:3px 4px;font:600 12px/1 system-ui,-apple-system,sans-serif;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.28);max-width:calc(100vw - 16px);';
+
+      lblEl = document.createElement('span');
+      lblEl.setAttribute('data-ed-chrome-label', '');
+      lblEl.style.cssText = 'padding:0 6px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+      btnUp = mkBtn('↑', 'Subir', 'up');
+      btnDown = mkBtn('↓', 'Bajar', 'down');
+      var btnDup = mkBtn('⧉', 'Duplicar', 'duplicate');
+      var btnDel = mkBtn('✖', 'Eliminar', 'remove');
+
+      bar.appendChild(lblEl);
+      bar.appendChild(btnUp);
+      bar.appendChild(btnDown);
+      bar.appendChild(btnDup);
+      bar.appendChild(btnDel);
+      root.appendChild(box);
+      root.appendChild(bar);
+      document.body.appendChild(root);
+    }
+
+    function setDisabled(btn, on) {
+      btn.disabled = !!on;
+      btn.style.opacity = on ? '0.4' : '1';
+      btn.style.cursor = on ? 'default' : 'pointer';
+    }
+
+    // Re-query por data-section-id (NUNCA referencia a nodo viejo) + re-posiciona + gris de limite.
+    function position() {
+      if (!selId || !root) return;
+      var el = document.querySelector('[data-section-id="' + selId + '"]');
+      if (!el) { clear(); return; }
+      var r = el.getBoundingClientRect();
+      root.style.display = 'block';
+      root.style.top = (r.top + (window.scrollY || window.pageYOffset || 0)) + 'px';
+      root.style.left = (r.left + (window.scrollX || window.pageXOffset || 0)) + 'px';
+      root.style.width = r.width + 'px';
+      root.style.height = r.height + 'px';
+      // gris de limite (cosmetico; el guard real es el no-op del admin fuera de rango).
+      var nodes = document.querySelectorAll('[data-section-id]');
+      var idx = -1;
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].getAttribute('data-section-id') === selId) { idx = i; break; }
+      }
+      setDisabled(btnUp, idx <= 0);
+      setDisabled(btnDown, idx < 0 || idx >= nodes.length - 1);
+    }
+
+    function draw(id, label) {
+      build();
+      selId = id;
+      lblEl.textContent = label || ''; // textContent: el label NUNCA inyecta markup.
+      position();
+    }
+
+    function clear() {
+      selId = null;
+      if (root) root.style.display = 'none';
+    }
+
+    // set-selection (admin -> iframe). Reflector puro: dibuja/limpia SOLO aca.
+    window.addEventListener('message', function (e) {
+      if (e.origin !== ADMIN_ORIGIN) return;
+      var msg = e.data || {};
+      if (msg.type === 'set-selection') {
+        if (msg.sectionId === null) { clear(); return; }
+        if (typeof msg.sectionId !== 'string' || !ID_RE.test(msg.sectionId)) return;
+        draw(msg.sectionId, typeof msg.label === 'string' ? msg.label : '');
+        return;
+      }
+      // Tras un patch/reload del bridge (mismo origin), el DOM cambio -> re-posicionar DESPUES
+      // de que el patch landa (setTimeout 0 => macrotask post-handler). Sin acoplar al otro listener.
+      if (msg.type === 'section-patch' || msg.type === 'reload') {
+        setTimeout(position, 0);
+      }
+    });
+
+    // Recompute: anclado al documento => scroll NO necesita listener. Si resize + reflows de alto.
+    window.addEventListener('resize', position);
+    try { new ResizeObserver(function () { position(); }).observe(document.body); } catch (_) {}
+  })();
+</script>

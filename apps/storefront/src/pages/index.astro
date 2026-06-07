@@ -8,6 +8,7 @@ import Layout from '~/layouts/Layout.astro';
 import Hero from '~/components/Hero.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
 import BlockRenderer from '~/components/BlockRenderer.astro';
+import PreviewChrome from '~/components/PreviewChrome.astro';
 import { getProductosPorTienda } from '~/lib/catalogo';
 import { parsePersonalizaciones, FONT_PAIRINGS, CSS_COLOR_REGEX } from '@aimma/database';
 
@@ -159,11 +160,18 @@ const jsonLd = {
     // Puente Editor PRO-MAX (solo en preview). Click en seccion -> avisa al panel.
     // Recibe {type:'reload'} -> recarga. Valida origin en ambos sentidos.
     document.addEventListener('click', (e) => {
-      const el = e.target instanceof Element ? e.target.closest('[data-section-id]') : null;
-      if (!el) return;
-      e.preventDefault();
-      const sectionId = el.getAttribute('data-section-id');
-      try { parent.postMessage({ type: 'select', sectionId }, ADMIN_ORIGIN); } catch (_) {}
+      if (!(e.target instanceof Element)) return;
+      // Clicks del chrome de seleccion: los maneja PreviewChrome, no seleccionar/deseleccionar.
+      if (e.target.closest('[data-ed-chrome]')) return;
+      const el = e.target.closest('[data-section-id]');
+      if (el) {
+        e.preventDefault();
+        const sectionId = el.getAttribute('data-section-id');
+        try { parent.postMessage({ type: 'select', sectionId }, ADMIN_ORIGIN); } catch (_) {}
+      } else {
+        // Click en espacio vacio del canvas -> deseleccion (el admin nuevo hara set-selection(null)).
+        try { parent.postMessage({ type: 'select', sectionId: null }, ADMIN_ORIGIN); } catch (_) {}
+      }
     }, true);
 
     window.addEventListener('message', (e) => {
@@ -231,3 +239,5 @@ const jsonLd = {
     try { parent.postMessage({ type: 'preview-ready' }, ADMIN_ORIGIN); } catch (_) {}
   </script>
 )}
+
+{isPreview && <PreviewChrome />}

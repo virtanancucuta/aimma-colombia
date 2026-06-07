@@ -95,7 +95,12 @@
     // ── Acciones ──
     wrap.appendChild(C.primaryButton('Duplicar seccion', () => ES.duplicateSection(sec.id)));
     wrap.appendChild(C.dangerButton('Eliminar seccion', () => {
-      if (confirm('Eliminar esta seccion?')) ES.removeSection(sec.id);
+      // Mismo modal estilizado que el chrome del canvas (UX de borrado consistente, doble red).
+      if (window.TiendaIA.editorConfirm && window.TiendaIA.editorConfirm.removeSection) {
+        window.TiendaIA.editorConfirm.removeSection(sec.id);
+      } else if (confirm('Eliminar esta seccion?')) {
+        ES.removeSection(sec.id); // fallback defensivo si el modal no cargo
+      }
     }));
 
     return wrap;

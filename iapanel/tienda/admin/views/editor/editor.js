@@ -27,6 +27,7 @@
     patchTimers: {},        // debounce por sectionId para ops 'replace'
     patchQueue: [],         // cola FIFO de patches -> drain SERIAL (aplican EN ORDEN al iframe, sin drift cross-op)
     patchDraining: false,
+    pendingSelect: null,    // C.2: id a seleccionar DESPUES de drenar la cola (duplicate -> salta a la copia)
   };
 
   function whenReady(cb, attempts) {
@@ -154,6 +155,7 @@
     state.patchTimers = {};
     state.patchQueue = [];
     state.patchDraining = false;
+    state.pendingSelect = null;
     state.unsubs.forEach(u => { try { u(); } catch (e) {} });
     state.unsubs = [];
     window.removeEventListener('beforeunload', beforeUnloadGuard);
@@ -203,6 +205,24 @@
       }
     } finally {
       state.patchDraining = false;
+      // C.2 (condicion c): set-selection DIFERIDO. Tras drenar TODA la cola, anclar el chrome al
+      // nodo recien patcheado (no a uno viejo). Lo usa duplicate -> selecciona la copia ya renderizada.
+      if (state.pendingSelect) {
+        const sid = state.pendingSelect;
+        state.pendingSelect = null;
+        try { window.TiendaIA.editorState.select(sid); } catch (e) {}
+      }
+    }
+  }
+
+  // C.2: agenda una seleccion para DESPUES de que drene el patch (la emite set-selection via el
+  // canal 'selection'). Si no hay drain ni cola, selecciona ya (no hay patch que esperar).
+  function pendingSelectAfterPatch(id) {
+    if (!id) return;
+    if (!state.patchDraining && state.patchQueue.length === 0) {
+      try { window.TiendaIA.editorState.select(id); } catch (e) {} // defensivo: no propagar al caller
+    } else {
+      state.pendingSelect = id;
     }
   }
 
@@ -437,6 +457,10 @@
     if (window.TiendaIA?.toast) window.TiendaIA.toast(msg, kind);
     else console.log('[toast]', kind, msg);
   }
+
+  // C.2: seam de seleccion post-drain, consumido por el carril section-action (editor-canvas).
+  window.TiendaIA = window.TiendaIA || {};
+  window.TiendaIA.editorMain = { pendingSelectAfterPatch };
 
   // Auto-register
   if (document.readyState === 'loading') {
