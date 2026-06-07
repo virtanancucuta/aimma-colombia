@@ -16,6 +16,7 @@
   const AUTOSAVE_DEBOUNCE_MS = 1500;
   const ERROR_RETRY_MS = 4000;
   const PATCH_DEBOUNCE_MS = 300;
+  const EDITING_TIMEOUT_MS = 20000; // C.2 Paso 2: auto-recupera el suspend si se pierde el commit/cancel
 
   const state = {
     autoSaveTimer: null,
@@ -28,6 +29,9 @@
     patchQueue: [],         // cola FIFO de patches -> drain SERIAL (aplican EN ORDEN al iframe, sin drift cross-op)
     patchDraining: false,
     pendingSelect: null,    // C.2: id a seleccionar DESPUES de drenar la cola (duplicate -> salta a la copia)
+    editingSection: null,   // C.2 Paso 2: seccion con patches SUSPENDIDOS (edicion inline en curso)
+    editingTimer: null,     // auto-recuperacion del suspend (timeout, evita congelado silencioso)
+    clearEditingAfterDrain: false, // liberar el suspend tras drenar el patch (salteado) del commit
   };
 
   function whenReady(cb, attempts) {
@@ -102,6 +106,12 @@
     state.unsubs.push(window.TiendaIA.editorState.subscribe('dirty', scheduleAutosave));
     // Carril patch: cada mutacion de seccion notifica 'patch' -> actualiza iframe sin reload.
     state.unsubs.push(window.TiendaIA.editorState.subscribe('patch', onPatch));
+    // C.2 Paso 2: auto-recuperacion on-next-interaction -> si la seleccion cambia a OTRA seccion
+    // mientras hay un suspend inline en curso, liberarlo (el edit se abandono).
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('selection', function () {
+      const sel = window.TiendaIA.editorState.selection;
+      if (state.editingSection && (!sel || sel.sectionId !== state.editingSection)) clearEditingSection();
+    }));
 
     // Render paneles
     window.TiendaIA.editorToolbar.render(toolbarEl, {
@@ -156,6 +166,7 @@
     state.patchQueue = [];
     state.patchDraining = false;
     state.pendingSelect = null;
+    clearEditingSection(); // C.2 Paso 2: limpiar suspend + timer
     state.unsubs.forEach(u => { try { u(); } catch (e) {} });
     state.unsubs = [];
     window.removeEventListener('beforeunload', beforeUnloadGuard);
@@ -212,7 +223,35 @@
         state.pendingSelect = null;
         try { window.TiendaIA.editorState.select(sid); } catch (e) {}
       }
+      // C.2 Paso 2: tras drenar el patch (salteado) del commit inline, liberar el suspend.
+      if (state.clearEditingAfterDrain) { clearEditingSection(); }
     }
+  }
+
+  // C.2 Paso 2: SUSPEND de patches de la seccion en edicion inline + auto-recuperacion (timeout).
+  // No toca la cola serial ni el hotfix: solo un flag que applyOnePatch consulta para saltear.
+  function setEditingSection(sectionId) {
+    if (typeof sectionId !== 'string') return;
+    state.editingSection = sectionId;            // un nuevo start para otra seccion libera la anterior
+    if (state.editingTimer) clearTimeout(state.editingTimer);
+    state.editingTimer = setTimeout(function () { clearEditingSection(); }, EDITING_TIMEOUT_MS);
+  }
+  function clearEditingSection() {
+    state.editingSection = null;
+    state.clearEditingAfterDrain = false;
+    if (state.editingTimer) { clearTimeout(state.editingTimer); state.editingTimer = null; }
+  }
+  // commit inline: MISMA RUTA que el inspector (updateSectionProps via setByPath) -> autosave/undo del
+  // hotfix; el patch que dispara se SALTEA (el suspend sigue activo) y el suspend se libera tras drenarlo.
+  function commitInlineEdit(sectionId, fieldPath, value) {
+    const ES = window.TiendaIA.editorState;
+    const IF = window.TiendaIA.editorInlineFields;
+    const sec = ES.findSection(sectionId);
+    if (!sec || !IF) { clearEditingSection(); return; }
+    const nextProps = IF.setByPath(sec.props, fieldPath, value);
+    if (!nextProps) { clearEditingSection(); return; } // ruta invalida/campo inexistente -> no mutar
+    state.clearEditingAfterDrain = true;
+    ES.updateSectionProps(sectionId, nextProps);
   }
 
   // C.2: agenda una seleccion para DESPUES de que drene el patch (la emite set-selection via el
@@ -230,6 +269,9 @@
     const ES = window.TiendaIA.editorState;
     const canvas = window.TiendaIA.editorCanvas;
     if (!canvas) return;
+    // C.2 Paso 2: SUSPEND -> saltear patches de la seccion en edicion inline (el DOM ya muestra lo
+    // tipeado; un replace la reemplazaria con el SSR y perderia cursor/texto). Acople minimo, sin tocar la cola.
+    if (state.editingSection && item.sectionId === state.editingSection) return;
     if (item.kind === 'reload') { state.patchQueue.length = 0; if (canvas.reloadFull) canvas.reloadFull(); return; }
     if (item.kind === 'remove') { if (canvas.applyPatch) canvas.applyPatch('remove', { sectionId: item.sectionId }); return; }
     if (item.kind === 'move')   { if (canvas.applyPatch) canvas.applyPatch('move', { sectionId: item.sectionId, toIndex: item.toIndex }); return; }
@@ -460,7 +502,7 @@
 
   // C.2: seam de seleccion post-drain, consumido por el carril section-action (editor-canvas).
   window.TiendaIA = window.TiendaIA || {};
-  window.TiendaIA.editorMain = { pendingSelectAfterPatch };
+  window.TiendaIA.editorMain = { pendingSelectAfterPatch, setEditingSection, clearEditingSection, commitInlineEdit };
 
   // Auto-register
   if (document.readyState === 'loading') {

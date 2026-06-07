@@ -149,11 +149,14 @@
       } else if (msg.type === 'section-action') {
         // origin ya validado; el dispatcher revalida action + seccion ANTES de mutar.
         handleSectionAction(msg);
+      } else if (msg.type === 'inline-edit-start' || msg.type === 'inline-commit' || msg.type === 'inline-cancel') {
+        handleInlineMessage(msg);
       } else if (msg.type === 'preview-ready') {
         state.ready = true;
         setStatus('', false);
-        // Tras (re)cargar el iframe el chrome se reinicio -> restaurar la seleccion vigente.
+        // Tras (re)cargar el iframe: restaurar la seleccion vigente (chrome) + re-habilitar la edicion inline.
         postSelection(ES.selection ? ES.selection.sectionId : null);
+        sendInlineEnable();
       }
     };
     window.addEventListener('message', state.messageHandler);
@@ -215,6 +218,37 @@
         state.tenantOrigin
       );
     } catch (e) { /* noop */ }
+  }
+
+  // inline-enable (admin -> iframe): despierta la edicion inline. Se manda en cada preview-ready
+  // (carga/recarga del iframe). El admin viejo no lo manda -> InlineEdit queda dormido.
+  function sendInlineEnable() {
+    if (!state.iframe || !state.tenantOrigin) return;
+    try { state.iframe.contentWindow.postMessage({ type: 'inline-enable' }, state.tenantOrigin); } catch (e) { /* noop */ }
+  }
+
+  // inline-edit-start/commit/cancel (iframe -> admin). origin ya validado en messageHandler; aca el resto
+  // del gate G3: sectionId conocido + fieldPath EN EL REGISTRO + value string, ANTES de mutar. Un frame
+  // hostil no puede escribir props arbitrarias. El suspend/commit viven en editor.js (editorMain).
+  function handleInlineMessage(msg) {
+    const ES = window.TiendaIA.editorState;
+    const IF = window.TiendaIA.editorInlineFields;
+    const em = window.TiendaIA.editorMain;
+    if (!IF || !em) return;
+    if (typeof msg.sectionId !== 'string' || !SECTION_ID_RE.test(msg.sectionId)) return;
+    const sec = ES.findSection(msg.sectionId);
+    if (!sec) return;
+    if (typeof msg.fieldPath !== 'string' || !IF.isSimpleTextField(sec.tipo, msg.fieldPath)) return;
+    if (msg.type === 'inline-edit-start') {
+      em.setEditingSection(msg.sectionId);
+    } else if (msg.type === 'inline-cancel') {
+      em.clearEditingSection();
+    } else if (msg.type === 'inline-commit') {
+      if (typeof msg.value !== 'string') { em.clearEditingSection(); return; } // value debe ser string
+      let value = IF.cleanInlineText(msg.value);          // defensa: re-limpiar (texto plano una linea)
+      if (value.length > 500) value = value.slice(0, 500); // cap defensivo
+      em.commitInlineEdit(msg.sectionId, msg.fieldPath, value);
+    }
   }
 
   // En layouts angostos (<1100px) el inspector es un drawer; al seleccionar desde
@@ -355,7 +389,7 @@
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
     render, refresh, reloadFull, setDevice, destroy, rebuild, applyThemePreview,
-    renderFragment, applyPatch, handleSectionAction, postSelection, selectionLabel,
+    renderFragment, applyPatch, handleSectionAction, postSelection, selectionLabel, handleInlineMessage,
     get previewUrl() { return state.previewUrl; },
   };
 })(window);
