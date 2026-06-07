@@ -9,6 +9,7 @@ import Hero from '~/components/Hero.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
 import BlockRenderer from '~/components/BlockRenderer.astro';
 import PreviewChrome from '~/components/PreviewChrome.astro';
+import InlineEdit from '~/components/InlineEdit.astro';
 import { getProductosPorTienda } from '~/lib/catalogo';
 import { parsePersonalizaciones, FONT_PAIRINGS, CSS_COLOR_REGEX } from '@aimma/database';
 
@@ -244,3 +245,4 @@ const jsonLd = {
 )}
 
 {isPreview && <PreviewChrome />}
+{isPreview && <InlineEdit />}

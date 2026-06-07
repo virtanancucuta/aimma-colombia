@@ -1,0 +1,132 @@
+---
+// AIMMA Storefront · InlineEdit.astro — edición inline de TEXTO SIMPLE (C.2 Paso 2).
+// SOLO preview ({isPreview && <InlineEdit/>}) -> cero presencia/JS en el público.
+// DORMIDO hasta recibir {inline-enable} del admin nuevo (el admin viejo no lo manda).
+// El admin NUNCA toca el DOM del iframe: aquí se edita, y al confirmar se avisa por postMessage.
+//  - admin -> iframe: {inline-enable}
+//  - iframe -> admin: {inline-edit-start|inline-commit|inline-cancel, sectionId, fieldPath[, value]}
+// Solo se vuelven editables los nodos [data-field] cuya (tipo, ruta) está en SIMPLE_TEXT_FIELDS
+// Y cuyo contenido es texto limpio (sin hijos elemento). Rich-text/textarea NO entran (no en registro).
+import { SIMPLE_TEXT_FIELDS } from '@aimma/database';
+const ADMIN_ORIGIN = 'https://aimma.com.co';
+---
+<script is:inline define:vars={{ ADMIN_ORIGIN, FIELDS: SIMPLE_TEXT_FIELDS }}>
+  (function () {
+    'use strict';
+    var enabled = false;
+    var active = null; // { node, sectionId, fieldPath, original }
+    var FORBIDDEN = { __proto__: 1, constructor: 1, prototype: 1 };
+
+    // ¿(tipo, ruta) es un campo de texto-simple del registro? '*' = indice numerico de array.
+    function matchField(tipo, path) {
+      var pats = FIELDS[tipo];
+      if (!pats) return false;
+      var segs = path.split('.');
+      for (var i = 0; i < segs.length; i++) if (FORBIDDEN[segs[i]]) return false;
+      return pats.some(function (pat) {
+        var ps = pat.split('.');
+        if (ps.length !== segs.length) return false;
+        return ps.every(function (p, k) { return p === '*' ? /^\d+$/.test(segs[k]) : p === segs[k]; });
+      });
+    }
+
+    // textContent -> texto plano de una linea (sin nbsp/saltos/espacios colapsables).
+    function cleanText(raw) {
+      return String(raw == null ? '' : raw).replace(/ /g, ' ').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // nodo limpio = solo nodos de texto (sin hijos elemento) -> seguro para contenteditable de texto simple.
+    function isCleanNode(el) {
+      for (var i = 0; i < el.childNodes.length; i++) if (el.childNodes[i].nodeType === 1) return false;
+      return true;
+    }
+
+    function findEditable(target) {
+      if (!(target instanceof Element)) return null;
+      var node = target.closest('[data-field]');
+      if (!node) return null;
+      var sec = node.closest('[data-section-id]');
+      if (!sec) return null;
+      var sectionId = sec.getAttribute('data-section-id');
+      var tipo = sec.getAttribute('data-section-tipo');
+      var fieldPath = node.getAttribute('data-field');
+      if (!sectionId || !tipo || !fieldPath) return null;
+      if (!matchField(tipo, fieldPath)) return null;  // solo texto-simple del registro
+      if (!isCleanNode(node)) return null;            // nodo limpio
+      return { node: node, sectionId: sectionId, fieldPath: fieldPath };
+    }
+
+    function startEdit(info) {
+      active = { node: info.node, sectionId: info.sectionId, fieldPath: info.fieldPath, original: info.node.textContent };
+      var n = info.node;
+      n.setAttribute('contenteditable', 'true');
+      n.setAttribute('spellcheck', 'false');
+      n.focus();
+      try { parent.postMessage({ type: 'inline-edit-start', sectionId: info.sectionId, fieldPath: info.fieldPath }, ADMIN_ORIGIN); } catch (e) {}
+    }
+
+    function teardown(n) {
+      n.removeAttribute('contenteditable');
+      n.removeAttribute('spellcheck');
+    }
+
+    function commit() {
+      if (!active) return;
+      var a = active; active = null;
+      var value = cleanText(a.node.textContent);
+      teardown(a.node);
+      if (value === cleanText(a.original)) {
+        // sin cambio -> cancelar (libera el suspend en el admin, sin mutar estado).
+        try { parent.postMessage({ type: 'inline-cancel', sectionId: a.sectionId, fieldPath: a.fieldPath }, ADMIN_ORIGIN); } catch (e) {}
+        return;
+      }
+      a.node.textContent = value; // normaliza el DOM al texto limpio (sin basura del navegador)
+      try { parent.postMessage({ type: 'inline-commit', sectionId: a.sectionId, fieldPath: a.fieldPath, value: value }, ADMIN_ORIGIN); } catch (e) {}
+    }
+
+    function cancel() {
+      if (!active) return;
+      var a = active; active = null;
+      a.node.textContent = a.original; // revertir al original
+      teardown(a.node);
+      try { parent.postMessage({ type: 'inline-cancel', sectionId: a.sectionId, fieldPath: a.fieldPath }, ADMIN_ORIGIN); } catch (e) {}
+    }
+
+    // Habilitar: SOLO el admin nuevo manda esto -> hasta entonces, dormido (cero edicion).
+    window.addEventListener('message', function (e) {
+      if (e.origin !== ADMIN_ORIGIN) return;
+      var msg = e.data || {};
+      if (msg.type === 'inline-enable') enabled = true;
+    });
+
+    // Click en un campo editable -> entrar a editar (la seleccion de la seccion la hace el bridge de Paso 1).
+    document.addEventListener('click', function (e) {
+      if (!enabled) return;
+      if (active) return; // editando: dejar que el click posicione el cursor (mismo nodo) / el blur cerrara el otro
+      var info = findEditable(e.target);
+      if (info) startEdit(info);
+    }, true);
+
+    // Una linea: Enter confirma (no inserta salto). Escape revierte.
+    document.addEventListener('keydown', function (e) {
+      if (!active) return;
+      if (e.key === 'Enter') { e.preventDefault(); active.node.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    }, true);
+
+    // Perder el foco (click afuera) -> commit.
+    document.addEventListener('blur', function (e) {
+      if (active && e.target === active.node) commit();
+    }, true);
+
+    // Pegar -> SOLO texto plano (sin HTML, sin saltos).
+    document.addEventListener('paste', function (e) {
+      if (!active || e.target !== active.node) return;
+      e.preventDefault();
+      var cd = e.clipboardData || window.clipboardData;
+      var txt = (cd && cd.getData ? cd.getData('text/plain') : '') || '';
+      txt = txt.replace(/[\r\n\t]+/g, ' ');
+      try { document.execCommand('insertText', false, txt); } catch (err) { /* fallback: ignora */ }
+    }, true);
+  })();
+</script>
