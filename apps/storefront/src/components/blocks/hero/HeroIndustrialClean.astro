@@ -10,6 +10,7 @@ import SectionShell from '~/components/blocks/_SectionShell.astro';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'banner' }>).props;
+const isPreview = Astro.locals?.isPreview;
 
 const align = p.alineacion ?? 'left';
 const alignClass = align === 'center' ? 'text-center mx-auto' : align === 'right' ? 'text-right ml-auto' : 'text-left';
@@ -24,7 +25,7 @@ const iconPath: Record<string, string> = {
     <h1
       class="font-display font-semibold text-[var(--ta-color-text-base)] text-balance"
       style="font-size:clamp(2.25rem, 5.5vw, 4.5rem); line-height:1.05; letter-spacing:-0.038em;"
-      data-field="titulo"
+      data-field={isPreview ? 'titulo' : undefined}
     >
       {p.titulo}
     </h1>
@@ -33,7 +34,7 @@ const iconPath: Record<string, string> = {
       <p
         class="mt-6 font-body text-[var(--ta-color-text-base)]/72 leading-[1.6]"
         style="font-size:clamp(1rem, 1.6vw, 1.2rem);"
-        data-field="subtitulo"
+        data-field={isPreview ? 'subtitulo' : undefined}
       >
         {p.subtitulo}
       </p>
@@ -46,9 +47,8 @@ const iconPath: Record<string, string> = {
         rel={p.boton.target === '_blank' ? 'noopener' : undefined}
         class={`block-button block-button--${p.boton.estilo_visual} mt-9`}
         style="border-radius:2px;"
-        data-field="boton.texto"
       >
-        {p.boton.texto}
+        {isPreview ? <span data-field="boton.texto">{p.boton.texto}</span> : p.boton.texto}
         {(p.boton.icono === 'arrow' || !p.boton.icono) && (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d={iconPath.arrow} />

@@ -10,6 +10,7 @@ import SectionShell from '~/components/blocks/_SectionShell.astro';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'banner' }>).props;
+const isPreview = Astro.locals?.isPreview;
 
 const align = p.alineacion ?? 'left';
 const alignClass = align === 'center'
@@ -44,7 +45,7 @@ const showArrow = !!p.boton && (p.boton.icono === 'arrow' || !p.boton.icono);
   <div class={`ma-banner flex flex-col ${alignClass}`}>
     <h1
       class="ma-banner-title font-display text-[var(--ta-color-text-base)] text-balance"
-      data-field="titulo"
+      data-field={isPreview ? 'titulo' : undefined}
     >
       {p.titulo}
     </h1>
@@ -52,7 +53,7 @@ const showArrow = !!p.boton && (p.boton.icono === 'arrow' || !p.boton.icono);
     {p.subtitulo && (
       <p
         class="ma-banner-sub font-display italic text-[var(--ta-color-text-base)]/72"
-        data-field="subtitulo"
+        data-field={isPreview ? 'subtitulo' : undefined}
       >
         {p.subtitulo}
       </p>
@@ -66,11 +67,10 @@ const showArrow = !!p.boton && (p.boton.icono === 'arrow' || !p.boton.icono);
         class={esPill
           ? `ma-banner-pill ma-banner-pill--${p.boton.estilo_visual} mt-10`
           : 'ma-banner-link mt-10 inline-flex items-center gap-3 font-body text-[14px] font-medium text-[var(--ta-color-text-base)] w-fit'}
-        data-field="boton.texto"
       >
         {esPill
-          ? p.boton.texto
-          : <span class="border-b border-[var(--ta-color-text-base)] pb-1">{p.boton.texto}</span>}
+          ? (isPreview ? <span data-field="boton.texto">{p.boton.texto}</span> : p.boton.texto)
+          : <span class="border-b border-[var(--ta-color-text-base)] pb-1" data-field={isPreview ? 'boton.texto' : undefined}>{p.boton.texto}</span>}
         {showArrow && (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <path d={iconPath.arrow} />

@@ -17,6 +17,7 @@ interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'galeria' }>).props;
 const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
 
 const prefix = plantilla === 'fashion_bold' ? 'fb'
@@ -48,7 +49,7 @@ if (plantilla === 'fashion_bold') {
 ---
 
 <SectionShell section={section}>
-  <div class={gridClass} data-field={dataField}>
+  <div class={gridClass} data-field={isPreview ? dataField : undefined}>
     {p.imagenes.map((img, i) => (
       plantilla === 'editorial_magazine' ? (
         <figure class="em-galeria-item group">

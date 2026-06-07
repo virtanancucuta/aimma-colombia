@@ -10,6 +10,7 @@ import SectionShell from '~/components/blocks/_SectionShell.astro';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'botones' }>).props;
+const isPreview = Astro.locals?.isPreview;
 
 // Paths SVG por icono (24x24 viewBox, stroke currentColor).
 const iconPaths: Record<string, string> = {
@@ -24,16 +25,15 @@ const iconPaths: Record<string, string> = {
 
 <SectionShell section={section}>
   <div class="ic-botones-row">
-    {p.items.map((btn) => (
+    {p.items.map((btn, idx) => (
       <a
         href={btn.url}
         target={btn.target}
         rel={btn.target === '_blank' ? 'noopener' : undefined}
         class={`block-button block-button--${btn.estilo_visual}`}
         style="border-radius:2px;"
-        data-field="botones"
       >
-        {btn.texto}
+        {isPreview ? <span data-field={`items.${idx}.texto`}>{btn.texto}</span> : btn.texto}
         {btn.icono && iconPaths[btn.icono] && (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d={iconPaths[btn.icono]} />

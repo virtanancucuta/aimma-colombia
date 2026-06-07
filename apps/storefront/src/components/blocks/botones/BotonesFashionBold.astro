@@ -10,6 +10,7 @@ import SectionShell from '~/components/blocks/_SectionShell.astro';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'botones' }>).props;
+const isPreview = Astro.locals?.isPreview;
 
 const iconPaths: Record<string, string> = {
   arrow: 'M5 12h14M13 5l7 7-7 7',
@@ -29,9 +30,8 @@ const iconPaths: Record<string, string> = {
         target={btn.target}
         rel={btn.target === '_blank' ? 'noopener' : undefined}
         class={`fb-btn fb-btn--${btn.estilo_visual} group inline-flex items-center gap-2.5`}
-        data-field={`items.${idx}.texto`}
       >
-        {btn.texto}
+        {isPreview ? <span data-field={`items.${idx}.texto`}>{btn.texto}</span> : btn.texto}
         {btn.icono && (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-0.5">
             <path d={iconPaths[btn.icono] ?? iconPaths.arrow} />
