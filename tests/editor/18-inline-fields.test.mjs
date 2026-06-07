@@ -16,7 +16,7 @@ test('isSimpleTextField (mirror JS): acepta el set, rechaza resto + proto', () =
   assert.equal(f.isSimpleTextField('formulario', 'campos.0.label'), true);
   assert.equal(f.isSimpleTextField('botones', 'items.x.texto'), false);
   assert.equal(f.isSimpleTextField('texto', 'contenido'), false);   // rich-text -> inspector
-  assert.equal(f.isSimpleTextField('banner', 'subtitulo'), false);  // textarea -> inspector
+  assert.equal(f.isSimpleTextField('banner', 'subtitulo'), true);   // textarea pero render 1-linea -> inline
   assert.equal(f.isSimpleTextField('banner', '__proto__'), false);
   assert.equal(f.isSimpleTextField('nope', 'titulo'), false);
 });

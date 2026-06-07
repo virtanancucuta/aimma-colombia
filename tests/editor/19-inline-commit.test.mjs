@@ -32,7 +32,7 @@ test('G3: fieldPath fuera del registro -> no despacha', () => {
   const win = boot();
   const id = win.TiendaIA.editorState.addSection('banner');
   const calls = mockMain(win);
-  win.TiendaIA.editorCanvas.handleInlineMessage({ type: 'inline-commit', sectionId: id, fieldPath: 'subtitulo', value: 'x' });
+  win.TiendaIA.editorCanvas.handleInlineMessage({ type: 'inline-commit', sectionId: id, fieldPath: 'alineacion', value: 'x' });
   assert.equal(calls.commit.length, 0);
 });
 
