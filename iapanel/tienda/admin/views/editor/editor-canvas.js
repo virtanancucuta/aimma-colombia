@@ -14,6 +14,9 @@
   // El preview-token vence a los 15 min. Re-minteamos con 90s de margen (proactivo) y
   // tratamos como "stale" todo lo que esté dentro de ese margen (reactivo, en refresh()).
   const REMINT_MARGIN_MS = 90000;
+  // C.2 Paso 1: validacion del section-action entrante (mismo regex que el bridge del storefront).
+  const SECTION_ID_RE = /^sec_[a-z0-9]{4,}$/;
+  const SECTION_ACTIONS = { up: 1, down: 1, duplicate: 1, remove: 1 };
 
   const state = {
     container: null,
@@ -28,6 +31,7 @@
     messageHandler: null,
     expiresAt: null,
     remintTimer: null,
+    selUnsub: null,       // unsub de la suscripcion a 'selection' (emite set-selection al iframe)
   };
 
   function render(container, callbacks) {
@@ -132,21 +136,81 @@
       window.removeEventListener('message', state.messageHandler);
     }
     state.messageHandler = function(event) {
-      // SEGURIDAD: validar origin SIEMPRE contra el tenant esperado.
+      // SEGURIDAD: validar origin SIEMPRE contra el tenant esperado (gate G3, ambos sentidos).
       if (!state.tenantOrigin || event.origin !== state.tenantOrigin) return;
+      const ES = window.TiendaIA.editorState;
       const msg = event.data || {};
-      if (msg.type === 'select' && typeof msg.sectionId === 'string') {
-        const sec = window.TiendaIA.editorState.findSection(msg.sectionId);
-        if (sec) {
-          window.TiendaIA.editorState.select(msg.sectionId);
+      if (msg.type === 'select') {
+        if (msg.sectionId === null) { ES.select(null); return; } // deseleccion (click en vacio del canvas)
+        if (typeof msg.sectionId === 'string' && ES.findSection(msg.sectionId)) {
+          ES.select(msg.sectionId);
           openInspectorDrawer();
         }
+      } else if (msg.type === 'section-action') {
+        // origin ya validado; el dispatcher revalida action + seccion ANTES de mutar.
+        handleSectionAction(msg);
       } else if (msg.type === 'preview-ready') {
         state.ready = true;
         setStatus('', false);
+        // Tras (re)cargar el iframe el chrome se reinicio -> restaurar la seleccion vigente.
+        postSelection(ES.selection ? ES.selection.sectionId : null);
       }
     };
     window.addEventListener('message', state.messageHandler);
+
+    // Fuente UNICA = editorState.selection: el admin emite set-selection al iframe en CADA cambio
+    // de seleccion (las 3 fuentes -> click en iframe, lista del sidebar, auto-select tras duplicar
+    // -> pasan por aca). El iframe es reflector puro (dibuja/limpia solo al recibir set-selection).
+    const ES0 = window.TiendaIA.editorState;
+    if (ES0 && ES0.subscribe) {
+      state.selUnsub = ES0.subscribe('selection', function() {
+        postSelection(ES0.selection ? ES0.selection.sectionId : null);
+      });
+    }
+  }
+
+  // section-action (iframe -> admin). El origin ya se valido en messageHandler; aca el resto del
+  // gate G3: action en el enum + seccion CONOCIDA, ANTES de mutar. Un frame hostil no dispara ops.
+  function handleSectionAction(msg) {
+    const ES = window.TiendaIA.editorState;
+    if (!SECTION_ACTIONS[msg.action]) return;
+    if (typeof msg.sectionId !== 'string' || !SECTION_ID_RE.test(msg.sectionId)) return;
+    if (!ES.findSection(msg.sectionId)) return;
+    const idx = ES.sections.findIndex(function(s) { return s.id === msg.sectionId; });
+    if (msg.action === 'up') {
+      if (idx > 0) ES.reorderSections(idx, idx - 1);                  // guard FUNCIONAL de limite (no el gris)
+    } else if (msg.action === 'down') {
+      if (idx >= 0 && idx < ES.sections.length - 1) ES.reorderSections(idx, idx + 1);
+    } else if (msg.action === 'duplicate') {
+      const nid = ES.duplicateSection(msg.sectionId);
+      // set-selection a la copia DESPUES de que drene el patch insert (ancla al nodo nuevo, no a uno viejo).
+      const em = window.TiendaIA.editorMain;
+      if (nid && em && em.pendingSelectAfterPatch) em.pendingSelectAfterPatch(nid);
+    } else if (msg.action === 'remove') {
+      // SOLO abre el modal del admin (NO borra directo). Un mensaje no puede auto-confirmar.
+      const conf = window.TiendaIA.editorConfirm;
+      if (conf && conf.removeSection) conf.removeSection(msg.sectionId);
+    }
+  }
+
+  // set-selection (admin -> iframe). label desde sectionDefs (fuente unica A.1); origin = tenantOrigin.
+  function postSelection(sectionId) {
+    if (!state.iframe || !state.tenantOrigin) return;
+    let label = '';
+    if (sectionId) {
+      const sec = window.TiendaIA.editorState.findSection(sectionId);
+      if (sec) {
+        const defs = window.TiendaIA.editorSectionDefs && window.TiendaIA.editorSectionDefs.defs;
+        const def = defs && defs[sec.tipo];
+        label = def ? def.label : sec.tipo;
+      }
+    }
+    try {
+      state.iframe.contentWindow.postMessage(
+        { type: 'set-selection', sectionId: sectionId || null, label: label },
+        state.tenantOrigin
+      );
+    } catch (e) { /* noop */ }
   }
 
   // En layouts angostos (<1100px) el inspector es un drawer; al seleccionar desde
@@ -220,6 +284,7 @@
       window.removeEventListener('message', state.messageHandler);
       state.messageHandler = null;
     }
+    if (state.selUnsub) { try { state.selUnsub(); } catch (e) {} state.selUnsub = null; }
     if (state.remintTimer) { clearTimeout(state.remintTimer); state.remintTimer = null; }
     state.iframe = null;
     state.ready = false;
@@ -286,7 +351,7 @@
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
     render, refresh, reloadFull, setDevice, destroy, rebuild, applyThemePreview,
-    renderFragment, applyPatch,
+    renderFragment, applyPatch, handleSectionAction, postSelection,
     get previewUrl() { return state.previewUrl; },
   };
 })(window);
