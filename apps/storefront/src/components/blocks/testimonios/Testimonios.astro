@@ -1,0 +1,375 @@
+---
+// AIMMA Editor PRO-MAX · Testimonios · UNIFICADO (B-secciones Lote 2) · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// titulo opcional + grid de cards reseña con estrellas/texto/pie de autor). El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-testim-*) -> selecciona el <style> activo
+//   (b) los 4 <style> per-template, scopeados e inertes por prefijo, con la personalidad
+//       de cada plantilla (IBM Plex / Anton / Fraunces italic / Fraunces 300 editorial).
+// data-field gateado por isPreview: en publico NO hay ningun marcador. Editables inline:
+//   titulo (h2), autor (p) y cargo (span) -> NODOS LIMPIOS (cada uno solo su texto).
+// La reseña (texto) NO es editable inline (va por inspector). Estrellas via SVG inline accent.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'testimonios' }>).props;
+const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+// Clase de columnas: map estatico (NUNCA clase dinamica interpolada de Tailwind).
+const colClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[p.columnas] ?? 'md:grid-cols-3';
+
+// Path de una estrella (viewBox 0 0 24 24). Las "encendidas" van rellenas con el accent;
+// las "apagadas" van sin relleno con borde tenue.
+const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9 6.75 19.6l1-5.85L3.5 9.65l5.9-.85z';
+const STARS = [1, 2, 3, 4, 5];
+---
+
+<SectionShell section={section}>
+  {p.titulo && (
+    <h2 class={`${prefix}-testim-title`} data-field={isPreview ? 'titulo' : undefined}>{p.titulo}</h2>
+  )}
+  <div class={`${prefix}-testim-grid grid grid-cols-1 sm:grid-cols-2 ${colClass}`}>
+    {p.items.map((item, idx) => (
+      <article class={`${prefix}-testim-card`}>
+        {item.rating && (
+          <div class={`${prefix}-testim-stars`} aria-label={`${item.rating} de 5`}>
+            {STARS.map((n) => (
+              <svg
+                class={n <= item.rating! ? 'is-on' : 'is-off'}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d={STAR_PATH} />
+              </svg>
+            ))}
+          </div>
+        )}
+        <p class={`${prefix}-testim-text`}>{item.texto}</p>
+        <footer class={`${prefix}-testim-foot`}>
+          {item.foto && (
+            <img class={`${prefix}-testim-foto`} src={item.foto} alt={item.autor} loading="lazy" width="48" height="48" />
+          )}
+          <div>
+            <p class={`${prefix}-testim-autor`} data-field={isPreview ? `items.${idx}.autor` : undefined}>{item.autor}</p>
+            {item.cargo && (
+              <span class={`${prefix}-testim-cargo`} data-field={isPreview ? `items.${idx}.cargo` : undefined}>{item.cargo}</span>
+            )}
+          </div>
+        </footer>
+      </article>
+    ))}
+  </div>
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean =====
+     IBM Plex limpio, cards con borde sutil + radius 2px, estrellas accent,
+     reseña legible, autor display semibold, cargo mono muted pequeño. */
+  .ic-testim-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 2rem;
+  }
+  .ic-testim-grid { gap: 1rem; }
+  .ic-testim-card {
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 10%, transparent);
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--ta-color-text-base) 3%, transparent);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .ic-testim-stars {
+    display: inline-flex;
+    gap: 0.15rem;
+  }
+  .ic-testim-stars svg { width: 1.05rem; height: 1.05rem; }
+  .ic-testim-stars svg.is-on { fill: var(--ta-color-accent); }
+  .ic-testim-stars svg.is-off {
+    fill: none;
+    stroke: var(--ta-color-text-base);
+    stroke-width: 1.3;
+    opacity: 0.3;
+  }
+  .ic-testim-text {
+    font-family: var(--ta-font-body);
+    color: color-mix(in oklab, var(--ta-color-text-base) 82%, transparent);
+    font-size: 0.98rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .ic-testim-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 0.25rem;
+  }
+  .ic-testim-foto {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .ic-testim-autor {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.25;
+    margin: 0;
+  }
+  .ic-testim-cargo {
+    display: block;
+    font-family: ui-monospace, 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+    color: var(--ta-color-text-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+    margin-top: 0.15rem;
+  }
+
+  /* ===== fashion_bold =====
+     Anton uppercase, alto contraste, bordes marcados radius 0, estrellas grandes accent. */
+  .fb-testim-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+    text-wrap: balance;
+    margin: 0 0 2.5rem;
+  }
+  .fb-testim-grid { gap: 1.5rem; }
+  .fb-testim-card {
+    border: 2px solid var(--ta-color-text-base);
+    border-radius: 0;
+    background: var(--ta-color-bg-base);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+  .fb-testim-stars {
+    display: inline-flex;
+    gap: 0.2rem;
+  }
+  .fb-testim-stars svg { width: 1.3rem; height: 1.3rem; }
+  .fb-testim-stars svg.is-on { fill: var(--ta-color-accent); }
+  .fb-testim-stars svg.is-off {
+    fill: none;
+    stroke: var(--ta-color-text-base);
+    stroke-width: 1.5;
+    opacity: 0.35;
+  }
+  .fb-testim-text {
+    font-family: var(--ta-font-body);
+    color: color-mix(in oklab, var(--ta-color-text-base) 85%, transparent);
+    font-size: 1rem;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .fb-testim-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 2px solid var(--ta-color-text-base);
+  }
+  .fb-testim-foto {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .fb-testim-autor {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    margin: 0;
+  }
+  .fb-testim-cargo {
+    display: block;
+    font-family: var(--ta-font-body);
+    color: var(--ta-color-accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    margin-top: 0.3rem;
+  }
+
+  /* ===== minimal_artesanal =====
+     Fraunces italic artesanal, cards suaves con radius generoso, mucho aire, estrellas finas. */
+  .ma-testim-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    font-style: italic;
+    font-variation-settings: 'opsz' 48;
+    font-size: clamp(1.6rem, 3.2vw, 2.25rem);
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    text-align: center;
+    text-wrap: balance;
+    margin: 0 auto 3rem;
+    max-width: 40ch;
+  }
+  .ma-testim-grid { gap: 2rem; }
+  .ma-testim-card {
+    border: 1px solid color-mix(in oklab, var(--ta-color-accent) 18%, transparent);
+    border-radius: 1.5rem;
+    background: color-mix(in oklab, var(--ta-color-accent) 4%, transparent);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+  }
+  .ma-testim-stars {
+    display: inline-flex;
+    gap: 0.2rem;
+  }
+  .ma-testim-stars svg { width: 1rem; height: 1rem; }
+  .ma-testim-stars svg.is-on { fill: var(--ta-color-accent); }
+  .ma-testim-stars svg.is-off {
+    fill: none;
+    stroke: var(--ta-color-accent);
+    stroke-width: 1.2;
+    opacity: 0.35;
+  }
+  .ma-testim-text {
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-variation-settings: 'opsz' 36;
+    color: color-mix(in oklab, var(--ta-color-text-base) 88%, transparent);
+    font-size: 1.05rem;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .ma-testim-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+  }
+  .ma-testim-foto {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .ma-testim-autor {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 500;
+    font-variation-settings: 'opsz' 24;
+    font-size: 1rem;
+    line-height: 1.25;
+    margin: 0;
+  }
+  .ma-testim-cargo {
+    display: block;
+    font-family: var(--ta-font-body);
+    color: var(--ta-color-text-muted);
+    font-size: 0.82rem;
+    letter-spacing: 0.02em;
+    margin-top: 0.2rem;
+  }
+
+  /* ===== editorial_magazine =====
+     Fraunces 300 editorial elegante, serif fino, cards sin caja (regla superior accent), aire amplio. */
+  .em-testim-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 300;
+    font-size: clamp(1.6rem, 3.2vw, 2.25rem);
+    letter-spacing: -0.012em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 2.75rem;
+  }
+  .em-testim-grid { gap: 2.75rem 2.5rem; }
+  .em-testim-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid color-mix(in oklab, var(--ta-color-accent) 30%, transparent);
+  }
+  .em-testim-stars {
+    display: inline-flex;
+    gap: 0.2rem;
+  }
+  .em-testim-stars svg { width: 0.95rem; height: 0.95rem; }
+  .em-testim-stars svg.is-on { fill: var(--ta-color-accent); }
+  .em-testim-stars svg.is-off {
+    fill: none;
+    stroke: var(--ta-color-accent);
+    stroke-width: 1.1;
+    opacity: 0.4;
+  }
+  .em-testim-text {
+    font-family: var(--ta-font-display);
+    font-weight: 300;
+    color: color-mix(in oklab, var(--ta-color-text-base) 86%, transparent);
+    font-size: 1.08rem;
+    line-height: 1.6;
+    letter-spacing: -0.005em;
+    margin: 0;
+  }
+  .em-testim-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: auto;
+  }
+  .em-testim-foto {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .em-testim-autor {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-accent);
+    font-weight: 400;
+    font-size: 0.98rem;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    margin: 0;
+  }
+  .em-testim-cargo {
+    display: block;
+    font-family: var(--ta-font-body);
+    color: var(--ta-color-text-muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    margin-top: 0.2rem;
+  }
+</style>

@@ -16,6 +16,10 @@
     imagen_con_texto: ['titulo', 'boton.texto'],
     caracteristicas: ['titulo', 'items.*.titulo'],
     cita: ['texto', 'autor'],
+    // B-secciones Lote 2
+    testimonios: ['titulo', 'items.*.autor', 'items.*.cargo'],
+    faq: ['titulo'],
+    logos: ['titulo'],
   };
 
   var SEG_RE = /^[a-z_][a-z0-9_]*$/i;

@@ -32,6 +32,9 @@
       { v: 'estrella', l: 'Estrella' }, { v: 'check', l: 'Check' }, { v: 'regalo', l: 'Regalo' },
       { v: 'corazon', l: 'Corazon' }, { v: 'devoluciones', l: 'Devoluciones' },
     ],
+    COLUMNAS_TESTIM: [{ v: 1, l: '1 columna' }, { v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }],
+    RATING_OPTS: [{ v: '', l: 'Sin estrellas' }, { v: 1, l: '1 estrella' }, { v: 2, l: '2 estrellas' }, { v: 3, l: '3 estrellas' }, { v: 4, l: '4 estrellas' }, { v: 5, l: '5 estrellas' }],
+    LOGOS_LAYOUT: [{ v: 'grilla', l: 'Grilla' }, { v: 'tira', l: 'Tira' }],
   };
 
   const defs = {
@@ -254,6 +257,80 @@
         { key: 'texto', control: 'textarea', label: 'Frase', default: 'Una frase que inspire a tus clientes.', opts: { maxLength: 500, rows: 3 } },
         { key: 'autor', control: 'text', label: 'Autor (opcional)', default: undefined, optional: true, opts: { maxLength: 120 }, empty_to_undefined: true },
         { key: 'alineacion', control: 'select', label: 'Alineacion', default: 'center', opts: { options: 'ALIGN' } },
+      ],
+    },
+
+    // ---- B-secciones Lote 2 (keys + opcionalidad top-level en sync con editor-schema.ts; drift-guard 03) ----
+    testimonios: {
+      label: 'Testimonios',
+      catalog: { group: 'avanzado', icon: '☆', desc: 'Resenas de clientes con autor, cargo, foto y estrellas.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'lg',
+      campos: [
+        { key: 'titulo', control: 'text', label: 'Titulo (opcional)', default: 'Lo que dicen nuestros clientes', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
+        { key: 'columnas', control: 'select', label: 'Columnas', default: 3, opts: { options: 'COLUMNAS_TESTIM' } },
+        { key: 'items', control: 'list', min: 1, max: 9, item_label: 'Testimonio',
+          add_label: '+ Agregar testimonio', add_default: { texto: 'Una resena breve del cliente.', autor: 'Nombre Apellido' },
+          max_note: 'Maximo 9 testimonios.',
+          default: [
+            { texto: 'Excelente atencion y productos de calidad. Volveria a comprar sin dudarlo.', autor: 'Maria Lopez', cargo: 'Cliente', rating: 5 },
+            { texto: 'Envio rapido y todo tal cual la descripcion. Recomendado.', autor: 'Carlos Ruiz', cargo: 'Cliente', rating: 5 },
+            { texto: 'Muy buena experiencia de compra de principio a fin.', autor: 'Ana Gomez', cargo: 'Cliente', rating: 4 },
+          ],
+          item: [
+            { key: 'texto', control: 'textarea', label: 'Resena', opts: { maxLength: 600, rows: 3 } },
+            { key: 'autor', control: 'text', label: 'Autor', opts: { maxLength: 120 } },
+            { key: 'cargo', control: 'text', label: 'Cargo (opcional)', opts: { maxLength: 120 }, empty_to_undefined: true },
+            { key: 'foto', control: 'image', label: 'Foto (opcional)', optional: true },
+            { key: 'rating', control: 'select', label: 'Estrellas (opcional)', opts: { options: 'RATING_OPTS' }, optional: true, empty_to_undefined: true },
+          ] },
+      ],
+    },
+
+    faq: {
+      label: 'Preguntas frecuentes',
+      catalog: { group: 'avanzado', icon: '?', desc: 'Acordeon de preguntas y respuestas (FAQ).' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'lg',
+      campos: [
+        { key: 'titulo', control: 'text', label: 'Titulo (opcional)', default: 'Preguntas frecuentes', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
+        { key: 'items', control: 'list', min: 1, max: 12, item_label: 'Pregunta',
+          add_label: '+ Agregar pregunta', add_default: { pregunta: 'Nueva pregunta', respuesta: 'La respuesta aca.' },
+          max_note: 'Maximo 12 preguntas.',
+          default: [
+            { pregunta: 'Como hago un pedido?', respuesta: 'Elegi tus productos y finaliza la compra por WhatsApp. Te confirmamos enseguida.' },
+            { pregunta: 'Hacen envios?', respuesta: 'Si, enviamos a todo el pais. El costo y el tiempo dependen de tu ciudad.' },
+            { pregunta: 'Que medios de pago aceptan?', respuesta: 'Aceptamos transferencia, efectivo y los medios habilitados en tu tienda.' },
+          ],
+          item: [
+            { key: 'pregunta', control: 'text', label: 'Pregunta', opts: { maxLength: 300 } },
+            { key: 'respuesta', control: 'textarea', label: 'Respuesta', opts: { maxLength: 1500, rows: 4 } },
+          ] },
+      ],
+    },
+
+    logos: {
+      label: 'Logos / marcas',
+      catalog: { group: 'avanzado', icon: '▦', desc: 'Tira o grilla de logos: marcas, alianzas o medios de pago.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'lg',
+      campos: [
+        { key: 'titulo', control: 'text', label: 'Titulo (opcional)', default: 'Marcas que confian en nosotros', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
+        { key: 'layout', control: 'select', label: 'Disposicion', default: 'grilla', opts: { options: 'LOGOS_LAYOUT' } },
+        { key: 'items', control: 'list', min: 1, max: 12, item_label: 'Logo',
+          add_label: '+ Agregar logo', add_default: { logo: 'https://placehold.co/200x80', alt: 'Marca' },
+          max_note: 'Maximo 12 logos.',
+          default: [
+            { logo: 'https://placehold.co/200x80', alt: 'Marca 1' },
+            { logo: 'https://placehold.co/200x80', alt: 'Marca 2' },
+            { logo: 'https://placehold.co/200x80', alt: 'Marca 3' },
+            { logo: 'https://placehold.co/200x80', alt: 'Marca 4' },
+          ],
+          item: [
+            { key: 'logo', control: 'image', label: 'Logo' },
+            { key: 'alt', control: 'text', label: 'Texto alternativo (alt)', opts: { maxLength: 200 } },
+            { key: 'link', control: 'url', label: 'Link (opcional, https o /ruta)', empty_to_undefined: true },
+          ] },
       ],
     },
   };

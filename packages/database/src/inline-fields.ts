@@ -14,6 +14,10 @@ export const SIMPLE_TEXT_FIELDS: Record<string, readonly string[]> = {
   imagen_con_texto: ['titulo', 'boton.texto'],
   caracteristicas: ['titulo', 'items.*.titulo'],
   cita: ['texto', 'autor'],
+  // B-secciones Lote 2 (testimonios: autor/cargo single-line; faq/logos: solo titulo de seccion)
+  testimonios: ['titulo', 'items.*.autor', 'items.*.cargo'],
+  faq: ['titulo'],
+  logos: ['titulo'],
 };
 
 const SEG_RE = /^[a-z_][a-z0-9_]*$/i;

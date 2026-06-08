@@ -1,0 +1,258 @@
+---
+// AIMMA Editor PRO-MAX · Logos · UNIFICADO · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// titulo opcional + wrap de logos en dos layouts: grilla auto-fit / tira flex-wrap).
+// El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-logos-*) -> selecciona el <style> activo
+//   (b) los 4 <style> per-template, scopeados e inertes por prefijo
+// Layouts SIN JS: grilla = grid auto-fit minmax; tira = flex wrap. Efecto "marcas":
+//   logos en grayscale + opacidad reducida, color/full-opacity al hover/focus-within.
+// Cada item: <img> del logo; si tiene item.link, va envuelto en <a> (rel noopener).
+// data-field gateado por isPreview: UNICO marcador = titulo de seccion (publico SIN
+// data-field). logo/alt/link NO llevan data-field (son inspector).
+// CERO JavaScript de cliente.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'logos' }>).props;
+const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+const layoutClass = p.layout === 'tira' ? `${prefix}-logos--tira` : `${prefix}-logos--grilla`;
+---
+
+<SectionShell section={section}>
+  {p.titulo && (
+    <h2 class={`${prefix}-logos-title`} data-field={isPreview ? 'titulo' : undefined}>{p.titulo}</h2>
+  )}
+  <div class={`${prefix}-logos-wrap ${layoutClass}`}>
+    {p.items.map((item) => {
+      const img = <img class={`${prefix}-logos-img`} src={item.logo} alt={item.alt} loading="lazy" />;
+      return item.link
+        ? <a class={`${prefix}-logos-cell`} href={item.link} target="_blank" rel="noopener noreferrer">{img}</a>
+        : <div class={`${prefix}-logos-cell`}>{img}</div>;
+    })}
+  </div>
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean =====
+     Limpio y neutro: titulo discreto centrado, logos en escala de gris que cobran
+     color al hover, grilla ordenada con buen aire. */
+  .ic-logos-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-muted);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.3;
+    text-align: center;
+    text-wrap: balance;
+    margin: 0 0 2rem;
+  }
+  .ic-logos-wrap.ic-logos--grilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 2rem 2.5rem;
+    align-items: center;
+    justify-items: center;
+  }
+  .ic-logos-wrap.ic-logos--tira {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem 2.75rem;
+  }
+  .ic-logos-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+  }
+  .ic-logos-img {
+    max-height: clamp(28px, 2vw + 22px, 40px);
+    width: auto;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.65;
+    transition: filter 0.25s ease, opacity 0.25s ease;
+  }
+  .ic-logos-cell:hover .ic-logos-img,
+  .ic-logos-cell:focus-within .ic-logos-img {
+    filter: grayscale(0);
+    opacity: 1;
+  }
+
+  /* ===== fashion_bold =====
+     Alto contraste: titulo uppercase con tracking, celdas con borde fino, logos a
+     full contraste en hover. Mas presencia, menos delicadeza. */
+  .fb-logos-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.22em;
+    line-height: 1;
+    text-align: center;
+    text-wrap: balance;
+    margin: 0 0 2.5rem;
+  }
+  .fb-logos-wrap.fb-logos--grilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0;
+    align-items: center;
+    justify-items: center;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent);
+  }
+  .fb-logos-wrap.fb-logos--tira {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1.75rem 2.5rem;
+  }
+  .fb-logos-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+  }
+  .fb-logos--grilla .fb-logos-cell {
+    width: 100%;
+    padding: 1.75rem 1rem;
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent);
+    margin: -0.5px;
+  }
+  .fb-logos-img {
+    max-height: clamp(30px, 2.4vw + 22px, 46px);
+    width: auto;
+    object-fit: contain;
+    filter: grayscale(1) contrast(1.05);
+    opacity: 0.8;
+    transition: filter 0.2s ease, opacity 0.2s ease;
+  }
+  .fb-logos-cell:hover .fb-logos-img,
+  .fb-logos-cell:focus-within .fb-logos-img {
+    filter: grayscale(0) contrast(1);
+    opacity: 1;
+  }
+
+  /* ===== minimal_artesanal =====
+     Suave y artesanal: mucho aire, titulo serif italic discreto, transicion lenta,
+     opacidad mas alta de base (menos agresivo que IC/FB). */
+  .ma-logos-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-muted);
+    font-weight: 400;
+    font-style: italic;
+    font-variation-settings: 'opsz' 24;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+    text-align: center;
+    text-wrap: balance;
+    margin: 0 auto 3rem;
+    max-width: 36ch;
+  }
+  .ma-logos-wrap.ma-logos--grilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 3rem 3.5rem;
+    align-items: center;
+    justify-items: center;
+  }
+  .ma-logos-wrap.ma-logos--tira {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2.75rem 3.5rem;
+  }
+  .ma-logos-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+  }
+  .ma-logos-img {
+    max-height: clamp(28px, 2vw + 20px, 42px);
+    width: auto;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.55;
+    transition: filter 0.4s ease, opacity 0.4s ease;
+  }
+  .ma-logos-cell:hover .ma-logos-img,
+  .ma-logos-cell:focus-within .ma-logos-img {
+    filter: grayscale(0);
+    opacity: 0.9;
+  }
+
+  /* ===== editorial_magazine =====
+     Editorial fino: titulo serif ligero, separadores sutiles de accent, logos
+     delicados con transicion editorial. Tono de revista. */
+  .em-logos-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 300;
+    font-size: 0.9375rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    line-height: 1.3;
+    text-align: center;
+    text-wrap: balance;
+    margin: 0 0 2.5rem;
+  }
+  .em-logos-wrap.em-logos--grilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+    gap: 2.5rem 3rem;
+    align-items: center;
+    justify-items: center;
+  }
+  .em-logos-wrap.em-logos--tira {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2.25rem 3rem;
+  }
+  .em-logos-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--ta-color-accent) 22%, transparent);
+  }
+  .em-logos--tira .em-logos-cell {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .em-logos-img {
+    max-height: clamp(26px, 1.8vw + 20px, 40px);
+    width: auto;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.6;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+  }
+  .em-logos-cell:hover .em-logos-img,
+  .em-logos-cell:focus-within .em-logos-img {
+    filter: grayscale(0);
+    opacity: 1;
+  }
+</style>
