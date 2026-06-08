@@ -108,7 +108,7 @@
             { key: 'texto', control: 'text', label: 'Texto', opts: { maxLength: 80 } },
             { key: 'url', control: 'url', label: 'URL' },
             { key: 'estilo_visual', control: 'select', label: 'Estilo', opts: { options: 'ESTILO_VISUAL' } },
-            { key: 'icono', control: 'select', label: 'Icono', opts: { options: 'ICONO' }, empty_to_undefined: true },
+            { key: 'icono', control: 'select', label: 'Icono', optional: true, opts: { options: 'ICONO' }, empty_to_undefined: true },
             { key: 'target', control: 'select', label: 'Abrir en', opts: { options: 'TARGET' } },
           ] },
       ],
@@ -171,8 +171,8 @@
           item: [
             { key: 'label', control: 'text', label: 'Etiqueta', opts: { maxLength: 120 } },
             { key: 'tipo_campo', control: 'select', label: 'Tipo de campo', opts: { options: 'CAMPO_TIPO' }, rebuild_on_change: true },
-            { key: 'placeholder', control: 'text', label: 'Placeholder (opcional)', opts: { maxLength: 200 }, empty_to_undefined: true },
-            { key: 'opciones', control: 'textarea', label: 'Opciones (una por linea)', opts: { rows: 3, placeholder: 'Opcion 1\nOpcion 2' }, when: { field: 'tipo_campo', eq: 'select' }, transform: 'lines' },
+            { key: 'placeholder', control: 'text', label: 'Placeholder (opcional)', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
+            { key: 'opciones', control: 'textarea', label: 'Opciones (una por linea)', optional: true, opts: { rows: 3, placeholder: 'Opcion 1\nOpcion 2' }, when: { field: 'tipo_campo', eq: 'select' }, transform: 'lines' },
             { key: 'requerido', control: 'switch', label: 'Requerido' },
           ] },
       ],
@@ -243,7 +243,7 @@
           item: [
             { key: 'icono', control: 'select', label: 'Icono', opts: { options: 'FEATURE_ICONOS' } },
             { key: 'titulo', control: 'text', label: 'Titulo', opts: { maxLength: 120 } },
-            { key: 'texto', control: 'textarea', label: 'Texto (opcional)', opts: { maxLength: 300, rows: 2 }, empty_to_undefined: true },
+            { key: 'texto', control: 'textarea', label: 'Texto (opcional)', optional: true, opts: { maxLength: 300, rows: 2 }, empty_to_undefined: true },
           ] },
       ],
     },
@@ -280,7 +280,7 @@
           item: [
             { key: 'texto', control: 'textarea', label: 'Resena', opts: { maxLength: 600, rows: 3 } },
             { key: 'autor', control: 'text', label: 'Autor', opts: { maxLength: 120 } },
-            { key: 'cargo', control: 'text', label: 'Cargo (opcional)', opts: { maxLength: 120 }, empty_to_undefined: true },
+            { key: 'cargo', control: 'text', label: 'Cargo (opcional)', optional: true, opts: { maxLength: 120 }, empty_to_undefined: true },
             { key: 'foto', control: 'image', label: 'Foto (opcional)', optional: true },
             { key: 'rating', control: 'select', label: 'Estrellas (opcional)', opts: { options: 'RATING_OPTS' }, optional: true, empty_to_undefined: true },
           ] },
@@ -329,7 +329,7 @@
           item: [
             { key: 'logo', control: 'image', label: 'Logo' },
             { key: 'alt', control: 'text', label: 'Texto alternativo (alt)', opts: { maxLength: 200 } },
-            { key: 'link', control: 'url', label: 'Link (opcional, https o /ruta)', empty_to_undefined: true },
+            { key: 'link', control: 'url', label: 'Link (opcional, https o /ruta)', optional: true, empty_to_undefined: true },
           ] },
       ],
     },

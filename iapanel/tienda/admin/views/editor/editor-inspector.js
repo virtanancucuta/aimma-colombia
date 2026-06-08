@@ -257,6 +257,10 @@
         } else if (sf.control === 'textarea' && sf.transform === 'lines') {
           card.body.appendChild(C.textarea(sf.label, (Array.isArray(it[sf.key]) ? it[sf.key] : []).join('\n'),
             v => upd({ [sf.key]: v.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20) }), sf.opts || {}));
+        } else if (sf.control === 'textarea') {
+          // textarea PLANO (string multi-linea): respuesta FAQ, resena testimonio, texto caracteristica.
+          card.body.appendChild(C.textarea(sf.label, it[sf.key] || '',
+            v => upd({ [sf.key]: sf.empty_to_undefined ? (v || undefined) : v }), sf.opts || {}));
         } else if (sf.control === 'select') {
           card.body.appendChild(C.select(sf.label, it[sf.key] || '', optList(sf.opts.options),
             v => { upd({ [sf.key]: sf.empty_to_undefined ? (v || undefined) : v }); if (sf.rebuild_on_change) rebuild(); }));
