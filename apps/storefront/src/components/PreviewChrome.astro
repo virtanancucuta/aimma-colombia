@@ -109,6 +109,29 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
       if (root) root.style.display = 'none';
     }
 
+    // QoL: scroll-to-selected (estilo Shopify). DISPLAY-ONLY -> solo mueve el viewport del iframe;
+    // NO toca estado, NO postMessage, NO patches (C.1), NO autosave (hotfix), NO inline-edit (C.2).
+    // Re-query por data-section-id (si el patch aun no asento, sale en null sin error). NO scrollea
+    // si la seccion ya esta comoda en vista (evita el salto al clickear una ya visible).
+    function scrollToSelected() {
+      if (!selId) return;
+      var el = document.querySelector('[data-section-id="' + selId + '"]');
+      if (!el) return;
+      var topMargin = 44; // aire para la barrita del chrome (anclada a top:-34px de la seccion)
+      var r = el.getBoundingClientRect();
+      var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+      var tallerThanVp = r.height > (vh - topMargin);
+      var comfortable = tallerThanVp
+        ? (r.top >= topMargin && r.top <= vh * 0.4)   // mas alta que el viewport: basta con su top a la vista
+        : (r.top >= topMargin && r.bottom <= vh);     // cabe: entera y con aire para la barrita
+      if (comfortable) return;
+      if (tallerThanVp) {
+        window.scrollTo({ top: (r.top + (window.scrollY || window.pageYOffset || 0)) - topMargin, behavior: 'smooth' });
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
     // set-selection (admin -> iframe). Reflector puro: dibuja/limpia SOLO aca.
     window.addEventListener('message', function (e) {
       if (e.origin !== ADMIN_ORIGIN) return;
@@ -117,6 +140,9 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
         if (msg.sectionId === null) { clear(); return; }
         if (typeof msg.sectionId !== 'string' || !ID_RE.test(msg.sectionId)) return;
         draw(msg.sectionId, typeof msg.label === 'string' ? msg.label : '');
+        // QoL scroll-to-selected: tras anclar el chrome, traer la seccion a la vista si no esta comoda.
+        // rAF -> el layout/patch ya asento antes de medir. Solo en set-selection (NO en patch/reload).
+        requestAnimationFrame(scrollToSelected);
         return;
       }
       // Tras un patch/reload del bridge (mismo origin), el DOM cambio -> re-posicionar DESPUES
