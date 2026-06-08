@@ -257,7 +257,7 @@
         } else if (sf.control === 'url') {
           card.body.appendChild(C.urlInput(sf.label, it[sf.key] || '', v => upd({ [sf.key]: v }), sf.opts || {}));
         } else if (sf.control === 'image') {
-          card.body.appendChild(C.imagePicker(sf.label, it[sf.key] || '', v => upd({ [sf.key]: v }), { tiendaId: ES.tienda_id }));
+          card.body.appendChild(C.imagePicker(sf.label, it[sf.key] || '', v => upd({ [sf.key]: sf.empty_to_undefined ? (v || undefined) : v }), { tiendaId: ES.tienda_id }));
         } else if (sf.control === 'textarea' && sf.transform === 'lines') {
           card.body.appendChild(C.textarea(sf.label, (Array.isArray(it[sf.key]) ? it[sf.key] : []).join('\n'),
             v => upd({ [sf.key]: v.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20) }), sf.opts || {}));

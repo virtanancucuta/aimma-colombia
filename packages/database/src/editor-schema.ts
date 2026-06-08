@@ -219,6 +219,7 @@ const LogosProps = z.object({
 
 const CategoriaDestacadaItemSchema = z.object({
   categoria_id: z.string().uuid(),                         // referencia (category-picker, allowAll:false)
+  imagen: z.string().url().regex(/^https:\/\//, 'imagen debe ser https').optional(), // per-seccion, opcional (image-picker existente -> Storage)
 });
 const CategoriasDestacadasProps = z.object({
   titulo: z.string().max(200).optional(),                  // inline

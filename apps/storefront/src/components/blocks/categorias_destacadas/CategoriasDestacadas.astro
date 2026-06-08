@@ -1,7 +1,8 @@
 ---
 // AIMMA Editor PRO-MAX · CategoriasDestacadas · UNIFICADO · SCHEMA v3 (Lote 3)
 // Un solo renderer para las 4 plantillas. Referencia UUIDs de categorias; resuelve
-// nombre/slug/foto en tiempo de render via getCategoriasPorIds (tenant-scoped).
+// nombre/slug en tiempo de render via getCategoriasPorIds (tenant-scoped). La imagen es
+// PER-ITEM (item.imagen, image-picker), NO la categoria.foto_url. Sin imagen -> tile de marca.
 // Empty-guard: publico sin datos -> null (sin SectionShell); preview -> hint seleccionable.
 // CERO JavaScript de cliente.
 
@@ -31,6 +32,9 @@ try {
 
 const vacio = cats.length === 0;
 
+// Imagen PER-ITEM (no categoria.foto_url): pareada por categoria_id. Si falta -> tile de marca (fallback simetrico).
+const imgById = new Map(p.items.map((i) => [i.categoria_id, i.imagen]));
+
 // Clase de grilla responsive por columnas configuradas
 const colsMap: Record<number, string> = { 2: `${prefix}-catdest-grid--2`, 3: `${prefix}-catdest-grid--3`, 4: `${prefix}-catdest-grid--4` };
 const gridMod = colsMap[p.columnas] ?? `${prefix}-catdest-grid--3`;
@@ -46,17 +50,20 @@ const gridMod = colsMap[p.columnas] ?? `${prefix}-catdest-grid--3`;
           <h2 class={`${prefix}-catdest-title`} data-field={isPreview ? 'titulo' : undefined}>{p.titulo}</h2>
         )}
         <div class={`${prefix}-catdest-grid ${gridMod}`}>
-          {cats.map((c) => (
+          {cats.map((c) => {
+            const img = imgById.get(c.id);
+            return (
             <a href={`/c/${c.slug}`} class={`${prefix}-catdest-card`}>
               <div class={`${prefix}-catdest-img-wrap`}>
-                {c.foto_url
-                  ? <img class={`${prefix}-catdest-img`} src={c.foto_url} alt={c.nombre} loading="lazy" />
+                {img
+                  ? <img class={`${prefix}-catdest-img`} src={img} alt={c.nombre} loading="lazy" />
                   : <div class={`${prefix}-catdest-ph`} aria-hidden="true"></div>
                 }
               </div>
               <span class={`${prefix}-catdest-name`}>{c.nombre}</span>
             </a>
-          ))}
+            );
+          })}
         </div>
       </>
     )}
@@ -109,16 +116,13 @@ const gridMod = colsMap[p.columnas] ?? `${prefix}-catdest-grid--3`;
     transition: transform 0.35s ease;
   }
   .ic-catdest-card:hover .ic-catdest-img { transform: scale(1.04); }
+  /* fallback sin imagen = tile de MARCA (tokens), no gris. Sin texto encima (nombre va debajo). */
   .ic-catdest-ph {
     width: 100%;
     height: 100%;
-    background: repeating-linear-gradient(
-      45deg,
-      color-mix(in oklab, var(--ta-color-text-base) 5%, transparent) 0px,
-      color-mix(in oklab, var(--ta-color-text-base) 5%, transparent) 1px,
-      transparent 1px,
-      transparent 16px
-    );
+    background: linear-gradient(135deg,
+      color-mix(in oklab, var(--ta-color-primary) 16%, var(--ta-color-bg-base)),
+      color-mix(in oklab, var(--ta-color-accent) 12%, var(--ta-color-bg-base)));
   }
   .ic-catdest-name {
     display: block;
@@ -192,7 +196,7 @@ const gridMod = colsMap[p.columnas] ?? `${prefix}-catdest-grid--3`;
   .fb-catdest-ph {
     width: 100%;
     height: 100%;
-    background: color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+    background: color-mix(in oklab, var(--ta-color-primary) 22%, var(--ta-color-bg-base));
   }
   .fb-catdest-name {
     display: block;
@@ -273,7 +277,7 @@ const gridMod = colsMap[p.columnas] ?? `${prefix}-catdest-grid--3`;
   .ma-catdest-ph {
     width: 100%;
     height: 100%;
-    background: color-mix(in oklab, var(--ta-color-text-base) 7%, transparent);
+    background: color-mix(in oklab, var(--ta-color-accent) 14%, var(--ta-color-bg-base));
     border-radius: 999px;
   }
   .ma-catdest-name {
@@ -347,7 +351,7 @@ const gridMod = colsMap[p.columnas] ?? `${prefix}-catdest-grid--3`;
   .em-catdest-ph {
     width: 100%;
     height: 100%;
-    background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent);
+    background: color-mix(in oklab, var(--ta-color-accent) 14%, var(--ta-color-bg-base));
   }
   .em-catdest-name {
     display: block;

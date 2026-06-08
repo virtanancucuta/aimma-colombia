@@ -79,12 +79,13 @@ export function makeSection(tipo: string, props: any): any {
 }
 
 // ---- B-secciones Lote 3 fixtures + builders ----
-// Categorias: filas crudas que getCategoriasPorIds resuelve (id/nombre/slug/foto_url).
+// Categorias: filas crudas que getCategoriasPorIds resuelve (id/nombre/slug). La imagen de la
+// seccion es PER-ITEM (item.imagen), no la categoria -> el fixture no trae foto_url.
 export const CATEGORIAS_FIXTURE = [
-  { id: 'cat01', nombre: 'Calzado Dama', slug: 'calzado-dama', foto_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/cat-a.jpg' },
-  { id: 'cat02', nombre: 'Ropa Dama', slug: 'ropa-dama', foto_url: null },
-  { id: 'cat03', nombre: 'Tacon Dama', slug: 'tacon-dama', foto_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/cat-c.jpg' },
-  { id: 'cat04', nombre: 'Blusa Dama', slug: 'blusa-dama', foto_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/cat-d.jpg' },
+  { id: 'cat01', nombre: 'Calzado Dama', slug: 'calzado-dama' },
+  { id: 'cat02', nombre: 'Ropa Dama', slug: 'ropa-dama' },
+  { id: 'cat03', nombre: 'Tacon Dama', slug: 'tacon-dama' },
+  { id: 'cat04', nombre: 'Blusa Dama', slug: 'blusa-dama' },
 ];
 
 // Producto destacado: fila cruda (getProductoPorId la normaliza via maybeSingle -> rows[0]).
@@ -92,14 +93,14 @@ export const PRODUCTO_DESTACADO_FIXTURE = [
   { id: 'pd01', nombre: 'Bota Beta', slug: 'bota-beta', referencia: 'REF001', precio_venta: 200000, precio_promo: 150000, foto_principal_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/b.jpg', estado: 'activo', producto_variantes: [{ stock: 3, reservado: 0 }] },
 ];
 
-export function makeCategoriasDestacadasSection(props: { columnas: 2 | 3 | 4; titulo?: string; ids: string[] }): any {
+export function makeCategoriasDestacadasSection(props: { columnas: 2 | 3 | 4; titulo?: string; items: Array<{ categoria_id: string; imagen?: string }> }): any {
   return {
     id: 'sec_pilot01', tipo: 'categorias_destacadas', padding: 'md', ancho: 'contenido',
     fondo: { tipo: 'color', valor: '#ffffff' },
     props: {
       ...(props.titulo !== undefined ? { titulo: props.titulo } : {}),
       columnas: props.columnas,
-      items: props.ids.map((id) => ({ categoria_id: id })),
+      items: props.items.map((it) => ({ categoria_id: it.categoria_id, ...(it.imagen !== undefined ? { imagen: it.imagen } : {}) })),
     },
   };
 }
