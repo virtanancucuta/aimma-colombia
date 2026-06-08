@@ -35,18 +35,21 @@ Ninguna sección previa tenía un campo cuya validez dependiera de datos vivos. 
 1. **Invariante "siempre Zod-válido".** El save (draft **y** publish) corre `SectionSchema.parse` por sección
    en la EF. Por eso una sección recién agregada DEBE ya contener referencias válidas (`categoria_id`/`producto_id`
    son `uuid` requeridos). Solución:
-   - **Default estático placeholder-válido** en section-defs (`uuid` constante `00000000-…-000000000000`) → mantiene
+   - **Default estático placeholder-válido** en section-defs: `uuid` **sentinela all-zeros**
+     `00000000-0000-0000-0000-000000000000` (claramente no-real → **descarta colisión con un id real**) → mantiene
      verdes `01-default-props`, `03-drift`, `19-coverage` con el patrón estándar.
-   - **Resolver de default en vivo al agregar**: el flujo "agregar" (editor-modal-catalog) intenta reemplazar el
-     placeholder con data real de ESA tienda — `categorias_destacadas` ← primeras ≤3 categorías por `orden`;
-     `producto_destacado` ← producto activo más reciente. Si la tienda tiene 0 categorías / 0 productos, se inserta
-     el placeholder (estado vacío + hint en inspector "Elegí…"). **Query scopeada a `tiendaId`.**
+   - **Resolver de default en vivo al agregar — TENANT-SCOPED**: el flujo "agregar" (editor-modal-catalog) intenta
+     reemplazar el placeholder con data real **de ESA tienda** (`.eq('tienda_id', tiendaId)` + RLS) — `categorias_destacadas`
+     ← primeras ≤3 categorías por `orden`; `producto_destacado` ← producto activo más reciente. Si la tienda tiene 0
+     categorías / 0 productos, se inserta el placeholder all-zeros (estado vacío + hint en inspector "Elegí…").
 2. **Picker de categoría sin "Todas" en este contexto.** El `categoryPicker` actual ofrece "Todas las categorías"
    (`null`), válido para `productos.categoria_id`. En `categorias_destacadas` un card DEBE apuntar a una categoría
    concreta → el item-dispatch pasa **`allowAll:false`** y el modal oculta esa opción. El comportamiento de
    `productos` no cambia (default `allowAll:true`).
-3. **Degradación graciosa en el render.** Si una referencia apunta a algo borrado / placeholder / de otra tienda,
-   el helper la filtra y el renderer muestra estado vacío. Nunca 500.
+3. **Degradación graciosa en el render (PÚBLICO vs EDITOR).** Si una referencia apunta a algo borrado / placeholder
+   (all-zeros) / de otra tienda, el helper la filtra. **Si la sección resuelve a 0 referencias: en la tienda PÚBLICA el
+   renderer NO emite marco vacío → no renderiza nada / oculta la sección.** En el editor (`isPreview`) **sí** muestra el
+   estado "Agregá categorías / Elegí un producto" para que el dueño sepa que falta configurarla. Nunca 500.
 
 ---
 
@@ -80,7 +83,8 @@ const CategoriasDestacadasProps = z.object({
   // luego REORDENA según `ids` y DESCARTA los no devueltos (borrados / otra tienda / placeholder).
   ```
 - **Renderer unificado ×4:** async; `ids = items.map(i=>i.categoria_id)` → `getCategoriasPorIds(...)`; grid de cards
-  (`foto_url` o placeholder + `nombre`) → `<a href="/c/${slug}">`. Empty → estado vacío. Sin JS. `data-field` solo preview.
+  (`foto_url` o placeholder + `nombre`) → `<a href="/c/${slug}">`. **Si resuelve 0 categorías: público → no renderiza
+  nada (sin marco); `isPreview` → hint "Agregá categorías".** Sin JS. `data-field` solo preview.
 
 ## Sección 2 — producto_destacado  (control nuevo aprobado)
 
@@ -117,9 +121,10 @@ const ProductoDestacadoProps = z.object({
   //   producto_variantes(stock,reservado)').eq('tienda_id', tiendaId).eq('estado','activo')
   //   .eq('id', id).maybeSingle()  -> normalizarProducto (reusa el normalizador existente)
   ```
-- **Renderer unificado ×4:** async; `getProductoPorId(...)`; si `null` → estado vacío/"Producto no disponible";
-  si ok → card grande (foto + nombre + precio/precio_anterior) + `titulo` (heading opc) + `texto` (párrafo plano opc) +
-  botón CTA (`cta_texto || 'Ver producto'`) → `/p/${slug}`. Sin JS. `data-field` solo preview.
+- **Renderer unificado ×4:** async; `getProductoPorId(...)`; si `null` (borrado/placeholder/otra tienda): **público →
+  no renderiza nada; `isPreview` → hint "Elegí un producto".** Si ok → card grande (foto + nombre + precio/precio_anterior)
+  + `titulo` (heading opc) + `texto` (párrafo plano opc) + botón CTA (`cta_texto || 'Ver producto'`) → `/p/${slug}`.
+  Sin JS. `data-field` solo preview.
 
 ---
 
