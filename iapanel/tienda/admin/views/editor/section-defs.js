@@ -346,7 +346,10 @@
           add_label: '+ Agregar categoria', add_default: { categoria_id: '00000000-0000-0000-0000-000000000000' },
           max_note: 'Maximo 12 categorias.',
           default: [ { categoria_id: '00000000-0000-0000-0000-000000000000' } ],
-          item: [ { key: 'categoria_id', control: 'category', label: 'Categoria' } ] },
+          item: [
+            { key: 'categoria_id', control: 'category', label: 'Categoria' },
+            { key: 'imagen', control: 'image', label: 'Imagen (opcional)', optional: true, empty_to_undefined: true },
+          ] },
       ],
     },
 

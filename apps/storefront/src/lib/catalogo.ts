@@ -152,11 +152,14 @@ export async function getCategoriasPorIds(
   supabase: SB,
   tiendaId: string,
   ids: string[]
-): Promise<{ id: string; nombre: string; slug: string; foto_url: string | null }[]> {
+): Promise<{ id: string; nombre: string; slug: string }[]> {
   if (!ids.length) return [];
+  // NOTA: la imagen de la seccion categorias_destacadas es per-item (item.imagen), NO la categoria.foto_url.
+  // La columna foto_url sigue existiendo en la tabla (para futuras imagenes de categoria en /c/), solo no se
+  // selecciona aca. Este helper solo resuelve nombre/slug en vivo (tenant-scoped).
   const { data, error } = await supabase
     .from('categorias')
-    .select('id, nombre, slug, foto_url')
+    .select('id, nombre, slug')
     .eq('tienda_id', tiendaId)               // TENANT-SCOPED: nunca resuelve categoria de otra tienda
     .in('id', ids);
   if (error) {
@@ -164,7 +167,7 @@ export async function getCategoriasPorIds(
     return [];
   }
   const byId = new Map((data || []).map((c: any) => [c.id, c]));
-  return ids.map((id) => byId.get(id)).filter(Boolean) as { id: string; nombre: string; slug: string; foto_url: string | null }[];
+  return ids.map((id) => byId.get(id)).filter(Boolean) as { id: string; nombre: string; slug: string }[];
 }
 
 export async function getCategoriaPorSlug(
