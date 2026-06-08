@@ -18,6 +18,10 @@ export const SIMPLE_TEXT_FIELDS: Record<string, readonly string[]> = {
   testimonios: ['titulo', 'items.*.autor', 'items.*.cargo'],
   faq: ['titulo'],
   logos: ['titulo'],
+  // B-secciones Lote 3 (categorias_destacadas: solo titulo; producto_destacado: titulo + cta_texto
+  // single-line. Los picks (categoria_id/producto_id) y el texto plano van por inspector.)
+  categorias_destacadas: ['titulo'],
+  producto_destacado: ['titulo', 'cta_texto'],
 };
 
 const SEG_RE = /^[a-z_][a-z0-9_]*$/i;

@@ -20,6 +20,9 @@
     testimonios: ['titulo', 'items.*.autor', 'items.*.cargo'],
     faq: ['titulo'],
     logos: ['titulo'],
+    // B-secciones Lote 3 (picks y texto plano -> inspector; solo titulo/cta_texto inline)
+    categorias_destacadas: ['titulo'],
+    producto_destacado: ['titulo', 'cta_texto'],
   };
 
   var SEG_RE = /^[a-z_][a-z0-9_]*$/i;

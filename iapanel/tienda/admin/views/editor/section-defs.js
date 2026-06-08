@@ -333,6 +333,35 @@
           ] },
       ],
     },
+
+    categorias_destacadas: {
+      label: 'Categorias destacadas',
+      catalog: { group: 'avanzado', icon: '▤', desc: 'Cards de categorias que llevan a su pagina /c/.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'lg',
+      campos: [
+        { key: 'titulo', control: 'text', label: 'Titulo (opcional)', default: 'Explora por categoria', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
+        { key: 'columnas', control: 'select', label: 'Columnas', default: 3, opts: { options: 'COLUMNAS_FIJAS' } },
+        { key: 'items', control: 'list', min: 1, max: 12, item_label: 'Categoria',
+          add_label: '+ Agregar categoria', add_default: { categoria_id: '00000000-0000-0000-0000-000000000000' },
+          max_note: 'Maximo 12 categorias.',
+          default: [ { categoria_id: '00000000-0000-0000-0000-000000000000' } ],
+          item: [ { key: 'categoria_id', control: 'category', label: 'Categoria' } ] },
+      ],
+    },
+
+    producto_destacado: {
+      label: 'Producto destacado',
+      catalog: { group: 'avanzado', icon: '◆', desc: 'Destaca un producto con foto, texto y boton a su pagina.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'lg',
+      campos: [
+        { key: 'producto_id', control: 'product', label: 'Producto', default: '00000000-0000-0000-0000-000000000000' },
+        { key: 'titulo', control: 'text', label: 'Titulo (opcional)', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
+        { key: 'texto', control: 'textarea', label: 'Texto (opcional)', optional: true, opts: { maxLength: 2000, rows: 3 }, empty_to_undefined: true },
+        { key: 'cta_texto', control: 'text', label: 'Texto del boton (opcional)', optional: true, opts: { maxLength: 80 }, empty_to_undefined: true },
+      ],
+    },
   };
 
   window.TiendaIA = window.TiendaIA || {};
