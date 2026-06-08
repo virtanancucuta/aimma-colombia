@@ -1,0 +1,321 @@
+---
+// AIMMA Editor PRO-MAX · Faq · UNIFICADO · SCHEMA v3
+// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
+// titulo opcional + acordeon NATIVO con <details>/<summary>, CERO JavaScript).
+// El expand/collapse lo da el navegador; el indicador (+/- o chevron) rota/cambia
+// SOLO con CSS via el selector details[open] summary .<prefix>-faq-q-icon.
+// El diff por plantilla:
+//   (a) prefijo de clase (.ic-/.fb-/.ma-/.em-faq-*) -> selecciona el <style> activo
+//   (b) los 4 <style> per-template, scopeados e inertes por prefijo, donde se nota
+//       la personalidad de cada plantilla (IBM Plex / Anton / Fraunces italic / Fraunces 300).
+// data-field gateado por isPreview: el UNICO marcador es el del titulo de seccion.
+// La pregunta vive en <summary> (que togglea) y la respuesta se edita por inspector;
+// por eso NINGUNA de las dos lleva data-field.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'faq' }>).props;
+const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+---
+
+<SectionShell section={section}>
+  {p.titulo && (
+    <h2 class={`${prefix}-faq-title`} data-field={isPreview ? 'titulo' : undefined}>{p.titulo}</h2>
+  )}
+  <div class={`${prefix}-faq-list`}>
+    {p.items.map((item) => (
+      <details class={`${prefix}-faq-item`}>
+        <summary class={`${prefix}-faq-q`}>
+          <span class={`${prefix}-faq-q-text`}>{item.pregunta}</span>
+          <span class={`${prefix}-faq-q-icon`} aria-hidden="true"></span>
+        </summary>
+        <div class={`${prefix}-faq-a`}>{item.respuesta}</div>
+      </details>
+    ))}
+  </div>
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean =====
+     IBM Plex limpio. Separadores sutiles entre preguntas, chevron simple que rota,
+     pregunta semibold, respuesta en body legible. */
+  .ic-faq-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 2rem;
+  }
+  .ic-faq-list {
+    max-width: 56rem;
+    border-top: 1px solid color-mix(in oklab, var(--ta-color-text-base) 12%, transparent);
+  }
+  .ic-faq-item {
+    border-bottom: 1px solid color-mix(in oklab, var(--ta-color-text-base) 12%, transparent);
+  }
+  .ic-faq-q {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.25rem 0;
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 600;
+    font-size: clamp(1rem, 0.9rem + 0.4vw, 1.15rem);
+    line-height: 1.35;
+  }
+  .ic-faq-q::-webkit-details-marker { display: none; }
+  .ic-faq-q-text { flex: 1 1 auto; }
+  .ic-faq-q-icon {
+    flex: 0 0 auto;
+    position: relative;
+    width: 0.9rem;
+    height: 0.9rem;
+    transition: transform 0.25s ease;
+  }
+  /* chevron simple: dos trazos */
+  .ic-faq-q-icon::before,
+  .ic-faq-q-icon::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 0.55rem;
+    height: 2px;
+    background: var(--ta-color-accent);
+    border-radius: 1px;
+  }
+  .ic-faq-q-icon::before { left: 0; transform: translateY(-50%) rotate(45deg); }
+  .ic-faq-q-icon::after { right: 0; transform: translateY(-50%) rotate(-45deg); }
+  .ic-faq-item[open] .ic-faq-q-icon { transform: rotate(180deg); }
+  .ic-faq-a {
+    font-family: var(--ta-font-body);
+    color: color-mix(in oklab, var(--ta-color-text-base) 72%, transparent);
+    font-size: 0.95rem;
+    line-height: 1.65;
+    padding: 0 0 1.4rem;
+    max-width: 62ch;
+  }
+
+  /* ===== fashion_bold =====
+     Anton uppercase en preguntas, alto contraste, bordes marcados, indicador +/-. */
+  .fb-faq-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+    text-wrap: balance;
+    margin: 0 0 2.5rem;
+  }
+  .fb-faq-list {
+    max-width: 60rem;
+    border-top: 3px solid var(--ta-color-text-base);
+  }
+  .fb-faq-item {
+    border-bottom: 3px solid var(--ta-color-text-base);
+  }
+  .fb-faq-q {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: clamp(1.1rem, 0.9rem + 1vw, 1.6rem);
+    letter-spacing: -0.01em;
+    line-height: 1.02;
+  }
+  .fb-faq-q::-webkit-details-marker { display: none; }
+  .fb-faq-q-text { flex: 1 1 auto; }
+  .fb-faq-q-icon {
+    flex: 0 0 auto;
+    position: relative;
+    width: 1.3rem;
+    height: 1.3rem;
+    transition: transform 0.25s ease;
+  }
+  /* indicador +/- : barra horizontal fija + barra vertical que desaparece al abrir */
+  .fb-faq-q-icon::before,
+  .fb-faq-q-icon::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: var(--ta-color-accent);
+    transform: translate(-50%, -50%);
+  }
+  .fb-faq-q-icon::before { width: 100%; height: 3px; }
+  .fb-faq-q-icon::after { width: 3px; height: 100%; transition: transform 0.25s ease, opacity 0.2s ease; }
+  .fb-faq-item[open] .fb-faq-q-icon::after { transform: translate(-50%, -50%) rotate(90deg); opacity: 0; }
+  .fb-faq-item[open] .fb-faq-q-icon { transform: rotate(90deg); }
+  .fb-faq-a {
+    font-family: var(--ta-font-body);
+    color: color-mix(in oklab, var(--ta-color-text-base) 78%, transparent);
+    font-size: 1rem;
+    line-height: 1.6;
+    padding: 0 0 1.6rem;
+    max-width: 60ch;
+  }
+
+  /* ===== minimal_artesanal =====
+     Fraunces italic artesanal, suave. Separadores tenues, indicador fino, mucho aire. */
+  .ma-faq-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    font-style: italic;
+    font-variation-settings: 'opsz' 48;
+    font-size: clamp(1.6rem, 3.2vw, 2.25rem);
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    text-align: center;
+    text-wrap: balance;
+    margin: 0 auto 3rem;
+    max-width: 40ch;
+  }
+  .ma-faq-list {
+    max-width: 48rem;
+    margin-inline: auto;
+  }
+  .ma-faq-item {
+    border-bottom: 1px solid color-mix(in oklab, var(--ta-color-accent) 28%, transparent);
+  }
+  .ma-faq-q {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 500;
+    font-variation-settings: 'opsz' 24;
+    font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.25rem);
+    line-height: 1.35;
+  }
+  .ma-faq-q::-webkit-details-marker { display: none; }
+  .ma-faq-q-text { flex: 1 1 auto; }
+  .ma-faq-q-icon {
+    flex: 0 0 auto;
+    position: relative;
+    align-self: center;
+    width: 1rem;
+    height: 1rem;
+    transition: transform 0.3s ease;
+  }
+  /* indicador fino +/- delicado */
+  .ma-faq-q-icon::before,
+  .ma-faq-q-icon::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: var(--ta-color-accent);
+    transform: translate(-50%, -50%);
+  }
+  .ma-faq-q-icon::before { width: 100%; height: 1px; }
+  .ma-faq-q-icon::after { width: 1px; height: 100%; transition: opacity 0.25s ease; }
+  .ma-faq-item[open] .ma-faq-q-icon { transform: rotate(180deg); }
+  .ma-faq-item[open] .ma-faq-q-icon::after { opacity: 0; }
+  .ma-faq-a {
+    font-family: var(--ta-font-body);
+    color: color-mix(in oklab, var(--ta-color-text-base) 66%, transparent);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    padding: 0 0 1.6rem;
+    max-width: 56ch;
+  }
+
+  /* ===== editorial_magazine =====
+     Fraunces 300 editorial, serif elegante, lineas finas. Indicador chevron sutil. */
+  .em-faq-title {
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 300;
+    font-size: clamp(1.6rem, 3.2vw, 2.25rem);
+    letter-spacing: -0.012em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 2.75rem;
+  }
+  .em-faq-list {
+    max-width: 52rem;
+    border-top: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent);
+  }
+  .em-faq-item {
+    border-bottom: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent);
+  }
+  .em-faq-q {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.75rem;
+    padding: 1.35rem 0;
+    font-family: var(--ta-font-display);
+    color: var(--ta-color-text-base);
+    font-weight: 400;
+    font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.3rem);
+    line-height: 1.3;
+  }
+  .em-faq-q::-webkit-details-marker { display: none; }
+  .em-faq-q-text { flex: 1 1 auto; }
+  .em-faq-q-icon {
+    flex: 0 0 auto;
+    position: relative;
+    width: 0.85rem;
+    height: 0.85rem;
+    transition: transform 0.3s ease;
+  }
+  /* chevron fino editorial */
+  .em-faq-q-icon::before,
+  .em-faq-q-icon::after {
+    content: '';
+    position: absolute;
+    top: 45%;
+    width: 0.52rem;
+    height: 1px;
+    background: var(--ta-color-accent);
+  }
+  .em-faq-q-icon::before { left: 0; transform: rotate(45deg); }
+  .em-faq-q-icon::after { right: 0; transform: rotate(-45deg); }
+  .em-faq-item[open] .em-faq-q-icon { transform: rotate(180deg); }
+  .em-faq-a {
+    font-family: var(--ta-font-body);
+    color: color-mix(in oklab, var(--ta-color-text-base) 68%, transparent);
+    font-size: 0.98rem;
+    line-height: 1.7;
+    padding: 0 0 1.5rem;
+    max-width: 60ch;
+  }
+
+  /* Quitar marker nativo en todos los prefijos (Firefox/Safari) */
+  details > summary { list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+</style>

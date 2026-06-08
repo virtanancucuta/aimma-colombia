@@ -11,7 +11,7 @@
   const D = window.TiendaIA.editorSectionDefs.defs;
   const toCard = (tipo) => ({ tipo, icon: D[tipo].catalog.icon, title: D[tipo].label, desc: D[tipo].catalog.desc });
   const ESENCIALES = ['banner', 'productos', 'botones', 'texto', 'imagen_con_texto'].map(toCard);
-  const AVANZADOS = ['galeria', 'imagen', 'caracteristicas', 'cita', 'espacio', 'formulario', 'video'].map(toCard);
+  const AVANZADOS = ['galeria', 'imagen', 'caracteristicas', 'cita', 'testimonios', 'faq', 'logos', 'espacio', 'formulario', 'video'].map(toCard);
 
   let modalEl = null;
 
@@ -31,7 +31,7 @@
         AVANZADOS.forEach(item => grid.appendChild(buildCard(E, item, onPick)));
         moreBtn.remove();
       },
-    }, 'Mas opciones (galeria, imagen, caracteristicas, cita, espacio, formulario, video)');
+    }, 'Mas opciones (galeria, imagen, caracteristicas, cita, testimonios, faq, logos, espacio, formulario, video)');
 
     const modal = E('div', { class: 'ed-modal' }, [
       E('div', { class: 'ed-modal__header' }, [

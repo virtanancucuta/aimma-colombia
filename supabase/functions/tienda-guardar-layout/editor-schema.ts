@@ -176,6 +176,41 @@ const CitaProps = z.object({
   alineacion: AlineacionEnum.default('center'),
 });
 
+// ---- B-secciones Lote 2 (2026-06-08) ----
+
+const TestimonioItemSchema = z.object({
+  texto: z.string().max(600),                              // reseña PLANA (sin richtext) -> inspector
+  autor: z.string().max(120),                              // inline
+  cargo: z.string().max(120).optional(),                  // inline (rol/empresa)
+  foto: z.string().url().regex(/^https:\/\//, 'imagen debe ser https').optional(),
+  rating: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
+});
+const TestimoniosProps = z.object({
+  titulo: z.string().max(200).optional(),
+  columnas: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(3),
+  items: z.array(TestimonioItemSchema).min(1).max(9),
+});
+
+const FaqItemSchema = z.object({
+  pregunta: z.string().max(300),
+  respuesta: z.string().max(1500),                         // PLANA -> inspector
+});
+const FaqProps = z.object({
+  titulo: z.string().max(200).optional(),
+  items: z.array(FaqItemSchema).min(1).max(12),
+});
+
+const LogoItemSchema = z.object({
+  logo: z.string().url().regex(/^https:\/\//, 'imagen debe ser https'),
+  alt: z.string().max(200),
+  link: z.string().regex(/^(https:\/\/|\/(?!\/))/, 'link debe ser https o ruta interna').optional(),
+});
+const LogosProps = z.object({
+  titulo: z.string().max(200).optional(),
+  layout: z.enum(['grilla', 'tira']).default('grilla'),
+  items: z.array(LogoItemSchema).min(1).max(12),
+});
+
 // ============================================================
 // Section (discriminated union por tipo)
 // ============================================================
@@ -206,6 +241,9 @@ export const SectionSchema = z.discriminatedUnion('tipo', [
   SectionBase.extend({ tipo: z.literal('imagen_con_texto'), props: ImagenConTextoProps }),
   SectionBase.extend({ tipo: z.literal('caracteristicas'), props: CaracteristicasProps }),
   SectionBase.extend({ tipo: z.literal('cita'), props: CitaProps }),
+  SectionBase.extend({ tipo: z.literal('testimonios'), props: TestimoniosProps }),
+  SectionBase.extend({ tipo: z.literal('faq'), props: FaqProps }),
+  SectionBase.extend({ tipo: z.literal('logos'), props: LogosProps }),
 ]);
 
 export type Section = z.infer<typeof SectionSchema>;
