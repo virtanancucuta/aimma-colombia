@@ -18,8 +18,11 @@ export function stubSupabase(rows: any[]): any {
   const chain: any = {
     select: () => chain,
     eq: () => chain,
+    in: () => chain,                 // Lote 3: getCategoriasPorIds usa .in('id', ids)
     order: () => chain,
     limit: () => chain,
+    // Lote 3: getProductoPorId usa .maybeSingle() -> una fila o null
+    maybeSingle: () => Promise.resolve({ data: rows.length ? rows[0] : null, error: null }),
     then: (resolve: any) => resolve({ data: rows, error: null }),
   };
   return { from: () => chain };
@@ -72,6 +75,45 @@ export function makeSection(tipo: string, props: any): any {
     ancho: 'completo',
     fondo: { tipo: 'color', valor: '#ffffff' },
     props,
+  };
+}
+
+// ---- B-secciones Lote 3 fixtures + builders ----
+// Categorias: filas crudas que getCategoriasPorIds resuelve (id/nombre/slug/foto_url).
+export const CATEGORIAS_FIXTURE = [
+  { id: 'cat01', nombre: 'Calzado Dama', slug: 'calzado-dama', foto_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/cat-a.jpg' },
+  { id: 'cat02', nombre: 'Ropa Dama', slug: 'ropa-dama', foto_url: null },
+  { id: 'cat03', nombre: 'Tacon Dama', slug: 'tacon-dama', foto_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/cat-c.jpg' },
+  { id: 'cat04', nombre: 'Blusa Dama', slug: 'blusa-dama', foto_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/cat-d.jpg' },
+];
+
+// Producto destacado: fila cruda (getProductoPorId la normaliza via maybeSingle -> rows[0]).
+export const PRODUCTO_DESTACADO_FIXTURE = [
+  { id: 'pd01', nombre: 'Bota Beta', slug: 'bota-beta', referencia: 'REF001', precio_venta: 200000, precio_promo: 150000, foto_principal_url: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/b.jpg', estado: 'activo', producto_variantes: [{ stock: 3, reservado: 0 }] },
+];
+
+export function makeCategoriasDestacadasSection(props: { columnas: 2 | 3 | 4; titulo?: string; ids: string[] }): any {
+  return {
+    id: 'sec_pilot01', tipo: 'categorias_destacadas', padding: 'md', ancho: 'contenido',
+    fondo: { tipo: 'color', valor: '#ffffff' },
+    props: {
+      ...(props.titulo !== undefined ? { titulo: props.titulo } : {}),
+      columnas: props.columnas,
+      items: props.ids.map((id) => ({ categoria_id: id })),
+    },
+  };
+}
+
+export function makeProductoDestacadoSection(props: { producto_id: string; titulo?: string; texto?: string; cta_texto?: string }): any {
+  return {
+    id: 'sec_pilot01', tipo: 'producto_destacado', padding: 'md', ancho: 'contenido',
+    fondo: { tipo: 'color', valor: '#ffffff' },
+    props: {
+      producto_id: props.producto_id,
+      ...(props.titulo !== undefined ? { titulo: props.titulo } : {}),
+      ...(props.texto !== undefined ? { texto: props.texto } : {}),
+      ...(props.cta_texto !== undefined ? { cta_texto: props.cta_texto } : {}),
+    },
   };
 }
 

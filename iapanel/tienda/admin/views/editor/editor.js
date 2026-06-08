@@ -308,10 +308,32 @@
   }
 
   function openCatalog() {
-    window.TiendaIA.editorModalCatalog.open((tipo) => {
-      const id = window.TiendaIA.editorState.addSection(tipo);
-      if (id) window.TiendaIA.editorState.select(id);
+    window.TiendaIA.editorModalCatalog.open(async (tipo) => {
+      const ES = window.TiendaIA.editorState;
+      const id = ES.addSection(tipo);
+      if (!id) return;
+      ES.select(id);
+      // Secciones que referencian datos del catalogo nacen con un placeholder all-zeros (Zod-valido).
+      // Lo reemplazamos por data REAL de ESTA tienda para que la seccion no nazca vacia. Si falla o no
+      // hay data, el placeholder queda -> degradacion graciosa (publico no muestra nada; preview hint).
+      try { await resolveLiveDefault(tipo, id, ES); } catch (_) { /* placeholder queda */ }
     });
+  }
+
+  // Resolver de default en vivo, TENANT-SCOPED (.eq('tienda_id') -> nunca data de otra tienda).
+  async function resolveLiveDefault(tipo, id, ES) {
+    const sb = window.TiendaIA.supabase && window.TiendaIA.supabase();
+    if (!sb || !ES.tienda_id) return;
+    if (tipo === 'categorias_destacadas') {
+      const { data } = await sb.from('categorias')
+        .select('id').eq('tienda_id', ES.tienda_id).order('orden', { ascending: true }).limit(3);
+      if (data && data.length) ES.updateSectionProps(id, { items: data.map((c) => ({ categoria_id: c.id })) });
+    } else if (tipo === 'producto_destacado') {
+      const { data } = await sb.from('productos')
+        .select('id').eq('tienda_id', ES.tienda_id).eq('estado', 'activo')
+        .order('updated_at', { ascending: false }).limit(1);
+      if (data && data.length) ES.updateSectionProps(id, { producto_id: data[0].id });
+    }
   }
 
   function openPreviewTab() {
