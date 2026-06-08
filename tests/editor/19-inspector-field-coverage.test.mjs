@@ -32,24 +32,30 @@ for (const tipo of TIPOS) {
     T.editorInspector.render(container, {});
     T.editorState.select(id);
     T.editorInspector.rebuild();
-    const text = container.textContent || '';
+    // Cobertura REAL del control. ANTES era container.textContent.includes(label), que daba FALSO VERDE
+    // cuando el label era SUBSTRING del titulo de seccion: p.ej. 'Producto' ⊂ 'Producto destacado',
+    // 'Categoria' ⊂ 'Categorias destacadas' -> el test pasaba aunque el dispatch NO renderizara el control.
+    // Ahora exigimos que exista un <label class="ed-ctrl__label"> con el texto EXACTO del campo (todo
+    // control del toolkit emite ese label via fieldWrapper/switchCtrl). El titulo de seccion NO es .ed-ctrl__label.
+    const labels = [...container.querySelectorAll('.ed-ctrl__label')].map((e) => (e.textContent || '').trim());
+    const rendered = (label) => labels.includes(label);
 
     for (const campo of DEFS[tipo].campos) {
       if (campo.__info) continue;
       if (campo.control === 'list') {
-        // cada sub-campo NO-condicional del item debe renderizar su label (>=1 item por los defaults)
+        // cada sub-campo NO-condicional del item debe renderizar su control con label (>=1 item por defaults)
         for (const sf of (campo.item || [])) {
           if (sf.when) continue; // condicional (ej. formulario.opciones solo si tipo_campo=select)
           assert.ok(
-            text.includes(sf.label),
-            `[${tipo}] sub-campo "${campo.key}[].${sf.key}" (label "${sf.label}") NO se renderiza en el inspector`
+            rendered(sf.label),
+            `[${tipo}] sub-campo "${campo.key}[].${sf.key}" (label "${sf.label}") NO renderiza control en el inspector`
           );
         }
       } else if (campo.control === 'toggle-object') {
         // el toggle siempre renderiza su label; los subfields son condicionales al estado on -> no se exigen
-        assert.ok(text.includes(campo.label), `[${tipo}] toggle "${campo.key}" (label "${campo.label}") NO se renderiza`);
+        assert.ok(rendered(campo.label), `[${tipo}] toggle "${campo.key}" (label "${campo.label}") NO renderiza`);
       } else {
-        assert.ok(text.includes(campo.label), `[${tipo}] campo "${campo.key}" (label "${campo.label}") NO se renderiza`);
+        assert.ok(rendered(campo.label), `[${tipo}] campo "${campo.key}" (label "${campo.label}") NO renderiza control`);
       }
     }
   });

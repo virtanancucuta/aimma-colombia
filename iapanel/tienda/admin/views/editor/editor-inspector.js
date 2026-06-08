@@ -179,6 +179,10 @@
         wrap.appendChild(C.categoryPicker(campo.label, p[campo.key] || null,
           v => setProp(ES, sec, campo.key, v, campo), { tiendaId: ES.tienda_id }));
         break;
+      case 'product':
+        wrap.appendChild(C.productPicker(campo.label, p[campo.key] || '',
+          v => setProp(ES, sec, campo.key, v, campo), { tiendaId: ES.tienda_id }));
+        break;
       case 'color':
         wrap.appendChild(C.colorPicker(campo.label, p[campo.key] || campo.default || '#000000',
           v => setProp(ES, sec, campo.key, v, campo), campo.opts || {}));
@@ -266,6 +270,10 @@
             v => { upd({ [sf.key]: sf.empty_to_undefined ? (v || undefined) : v }); if (sf.rebuild_on_change) rebuild(); }));
         } else if (sf.control === 'switch') {
           card.body.appendChild(C.switch(sf.label, !!it[sf.key], v => upd({ [sf.key]: v })));
+        } else if (sf.control === 'category') {
+          // categorias_destacadas: cada item referencia UNA categoria (allowAll:false -> sin "Todas").
+          card.body.appendChild(C.categoryPicker(sf.label, it[sf.key] || null,
+            v => upd({ [sf.key]: v }), { tiendaId: ES.tienda_id, allowAll: false }));
         }
       });
       wrap.appendChild(card.root);

@@ -51,6 +51,6 @@ test('cleanInlineText: texto plano de una linea sin basura del navegador', () =>
 });
 
 test('SIMPLE_TEXT_FIELDS: solo banner/botones/formulario, sin rich-text', () => {
-  expect(Object.keys(SIMPLE_TEXT_FIELDS).sort()).toEqual(['banner', 'botones', 'caracteristicas', 'cita', 'faq', 'formulario', 'imagen_con_texto', 'logos', 'testimonios']);
+  expect(Object.keys(SIMPLE_TEXT_FIELDS).sort()).toEqual(['banner', 'botones', 'caracteristicas', 'categorias_destacadas', 'cita', 'faq', 'formulario', 'imagen_con_texto', 'logos', 'producto_destacado', 'testimonios']);
   expect(SIMPLE_TEXT_FIELDS.texto).toBeUndefined();
 });

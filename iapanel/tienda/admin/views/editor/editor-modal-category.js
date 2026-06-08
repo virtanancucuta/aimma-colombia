@@ -27,12 +27,15 @@
     const grid = E('div', { class: 'ed-cat-grid' });
     const status = E('p', { class: 'ed-img-status' }, 'Cargando categorias...');
 
-    // Opcion "Todas las categorias" (valor null) — siempre presente.
-    grid.appendChild(E('button', {
-      type: 'button',
-      class: 'ed-cat-card' + (opts.current ? '' : ' ed-cat-card--active'),
-      onClick: () => { onPick(null, null); close(); },
-    }, [E('span', { class: 'ed-cat-card__name' }, 'Todas las categorias')]));
+    // Opcion "Todas las categorias" (valor null). allowAll=false (categorias_destacadas) la oculta:
+    // ahi un card DEBE apuntar a una categoria concreta.
+    if (opts.allowAll !== false) {
+      grid.appendChild(E('button', {
+        type: 'button',
+        class: 'ed-cat-card' + (opts.current ? '' : ' ed-cat-card--active'),
+        onClick: () => { onPick(null, null); close(); },
+      }, [E('span', { class: 'ed-cat-card__name' }, 'Todas las categorias')]));
+    }
 
     const modal = E('div', { class: 'ed-modal' }, [
       E('div', { class: 'ed-modal__header' }, [

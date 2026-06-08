@@ -118,9 +118,54 @@ export async function getProductoPorSlug(
   return res.data;
 }
 
+// B-secciones Lote 3: resuelve UN producto por id, TENANT-SCOPED (.eq('tienda_id')). Devuelve null
+// si no existe / borrado / placeholder all-zeros / de otra tienda -> el renderer degrada graciosamente.
+export async function getProductoPorId(
+  supabase: SB,
+  tiendaId: string,
+  id: string
+): Promise<ProductoListItem | null> {
+  const { data, error } = await supabase
+    .from('productos')
+    .select(
+      `id, nombre, slug, referencia, precio_venta, precio_promo, foto_principal_url, estado,
+       producto_variantes(stock, reservado)`
+    )
+    .eq('tienda_id', tiendaId)               // TENANT-SCOPED: nunca resuelve producto de otra tienda
+    .eq('estado', 'activo')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) {
+    console.error('[catalogo] getProductoPorId error:', error.message);
+    return null;
+  }
+  return data ? normalizarProducto(data) : null;
+}
+
 // ============================================================
 // Categorias
 // ============================================================
+
+// B-secciones Lote 3: resuelve categorias por lista de ids, TENANT-SCOPED, PRESERVANDO el orden de
+// `ids` y DESCARTANDO las que no existen (borradas / otra tienda / placeholder all-zeros).
+export async function getCategoriasPorIds(
+  supabase: SB,
+  tiendaId: string,
+  ids: string[]
+): Promise<{ id: string; nombre: string; slug: string; foto_url: string | null }[]> {
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from('categorias')
+    .select('id, nombre, slug, foto_url')
+    .eq('tienda_id', tiendaId)               // TENANT-SCOPED: nunca resuelve categoria de otra tienda
+    .in('id', ids);
+  if (error) {
+    console.error('[catalogo] getCategoriasPorIds error:', error.message);
+    return [];
+  }
+  const byId = new Map((data || []).map((c: any) => [c.id, c]));
+  return ids.map((id) => byId.get(id)).filter(Boolean) as { id: string; nombre: string; slug: string; foto_url: string | null }[];
+}
 
 export async function getCategoriaPorSlug(
   supabase: SB,

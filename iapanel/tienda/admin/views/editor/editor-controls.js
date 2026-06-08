@@ -192,22 +192,48 @@
   // en el click, no en el render. El nombre real aparece tras elegir / al abrir el modal.
   function categoryPicker(label, value, onChange, opts) {
     opts = opts || {};
+    // allowAll: ofrecer "Todas las categorias" (valor null). Default true (productos.categoria_id).
+    // En categorias_destacadas se pasa false: un card DEBE apuntar a una categoria concreta.
+    const allowAll = opts.allowAll !== false;
+    const noneLabel = allowAll ? 'Todas las categorias' : 'Sin categoria';
     const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
     const current = el('span', { class: 'ed-catpicker__current' },
-      value ? 'Categoria seleccionada' : 'Todas las categorias');
+      value ? 'Categoria seleccionada' : noneLabel);
     const btn = el('button', {
       type: 'button',
       class: 'ed-btn ed-btn--secondary ed-catpicker__btn',
       onClick: () => {
         const modal = window.TiendaIA && window.TiendaIA.editorModalCategory;
         if (!modal) return;
-        modal.open({ tiendaId: opts.tiendaId, current: value || null }, (id, nombre) => {
-          current.textContent = id ? (nombre || 'Categoria seleccionada') : 'Todas las categorias';
+        modal.open({ tiendaId: opts.tiendaId, current: value || null, allowAll }, (id, nombre) => {
+          current.textContent = id ? (nombre || 'Categoria seleccionada') : noneLabel;
           onChange(id || null);
         });
       },
     }, 'Elegir categoria');
     return fieldWrapper(label, el('div', { class: 'ed-catpicker' }, [current, btn]), errorEl);
+  }
+
+  // product picker (Lote 3): elige UN producto activo de la tienda (sin "Todas"). VALOR = producto_id (uuid).
+  // Mismo patron que categoryPicker: el modal (y supabase) se abren en el click, no en el render.
+  function productPicker(label, value, onChange, opts) {
+    opts = opts || {};
+    const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
+    const current = el('span', { class: 'ed-prodpicker__current' },
+      value ? 'Producto seleccionado' : 'Sin producto');
+    const btn = el('button', {
+      type: 'button',
+      class: 'ed-btn ed-btn--secondary ed-prodpicker__btn',
+      onClick: () => {
+        const modal = window.TiendaIA && window.TiendaIA.editorModalProduct;
+        if (!modal) return;
+        modal.open({ tiendaId: opts.tiendaId, current: value || null }, (id, nombre) => {
+          current.textContent = id ? (nombre || 'Producto seleccionado') : 'Sin producto';
+          onChange(id || '');
+        });
+      },
+    }, 'Elegir producto');
+    return fieldWrapper(label, el('div', { class: 'ed-prodpicker' }, [current, btn]), errorEl);
   }
 
   // Iconos SVG de la toolbar rich-text (estilo Notion/Docs, currentColor, sin deps). Modulo-level
@@ -406,7 +432,7 @@
   window.TiendaIA.editorControls = {
     textInput, textarea, urlInput,
     select: selectCtrl,
-    colorPicker, imagePicker, categoryPicker, richText, slider,
+    colorPicker, imagePicker, categoryPicker, productPicker, richText, slider,
     switch: switchCtrl,
     headerLabel, primaryButton, dangerButton, collapsibleSection, infoBox,
     ALIGN_OPTIONS,

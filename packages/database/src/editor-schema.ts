@@ -211,6 +211,28 @@ const LogosProps = z.object({
   items: z.array(LogoItemSchema).min(1).max(12),
 });
 
+// ---- B-secciones Lote 3 (2026-06-08) ----
+// Secciones que REFERENCIAN datos vivos del catalogo (no texto libre). Solo guardan el id;
+// nombre/slug/foto/precio se tiran vivos al render (helpers tenant-scoped). El editor reemplaza
+// el placeholder all-zeros por data real al agregar (resolver tenant-scoped). Si la referencia
+// no resuelve (borrada/placeholder/otra tienda): publico no renderiza nada; preview muestra hint.
+
+const CategoriaDestacadaItemSchema = z.object({
+  categoria_id: z.string().uuid(),                         // referencia (category-picker, allowAll:false)
+});
+const CategoriasDestacadasProps = z.object({
+  titulo: z.string().max(200).optional(),                  // inline
+  columnas: z.union([z.literal(2), z.literal(3), z.literal(4)]).default(3), // select (COLUMNAS_FIJAS)
+  items: z.array(CategoriaDestacadaItemSchema).min(1).max(12),
+});
+
+const ProductoDestacadoProps = z.object({
+  producto_id: z.string().uuid(),                          // product-picker NUEVO (inspector)
+  titulo: z.string().max(200).optional(),                  // inline
+  texto: z.string().max(2000).optional(),                  // inspector textarea PLANO
+  cta_texto: z.string().max(80).optional(),                // inline
+});
+
 // ============================================================
 // Section (discriminated union por tipo)
 // ============================================================
@@ -244,6 +266,8 @@ export const SectionSchema = z.discriminatedUnion('tipo', [
   SectionBase.extend({ tipo: z.literal('testimonios'), props: TestimoniosProps }),
   SectionBase.extend({ tipo: z.literal('faq'), props: FaqProps }),
   SectionBase.extend({ tipo: z.literal('logos'), props: LogosProps }),
+  SectionBase.extend({ tipo: z.literal('categorias_destacadas'), props: CategoriasDestacadasProps }),
+  SectionBase.extend({ tipo: z.literal('producto_destacado'), props: ProductoDestacadoProps }),
 ]);
 
 export type Section = z.infer<typeof SectionSchema>;
