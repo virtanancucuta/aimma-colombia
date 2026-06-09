@@ -98,19 +98,20 @@ const ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
           <div>
             <label for="ck-email" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
-              Email <span class="font-normal text-[var(--ta-color-text-base)]/55">(opcional)</span>
+              Email <span class="text-red-600">*</span>
             </label>
             <input
               id="ck-email"
               name="email"
               type="email"
               maxlength="180"
+              required
               autocomplete="email"
               placeholder="tu@correo.com"
               class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15"
             />
             <p class="mt-1 font-body text-[12px] text-[var(--ta-color-text-base)]/50">
-              Solo para recordatorios futuros. No se comparte.
+              Para enviarte la confirmacion y el rastreo de tu pedido.
             </p>
           </div>
 
