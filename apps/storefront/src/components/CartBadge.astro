@@ -1,0 +1,52 @@
+---
+// AIMMA Storefront · CartBadge.astro · Fase F (F1) · badge del carrito en el header (×4).
+// Contador rojo leido del carrito localStorage (aimma_cart_<hostname>); se actualiza al agregar
+// (evento aimma:cart-add del VariantSelector), al cargar, en bfcache y al cambiar en otro tab (storage).
+// VIEW-TRANSITION-SAFE: el script inline re-corre en cada nav (ClientRouter) pero los listeners se
+// adjuntan UNA sola vez (window.__aimmaCartBadge) -> no se duplican ni desincronizan; repinta el badge
+// fresco en cada page-load. Pulse del icono al agregar. Se monta dentro del link [data-cart-icon].
+---
+<span class="cart-badge" data-cart-badge hidden aria-hidden="true"></span>
+
+<style is:global>
+  [data-cart-icon] { position: relative; }
+  .cart-badge {
+    position: absolute; top: -7px; right: -9px; min-width: 18px; height: 18px; padding: 0 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #dc2626; color: #fff; border-radius: 999px;
+    font-size: 11px; font-weight: 700; line-height: 1; font-family: var(--ta-font-body, system-ui);
+    box-shadow: 0 0 0 2px var(--ta-color-bg-base);
+  }
+  @keyframes cart-pulse { 0%, 100% { transform: scale(1); } 35% { transform: scale(1.22); } }
+  .cart-pulse { animation: cart-pulse 0.4s ease; }
+</style>
+
+<script is:inline>
+  (function () {
+    var KEY = 'aimma_cart_' + location.hostname;
+    function count() {
+      try { return JSON.parse(localStorage.getItem(KEY) || '[]').reduce(function (a, it) { return a + (it.cantidad || 0); }, 0); }
+      catch (_) { return 0; }
+    }
+    function paint(pulse) {
+      var b = document.querySelector('[data-cart-badge]');
+      if (!b) return;
+      var n = count();
+      if (n > 0) { b.textContent = n > 99 ? '99+' : String(n); b.hidden = false; }
+      else { b.hidden = true; }
+      if (pulse) {
+        var icon = document.querySelector('[data-cart-icon]');
+        if (icon) { icon.classList.remove('cart-pulse'); void icon.offsetWidth; icon.classList.add('cart-pulse'); }
+      }
+    }
+    // Listeners UNA sola vez (document/window persisten a traves de view-transitions).
+    if (!window.__aimmaCartBadge) {
+      window.__aimmaCartBadge = true;
+      document.addEventListener('astro:page-load', function () { paint(false); });
+      window.addEventListener('pageshow', function () { paint(false); });
+      window.addEventListener('storage', function (e) { if (e.key === KEY) paint(false); });
+      window.addEventListener('aimma:cart-add', function () { paint(true); });
+    }
+    paint(false);
+  })();
+</script>

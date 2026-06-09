@@ -112,7 +112,10 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
 
     <button type="button" class="vsel__add" data-pdp-add disabled>Agregar al carrito</button>
     <button type="button" class="vsel__buynow" data-pdp-buynow disabled>Comprar ya por WhatsApp</button>
-    <p class="vsel__feedback" data-pdp-feedback hidden></p>
+    <div class="vsel__toast" data-pdp-toast role="status" aria-live="polite" hidden>
+      <span class="vsel__toast-msg">✓ Agregado al carrito</span>
+      <a class="vsel__toast-link" href="/carrito">Ver carrito</a>
+    </div>
   </div>
 
   <script type="application/json" data-pdp-data set:html={JSON.stringify(clientData)}></script>
@@ -150,7 +153,16 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
   .vsel__buynow { margin-top: 0.6rem; width: 100%; border: 1px solid var(--ta-color-accent); border-radius: 6px; background: transparent; color: var(--ta-color-accent); padding: 0.7rem 1.25rem; font-weight: 600; cursor: pointer; }
   .vsel__buynow:hover { background: color-mix(in oklab, var(--ta-color-accent) 10%, transparent); }
   .vsel__add:disabled, .vsel__buynow:disabled { opacity: 0.4; cursor: not-allowed; }
-  .vsel__feedback { margin-top: 0.6rem; font-size: 0.85rem; color: var(--ta-color-primary); }
+  .vsel__toast {
+    position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%); z-index: 100;
+    display: flex; align-items: center; gap: 0.85rem;
+    background: var(--ta-color-text-base); color: var(--ta-color-bg-base);
+    padding: 0.7rem 1.15rem; border-radius: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    font-size: 0.9rem; font-family: var(--ta-font-body); animation: vsel-toast-in 0.25s ease;
+  }
+  .vsel__toast-msg { font-weight: 600; }
+  .vsel__toast-link { color: var(--ta-color-bg-base); text-decoration: underline; font-weight: 600; }
+  @keyframes vsel-toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
   /* acentos por plantilla */
   .vsel--fb .vsel__add, .vsel--fb .vsel__buynow { border-radius: 0; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -189,7 +201,8 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
     var qtyEl = root.querySelector('[data-pdp-qty]');
     var addBtn = root.querySelector('[data-pdp-add]');
     var buyBtn = root.querySelector('[data-pdp-buynow]');
-    var fbEl = root.querySelector('[data-pdp-feedback]');
+    var toastEl = root.querySelector('[data-pdp-toast]');
+    var toastTimer = null;
     var mainImg = document.querySelector('[data-pdp-main-img]'); // hook en la galeria del ProductDetailX
 
     function matchVariant() {
@@ -241,7 +254,7 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
         if (qtyEl && !noAxes) { qtyEl.max = String(resolved.disponible); if (+qtyEl.value > resolved.disponible) qtyEl.value = String(resolved.disponible); }
         if (+qtyEl.value < 1 || isNaN(+qtyEl.value)) qtyEl.value = '1';
         if (addBtn) addBtn.disabled = false;
-        if (buyBtn) buyBtn.disabled = !D.wppDigits;
+        if (buyBtn) buyBtn.disabled = false; // "comprar ya" rerutea a /checkout (no depende de wppDigits aca)
       } else {
         // sin combinacion valida / sin stock -> CTAs deshabilitados
         if (stockEl) stockEl.textContent = v && v.disponible === 0 ? 'Agotado en esta combinacion' : '';
@@ -273,25 +286,37 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
     }
 
     function readCart() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch (_) { return []; } }
-
-    function addToCart() {
-      var it = currentItem();
-      if (!it) return;
+    function cartCount() { return readCart().reduce(function (a, it) { return a + (it.cantidad || 0); }, 0); }
+    function notifyAdd() {
+      // avisa al badge del header (mismo tab) que el carrito cambio
+      try { window.dispatchEvent(new CustomEvent('aimma:cart-add', { detail: { count: cartCount() } })); } catch (_) {}
+    }
+    function showToast() {
+      if (!toastEl) return;
+      toastEl.hidden = false;
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.hidden = true; }, 3200);
+    }
+    // escribe el SUPERSET al carrito localStorage existente (merge por producto+variante). No toca EF/esquema.
+    function writeItem(it) {
       var cart = readCart();
-      // merge por (producto_id, variante_id)
-      var existing = cart.find(function (c) { return c.producto_id === it.producto_id && (c.variante_id || null) === (it.variante_id || null); });
-      if (existing) existing.cantidad = (existing.cantidad || 0) + it.cantidad;
+      var ex = cart.find(function (c) { return c.producto_id === it.producto_id && (c.variante_id || null) === (it.variante_id || null); });
+      if (ex) ex.cantidad = (ex.cantidad || 0) + it.cantidad;
       else cart.push(it);
       localStorage.setItem(CART_KEY, JSON.stringify(cart));
-      if (fbEl) { fbEl.hidden = false; fbEl.textContent = 'Agregado al carrito. ' ; var a = document.createElement('a'); a.href = '/carrito'; a.textContent = 'Ver carrito'; a.className = 'underline'; fbEl.appendChild(a); }
+      notifyAdd();
     }
-
+    function addToCart() {
+      var it = currentItem(); if (!it) return;
+      writeItem(it);
+      showToast();
+    }
+    // "Comprar ya": agrega la variante + va DIRECTO a /checkout (express, saltea /carrito). El checkout
+    // existente captura datos -> EF (reserva + pedido pendiente) -> finaliza por WhatsApp (con idempotencia).
     function buyNow() {
-      var it = currentItem();
-      if (!it || !D.wppDigits) return;
-      var varStr = it.variante ? ' (' + it.variante + ')' : '';
-      var msg = 'Hola! Me interesa: ' + it.cantidad + 'x ' + D.nombre + varStr + ' (' + fmt(it.precio * it.cantidad) + '). ' + D.productUrl;
-      window.open('https://wa.me/' + D.wppDigits + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+      var it = currentItem(); if (!it) return;
+      writeItem(it);
+      window.location.href = '/checkout';
     }
 
     root.querySelectorAll('[data-pdp-opt]').forEach(function (btn) {

@@ -22,6 +22,7 @@ interface Props {
 }
 
 import SearchBar from '~/components/SearchBar.astro';
+import CartBadge from '~/components/CartBadge.astro';
 const { tienda, categorias, mostrarBuscador } = Astro.props;
 
 // Para split nav, dividir categorias: primeras 3 izquierda
@@ -82,7 +83,9 @@ const catsLeft = categorias.slice(0, 3);
         <a
           href="/carrito"
           class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65 hover:text-[var(--ta-color-text-base)]"
+          data-cart-icon
         >
+          <CartBadge />
           Bolsa
         </a>
       </li>
