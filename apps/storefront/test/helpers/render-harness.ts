@@ -18,6 +18,7 @@ export function stubSupabase(rows: any[]): any {
   const chain: any = {
     select: () => chain,
     eq: () => chain,
+    is: () => chain,                 // Header usa .is('parent_id', null)
     in: () => chain,                 // Lote 3: getCategoriasPorIds usa .in('id', ids)
     order: () => chain,
     limit: () => chain,
