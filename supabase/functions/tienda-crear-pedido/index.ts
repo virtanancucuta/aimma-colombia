@@ -64,6 +64,7 @@ const CreatePedidoSchema = z.object({
     cantidad: z.number().int().min(1).max(100),
   })).min(1).max(50),
   metodo_envio: z.enum(['a_coordinar', 'tarifa_fija', 'por_ciudad']).default('a_coordinar'),
+  idempotency_key: z.string().uuid().optional(), // un UUID por intento de checkout -> dedupe del doble-submit
 });
 
 type CreatePedidoInput = z.infer<typeof CreatePedidoSchema>;
@@ -107,6 +108,20 @@ function buildWhatsAppMessage(
 // ============================================================
 // Main handler
 // ============================================================
+
+// Respuesta de dedupe: mismo pedido existente (mismo idempotency_key) sin crear otro ni reservar de nuevo.
+function dedupeResponse(
+  tienda: any,
+  ped: { id: string; codigo_publico: string },
+  comprador: CreatePedidoInput['comprador'],
+  itemsFinales: Array<{ nombre: string; color?: string | null; talla?: string | null; cantidad: number; subtotal: number }>,
+  total: number,
+) {
+  const wppDigits = (tienda.whatsapp_dueno || '').replace(/\D/g, '');
+  const mensaje = buildWhatsAppMessage(ped.codigo_publico, tienda.nombre_negocio, comprador, itemsFinales, total);
+  const wa_url = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURIComponent(mensaje)}` : null;
+  return { success: true, codigo_publico: ped.codigo_publico, pedido_id: ped.id, total, wa_url, deduped: true };
+}
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -227,6 +242,20 @@ serve(async (req: Request) => {
     });
   }
 
+  // 3.5 Idempotencia (fix doble-pedido): si ya existe un pedido con esta key (mismo intento de checkout
+  // reenviado), devolver el MISMO sin reservar ni crear otro.
+  if (payload.idempotency_key) {
+    const { data: yaExiste } = await supabase
+      .from('pedidos')
+      .select('id, codigo_publico')
+      .eq('tienda_id', tienda.id)
+      .eq('idempotency_key', payload.idempotency_key)
+      .maybeSingle();
+    if (yaExiste) {
+      return jsonResponse(dedupeResponse(tienda, yaExiste, payload.comprador, itemsFinales, subtotalProductos));
+    }
+  }
+
   // 4. Stock reserve atomico para variantes
   // UPDATE producto_variantes SET reservado = reservado + cantidad
   // WHERE id = X AND (stock - reservado) >= cantidad RETURNING id
@@ -303,6 +332,7 @@ serve(async (req: Request) => {
       comprador_ciudad: payload.comprador.ciudad,
       comprador_observ: payload.comprador.observ ?? null,
       metodo_envio: payload.metodo_envio,
+      idempotency_key: payload.idempotency_key ?? null,
       subtotal_productos: subtotalProductos,
       costo_envio: 0,
       total,
@@ -310,8 +340,16 @@ serve(async (req: Request) => {
     .select('id, codigo_publico')
     .single();
   if (errPed || !pedido) {
-    // Liberar stock reservado
+    // Liberar stock reservado por ESTE request
     await rollbackReservasAll(supabase, itemsFinales);
+    // Doble-submit concurrente: violacion de unicidad del idempotency_key -> otro request ya creo el
+    // pedido. Devolver ESE (deduped), no error.
+    if (payload.idempotency_key && (errPed?.code === '23505' || /duplicate key|unique/i.test(errPed?.message || ''))) {
+      const { data: yaExiste } = await supabase
+        .from('pedidos').select('id, codigo_publico')
+        .eq('tienda_id', tienda.id).eq('idempotency_key', payload.idempotency_key).maybeSingle();
+      if (yaExiste) return jsonResponse(dedupeResponse(tienda, yaExiste, payload.comprador, itemsFinales, subtotalProductos));
+    }
     return jsonResponse({ error: 'pedido_insert_failed', details: errPed?.message }, 500);
   }
 
