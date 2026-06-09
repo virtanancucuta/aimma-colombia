@@ -107,7 +107,11 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
 
     <div class="vsel__qty-row">
       <label class="vsel__qty-label" for="vsel-qty">Cantidad</label>
-      <input type="number" id="vsel-qty" class="vsel__qty" data-pdp-qty value="1" min="1" inputmode="numeric" />
+      <div class="vsel__qty-stepper">
+        <button type="button" class="vsel__qty-btn" data-pdp-qty-dec aria-label="Disminuir cantidad">&minus;</button>
+        <input type="number" id="vsel-qty" class="vsel__qty" data-pdp-qty value="1" min="1" inputmode="numeric" />
+        <button type="button" class="vsel__qty-btn" data-pdp-qty-inc aria-label="Aumentar cantidad">+</button>
+      </div>
     </div>
 
     <button type="button" class="vsel__add" data-pdp-add disabled>Agregar al carrito</button>
@@ -147,7 +151,12 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
 
   .vsel__qty-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 1.25rem; }
   .vsel__qty-label { font-size: 0.85rem; color: color-mix(in oklab, var(--ta-color-text-base) 75%, transparent); }
-  .vsel__qty { width: 4.5rem; border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 22%, transparent); border-radius: 6px; padding: 0.45rem 0.6rem; background: var(--ta-color-bg-base); color: var(--ta-color-text-base); }
+  .vsel__qty-stepper { display: inline-flex; align-items: stretch; border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 22%, transparent); border-radius: 6px; overflow: hidden; }
+  .vsel__qty-btn { width: 2.4rem; border: 0; background: var(--ta-color-bg-base); color: var(--ta-color-text-base); font-size: 1.15rem; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .vsel__qty-btn:hover { background: color-mix(in oklab, var(--ta-color-text-base) 7%, transparent); }
+  .vsel__qty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .vsel__qty { width: 3.2rem; border: 0; border-left: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent); border-right: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent); border-radius: 0; padding: 0.45rem 0.4rem; background: var(--ta-color-bg-base); color: var(--ta-color-text-base); text-align: center; -moz-appearance: textfield; appearance: textfield; }
+  .vsel__qty::-webkit-outer-spin-button, .vsel__qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .vsel__add { margin-top: 1.25rem; width: 100%; border: 0; border-radius: 6px; background: var(--ta-color-primary); color: var(--ta-color-bg-base); padding: 0.85rem 1.25rem; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: var(--ta-font-body); }
   .vsel__add:hover { opacity: 0.92; }
   .vsel__buynow { margin-top: 0.6rem; width: 100%; border: 1px solid var(--ta-color-accent); border-radius: 6px; background: transparent; color: var(--ta-color-accent); padding: 0.7rem 1.25rem; font-weight: 600; cursor: pointer; }
@@ -166,8 +175,10 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
 
   /* acentos por plantilla */
   .vsel--fb .vsel__add, .vsel--fb .vsel__buynow { border-radius: 0; text-transform: uppercase; letter-spacing: 0.06em; }
+  .vsel--fb .vsel__qty-stepper { border-radius: 0; }
   .vsel--fb .vsel__precio { text-transform: uppercase; }
   .vsel--ma .vsel__add { border-radius: 999px; }
+  .vsel--ma .vsel__qty-stepper { border-radius: 999px; }
   .vsel--ma .vsel__precio { font-style: italic; }
   .vsel--em .vsel__add { font-weight: 400; text-transform: uppercase; letter-spacing: 0.1em; }
 </style>
@@ -195,10 +206,22 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
     var hasColor = D.axes.indexOf('color') >= 0;
     var hasTalla = D.axes.indexOf('talla') >= 0;
 
+    function uniqueVals(field) {
+      var s = [];
+      D.variantes.forEach(function (v) { if (v[field] && s.indexOf(v[field]) < 0) s.push(v[field]); });
+      return s;
+    }
+    // Auto-seleccionar ejes de una sola opcion: evita el click inutil que dejaba los CTAs deshabilitados
+    // (se percibia como "modo solo-ver"). Con multiples opciones el cliente sigue eligiendo.
+    if (hasColor) { var _cv = uniqueVals('color'); if (_cv.length === 1) sel.color = _cv[0]; }
+    if (hasTalla) { var _tv = uniqueVals('talla'); if (_tv.length === 1) sel.talla = _tv[0]; }
+
     var precioEl = root.querySelector('[data-pdp-precio]');
     var precioAntEl = root.querySelector('[data-pdp-precio-anterior]');
     var stockEl = root.querySelector('[data-pdp-stock]');
     var qtyEl = root.querySelector('[data-pdp-qty]');
+    var qtyDec = root.querySelector('[data-pdp-qty-dec]');
+    var qtyInc = root.querySelector('[data-pdp-qty-inc]');
     var addBtn = root.querySelector('[data-pdp-add]');
     var buyBtn = root.querySelector('[data-pdp-buynow]');
     var toastEl = root.querySelector('[data-pdp-toast]');
@@ -261,6 +284,23 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
         if (addBtn) addBtn.disabled = true;
         if (buyBtn) buyBtn.disabled = true;
       }
+      syncQtyBtns();
+    }
+
+    // habilita/deshabilita +/- segun el valor y el stock (max) de la variante elegida
+    function syncQtyBtns() {
+      if (!qtyEl) return;
+      var val = parseInt(qtyEl.value, 10) || 1;
+      var mx = qtyEl.max ? parseInt(qtyEl.max, 10) : Infinity;
+      if (qtyDec) qtyDec.disabled = val <= 1;
+      if (qtyInc) qtyInc.disabled = isFinite(mx) && val >= mx;
+    }
+    function stepQty(delta) {
+      if (!qtyEl) return;
+      var mx = qtyEl.max ? parseInt(qtyEl.max, 10) : Infinity;
+      var cur = parseInt(qtyEl.value, 10) || 1;
+      qtyEl.value = String(Math.min(Math.max(1, cur + delta), mx));
+      refresh();
     }
 
     function currentItem() {
@@ -329,6 +369,8 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
       });
     });
     if (qtyEl) qtyEl.addEventListener('input', refresh);
+    if (qtyDec) qtyDec.addEventListener('click', function () { stepQty(-1); });
+    if (qtyInc) qtyInc.addEventListener('click', function () { stepQty(1); });
     if (addBtn) addBtn.addEventListener('click', addToCart);
     if (buyBtn) buyBtn.addEventListener('click', buyNow);
 
