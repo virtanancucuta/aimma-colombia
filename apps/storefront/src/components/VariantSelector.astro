@@ -1,0 +1,312 @@
+---
+// AIMMA Storefront · VariantSelector.astro · Fase F (F1) · corazon interactivo del PDP.
+// Comportamiento UNIFICADO, estilo por plantilla (prefix). Contiene: precio (dinamico), selectores
+// de variante (swatches color foto_color_url / chips talla), stock, cantidad, CTA add-to-cart + buy-now.
+// PROGRESSIVE ENHANCEMENT: el SSR muestra el fallback no-JS (lista read-only + WhatsApp directo, VENDE
+// sin JS); el JS revela el bloque interactivo y oculta el fallback. add-to-cart escribe el SUPERSET al
+// carrito localStorage EXISTENTE (aimma_cart_<hostname>) sin tocar carrito/checkout/EF ni su esquema.
+// GUARDRAIL: solo LEE disponibilidad (disponible = stock-reservado, ya calculado server-side); la
+// reserva/descuento de stock NO ocurre aca (vive en el checkout/EF).
+
+interface Props { pdp: any; template?: string }
+const { pdp, template = 'industrial_clean' } = Astro.props;
+const prefix = template === 'fashion_bold' ? 'fb'
+  : template === 'minimal_artesanal' ? 'ma'
+  : template === 'editorial_magazine' ? 'em' : 'ic';
+
+const p = pdp.producto;
+const variantes = pdp.variantes as Array<any>;
+const tieneVariantes = pdp.tieneVariantes as boolean;
+
+// Ejes desde las columnas con valores (robusto a datos donde la talla vive en color, etc.).
+const colorVals = [...new Set(variantes.map((v) => v.color).filter(Boolean))] as string[];
+const tallaVals = [...new Set(variantes.map((v) => v.talla).filter(Boolean))] as string[];
+const axes: Array<{ field: 'color' | 'talla'; label: string; values: string[]; swatch: boolean }> = [];
+if (colorVals.length) axes.push({ field: 'color', label: '', values: colorVals, swatch: variantes.some((v) => v.color && v.foto_color_url) });
+if (tallaVals.length) axes.push({ field: 'talla', label: '', values: tallaVals, swatch: false });
+axes.forEach((ax, i) => { ax.label = (i === 0 ? pdp.variante_tipo_1 : pdp.variante_tipo_2) || (ax.field === 'color' ? 'Color' : 'Talla'); });
+
+// Foto por valor de color (para swatch background).
+const fotoByColor: Record<string, string> = {};
+for (const v of variantes) { if (v.color && v.foto_color_url && !fotoByColor[v.color]) fotoByColor[v.color] = v.foto_color_url; }
+
+// Datos para el cliente (tenant = este producto). disponible ya = stock - reservado.
+const clientData = {
+  producto_id: p.id,
+  nombre: p.nombre,
+  slug: p.slug,
+  sku_base: p.referencia ?? null,
+  precioBase: pdp.precioBase,
+  tieneVariantes,
+  axes: axes.map((a) => a.field),
+  variantes: variantes.map((v) => ({ id: v.id, color: v.color, talla: v.talla, sku: v.sku, disponible: v.disponible, foto: v.foto_color_url, precio: v.precio })),
+  wppDigits: pdp.wppDigits || '',
+  tiendaNombre: pdp.tiendaNombre || '',
+  productUrl: pdp.productUrl || '',
+};
+
+const wppDigits = pdp.wppDigits || '';
+const mensajeBase = `Hola! Me interesa: ${p.nombre} (${pdp.precioBaseFmt}). ${pdp.productUrl}`;
+const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURIComponent(mensajeBase)}` : null;
+---
+
+<div class={`vsel vsel--${prefix}`} data-vsel>
+  {/* Precio (dinamico: el JS lo actualiza por variante) */}
+  <div class="vsel__precio-row">
+    <span class="vsel__precio" data-pdp-precio>{pdp.precioBaseFmt}</span>
+    <span class="vsel__precio-ant" data-pdp-precio-anterior hidden={pdp.precioAnteriorFmt == null}>{pdp.precioAnteriorFmt}</span>
+  </div>
+
+  {/* ── Fallback no-JS: lista read-only + WhatsApp directo (VENDE sin JS). El JS lo oculta. ── */}
+  <div class="vsel__nojs" data-pdp-nojs>
+    {pdp.sinStock ? (
+      <p class="vsel__agotado">Agotado por ahora. Escribinos por WhatsApp para reservas.</p>
+    ) : (
+      <p class="vsel__stock-txt">{pdp.stockTotal > 0 && tieneVariantes ? `${pdp.stockTotal} disponibles` : 'Disponible'}</p>
+    )}
+    {tieneVariantes && (
+      <ul class="vsel__lista">
+        {variantes.map((v) => {
+          const partes = [v.color, v.talla].filter(Boolean);
+          return (
+            <li class="vsel__lista-item">
+              <span>{partes.join(' / ') || 'Unico'}</span>
+              <span class="vsel__lista-stock">— {v.disponible} disponibles</span>
+            </li>
+          );
+        })}
+      </ul>
+    )}
+    {wppDirecto && (
+      <a class="vsel__wpp-directo" href={wppDirecto} target="_blank" rel="noopener">Comprar por WhatsApp</a>
+    )}
+  </div>
+
+  {/* ── Bloque interactivo (oculto hasta que el JS lo revela; sin JS no aparece) ── */}
+  <div class="vsel__interactive" data-pdp-interactive hidden>
+    {axes.map((ax) => (
+      <div class="vsel__axis" data-pdp-axis={ax.field}>
+        <span class="vsel__axis-label">{ax.label}: <strong class="vsel__axis-sel" data-pdp-axis-sel={ax.field}></strong></span>
+        <div class={`vsel__opts ${ax.swatch ? 'vsel__opts--swatch' : 'vsel__opts--chip'}`}>
+          {ax.values.map((val) => (
+            ax.swatch ? (
+              <button type="button" class="vsel__swatch" data-pdp-opt data-axis={ax.field} data-value={val}
+                title={val} aria-label={val}
+                style={fotoByColor[val] ? `background-image:url(${fotoByColor[val]})` : ''}>
+                <span class="vsel__swatch-fallback">{fotoByColor[val] ? '' : val}</span>
+              </button>
+            ) : (
+              <button type="button" class="vsel__chip" data-pdp-opt data-axis={ax.field} data-value={val}>{val}</button>
+            )
+          ))}
+        </div>
+      </div>
+    ))}
+
+    <p class="vsel__stock-live" data-pdp-stock></p>
+
+    <div class="vsel__qty-row">
+      <label class="vsel__qty-label" for="vsel-qty">Cantidad</label>
+      <input type="number" id="vsel-qty" class="vsel__qty" data-pdp-qty value="1" min="1" inputmode="numeric" />
+    </div>
+
+    <button type="button" class="vsel__add" data-pdp-add disabled>Agregar al carrito</button>
+    <button type="button" class="vsel__buynow" data-pdp-buynow disabled>Comprar ya por WhatsApp</button>
+    <p class="vsel__feedback" data-pdp-feedback hidden></p>
+  </div>
+
+  <script type="application/json" data-pdp-data set:html={JSON.stringify(clientData)}></script>
+</div>
+
+<style>
+  .vsel { margin-top: 1.25rem; }
+  .vsel__precio-row { display: flex; align-items: baseline; gap: 0.75rem; }
+  .vsel__precio { font-size: 1.75rem; font-weight: 600; color: var(--ta-color-text-base); font-family: var(--ta-font-display); }
+  .vsel__precio-ant { font-size: 1.05rem; color: color-mix(in oklab, var(--ta-color-text-base) 50%, transparent); text-decoration: line-through; }
+  .vsel__stock-txt, .vsel__stock-live { margin-top: 0.5rem; font-size: 0.9rem; color: color-mix(in oklab, var(--ta-color-text-base) 70%, transparent); font-family: var(--ta-font-body); }
+  .vsel__agotado { margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: 6px; background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent); font-size: 0.9rem; }
+  .vsel__lista { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: color-mix(in oklab, var(--ta-color-text-base) 80%, transparent); }
+  .vsel__lista-item { display: flex; gap: 0.5rem; }
+  .vsel__lista-stock { color: color-mix(in oklab, var(--ta-color-text-base) 50%, transparent); font-size: 0.8rem; }
+  .vsel__wpp-directo { margin-top: 1rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; border-radius: 6px; background: var(--ta-color-accent); color: var(--ta-color-bg-base); padding: 0.75rem 1.25rem; font-weight: 600; text-decoration: none; }
+  .vsel__wpp-directo:hover { opacity: 0.9; }
+
+  .vsel__axis { margin-top: 1.25rem; }
+  .vsel__axis-label { font-size: 0.85rem; color: color-mix(in oklab, var(--ta-color-text-base) 75%, transparent); }
+  .vsel__axis-sel { color: var(--ta-color-text-base); }
+  .vsel__opts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+  .vsel__chip { border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 22%, transparent); background: var(--ta-color-bg-base); color: var(--ta-color-text-base); border-radius: 6px; padding: 0.45rem 0.9rem; font-size: 0.9rem; cursor: pointer; }
+  .vsel__chip[aria-pressed="true"] { border-color: var(--ta-color-primary); background: color-mix(in oklab, var(--ta-color-primary) 12%, var(--ta-color-bg-base)); }
+  .vsel__swatch { width: 44px; height: 44px; border-radius: 8px; border: 2px solid color-mix(in oklab, var(--ta-color-text-base) 20%, transparent); background-size: cover; background-position: center; cursor: pointer; position: relative; overflow: hidden; }
+  .vsel__swatch[aria-pressed="true"] { border-color: var(--ta-color-primary); box-shadow: 0 0 0 2px color-mix(in oklab, var(--ta-color-primary) 35%, transparent); }
+  .vsel__swatch-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--ta-color-text-base); }
+  .vsel__opt-disabled { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+
+  .vsel__qty-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 1.25rem; }
+  .vsel__qty-label { font-size: 0.85rem; color: color-mix(in oklab, var(--ta-color-text-base) 75%, transparent); }
+  .vsel__qty { width: 4.5rem; border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 22%, transparent); border-radius: 6px; padding: 0.45rem 0.6rem; background: var(--ta-color-bg-base); color: var(--ta-color-text-base); }
+  .vsel__add { margin-top: 1.25rem; width: 100%; border: 0; border-radius: 6px; background: var(--ta-color-primary); color: var(--ta-color-bg-base); padding: 0.85rem 1.25rem; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: var(--ta-font-body); }
+  .vsel__add:hover { opacity: 0.92; }
+  .vsel__buynow { margin-top: 0.6rem; width: 100%; border: 1px solid var(--ta-color-accent); border-radius: 6px; background: transparent; color: var(--ta-color-accent); padding: 0.7rem 1.25rem; font-weight: 600; cursor: pointer; }
+  .vsel__buynow:hover { background: color-mix(in oklab, var(--ta-color-accent) 10%, transparent); }
+  .vsel__add:disabled, .vsel__buynow:disabled { opacity: 0.4; cursor: not-allowed; }
+  .vsel__feedback { margin-top: 0.6rem; font-size: 0.85rem; color: var(--ta-color-primary); }
+
+  /* acentos por plantilla */
+  .vsel--fb .vsel__add, .vsel--fb .vsel__buynow { border-radius: 0; text-transform: uppercase; letter-spacing: 0.06em; }
+  .vsel--fb .vsel__precio { text-transform: uppercase; }
+  .vsel--ma .vsel__add { border-radius: 999px; }
+  .vsel--ma .vsel__precio { font-style: italic; }
+  .vsel--em .vsel__add { font-weight: 400; text-transform: uppercase; letter-spacing: 0.1em; }
+</style>
+
+<script is:inline>
+  (function () {
+    'use strict';
+    var root = document.querySelector('[data-vsel]');
+    if (!root) return;
+    var dataEl = root.querySelector('[data-pdp-data]');
+    var D;
+    try { D = JSON.parse(dataEl.textContent || '{}'); } catch (_) { return; }
+
+    var nojs = root.querySelector('[data-pdp-nojs]');
+    var inter = root.querySelector('[data-pdp-interactive]');
+    if (!inter) return;
+    // Progressive enhancement: revelar interactivo, ocultar fallback no-JS.
+    nojs && (nojs.hidden = true);
+    inter.hidden = false;
+
+    var CART_KEY = 'aimma_cart_' + location.hostname;
+    var fmt = function (n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n); };
+
+    var sel = { color: null, talla: null };
+    var hasColor = D.axes.indexOf('color') >= 0;
+    var hasTalla = D.axes.indexOf('talla') >= 0;
+
+    var precioEl = root.querySelector('[data-pdp-precio]');
+    var precioAntEl = root.querySelector('[data-pdp-precio-anterior]');
+    var stockEl = root.querySelector('[data-pdp-stock]');
+    var qtyEl = root.querySelector('[data-pdp-qty]');
+    var addBtn = root.querySelector('[data-pdp-add]');
+    var buyBtn = root.querySelector('[data-pdp-buynow]');
+    var fbEl = root.querySelector('[data-pdp-feedback]');
+    var mainImg = document.querySelector('[data-pdp-main-img]'); // hook en la galeria del ProductDetailX
+
+    function matchVariant() {
+      // resuelve la fila si todos los ejes presentes estan elegidos
+      if (hasColor && !sel.color) return null;
+      if (hasTalla && !sel.talla) return null;
+      return D.variantes.find(function (v) {
+        return (!hasColor || v.color === sel.color) && (!hasTalla || v.talla === sel.talla);
+      }) || null;
+    }
+
+    // ¿hay variante CON stock para este valor de eje, dado lo elegido en el OTRO eje?
+    function optionHasStock(field, value) {
+      return D.variantes.some(function (v) {
+        if (v[field] !== value) return false;
+        if (field === 'color' && hasTalla && sel.talla && v.talla !== sel.talla) return false;
+        if (field === 'talla' && hasColor && sel.color && v.color !== sel.color) return false;
+        return v.disponible > 0;
+      });
+    }
+
+    function refresh() {
+      // estados de opciones (activo + disabled por stock)
+      root.querySelectorAll('[data-pdp-opt]').forEach(function (btn) {
+        var f = btn.getAttribute('data-axis');
+        var val = btn.getAttribute('data-value');
+        btn.setAttribute('aria-pressed', String(sel[f] === val));
+        var stock = optionHasStock(f, val);
+        btn.classList.toggle('vsel__opt-disabled', !stock);
+        btn.disabled = !stock;
+      });
+      // labels de eje
+      root.querySelectorAll('[data-pdp-axis-sel]').forEach(function (s) {
+        var f = s.getAttribute('data-pdp-axis-sel');
+        s.textContent = sel[f] || '';
+      });
+
+      var v = matchVariant();
+      var noAxes = D.axes.length === 0; // producto simple sin variantes
+      var resolved = noAxes ? { id: null, precio: D.precioBase, disponible: Infinity, color: null, talla: null, sku: D.sku_base } : v;
+
+      if (resolved && (noAxes || resolved.disponible > 0)) {
+        if (precioEl) precioEl.textContent = fmt(resolved.precio);
+        if (precioAntEl) precioAntEl.hidden = true; // override de variante: sin "anterior"
+        if (stockEl) stockEl.textContent = noAxes ? '' : (resolved.disponible + ' disponibles');
+        // imagen por color
+        if (mainImg && resolved.foto) mainImg.setAttribute('src', resolved.foto);
+        // cantidad clamp
+        if (qtyEl && !noAxes) { qtyEl.max = String(resolved.disponible); if (+qtyEl.value > resolved.disponible) qtyEl.value = String(resolved.disponible); }
+        if (+qtyEl.value < 1 || isNaN(+qtyEl.value)) qtyEl.value = '1';
+        if (addBtn) addBtn.disabled = false;
+        if (buyBtn) buyBtn.disabled = !D.wppDigits;
+      } else {
+        // sin combinacion valida / sin stock -> CTAs deshabilitados
+        if (stockEl) stockEl.textContent = v && v.disponible === 0 ? 'Agotado en esta combinacion' : '';
+        if (addBtn) addBtn.disabled = true;
+        if (buyBtn) buyBtn.disabled = true;
+      }
+    }
+
+    function currentItem() {
+      var noAxes = D.axes.length === 0;
+      var v = noAxes ? null : matchVariant();
+      if (!noAxes && (!v || v.disponible <= 0)) return null;
+      var cant = Math.max(1, parseInt(qtyEl.value, 10) || 1);
+      var precio = noAxes ? D.precioBase : v.precio;
+      var color = noAxes ? null : (v.color || null);
+      var talla = noAxes ? null : (v.talla || null);
+      var varianteStr = [color, talla].filter(Boolean).join(' / ');
+      // SUPERSET: satisface a checkout.astro (producto_id/variante_id/color/talla) Y carrito.astro (variante).
+      return {
+        producto_id: D.producto_id,
+        variante_id: noAxes ? null : v.id,
+        sku: noAxes ? D.sku_base : (v.sku || null),
+        nombre: D.nombre,
+        color: color, talla: talla,
+        variante: varianteStr,
+        cantidad: cant,
+        precio: precio,
+      };
+    }
+
+    function readCart() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch (_) { return []; } }
+
+    function addToCart() {
+      var it = currentItem();
+      if (!it) return;
+      var cart = readCart();
+      // merge por (producto_id, variante_id)
+      var existing = cart.find(function (c) { return c.producto_id === it.producto_id && (c.variante_id || null) === (it.variante_id || null); });
+      if (existing) existing.cantidad = (existing.cantidad || 0) + it.cantidad;
+      else cart.push(it);
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      if (fbEl) { fbEl.hidden = false; fbEl.textContent = 'Agregado al carrito. ' ; var a = document.createElement('a'); a.href = '/carrito'; a.textContent = 'Ver carrito'; a.className = 'underline'; fbEl.appendChild(a); }
+    }
+
+    function buyNow() {
+      var it = currentItem();
+      if (!it || !D.wppDigits) return;
+      var varStr = it.variante ? ' (' + it.variante + ')' : '';
+      var msg = 'Hola! Me interesa: ' + it.cantidad + 'x ' + D.nombre + varStr + ' (' + fmt(it.precio * it.cantidad) + '). ' + D.productUrl;
+      window.open('https://wa.me/' + D.wppDigits + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+    }
+
+    root.querySelectorAll('[data-pdp-opt]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        var f = btn.getAttribute('data-axis');
+        var val = btn.getAttribute('data-value');
+        sel[f] = (sel[f] === val) ? null : val; // toggle
+        refresh();
+      });
+    });
+    if (qtyEl) qtyEl.addEventListener('input', refresh);
+    if (addBtn) addBtn.addEventListener('click', addToCart);
+    if (buyBtn) buyBtn.addEventListener('click', buyNow);
+
+    refresh();
+  })();
+</script>

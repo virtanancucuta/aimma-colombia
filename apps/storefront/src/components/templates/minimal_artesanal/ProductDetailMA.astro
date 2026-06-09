@@ -1,0 +1,113 @@
+---
+// Minimal Artesanal · ProductDetail (PDP) · Fase F (F1).
+// Editorial suave: serif italic Fraunces, mucho aire, border-radius grande/pill,
+// colores muy suaves, tipografia light, jerarquia via espacio.
+import ProductGallery from '~/components/ProductGallery.astro';
+import VariantSelector from '~/components/VariantSelector.astro';
+import ProductGrid from '~/components/ProductGrid.astro';
+interface Props { pdp: any }
+const { pdp } = Astro.props;
+const p = pdp.producto;
+---
+
+<article class="ma-pdp">
+  <div class="ma-pdp__top">
+    <section class="ma-pdp__gallery" aria-label="Imagenes del producto">
+      <ProductGallery pdp={pdp} template="minimal_artesanal" />
+    </section>
+    <section class="ma-pdp__info">
+      <nav class="ma-pdp__crumb" aria-label="Breadcrumb">
+        <a href="/">Inicio</a><span aria-hidden="true"> / </span><span>{p.nombre}</span>
+      </nav>
+      <h1 class="ma-pdp__title">{p.nombre}</h1>
+      {p.referencia && <p class="ma-pdp__sku">Ref: {p.referencia}</p>}
+      <VariantSelector pdp={pdp} template="minimal_artesanal" />
+    </section>
+  </div>
+
+  {p.descripcion && (
+    <section class="ma-pdp__desc">
+      <h2 class="ma-pdp__h2">Descripcion</h2>
+      <p class="ma-pdp__desc-body">{p.descripcion}</p>
+    </section>
+  )}
+
+  {pdp.relacionados.length > 0 && (
+    <section class="ma-pdp__rel">
+      <h2 class="ma-pdp__h2">Tambien te puede interesar</h2>
+      <ProductGrid productos={pdp.relacionados} />
+    </section>
+  )}
+</article>
+
+<style>
+  .ma-pdp__top { display: grid; gap: 2.5rem; }
+  @media (min-width: 1024px) { .ma-pdp__top { grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; } }
+
+  /* Breadcrumb: tiny uppercase tracking — mismo estilo nav del header */
+  .ma-pdp__crumb {
+    font-family: var(--ta-font-body);
+    font-size: 0.68rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: color-mix(in oklab, var(--ta-color-text-base) 45%, transparent);
+    margin-bottom: 1.5rem;
+  }
+  .ma-pdp__crumb a:hover { color: var(--ta-color-text-base); }
+
+  /* Título: Fraunces serif italic, light, mucho aire */
+  .ma-pdp__title {
+    font-family: var(--ta-font-display);
+    font-size: clamp(1.75rem, 3.5vw + 0.5rem, 2.75rem);
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    color: var(--ta-color-text-base);
+    font-variation-settings: 'opsz' 48;
+    margin-bottom: 1rem;
+  }
+
+  /* SKU: mono tabular, muy suave */
+  .ma-pdp__sku {
+    margin-top: 0.5rem;
+    margin-bottom: 1.75rem;
+    font-size: 0.72rem;
+    font-family: var(--ta-font-body);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--ta-color-text-base) 40%, transparent);
+  }
+
+  /* Descripción: separador via mucho espacio, no borde */
+  .ma-pdp__desc {
+    margin-top: 4rem;
+    max-width: 60ch;
+  }
+  .ma-pdp__h2 {
+    font-family: var(--ta-font-body);
+    font-size: 0.68rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: color-mix(in oklab, var(--ta-color-text-base) 45%, transparent);
+    margin-bottom: 1.25rem;
+  }
+  .ma-pdp__desc-body {
+    white-space: pre-line;
+    font-family: var(--ta-font-display);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1rem;
+    line-height: 1.75;
+    color: color-mix(in oklab, var(--ta-color-text-base) 75%, transparent);
+    font-variation-settings: 'opsz' 36;
+    letter-spacing: -0.01em;
+  }
+
+  /* Relacionados */
+  .ma-pdp__rel { margin-top: 5rem; }
+  .ma-pdp__rel .ma-pdp__h2 { margin-bottom: 2rem; }
+</style>
