@@ -304,6 +304,7 @@ const ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
             cantidad: it.cantidad,
           })),
           metodo_envio: formData.get('metodo_envio') || 'a_coordinar',
+          idempotency_key: idemKey || undefined,
         };
 
         const res = await fetch(EF_URL, {
@@ -335,11 +336,22 @@ const ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         return body;
       }
 
+      var idemKey = null;
+      function genUuid() {
+        try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (_) {}
+        return 'idem-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+      }
+
       function init() {
-        const items = renderResumen();
+        renderResumen();
+        idemKey = genUuid(); // un key por vista de la pagina (se comparte si hubiera doble submit)
 
         const form = document.getElementById('ck-form');
         if (!form) return;
+        // GUARD anti doble-pedido: adjuntar el submit UNA sola vez por <form>. init() corre directo
+        // Y en cada astro:page-load (ClientRouter) -> sin guard se apilaban listeners = submit doble.
+        if (form.dataset.ckBound) return;
+        form.dataset.ckBound = '1';
 
         form.addEventListener('submit', async (e) => {
           e.preventDefault();

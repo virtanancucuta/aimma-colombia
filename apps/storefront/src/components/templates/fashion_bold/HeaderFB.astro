@@ -23,6 +23,7 @@ interface Props {
 }
 
 import SearchBar from '~/components/SearchBar.astro';
+import CartBadge from '~/components/CartBadge.astro';
 const { tienda, categorias, mostrarBuscador } = Astro.props;
 ---
 
@@ -72,7 +73,9 @@ const { tienda, categorias, mostrarBuscador } = Astro.props;
         href="/carrito"
         class="relative flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)] hover:opacity-80"
         aria-label="Carrito"
+        data-cart-icon
       >
+        <CartBadge />
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
           <line x1="3" y1="6" x2="21" y2="6" />

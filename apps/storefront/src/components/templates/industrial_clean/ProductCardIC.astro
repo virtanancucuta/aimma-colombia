@@ -1,7 +1,7 @@
 ---
 // Industrial Clean · ProductCard · 2026-05-31
 // Technical card. SKU top-left + stock indicator dot top-right. Image bg-base/5.
-// Info: nombre semibold + precio mono tabular + "Ver ficha tecnica →" link.
+// Info: nombre semibold + precio mono tabular + "Ver producto →" link.
 // bg-white p-5 border. Hover: bg-base/5 (color shift only).
 
 import OptimizedImage from '~/components/OptimizedImage.astro';
@@ -101,7 +101,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
 
     {/* CTA link */}
     <p class="mt-3 inline-flex items-center gap-1 font-body text-xs font-medium text-[var(--ta-color-primary)] group-hover:gap-2 transition-all duration-200">
-      Ver ficha tecnica
+      Ver producto
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <line x1="5" y1="12" x2="19" y2="12" />
         <polyline points="12 5 19 12 12 19" />

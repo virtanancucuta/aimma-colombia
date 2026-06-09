@@ -1,21 +1,17 @@
 ---
-// AIMMA Storefront · /p/[slug] · 2026-05-31
-// Pagina de detalle de producto (PDP). Galeria + descripcion + variantes
-// + boton WhatsApp checkout con prefill del producto.
-//
-// SEO: JSON-LD Schema.org Product con offers (precio + stock).
+// AIMMA Storefront · /p/[slug] · Fase F (F1) · PDP real ×4 · 2026-06-09
+// Data layer + dispatcher. Resuelve producto (con producto_variantes) + relacionados (misma categoria,
+// tenant-scoped, excluye el actual) + serializa variantes para el selector cliente -> <ProductDetail>.
+// La UI ×4 + selector + add-to-cart viven en los componentes; aca solo datos. /p es ruta VIVA.
 
 import Layout from '~/layouts/Layout.astro';
-import OptimizedImage from '~/components/OptimizedImage.astro';
-import { getProductoPorSlug } from '~/lib/catalogo';
+import ProductDetail from '~/components/ProductDetail.astro';
+import { getProductoPorSlug, getProductosPorTienda } from '~/lib/catalogo';
 
-const { tienda } = Astro.locals;
-const { supabase } = Astro.locals;
+const { tienda, supabase } = Astro.locals;
 const { slug } = Astro.params;
 
-if (!slug) {
-  return Astro.redirect('/', 302);
-}
+if (!slug) return Astro.redirect('/', 302);
 
 const producto: any = await getProductoPorSlug(supabase, tienda.id, slug);
 
@@ -26,57 +22,75 @@ if (!producto) {
   );
 }
 
-const precioActual = Number(producto.precio_promo ?? producto.precio_venta ?? 0);
+// ── Precio base + galeria ──
+const precioBase = Number(producto.precio_promo ?? producto.precio_venta ?? 0);
 const precioAnterior = producto.precio_promo && producto.precio_promo < (producto.precio_venta || 0)
-  ? Number(producto.precio_venta)
-  : null;
+  ? Number(producto.precio_venta) : null;
 
-const variantes = Array.isArray(producto.producto_variantes) ? producto.producto_variantes : [];
-const stockTotal = variantes.reduce(
-  (acc: number, v: any) => acc + Math.max(0, (v.stock || 0) - (v.reservado || 0)),
-  0
-);
-const sinStock = stockTotal === 0 && variantes.length > 0;
-
-// Galeria: foto_principal + fotos_galeria (jsonb)
 const galeria: string[] = [
   producto.foto_principal_url,
   ...((Array.isArray(producto.fotos_galeria) ? producto.fotos_galeria : []) as string[]),
 ].filter(Boolean);
 
-const precioCOP = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+// ── Variantes (modelo: ejes variante_tipo_1/2; filas color/talla/stock/reservado/foto_color_url/precio_override) ──
+const variantesRaw = Array.isArray(producto.producto_variantes) ? producto.producto_variantes : [];
+// disponible = stock - reservado (LECTURA, no toca la reserva — esa vive en el checkout/EF).
+const variantes = variantesRaw.map((v: any) => ({
+  id: v.id,
+  color: v.color ?? null,
+  talla: v.talla ?? null,
+  sku: v.sku ?? null,
+  disponible: Math.max(0, (v.stock || 0) - (v.reservado || 0)),
+  foto_color_url: v.foto_color_url ?? null,
+  precio: Number(v.precio_override ?? producto.precio_promo ?? producto.precio_venta ?? 0),
+}));
+const stockTotal = variantes.reduce((acc: number, v: any) => acc + v.disponible, 0);
+const tieneVariantes = variantes.length > 0;
+const sinStock = tieneVariantes && stockTotal === 0;
 
-// WhatsApp checkout link con prefill del producto + URL.
+// ── Relacionados: misma categoria, tenant-scoped, excluye el actual ──
+let relacionados: Awaited<ReturnType<typeof getProductosPorTienda>> = [];
+if (producto.categoria_id) {
+  try {
+    const r = await getProductosPorTienda(supabase, tienda.id, { categoriaId: producto.categoria_id, limit: 9 });
+    relacionados = r.filter((p) => p.id !== producto.id).slice(0, 8);
+  } catch (err) {
+    console.error('[pdp] relacionados', err);
+    relacionados = [];
+  }
+}
+
+const precioCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+// WhatsApp (atajo "comprar ya" del producto base; el selector arma el de la variante elegida en cliente)
 const wppDigits = (tienda.whatsapp_dueno || '').replace(/\D/g, '');
-const mensajeWpp = `Hola! Me interesa: ${producto.nombre} (${precioCOP.format(precioActual)}). ${Astro.url.toString()}`;
-const wppLink = wppDigits
-  ? `https://wa.me/${wppDigits}?text=${encodeURIComponent(mensajeWpp)}`
-  : null;
 
-// JSON-LD Schema.org Product
+// JSON-LD Product (igual que antes)
 const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Product',
-  name: producto.nombre,
+  '@context': 'https://schema.org', '@type': 'Product', name: producto.nombre,
   ...(producto.descripcion && { description: producto.descripcion }),
   ...(galeria.length > 0 && { image: galeria }),
   ...(producto.referencia && { sku: producto.referencia }),
   brand: { '@type': 'Brand', name: tienda.nombre_negocio },
   offers: {
-    '@type': 'Offer',
-    price: precioActual,
-    priceCurrency: 'COP',
-    availability: sinStock
-      ? 'https://schema.org/OutOfStock'
-      : 'https://schema.org/InStock',
+    '@type': 'Offer', price: precioBase, priceCurrency: 'COP',
+    availability: sinStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
     url: Astro.url.toString(),
-    ...(precioAnterior && { priceValidUntil: undefined }),
   },
+};
+
+// Props para el dispatcher / componentes ×4
+const pdp = {
+  producto, galeria, variantes, tieneVariantes, stockTotal, sinStock,
+  precioBase, precioAnterior,
+  precioBaseFmt: precioCOP.format(precioBase),
+  precioAnteriorFmt: precioAnterior != null ? precioCOP.format(precioAnterior) : null,
+  variante_tipo_1: producto.variante_tipo_1 ?? null,
+  variante_tipo_2: producto.variante_tipo_2 ?? null,
+  relacionados,
+  wppDigits,
+  tiendaNombre: tienda.nombre_negocio,
+  productUrl: Astro.url.toString(),
 };
 ---
 
@@ -86,121 +100,5 @@ const jsonLd = {
   ogImage={producto.foto_principal_url || undefined}
   jsonLd={jsonLd}
 >
-  <article class="grid gap-8 lg:grid-cols-2">
-    {/* Galeria */}
-    <section aria-label="Imagenes del producto">
-      {galeria.length > 0 ? (
-        <div class="space-y-3">
-          <div class="overflow-hidden rounded-lg border bg-black/5">
-            <OptimizedImage
-              src={galeria[0]}
-              alt={producto.nombre}
-              width={800}
-              height={800}
-              loading="eager"
-              class="w-full object-cover"
-              transitionName={`producto-${producto.id}`}
-            />
-          </div>
-          {galeria.length > 1 && (
-            <div class="grid grid-cols-4 gap-2">
-              {galeria.slice(1, 5).map((src: string, i: number) => (
-                <div class="overflow-hidden rounded border bg-black/5">
-                  <OptimizedImage
-                    src={src}
-                    alt={`${producto.nombre} — imagen ${i + 2}`}
-                    width={200}
-                    height={200}
-                    loading="lazy"
-                    class="aspect-square w-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div class="flex aspect-square items-center justify-center rounded-lg border bg-black/5 text-6xl text-black/20">
-          🛍️
-        </div>
-      )}
-    </section>
-
-    {/* Info */}
-    <section>
-      <nav class="mb-3 text-sm text-[var(--ta-color-text-base)]/60" aria-label="Breadcrumb">
-        <a href="/" class="hover:underline">Inicio</a>
-        <span aria-hidden="true"> / </span>
-        <span>{producto.nombre}</span>
-      </nav>
-
-      <h1 class="text-3xl font-bold text-[var(--ta-color-text-base)]">
-        {producto.nombre}
-      </h1>
-
-      <div class="mt-4 flex items-baseline gap-3">
-        <span class="text-3xl font-semibold text-[var(--ta-color-text-base)]">
-          {precioCOP.format(precioActual)}
-        </span>
-        {precioAnterior && (
-          <span class="text-lg text-[var(--ta-color-text-base)]/50 line-through">
-            {precioCOP.format(precioAnterior)}
-          </span>
-        )}
-      </div>
-
-      {sinStock ? (
-        <p class="mt-4 rounded-md bg-black/5 px-4 py-3 text-sm font-medium text-black/70">
-          Agotado por ahora. Contactanos por WhatsApp para reservas.
-        </p>
-      ) : (
-        <p class="mt-4 text-sm text-[var(--ta-color-text-base)]/70">
-          {stockTotal > 0 && variantes.length > 0
-            ? `${stockTotal} disponibles en total`
-            : 'Disponible'}
-        </p>
-      )}
-
-      {wppLink && (
-        <a
-          href={wppLink}
-          target="_blank"
-          rel="noopener"
-          class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--ta-color-accent)] px-6 py-3 text-base font-semibold text-[var(--ta-color-on-accent)] hover:opacity-90 sm:w-auto"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347Z" />
-          </svg>
-          Comprar por WhatsApp
-        </a>
-      )}
-
-      {producto.descripcion && (
-        <section class="mt-8 prose prose-sm max-w-none text-[var(--ta-color-text-base)]/85">
-          <h2 class="text-lg font-semibold">Descripcion</h2>
-          <p class="whitespace-pre-line">{producto.descripcion}</p>
-        </section>
-      )}
-
-      {variantes.length > 0 && (
-        <section class="mt-8">
-          <h2 class="text-lg font-semibold text-[var(--ta-color-text-base)]">Variantes disponibles</h2>
-          <ul class="mt-3 space-y-1 text-sm text-[var(--ta-color-text-base)]/80">
-            {variantes.map((v: any) => {
-              const partes = [];
-              if (v.color) partes.push(v.color);
-              if (v.talla) partes.push(v.talla);
-              const stockReal = Math.max(0, (v.stock || 0) - (v.reservado || 0));
-              return (
-                <li class="flex items-center gap-2">
-                  <span>{partes.join(' / ') || 'Default'}</span>
-                  <span class="text-xs text-[var(--ta-color-text-base)]/50">— {stockReal} disponibles</span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-    </section>
-  </article>
+  <ProductDetail pdp={pdp} />
 </Layout>
