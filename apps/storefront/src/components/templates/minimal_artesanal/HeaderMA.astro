@@ -18,9 +18,11 @@ interface Categoria {
 interface Props {
   tienda: Tienda;
   categorias: Categoria[];
+  mostrarBuscador?: boolean;
 }
 
-const { tienda, categorias } = Astro.props;
+import SearchBar from '~/components/SearchBar.astro';
+const { tienda, categorias, mostrarBuscador } = Astro.props;
 
 // Para split nav, dividir categorias: primeras 3 izquierda
 const catsLeft = categorias.slice(0, 3);
@@ -65,8 +67,9 @@ const catsLeft = categorias.slice(0, 3);
       )}
     </a>
 
-    {/* Nav derecha — Tienda + Atelier + Bolsa */}
+    {/* Nav derecha — Buscar + Contacto + Bolsa */}
     <ul class="hidden lg:flex items-center gap-10">
+      {mostrarBuscador && <li class="flex items-center"><SearchBar template="minimal_artesanal" /></li>}
       <li>
         <a
           href="/legales/contacto"

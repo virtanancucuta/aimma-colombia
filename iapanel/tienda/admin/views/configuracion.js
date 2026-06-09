@@ -183,6 +183,14 @@
               '<option value="mostrar_con_consultar"' + (t.mostrar_agotados === 'mostrar_con_consultar' ? ' selected' : '') + '>Mostrar con boton "Consultar"</option>' +
             '</select>' +
           '</div>' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="cfg-buscador-header">Buscador en el encabezado</label>' +
+            '<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">' +
+              '<input type="checkbox" id="cfg-buscador-header"' + (t.mostrar_buscador_header === false ? '' : ' checked') + ' />' +
+              '<span>Mostrar el buscador (lupa) en el encabezado de la tienda</span>' +
+            '</label>' +
+            '<span class="ta-field__hint">Si lo apagas, el encabezado no muestra el buscador (la pagina /buscar sigue disponible).</span>' +
+          '</div>' +
         '</div>' +
       '</section>';
   }
@@ -463,6 +471,7 @@
     const whatsapp = view.querySelector('#cfg-whatsapp').value.trim();
     const idioma = view.querySelector('#cfg-idioma').value;
     const mostrarAgotados = view.querySelector('#cfg-agotados').value;
+    const mostrarBuscadorHeader = view.querySelector('#cfg-buscador-header').checked;
     const plantillaId = view.querySelector('#cfg-plantilla').value;
     // v5: paletaId se lee del estado interno (no del DOM — el select fue retirado).
     const paletaId = cstate.paletaIdSel || tienda.paleta_id || null;
@@ -528,6 +537,7 @@
       whatsapp_dueno: whatsapp,
       idioma,
       mostrar_agotados: mostrarAgotados,
+      mostrar_buscador_header: mostrarBuscadorHeader,
       plantilla_id: plantillaId || null,
       paleta_id: paletaId || null,
       nombre_legal: nombreLegal || null,

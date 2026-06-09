@@ -19,9 +19,11 @@ interface Categoria {
 interface Props {
   tienda: Tienda;
   categorias: Categoria[];
+  mostrarBuscador?: boolean;
 }
 
-const { tienda, categorias } = Astro.props;
+import SearchBar from '~/components/SearchBar.astro';
+const { tienda, categorias, mostrarBuscador } = Astro.props;
 ---
 
 <header
@@ -63,8 +65,9 @@ const { tienda, categorias } = Astro.props;
       </nav>
     )}
 
-    {/* Iconos derecha: Search (placeholder), Cart con badge */}
+    {/* Iconos derecha: Search + Cart */}
     <div class="flex items-center gap-4">
+      {mostrarBuscador && <SearchBar template="fashion_bold" />}
       <a
         href="/carrito"
         class="relative flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)] hover:opacity-80"

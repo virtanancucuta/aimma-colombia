@@ -18,9 +18,11 @@ interface Categoria {
 interface Props {
   tienda: Tienda;
   categorias: Categoria[];
+  mostrarBuscador?: boolean;
 }
 
-const { tienda, categorias } = Astro.props;
+import SearchBar from '~/components/SearchBar.astro';
+const { tienda, categorias, mostrarBuscador } = Astro.props;
 ---
 
 <header class="sticky top-0 z-40 border-b border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]/95 backdrop-blur-sm">
@@ -62,6 +64,7 @@ const { tienda, categorias } = Astro.props;
 
     {/* Iconos derecha */}
     <div class="flex items-center gap-2">
+      {mostrarBuscador && <SearchBar template="industrial_clean" />}
       <a
         href="/carrito"
         class="flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium text-[var(--ta-color-text-base)] transition-colors duration-200 hover:bg-[var(--ta-color-text-base)]/5"
