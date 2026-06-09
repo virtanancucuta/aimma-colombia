@@ -74,6 +74,39 @@ export async function getProductosPorTienda(
   return (data || []).map(normalizarProducto);
 }
 
+// Buscador de catalogo (Fase B, Paso A). Llama la RPC buscar_productos (full-text tenant-scoped,
+// SECURITY INVOKER -> RLS aplica publicada+activo; el param aplica el tenant). Mapea a ProductoListItem
+// para reusar ProductGrid/ProductCard. q vacio -> [] (la pagina muestra el prompt, no llama la RPC).
+export async function buscarProductos(
+  supabase: SB,
+  tiendaId: string,
+  q: string,
+  limit = 24
+): Promise<ProductoListItem[]> {
+  const term = (q || '').trim();
+  if (!term) return [];
+  // .rpc no tipado en los types generados (igual que validate_preview_token); el return es explicito.
+  const { data, error } = await supabase.rpc('buscar_productos', {
+    p_tienda_id: tiendaId,
+    p_q: term,
+    p_limit: limit,
+  });
+  if (error) {
+    console.error('[catalogo] buscarProductos error:', error.message);
+    return [];
+  }
+  return ((data as any[]) || []).map((r) => ({
+    id: r.id,
+    nombre: r.nombre,
+    precio: Number(r.precio_promo ?? r.precio_venta ?? 0),
+    precio_anterior: r.precio_promo && r.precio_promo < (r.precio_venta || 0) ? Number(r.precio_venta) : null,
+    foto_principal: r.foto_principal_url ?? null,
+    stock_disponible: r.stock_disponible != null ? Number(r.stock_disponible) : null,
+    slug: r.slug || r.id,
+    referencia: r.referencia ?? null,
+  }));
+}
+
 export async function getProductoPorSlug(
   supabase: SB,
   tiendaId: string,
