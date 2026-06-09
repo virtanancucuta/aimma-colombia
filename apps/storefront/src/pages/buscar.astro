@@ -1,0 +1,86 @@
+---
+// AIMMA Storefront · /buscar?q= · Fase B Paso A · 2026-06-08
+// Buscador de catalogo: resuelve la tienda (Astro.locals, como las demas paginas) -> lee q ->
+// llama la RPC buscar_productos (full-text tenant-scoped) -> renderiza con ProductGrid EXISTENTE.
+// 3 estados: sin-q (barra enfocada + prompt), 0-resultados, con-resultados (grilla + conteo).
+// SEGURIDAD: q se refleja SOLO via expresiones {q} (Astro auto-escapa attrs y texto). NUNCA set:html.
+// A la RPC va parametrizado (.rpc) + websearch_to_tsquery (saneado). noindex (pagina de busqueda).
+// DORMIDO en Paso A: el header NO linkea aca todavia (eso es Paso B con su toggle).
+
+import Layout from '~/layouts/Layout.astro';
+import ProductGrid from '~/components/ProductGrid.astro';
+import { buscarProductos } from '~/lib/catalogo';
+
+const { tienda, supabase } = Astro.locals;
+
+const qRaw = Astro.url.searchParams.get('q') ?? '';
+const q = qRaw.trim().slice(0, 100); // cap defensivo de largo
+const hasQuery = q.length > 0;
+
+let productos: Awaited<ReturnType<typeof buscarProductos>> = [];
+if (hasQuery) {
+  try {
+    productos = await buscarProductos(supabase, tienda.id, q, 24);
+  } catch (err) {
+    console.error('[buscar] error:', err);
+    productos = [];
+  }
+}
+const count = productos.length;
+---
+
+<Layout
+  title={hasQuery ? `Buscar: ${q}` : 'Buscar'}
+  description={`Busca productos en ${tienda.nombre_negocio}.`}
+  noindex={true}
+>
+  <section class="py-8 lg:py-12">
+    <header class="mb-8 lg:mb-10">
+      <nav class="mb-3 text-sm text-[var(--ta-color-text-base)]/60" aria-label="Breadcrumb">
+        <a href="/" class="hover:underline">Inicio</a>
+        <span aria-hidden="true"> / </span>
+        <span>Buscar</span>
+      </nav>
+
+      <form action="/buscar" method="get" role="search" class="flex gap-2 max-w-2xl">
+        <input
+          type="search"
+          name="q"
+          value={q}
+          placeholder="Buscar productos..."
+          aria-label="Buscar productos"
+          autofocus={!hasQuery}
+          maxlength="100"
+          class="flex-1 min-w-0 rounded-md border border-[var(--ta-color-text-base)]/20 bg-[var(--ta-color-bg-base)] px-4 py-2.5 text-[var(--ta-color-text-base)] outline-none focus:border-[var(--ta-color-primary)]"
+        />
+        <button
+          type="submit"
+          class="shrink-0 rounded-md bg-[var(--ta-color-primary)] px-5 py-2.5 font-medium text-[var(--ta-color-bg-base)] hover:opacity-90"
+        >
+          Buscar
+        </button>
+      </form>
+
+      {hasQuery && (
+        <p class="mt-3 text-sm text-[var(--ta-color-text-base)]/70 tabular-nums">
+          {count} {count === 1 ? 'resultado' : 'resultados'} para «{q}»
+        </p>
+      )}
+    </header>
+
+    {!hasQuery ? (
+      <p class="text-[var(--ta-color-text-base)]/70">
+        Escribí qué estás buscando y presioná Buscar.
+      </p>
+    ) : count === 0 ? (
+      <div class="py-6">
+        <p class="text-[var(--ta-color-text-base)]">Sin resultados para «{q}».</p>
+        <p class="mt-2 text-sm text-[var(--ta-color-text-base)]/70">
+          Probá con otra palabra o <a href="/" class="underline hover:no-underline">volvé al inicio</a>.
+        </p>
+      </div>
+    ) : (
+      <ProductGrid productos={productos} />
+    )}
+  </section>
+</Layout>
