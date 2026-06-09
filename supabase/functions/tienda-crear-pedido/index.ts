@@ -171,7 +171,7 @@ serve(async (req: Request) => {
   if (varianteIds.length > 0) {
     const { data: variantes, error: errVar } = await supabase
       .from('producto_variantes')
-      .select('id, producto_id, color, talla, stock, reservado, precio_venta_override')
+      .select('id, producto_id, color, talla, stock, reservado, precio_override')
       .in('id', varianteIds);
     if (errVar) {
       return jsonResponse({ error: 'variantes_query_failed', details: errVar.message }, 500);
@@ -206,7 +206,7 @@ serve(async (req: Request) => {
 
     // Precio: variante override > precio_promo > precio_venta
     const precioUnit = Number(
-      variante?.precio_venta_override ?? prod.precio_promo ?? prod.precio_venta,
+      variante?.precio_override ?? prod.precio_promo ?? prod.precio_venta,
     );
     if (!precioUnit || precioUnit <= 0) {
       return jsonResponse({ error: 'precio_invalido', producto_id: it.producto_id }, 400);
