@@ -160,3 +160,22 @@ export const COMBOS: Array<{ label: string; columnas: 'auto' | 2 | 3 | 4; mostra
   { label: 'col4-precio', columnas: 4, mostrar_precio: true, empty: false },
   { label: 'auto-sinprecio', columnas: 'auto', mostrar_precio: false, empty: false },
 ];
+
+// ---- F2: render por PROPS arbitrarias (shells de carrito/checkout no usan `section`) ----
+export async function renderComponentNormalized(
+  Component: AstroComponentFactory,
+  props: Record<string, any>,
+  tienda: any,
+  rows: any[] = []
+): Promise<string> {
+  const container = await AstroContainer.create();
+  const locals: any = { tienda, supabase: stubSupabase(rows) };
+  const html = await container.renderToString(Component, { props, locals, request: REQUEST });
+  return normalize(html);
+}
+
+// Upsell fixture (shape ProductoListItem que espera ProductGrid; cards linkean a /p/<slug>).
+export const UPSELL_FIXTURE = [
+  { id: 'u01', nombre: 'Producto Uno', slug: 'producto-uno', precio: 50000, precio_anterior: null, foto_principal: null, stock_disponible: 5, referencia: 'U01' },
+  { id: 'u02', nombre: 'Producto Dos', slug: 'producto-dos', precio: 75000, precio_anterior: 90000, foto_principal: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/u2.jpg', stock_disponible: 3, referencia: null },
+];
