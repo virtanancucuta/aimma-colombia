@@ -1,0 +1,16 @@
+---
+import CheckoutIC from '~/components/templates/industrial_clean/CheckoutIC.astro';
+import CheckoutFB from '~/components/templates/fashion_bold/CheckoutFB.astro';
+import CheckoutMA from '~/components/templates/minimal_artesanal/CheckoutMA.astro';
+import CheckoutEM from '~/components/templates/editorial_magazine/CheckoutEM.astro';
+interface Props { hasWhatsApp: boolean; efUrl: string; anonKey: string; tiendaSlug: string; tiendaNombre: string }
+const { hasWhatsApp, efUrl, anonKey, tiendaSlug, tiendaNombre } = Astro.props;
+const { tienda } = Astro.locals;
+const slug = tienda.plantilla?.slug;
+---
+{slug === 'fashion_bold' && <CheckoutFB hasWhatsApp={hasWhatsApp} efUrl={efUrl} anonKey={anonKey} tiendaSlug={tiendaSlug} tiendaNombre={tiendaNombre} />}
+{slug === 'minimal_artesanal' && <CheckoutMA hasWhatsApp={hasWhatsApp} efUrl={efUrl} anonKey={anonKey} tiendaSlug={tiendaSlug} tiendaNombre={tiendaNombre} />}
+{slug === 'editorial_magazine' && <CheckoutEM hasWhatsApp={hasWhatsApp} efUrl={efUrl} anonKey={anonKey} tiendaSlug={tiendaSlug} tiendaNombre={tiendaNombre} />}
+{(slug === 'industrial_clean' || !slug || !['fashion_bold','minimal_artesanal','editorial_magazine'].includes(slug)) && (
+  <CheckoutIC hasWhatsApp={hasWhatsApp} efUrl={efUrl} anonKey={anonKey} tiendaSlug={tiendaSlug} tiendaNombre={tiendaNombre} />
+)}
