@@ -21,13 +21,11 @@
   .cart-pulse { animation: cart-pulse 0.4s ease; }
 </style>
 
-<script is:inline>
+<script>
+  // F2: bundled — usa count/cartKey del modulo unico ~/lib/cart (fuente de verdad).
+  // Bundled = defer: el badge arranca hidden (default) y se pinta al cargar -> sin flash de numero erroneo.
+  import { count, cartKey } from '~/lib/cart';
   (function () {
-    var KEY = 'aimma_cart_' + location.hostname;
-    function count() {
-      try { return JSON.parse(localStorage.getItem(KEY) || '[]').reduce(function (a, it) { return a + (it.cantidad || 0); }, 0); }
-      catch (_) { return 0; }
-    }
     function paint(pulse) {
       var b = document.querySelector('[data-cart-badge]');
       if (!b) return;
@@ -42,10 +40,12 @@
     // Listeners UNA sola vez (document/window persisten a traves de view-transitions).
     if (!window.__aimmaCartBadge) {
       window.__aimmaCartBadge = true;
+      var KEY = cartKey();
       document.addEventListener('astro:page-load', function () { paint(false); });
       window.addEventListener('pageshow', function () { paint(false); });
       window.addEventListener('storage', function (e) { if (e.key === KEY) paint(false); });
       window.addEventListener('aimma:cart-add', function () { paint(true); });
+      window.addEventListener('aimma:cart-changed', function () { paint(false); });
     }
     paint(false);
   })();
