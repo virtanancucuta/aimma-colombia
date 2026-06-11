@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'aimma_financiero_v1';
 // Incrementar cuando cambie el parser. Si el storage tiene otra versión, se limpia
 // automáticamente para forzar re-parseo con la lógica nueva.
-const APP_VERSION = '2026-06-05.1-gastos-resumen-2col';
+const APP_VERSION = '2026-06-11.1-gastos-analisis-fix';
 
 const state = {
   ventas: [],       // [{archivo, codigo, descripcion, cantidad, precio, subtotal, iva, total, fecha, cliente}]
@@ -584,6 +584,15 @@ function esFilaTotalKubap(rawObj, parsed, category, rawRow) {
     if (!tieneDatosReales
         && ((provUpper && patronTotalizador.test(provUpper))
             || (concUpper && patronTotalizador.test(concUpper)))) return true;
+    // Filtro 6: meta-lineas de la seccion "ANALISIS DEL MES" de informes operacionales
+    // hechos a mano ("Gasto total del mes", "Gastos extraordinarios", "Base operativa
+    // recurrente", "Peso de lo extraordinario"). DUPLICAN el total. Red de seguridad por
+    // si el corte de seccion no aplica (archivo sin el encabezado de seccion). El
+    // cross-check tieneDatosReales protege gastos POS legitimos (con factura+monto reales).
+    const PATRON_META_ANALISIS = /^(GASTO\s+TOTAL|GASTOS?\s+EXTRAORDINARI|BASE\s+(OPERATIVA|RECURRENTE)|PESO\s+DE\s+LO\s+EXTRAORDINARIO)/;
+    if (!tieneDatosReales
+        && ((concUpper && PATRON_META_ANALISIS.test(concUpper))
+            || (provUpper && PATRON_META_ANALISIS.test(provUpper)))) return true;
   }
 
   return false;
@@ -659,6 +668,24 @@ function extraerResumenGastos2Col(rows2D, fecha) {
   return out;
 }
 
+// ¿Es la fila el encabezado de una SECCION DE CIERRE (analisis/resumen) que viene
+// despues de la tabla de datos? Informes operacionales hechos a mano cierran con una
+// fila TOTAL y luego una seccion tipo "ANALISIS DEL MES" cuyas meta-lineas
+// ("Gasto total del mes", "Base operativa recurrente"...) DUPLICAN el total. El
+// marcador es texto puro (sin ningun monto en la fila). Detectarlo permite cortar la
+// hoja y descartar todo lo posterior, sin importar como se llamen las meta-lineas.
+const PATRON_SECCION_CIERRE = /^\s*(AN[ÁA]LISIS|RESUMEN|OBSERVACIONES|NOTAS)\b/i;
+function esMarcadorSeccionCierre(row) {
+  if (!Array.isArray(row)) return false;
+  let textoCierre = false;
+  for (const c of row) {
+    // Cualquier monto real en la fila -> no es un marcador de seccion, es dato.
+    if (typeof c === 'number' && isFinite(c) && c !== 0) return false;
+    if (typeof c === 'string' && PATRON_SECCION_CIERRE.test(c.trim())) textoCierre = true;
+  }
+  return textoCierre;
+}
+
 async function parseExcel(file, category) {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: 'array', cellDates: true });
@@ -699,15 +726,22 @@ async function parseExcel(file, category) {
     const dataSlice = rows2D.slice(headerIdx + 1);
     const offsets = resolveColumnOffsets(headers, dataSlice);
 
+    let filasConMontoHoja = 0;
     for (let i = headerIdx + 1; i < rows2D.length; i++) {
       const row = rows2D[i] || [];
       if (row.every(c => c === null || c === undefined || String(c).trim() === '')) continue;
+      // CORTE DE SECCION (solo gastos): una vez vistos datos reales, si aparece el
+      // encabezado de una seccion de analisis/resumen de cierre ("ANALISIS DEL MES"),
+      // cortar la hoja. Todo lo posterior son meta-lineas que duplican el total.
+      // El guard (>=3 filas con monto) evita cortar en un titulo POS al inicio.
+      if (category === 'gastos' && filasConMontoHoja >= 3 && esMarcadorSeccionCierre(row)) break;
       const obj = {};
       headers.forEach((h, idx) => {
         if (!h) return;
         const sourceIdx = idx + (offsets[idx] || 0);
         obj[h] = row[sourceIdx];
       });
+      if (row.some(c => typeof c === 'number' && isFinite(c) && c !== 0)) filasConMontoHoja++;
       // Guardar tambien el rawRow completo para que esFilaTotalKubap
       // pueda detectar "TOTAL <PROVEEDOR>" en cells NO mapeadas (col fuera
       // de headers, ej col 1 de BUV que tiene los subtotales por proveedor).
