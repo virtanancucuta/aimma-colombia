@@ -1,0 +1,243 @@
+---
+// AIMMA Storefront · ResenasPDP.astro · Fase F4 · Seccion de reseñas del PDP (compartida x4).
+// Promedio + lista de aprobadas (SSR, escapado) + form de envio a la EF tienda-crear-resena.
+// Estilo via tokens --ta-* (varian por plantilla) + modificador .rpdp--{prefix} para acentos.
+// El comentario se renderiza SSR con auto-escape de Astro (XSS-safe sin sanitizer).
+// Script bundled con guard astro:page-load (sobrevive view-transitions) + rsBound anti doble-bind.
+interface Props { pdp: any }
+const { pdp } = Astro.props;
+const { tienda, tiendaSlug } = Astro.locals;
+const plantilla = (tienda as any).plantilla?.slug ?? 'industrial_clean';
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em' : 'ic';
+
+const resenas = (Array.isArray(pdp.resenas) ? pdp.resenas : []) as Array<any>;
+const count = resenas.length;
+const avg = count ? resenas.reduce((a, r) => a + (Number(r.calificacion) || 0), 0) / count : 0;
+const avgRounded = Math.round(avg);
+
+const STAR_PATH = 'M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9 6.75 19.6l1-5.85L3.5 9.65l5.9-.85z';
+const STARS = [1, 2, 3, 4, 5];
+
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function fmtFecha(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  // UTC para que el render sea determinista (golden estable + consistente con workerd).
+  return d.getUTCDate() + ' ' + MESES[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+}
+
+const cfg = {
+  efUrl: import.meta.env.PUBLIC_SUPABASE_URL + '/functions/v1/tienda-crear-resena',
+  anonKey: import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+  tiendaSlug,
+  productoId: pdp.producto?.id,
+};
+---
+
+<section class={`rpdp rpdp--${prefix}`} aria-label="Reseñas del producto">
+  <h2 class="rpdp__h2">Reseñas</h2>
+
+  {count > 0 ? (
+    <div class="rpdp__resumen">
+      <div class="rpdp__stars" aria-label={`${avgRounded} de 5`}>
+        {STARS.map((n) => (
+          <svg class={n <= avgRounded ? 'is-on' : 'is-off'} viewBox="0 0 24 24" aria-hidden="true"><path d={STAR_PATH} /></svg>
+        ))}
+      </div>
+      <span class="rpdp__avg">{avg.toFixed(1)}</span>
+      <span class="rpdp__count">({count} {count === 1 ? 'reseña' : 'reseñas'})</span>
+    </div>
+    <ul class="rpdp__list">
+      {resenas.map((r) => (
+        <li class="rpdp__item">
+          <div class="rpdp__item-head">
+            <span class="rpdp__nombre">{r.nombre_cliente}</span>
+            <div class="rpdp__stars rpdp__stars--sm" aria-label={`${r.calificacion} de 5`}>
+              {STARS.map((n) => (
+                <svg class={n <= r.calificacion ? 'is-on' : 'is-off'} viewBox="0 0 24 24" aria-hidden="true"><path d={STAR_PATH} /></svg>
+              ))}
+            </div>
+          </div>
+          {r.comentario && <p class="rpdp__texto">{r.comentario}</p>}
+          <time class="rpdp__fecha">{fmtFecha(r.created_at)}</time>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="rpdp__empty">Sé el primero en opinar sobre este producto.</p>
+  )}
+
+  <form class="rpdp__form" data-resena-form>
+    <h3 class="rpdp__form-h3">Escribir una reseña</h3>
+    <div class="rpdp__field">
+      <span class="rpdp__label">Tu calificación</span>
+      <div class="rpdp__rating">
+        {[5, 4, 3, 2, 1].map((n) => (
+          <Fragment>
+            <input type="radio" name="calificacion" id={`rcal-${n}`} value={n} required />
+            <label for={`rcal-${n}`} aria-label={`${n} de 5`}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={STAR_PATH} /></svg></label>
+          </Fragment>
+        ))}
+      </div>
+    </div>
+    <div class="rpdp__field">
+      <label class="rpdp__label" for="rnombre">Tu nombre</label>
+      <input type="text" id="rnombre" name="nombre_cliente" class="rpdp__input" required minlength="2" maxlength="80" autocomplete="name" />
+    </div>
+    <div class="rpdp__field">
+      <label class="rpdp__label" for="rcoment">Tu comentario <span class="rpdp__opt">(opcional)</span></label>
+      <textarea id="rcoment" name="comentario" class="rpdp__input rpdp__textarea" maxlength="1000" rows="3"></textarea>
+    </div>
+    <input type="text" name="honeypot" class="rpdp__hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    <p class="rpdp__msg" data-resena-msg hidden></p>
+    <button type="submit" class="rpdp__submit" data-resena-submit>Enviar reseña</button>
+  </form>
+</section>
+
+<script type="application/json" data-resena-cfg set:html={JSON.stringify(cfg)}></script>
+
+<script>
+  // F4: submit del form de reseña a la EF. Guard astro:page-load + rsBound (idempotente).
+  function initResenaForm() {
+    var cfgEl = document.querySelector('[data-resena-cfg]');
+    if (!cfgEl) return;
+    var cfg: any;
+    try { cfg = JSON.parse(cfgEl.textContent || '{}'); } catch (_) { return; }
+    var form = document.querySelector('[data-resena-form]') as HTMLFormElement | null;
+    if (!form || form.dataset.rsBound) return;
+    form.dataset.rsBound = '1';
+    var theForm: HTMLFormElement = form;
+    var msg = form.querySelector('[data-resena-msg]') as HTMLElement | null;
+    var btn = form.querySelector('[data-resena-submit]') as HTMLButtonElement | null;
+    function showMsg(text: string, ok: boolean) {
+      if (!msg) return;
+      msg.textContent = text;
+      msg.hidden = false;
+      msg.setAttribute('data-ok', ok ? '1' : '0');
+    }
+    theForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!theForm.checkValidity()) { theForm.reportValidity(); return; }
+      var fd = new FormData(theForm);
+      var comentario = fd.get('comentario') ? String(fd.get('comentario')).trim() : '';
+      var payload: any = {
+        tienda_slug: cfg.tiendaSlug,
+        producto_id: cfg.productoId,
+        calificacion: Number(fd.get('calificacion')),
+        nombre_cliente: String(fd.get('nombre_cliente') || '').trim(),
+        honeypot: String(fd.get('honeypot') || ''),
+      };
+      if (comentario) payload.comentario = comentario;
+      if (btn) btn.disabled = true;
+      try {
+        var res = await fetch(cfg.efUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': cfg.anonKey, 'Authorization': 'Bearer ' + cfg.anonKey },
+          body: JSON.stringify(payload),
+        });
+        var body: any = await res.json().catch(function () { return {}; });
+        if (res.ok && body.success) {
+          theForm.reset();
+          showMsg('¡Gracias! Tu reseña se publicará cuando la revisemos.', true);
+        } else {
+          showMsg(body.error === 'rate_limited'
+            ? 'Demasiados envíos. Intentá más tarde.'
+            : 'No pudimos enviar tu reseña. Revisá los datos e intentá de nuevo.', false);
+          if (btn) btn.disabled = false;
+        }
+      } catch (_) {
+        showMsg('Error de conexión. Intentá de nuevo.', false);
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+  document.addEventListener('astro:page-load', initResenaForm);
+  initResenaForm();
+</script>
+
+<style>
+  .rpdp { margin-top: 3.5rem; }
+  .rpdp__h2 {
+    font-family: var(--ta-font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ta-color-text-base);
+    margin-bottom: 1.25rem;
+  }
+  /* ---- resumen / promedio ---- */
+  .rpdp__resumen { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.5rem; }
+  .rpdp__avg { font-family: var(--ta-font-display); font-weight: 600; color: var(--ta-color-text-base); font-size: 1.05rem; }
+  .rpdp__count { font-family: var(--ta-font-body); font-size: 0.85rem; color: color-mix(in oklab, var(--ta-color-text-base) 60%, transparent); }
+  /* ---- estrellas (display) ---- */
+  .rpdp__stars { display: inline-flex; gap: 0.12rem; }
+  .rpdp__stars svg { width: 1.05rem; height: 1.05rem; }
+  .rpdp__stars--sm svg { width: 0.9rem; height: 0.9rem; }
+  .rpdp__stars svg.is-on { fill: var(--ta-color-accent); }
+  .rpdp__stars svg.is-off { fill: none; stroke: var(--ta-color-text-base); stroke-width: 1.3; opacity: 0.3; }
+  /* ---- lista ---- */
+  .rpdp__list { list-style: none; display: grid; gap: 1.5rem; max-width: 70ch; margin: 0 0 2.5rem; padding: 0; }
+  .rpdp__item { display: grid; gap: 0.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid color-mix(in oklab, var(--ta-color-text-base) 10%, transparent); }
+  .rpdp__item:last-child { border-bottom: none; padding-bottom: 0; }
+  .rpdp__item-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+  .rpdp__nombre { font-family: var(--ta-font-display); font-weight: 600; color: var(--ta-color-text-base); font-size: 0.95rem; }
+  .rpdp__texto { font-family: var(--ta-font-body); color: color-mix(in oklab, var(--ta-color-text-base) 85%, transparent); line-height: 1.6; white-space: pre-line; margin: 0; }
+  .rpdp__fecha { font-family: var(--ta-font-body); font-size: 0.75rem; color: color-mix(in oklab, var(--ta-color-text-base) 50%, transparent); }
+  .rpdp__empty { font-family: var(--ta-font-body); color: color-mix(in oklab, var(--ta-color-text-base) 65%, transparent); margin-bottom: 2.5rem; }
+  /* ---- form ---- */
+  .rpdp__form { max-width: 34rem; display: grid; gap: 1rem; padding-top: 1.75rem; border-top: 1px solid color-mix(in oklab, var(--ta-color-text-base) 12%, transparent); }
+  .rpdp__form-h3 { font-family: var(--ta-font-display); font-weight: 600; color: var(--ta-color-text-base); font-size: 1rem; margin: 0; }
+  .rpdp__field { display: grid; gap: 0.4rem; }
+  .rpdp__label { font-family: var(--ta-font-body); font-size: 0.85rem; font-weight: 600; color: var(--ta-color-text-base); }
+  .rpdp__opt { font-weight: 400; color: color-mix(in oklab, var(--ta-color-text-base) 55%, transparent); }
+  .rpdp__input {
+    font-family: var(--ta-font-body); font-size: 0.95rem; color: var(--ta-color-text-base);
+    background: var(--ta-color-bg-base, #fff);
+    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 22%, transparent);
+    border-radius: 4px; padding: 0.6rem 0.75rem; width: 100%;
+  }
+  .rpdp__input:focus-visible { outline: 2px solid var(--ta-color-accent); outline-offset: 1px; }
+  .rpdp__textarea { resize: vertical; line-height: 1.5; }
+  /* honeypot oculto */
+  .rpdp__hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  /* ---- rating input (CSS-only fill, radios en orden 5..1 + row-reverse) ---- */
+  .rpdp__rating { display: inline-flex; flex-direction: row-reverse; justify-content: flex-end; }
+  .rpdp__rating input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .rpdp__rating label { cursor: pointer; line-height: 0; padding: 0 0.1rem; }
+  .rpdp__rating svg { width: 1.7rem; height: 1.7rem; fill: none; stroke: var(--ta-color-text-base); stroke-width: 1.3; opacity: 0.35; transition: fill 0.1s, opacity 0.1s; }
+  .rpdp__rating input:checked ~ label svg,
+  .rpdp__rating label:hover svg,
+  .rpdp__rating label:hover ~ label svg { fill: var(--ta-color-accent); stroke: var(--ta-color-accent); opacity: 1; }
+  .rpdp__rating input:focus-visible ~ label svg { outline: 1px solid var(--ta-color-accent); }
+  /* ---- submit ---- */
+  .rpdp__submit {
+    justify-self: start; font-family: var(--ta-font-body); font-weight: 600; font-size: 0.9rem;
+    color: var(--ta-color-bg-base, #fff); background: var(--ta-color-text-base);
+    border: none; border-radius: 4px; padding: 0.65rem 1.4rem; cursor: pointer;
+  }
+  .rpdp__submit:disabled { opacity: 0.55; cursor: default; }
+  /* ---- mensaje resultado ---- */
+  .rpdp__msg { font-family: var(--ta-font-body); font-size: 0.88rem; margin: 0; }
+  .rpdp__msg[data-ok="1"] { color: color-mix(in oklab, green 70%, var(--ta-color-text-base)); }
+  .rpdp__msg[data-ok="0"] { color: color-mix(in oklab, crimson 75%, var(--ta-color-text-base)); }
+
+  /* ===== fashion_bold: uppercase, radius 0, bordes gruesos ===== */
+  .rpdp--fb .rpdp__h2 { text-transform: uppercase; letter-spacing: 0.12em; font-weight: 900; font-size: 0.85rem; }
+  .rpdp--fb .rpdp__form-h3 { text-transform: uppercase; letter-spacing: 0.1em; font-weight: 900; font-size: 0.8rem; }
+  .rpdp--fb .rpdp__input { border-radius: 0; border-width: 2px; }
+  .rpdp--fb .rpdp__submit { border-radius: 0; text-transform: uppercase; letter-spacing: 0.08em; }
+  .rpdp--fb .rpdp__form { border-top-width: 2px; }
+  /* ===== minimal_artesanal: serif italic, radius generoso ===== */
+  .rpdp--ma .rpdp__h2 { font-style: italic; font-weight: 300; font-variation-settings: 'opsz' 36; }
+  .rpdp--ma .rpdp__nombre { font-style: italic; font-weight: 500; }
+  .rpdp--ma .rpdp__texto { font-family: var(--ta-font-display); font-style: italic; font-weight: 300; }
+  .rpdp--ma .rpdp__input { border-radius: 12px; }
+  .rpdp--ma .rpdp__submit { border-radius: 999px; }
+  .rpdp--ma .rpdp__stars svg.is-off { stroke: var(--ta-color-accent); }
+  /* ===== editorial_magazine: Fraunces 300, hairline ===== */
+  .rpdp--em .rpdp__h2 { font-weight: 300; }
+  .rpdp--em .rpdp__texto { font-family: var(--ta-font-display); font-weight: 300; }
+  .rpdp--em .rpdp__nombre { color: var(--ta-color-accent); font-weight: 400; }
+  .rpdp--em .rpdp__stars svg.is-off { stroke: var(--ta-color-accent); }
+</style>

@@ -60,6 +60,27 @@ if (producto.categoria_id) {
   }
 }
 
+// ── F4: reseñas aprobadas del producto, gateadas por el toggle de la tienda ──
+// RLS publica solo deja ver estado='aprobada' de tiendas publicadas (anon key).
+const mostrarResenas = (tienda as any).mostrar_resenas_productos !== false;
+let resenas: any[] = [];
+if (mostrarResenas) {
+  try {
+    const { data: resData } = await supabase
+      .from('resenas')
+      .select('id, nombre_cliente, calificacion, comentario, created_at')
+      .eq('tienda_id', tienda.id)
+      .eq('producto_id', producto.id)
+      .eq('estado', 'aprobada')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    resenas = resData || [];
+  } catch (err) {
+    console.error('[pdp] resenas', err);
+    resenas = [];
+  }
+}
+
 const precioCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 // WhatsApp (atajo "comprar ya" del producto base; el selector arma el de la variante elegida en cliente)
@@ -88,6 +109,8 @@ const pdp = {
   variante_tipo_1: producto.variante_tipo_1 ?? null,
   variante_tipo_2: producto.variante_tipo_2 ?? null,
   relacionados,
+  resenas,
+  mostrarResenas,
   wppDigits,
   tiendaNombre: tienda.nombre_negocio,
   productUrl: Astro.url.toString(),

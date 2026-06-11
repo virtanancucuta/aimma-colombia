@@ -5,6 +5,7 @@
 import ProductGallery from '~/components/ProductGallery.astro';
 import VariantSelector from '~/components/VariantSelector.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
+import ResenasPDP from '~/components/ResenasPDP.astro';
 import { normalizeEditorial } from '~/lib/pdp-editorial';
 interface Props { pdp: any }
 const { pdp } = Astro.props;
@@ -72,7 +73,7 @@ const ed = normalizeEditorial(p);
       <h2 class="ma-pdp__h2">Tambien te puede interesar</h2>
       <ProductGrid productos={pdp.relacionados} />
     </section>
-  )}
+  )}{pdp.mostrarResenas && <ResenasPDP pdp={pdp} />}
 </article>
 
 <style>
