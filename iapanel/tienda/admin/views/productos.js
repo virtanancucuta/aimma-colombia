@@ -490,6 +490,15 @@
     const p = formState.producto;
     const esEdicion = !!p;
 
+    // F3: contenido editorial por-producto (guia de tallas + ficha). Todo opcional.
+    // En edicion se popula desde p.guia_tallas_url / p.ficha_editorial (jsonb).
+    const guiaUrl = (p && p.guia_tallas_url) || '';
+    const ficha = (p && p.ficha_editorial && typeof p.ficha_editorial === 'object') ? p.ficha_editorial : {};
+    const fichaMaterial = ficha.material || '';
+    const fichaAjuste = ficha.ajuste || '';
+    const fichaDiseno = Array.isArray(ficha.diseno) ? ficha.diseno.join('\n') : '';
+    const fichaBeneficios = Array.isArray(ficha.beneficios) ? ficha.beneficios.join('\n') : '';
+
     // v11 (Fase 3.5.b feedback Jorge): dos dropdowns en cascada Categoria + Subcategoria
     // en lugar de uno plano con padres+hijos mezclados.
     const catSeleccionada = p && p.categoria_id ? formState.categorias.find(c => c.id === p.categoria_id) : null;
@@ -560,6 +569,42 @@
           '<label class="ta-field__label" for="f-descripcion">Descripcion</label>' +
           '<textarea id="f-descripcion" name="descripcion" class="ta-textarea" maxlength="2000" rows="4">' + T.escapeHtml(p?.descripcion || '') + '</textarea>' +
           '<span class="ta-field__hint">Lo que verá el comprador en la página del producto.</span>' +
+        '</div>' +
+
+        // F3: contenido editorial (guia de tallas + ficha). Todo opcional, texto plano.
+        '<div style="margin-top:8px;padding-top:16px;border-top:1px solid var(--ta-border);">' +
+          '<h3 style="font-size:14px;margin:0 0 4px;color:var(--ta-text-soft);">Contenido editorial (opcional)</h3>' +
+          '<p style="margin:0;color:var(--ta-text-soft);font-size:12px;">Se muestra en la página del producto. Texto plano.</p>' +
+        '</div>' +
+
+        '<div class="ta-field">' +
+          '<label class="ta-field__label">Guía de tallas (imagen)</label>' +
+          '<div id="f-guia-wrap">' + guiaControlHTML(guiaUrl) + '</div>' +
+          '<input type="hidden" id="f-guia-url" name="guia_tallas_url" value="' + T.escapeHtml(guiaUrl) + '">' +
+          '<span class="ta-field__hint">Tabla de tallas. Se muestra colapsable en la página del producto. Reusable entre productos (no re-subís).</span>' +
+        '</div>' +
+
+        '<div class="ta-field">' +
+          '<label class="ta-field__label" for="f-ficha-material">Material</label>' +
+          '<textarea id="f-ficha-material" name="ficha_material" class="ta-textarea" maxlength="500" rows="2">' + T.escapeHtml(fichaMaterial) + '</textarea>' +
+        '</div>' +
+
+        '<div class="ta-field">' +
+          '<label class="ta-field__label" for="f-ficha-ajuste">Ajuste</label>' +
+          '<textarea id="f-ficha-ajuste" name="ficha_ajuste" class="ta-textarea" maxlength="500" rows="2">' + T.escapeHtml(fichaAjuste) + '</textarea>' +
+        '</div>' +
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="f-ficha-diseno">Diseño</label>' +
+            '<textarea id="f-ficha-diseno" name="ficha_diseno" class="ta-textarea" maxlength="1000" rows="4" placeholder="Una característica por línea">' + T.escapeHtml(fichaDiseno) + '</textarea>' +
+            '<span class="ta-field__hint">Una viñeta por línea.</span>' +
+          '</div>' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="f-ficha-beneficios">Beneficios</label>' +
+            '<textarea id="f-ficha-beneficios" name="ficha_beneficios" class="ta-textarea" maxlength="1000" rows="4" placeholder="Un beneficio por línea">' + T.escapeHtml(fichaBeneficios) + '</textarea>' +
+            '<span class="ta-field__hint">Una viñeta por línea.</span>' +
+          '</div>' +
         '</div>' +
 
         '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;">' +
@@ -641,6 +686,23 @@
     if (!url) return null;
     try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? url : null; }
     catch { return null; }
+  }
+
+  // F3: control de la guia de tallas. Reusa el image-picker del editor
+  // (editorModalImage: browse <tienda_id>/editor/ + subir). Render-only;
+  // el wiring (click delegado) vive en wireGuiaEvents.
+  function guiaControlHTML(url) {
+    const T = window.TiendaIA;
+    const safe = safeImgUrl(url);
+    if (safe) {
+      return '' +
+        '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
+          '<img src="' + T.escapeHtml(safe) + '" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--ta-border);">' +
+          '<button type="button" class="ta-btn ta-btn--xs" data-guia-accion="pick">Reemplazar</button>' +
+          '<button type="button" class="ta-btn ta-btn--xs ta-btn--danger" data-guia-accion="remove">Quitar</button>' +
+        '</div>';
+    }
+    return '<button type="button" class="ta-btn" data-guia-accion="pick">Elegir imagen</button>';
   }
 
   function renderFotosSeccion(producto) {
@@ -768,6 +830,37 @@
           await eliminarFoto(campo, colorRef);
         }
       });
+    });
+  }
+
+  // F3: wiring del control de guia de tallas. Delegado en #f-guia-wrap para
+  // sobrevivir al re-render (innerHTML) tras elegir/quitar imagen.
+  function wireGuiaEvents() {
+    const T = window.TiendaIA;
+    const view = T.dom.mainView;
+    const wrap = view.querySelector('#f-guia-wrap');
+    const hidden = view.querySelector('#f-guia-url');
+    if (!wrap || !hidden) return;
+    const tienda = T.state.tienda;
+    const rerender = () => { wrap.innerHTML = guiaControlHTML(hidden.value); };
+    wrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-guia-accion]');
+      if (!btn) return;
+      const accion = btn.getAttribute('data-guia-accion');
+      if (accion === 'pick') {
+        if (!(window.TiendaIA.editorModalImage && window.TiendaIA.editorModalImage.open)) {
+          T.toast('No se pudo abrir el selector de imagen', 'error'); return;
+        }
+        window.TiendaIA.editorModalImage.open({ tiendaId: tienda.id }, (url) => {
+          hidden.value = url || '';
+          formState.dirty = true;
+          rerender();
+        });
+      } else if (accion === 'remove') {
+        hidden.value = '';
+        formState.dirty = true;
+        rerender();
+      }
     });
   }
 
@@ -1337,6 +1430,8 @@
     if (formState.producto) wireFotosEvents();
     // v11 (Fase 3.5.b): cascada categoria padre -> subcategoria
     wireCategoriaCascada();
+    // F3: wire del picker de guia de tallas
+    wireGuiaEvents();
 
     // v6: listener reactivo al campo Referencia para regenerar SKUs en la matriz
     // mientras el user escribe la referencia del producto (solo en CREAR).
@@ -1765,6 +1860,19 @@
     selSub.addEventListener('change', () => { formState.dirty = true; });
   }
 
+  // F3: arma ficha_editorial desde el form. Listas (diseno/beneficios) = una
+  // vinieta por linea. Devuelve null si TODO esta vacio -> garantiza que un
+  // producto sin ficha quede con ficha_editorial NULL (PDP byte-identico).
+  function buildFichaEditorial(fd) {
+    const splitLines = (s) => String(s || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const material = String(fd.get('ficha_material') || '').trim();
+    const ajuste = String(fd.get('ficha_ajuste') || '').trim();
+    const diseno = splitLines(fd.get('ficha_diseno'));
+    const beneficios = splitLines(fd.get('ficha_beneficios'));
+    if (!material && !ajuste && !diseno.length && !beneficios.length) return null;
+    return { material, ajuste, diseno, beneficios };
+  }
+
   async function handleSubmit(form) {
     const T = window.TiendaIA;
     const sb = T.supabase();
@@ -1799,6 +1907,9 @@
       precio_mayorista: fd.get('precio_mayorista') ? Number(fd.get('precio_mayorista')) : null,
       cantidad_min_mayorista: fd.get('cantidad_min_mayorista') ? Number(fd.get('cantidad_min_mayorista')) : null,
       estado: String(fd.get('estado') || 'activo'),
+      // F3: contenido editorial. guia = URL (hidden input seteado por el picker).
+      guia_tallas_url: String(fd.get('guia_tallas_url') || '').trim() || null,
+      ficha_editorial: buildFichaEditorial(fd),
     };
 
     // Validacion cliente

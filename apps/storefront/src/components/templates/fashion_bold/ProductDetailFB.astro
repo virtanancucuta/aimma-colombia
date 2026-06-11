@@ -5,9 +5,12 @@
 import ProductGallery from '~/components/ProductGallery.astro';
 import VariantSelector from '~/components/VariantSelector.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
+import { normalizeEditorial } from '~/lib/pdp-editorial';
 interface Props { pdp: any }
 const { pdp } = Astro.props;
 const p = pdp.producto;
+// F3: contenido editorial por-producto (guia de tallas + ficha). Bloques solo si hay datos.
+const ed = normalizeEditorial(p);
 ---
 
 <article class="fb-pdp">
@@ -21,14 +24,46 @@ const p = pdp.producto;
       </nav>
       <h1 class="fb-pdp__title">{p.nombre}</h1>
       {p.referencia && <p class="fb-pdp__sku">Ref: {p.referencia}</p>}
-      <VariantSelector pdp={pdp} template="fashion_bold" />
+      <VariantSelector pdp={pdp} template="fashion_bold" />{ed.guiaUrl && (
+        <details class="fb-pdp__guia">
+          <summary class="fb-pdp__guia-sum"><span>Guía de tallas</span><span class="fb-pdp__guia-icon" aria-hidden="true"></span></summary>
+          <div class="fb-pdp__guia-body"><img src={ed.guiaUrl} alt="Guía de tallas" class="fb-pdp__guia-img" loading="lazy" /></div>
+        </details>
+      )}
     </section>
   </div>
 
-  {p.descripcion && (
+  {(p.descripcion || ed.hasFicha) && (
     <section class="fb-pdp__desc">
       <h2 class="fb-pdp__h2">Descripcion</h2>
-      <p class="fb-pdp__desc-body">{p.descripcion}</p>
+      {p.descripcion && <p class="fb-pdp__desc-body">{p.descripcion}</p>}{ed.hasFicha && (
+        <div class="fb-pdp__ficha">
+          {ed.material && (
+            <div class="fb-pdp__ficha-row">
+              <h3 class="fb-pdp__ficha-label">Material</h3>
+              <p class="fb-pdp__ficha-text">{ed.material}</p>
+            </div>
+          )}
+          {ed.ajuste && (
+            <div class="fb-pdp__ficha-row">
+              <h3 class="fb-pdp__ficha-label">Ajuste</h3>
+              <p class="fb-pdp__ficha-text">{ed.ajuste}</p>
+            </div>
+          )}
+          {ed.diseno.length > 0 && (
+            <div class="fb-pdp__ficha-row">
+              <h3 class="fb-pdp__ficha-label">Diseño</h3>
+              <ul class="fb-pdp__ficha-list">{ed.diseno.map((d) => <li>{d}</li>)}</ul>
+            </div>
+          )}
+          {ed.beneficios.length > 0 && (
+            <div class="fb-pdp__ficha-row">
+              <h3 class="fb-pdp__ficha-label">Beneficios</h3>
+              <ul class="fb-pdp__ficha-list">{ed.beneficios.map((d) => <li>{d}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   )}
 
@@ -120,4 +155,21 @@ const p = pdp.producto;
     border-top: 2px solid var(--ta-color-text-base);
   }
   .fb-pdp__rel .fb-pdp__h2 { margin-bottom: 1.5rem; }
+
+  /* F3: guia de tallas (colapsable nativo, no-JS) */
+  .fb-pdp__guia { margin-top: 2rem; border: 2px solid var(--ta-color-text-base); }
+  .fb-pdp__guia-sum { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.85rem 1rem; cursor: pointer; font-family: var(--ta-font-display); font-size: 0.72rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ta-color-text-base); list-style: none; }
+  .fb-pdp__guia-sum::-webkit-details-marker { display: none; }
+  .fb-pdp__guia-icon { width: 0.6rem; height: 0.6rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform 0.2s ease; flex: none; }
+  .fb-pdp__guia[open] .fb-pdp__guia-icon { transform: rotate(-135deg); }
+  .fb-pdp__guia-body { padding: 0 1rem 1rem; }
+  .fb-pdp__guia-img { width: 100%; height: auto; display: block; }
+
+  /* F3: ficha editorial (sub-bloques bajo la descripcion) */
+  .fb-pdp__ficha { margin-top: 2rem; display: grid; gap: 1.25rem; }
+  .fb-pdp__ficha-label { font-family: var(--ta-font-display); font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ta-color-text-base); margin-bottom: 0.35rem; }
+  .fb-pdp__ficha-text { color: color-mix(in oklab, var(--ta-color-text-base) 80%, transparent); font-family: var(--ta-font-body); font-size: 0.9rem; line-height: 1.65; white-space: pre-line; }
+  .fb-pdp__ficha-list { list-style: none; display: grid; gap: 0.4rem; }
+  .fb-pdp__ficha-list li { position: relative; padding-left: 1.1rem; color: color-mix(in oklab, var(--ta-color-text-base) 80%, transparent); font-family: var(--ta-font-body); font-size: 0.9rem; line-height: 1.5; }
+  .fb-pdp__ficha-list li::before { content: "—"; position: absolute; left: 0; color: var(--ta-color-text-base); }
 </style>
