@@ -1,0 +1,12 @@
+---
+import CartApp from '~/components/CartApp.astro';
+interface Props { hasWhatsApp: boolean; upsell: any[] }
+const { hasWhatsApp, upsell } = Astro.props;
+---
+<section class="em-cart">
+  <header class="em-cart__head"><h1 class="em-cart__title">Tu carrito</h1></header>
+  <CartApp prefix="em" hasWhatsApp={hasWhatsApp} upsell={upsell} />
+</section>
+<style>
+  .em-cart__title { font-family: var(--ta-font-display); font-size: clamp(1.85rem,3.5vw + 0.5rem,3rem); font-weight: 300; font-style: italic; letter-spacing: -0.012em; line-height: 1.12; color: var(--ta-color-text-base); font-variation-settings: 'opsz' 36; margin-bottom: 1.5rem; }
+</style>

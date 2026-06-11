@@ -1,0 +1,123 @@
+---
+import ProductGrid from '~/components/ProductGrid.astro';
+interface Props { prefix: string; hasWhatsApp: boolean; upsell: any[] }
+const { prefix, hasWhatsApp, upsell } = Astro.props;
+---
+<div class={`cartapp cartapp--${prefix}`} data-cartapp>
+  <p data-carrito-vacio class="cartapp__vacio">Tu carrito esta vacio. <a href="/" class="underline">Volver al inicio</a>.</p>
+  <ul data-carrito-items class="cartapp__items" hidden></ul>
+  <div data-carrito-resumen class="cartapp__resumen" hidden>
+    <div class="cartapp__total-row"><span>Total</span><span data-carrito-total>$0</span></div>
+    <a data-carrito-checkout href={hasWhatsApp ? '/checkout' : '#'} class="cartapp__cta">
+      {hasWhatsApp ? 'Continuar al pedido' : 'WhatsApp no disponible'}
+    </a>
+    <p class="cartapp__nota">Coordinas pago y entrega directamente con la tienda.</p>
+  </div>
+</div>
+
+{upsell.length > 0 && (
+  <section class="cartapp__upsell" data-carrito-upsell hidden>
+    <h2 class="cartapp__upsell-h2">Tambien te puede interesar</h2>
+    <ProductGrid productos={upsell} />
+  </section>
+)}
+
+<script>
+  import { readCart, removeAt, setQty, total, varianteLabel, fmtCOP } from '~/lib/cart';
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c]; }); }
+
+  function initCart() {
+    var root = document.querySelector('[data-cartapp]');
+    if (!root) return;
+
+    function render() {
+      var items = readCart();
+      var vacio = root.querySelector('[data-carrito-vacio]');
+      var lista = root.querySelector('[data-carrito-items]');
+      var resumen = root.querySelector('[data-carrito-resumen]');
+      var totalEl = root.querySelector('[data-carrito-total]');
+      if (items.length === 0) {
+        vacio.hidden = false; lista.hidden = true; resumen.hidden = true;
+        filterUpsell(items); return;
+      }
+      vacio.hidden = true; lista.hidden = false; resumen.hidden = false;
+      lista.innerHTML = items.map(function (it, i) {
+        var label = varianteLabel(it.color, it.talla);
+        var foto = it.foto ? '<img src="' + esc(it.foto) + '" alt="" class="cartapp__thumb" loading="lazy" />' : '<span class="cartapp__thumb cartapp__thumb--ph"></span>';
+        return '<li class="cartapp__item">' +
+          '<a href="/p/' + esc(it.slug) + '" class="cartapp__item-media">' + foto + '</a>' +
+          '<div class="cartapp__item-main">' +
+            '<a href="/p/' + esc(it.slug) + '" class="cartapp__item-name">' + esc(it.nombre) + '</a>' +
+            (label ? '<p class="cartapp__item-var">' + esc(label) + '</p>' : '') +
+            '<div class="cartapp__qty">' +
+              '<button type="button" data-dec="' + i + '" aria-label="Disminuir">&minus;</button>' +
+              '<span data-qty="' + i + '">' + it.cantidad + '</span>' +
+              '<button type="button" data-inc="' + i + '" aria-label="Aumentar">+</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="cartapp__item-right">' +
+            '<p class="cartapp__item-precio">' + fmtCOP(it.precio * it.cantidad) + '</p>' +
+            '<button type="button" data-del="' + i + '" class="cartapp__del">Quitar</button>' +
+          '</div>' +
+        '</li>';
+      }).join('');
+      totalEl.textContent = fmtCOP(total());
+      wire(lista);
+      filterUpsell(items);
+    }
+
+    function wire(lista) {
+      lista.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { removeAt(+b.getAttribute('data-del')); render(); }; });
+      lista.querySelectorAll('[data-inc]').forEach(function (b) { b.onclick = function () { var i = +b.getAttribute('data-inc'); var it = readCart()[i]; setQty(i, (it.cantidad||1)+1); render(); }; });
+      lista.querySelectorAll('[data-dec]').forEach(function (b) { b.onclick = function () { var i = +b.getAttribute('data-dec'); var it = readCart()[i]; setQty(i, (it.cantidad||1)-1); render(); }; });
+    }
+
+    function filterUpsell(items) {
+      var up = document.querySelector('[data-carrito-upsell]');
+      if (!up) return;
+      var inCart = {};
+      items.forEach(function (it) { inCart[it.slug] = true; });
+      var anyVisible = false;
+      up.querySelectorAll('a[href^="/p/"]').forEach(function (a) {
+        var slug = (a.getAttribute('href') || '').replace('/p/', '');
+        var host = a.closest('li') || a.closest('article') || a;
+        if (host && host !== up) {
+          var hide = !!inCart[slug];
+          host.style.display = hide ? 'none' : '';
+          if (!hide) anyVisible = true;
+        }
+      });
+      up.hidden = !anyVisible;
+    }
+
+    render();
+  }
+
+  document.addEventListener('astro:page-load', initCart);
+  initCart();
+</script>
+
+<style>
+  .cartapp__items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1rem; }
+  .cartapp__item { display: grid; grid-template-columns: 64px 1fr auto; gap: 1rem; align-items: center; border-bottom: 1px solid color-mix(in oklab, var(--ta-color-text-base) 10%, transparent); padding-bottom: 1rem; }
+  .cartapp__thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent); }
+  .cartapp__thumb--ph { display: block; }
+  .cartapp__item-name { font-weight: 600; color: var(--ta-color-text-base); }
+  .cartapp__item-var { font-size: 0.85rem; color: color-mix(in oklab, var(--ta-color-text-base) 60%, transparent); }
+  .cartapp__qty { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; }
+  .cartapp__qty button { width: 1.9rem; height: 1.9rem; border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 20%, transparent); background: var(--ta-color-bg-base); border-radius: 6px; cursor: pointer; }
+  .cartapp__item-precio { font-weight: 600; color: var(--ta-color-text-base); }
+  .cartapp__del { font-size: 0.75rem; color: #dc2626; margin-top: 0.25rem; background: none; border: 0; cursor: pointer; }
+  .cartapp__del:hover { text-decoration: underline; }
+  .cartapp__resumen { margin-top: 1.5rem; border-top: 1px solid color-mix(in oklab, var(--ta-color-text-base) 12%, transparent); padding-top: 1rem; }
+  .cartapp__total-row { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; color: var(--ta-color-text-base); }
+  .cartapp__cta { margin-top: 1rem; display: inline-flex; width: 100%; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 6px; background: var(--ta-color-primary); color: var(--ta-color-on-primary); padding: 0.85rem 1.5rem; font-weight: 600; text-decoration: none; }
+  .cartapp__cta:hover { opacity: 0.9; }
+  .cartapp__nota { margin-top: 0.75rem; text-align: center; font-size: 0.75rem; color: color-mix(in oklab, var(--ta-color-text-base) 55%, transparent); }
+  .cartapp__upsell { margin-top: 3rem; }
+  .cartapp__upsell-h2 { font-family: var(--ta-font-display); font-size: 1.15rem; font-weight: 600; margin-bottom: 1.25rem; color: var(--ta-color-text-base); }
+  .cartapp--fb .cartapp__cta { border-radius: 0; text-transform: uppercase; letter-spacing: 0.06em; }
+  .cartapp--ma .cartapp__cta { border-radius: 999px; }
+  .cartapp--em .cartapp__cta { text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400; }
+</style>
