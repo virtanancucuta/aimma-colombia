@@ -5,9 +5,12 @@
 import ProductGallery from '~/components/ProductGallery.astro';
 import VariantSelector from '~/components/VariantSelector.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
+import { normalizeEditorial } from '~/lib/pdp-editorial';
 interface Props { pdp: any }
 const { pdp } = Astro.props;
 const p = pdp.producto;
+// F3: contenido editorial por-producto (guia de tallas + ficha). Bloques solo si hay datos.
+const ed = normalizeEditorial(p);
 ---
 
 <article class="em-pdp">
@@ -21,14 +24,46 @@ const p = pdp.producto;
       </nav>
       <h1 class="em-pdp__title">{p.nombre}</h1>
       {p.referencia && <p class="em-pdp__sku">Ref: {p.referencia}</p>}
-      <VariantSelector pdp={pdp} template="editorial_magazine" />
+      <VariantSelector pdp={pdp} template="editorial_magazine" />{ed.guiaUrl && (
+        <details class="em-pdp__guia">
+          <summary class="em-pdp__guia-sum"><span>Guía de tallas</span><span class="em-pdp__guia-icon" aria-hidden="true"></span></summary>
+          <div class="em-pdp__guia-body"><img src={ed.guiaUrl} alt="Guía de tallas" class="em-pdp__guia-img" loading="lazy" /></div>
+        </details>
+      )}
     </section>
   </div>
 
-  {p.descripcion && (
+  {(p.descripcion || ed.hasFicha) && (
     <section class="em-pdp__desc">
       <h2 class="em-pdp__h2"><span class="em-pdp__h2-rule" aria-hidden="true"></span>Descripcion<span class="em-pdp__h2-rule" aria-hidden="true"></span></h2>
-      <p class="em-pdp__desc-body">{p.descripcion}</p>
+      {p.descripcion && <p class="em-pdp__desc-body">{p.descripcion}</p>}{ed.hasFicha && (
+        <div class="em-pdp__ficha">
+          {ed.material && (
+            <div class="em-pdp__ficha-row">
+              <h3 class="em-pdp__ficha-label">Material</h3>
+              <p class="em-pdp__ficha-text">{ed.material}</p>
+            </div>
+          )}
+          {ed.ajuste && (
+            <div class="em-pdp__ficha-row">
+              <h3 class="em-pdp__ficha-label">Ajuste</h3>
+              <p class="em-pdp__ficha-text">{ed.ajuste}</p>
+            </div>
+          )}
+          {ed.diseno.length > 0 && (
+            <div class="em-pdp__ficha-row">
+              <h3 class="em-pdp__ficha-label">Diseño</h3>
+              <ul class="em-pdp__ficha-list">{ed.diseno.map((d) => <li>{d}</li>)}</ul>
+            </div>
+          )}
+          {ed.beneficios.length > 0 && (
+            <div class="em-pdp__ficha-row">
+              <h3 class="em-pdp__ficha-label">Beneficios</h3>
+              <ul class="em-pdp__ficha-list">{ed.beneficios.map((d) => <li>{d}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   )}
 
@@ -121,4 +156,21 @@ const p = pdp.producto;
   /* Relacionados */
   .em-pdp__rel { margin-top: 4.5rem; }
   .em-pdp__rel .em-pdp__h2 { margin-bottom: 2rem; }
+
+  /* F3: guia de tallas (colapsable nativo, no-JS) */
+  .em-pdp__guia { margin-top: 2.5rem; border-top: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent); border-bottom: 1px solid color-mix(in oklab, var(--ta-color-text-base) 18%, transparent); }
+  .em-pdp__guia-sum { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.9rem 0; cursor: pointer; font-family: var(--ta-font-body); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: color-mix(in oklab, var(--ta-color-text-base) 55%, transparent); list-style: none; }
+  .em-pdp__guia-sum::-webkit-details-marker { display: none; }
+  .em-pdp__guia-icon { width: 0.5rem; height: 0.5rem; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(45deg); transition: transform 0.25s ease; flex: none; }
+  .em-pdp__guia[open] .em-pdp__guia-icon { transform: rotate(-135deg); }
+  .em-pdp__guia-body { padding: 0 0 1.25rem; }
+  .em-pdp__guia-img { width: 100%; height: auto; display: block; }
+
+  /* F3: ficha editorial (sub-bloques bajo la descripcion) */
+  .em-pdp__ficha { margin-top: 2.5rem; display: grid; gap: 1.75rem; }
+  .em-pdp__ficha-label { font-family: var(--ta-font-body); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: color-mix(in oklab, var(--ta-color-text-base) 55%, transparent); margin-bottom: 0.5rem; }
+  .em-pdp__ficha-text { white-space: pre-line; font-family: var(--ta-font-display); font-style: italic; font-weight: 300; font-size: 1.05rem; line-height: 1.7; color: color-mix(in oklab, var(--ta-color-text-base) 80%, transparent); font-variation-settings: 'opsz' 36; }
+  .em-pdp__ficha-list { list-style: none; display: grid; gap: 0.5rem; }
+  .em-pdp__ficha-list li { position: relative; padding-left: 1.25rem; font-family: var(--ta-font-display); font-style: italic; font-weight: 300; font-size: 1.05rem; line-height: 1.6; color: color-mix(in oklab, var(--ta-color-text-base) 80%, transparent); }
+  .em-pdp__ficha-list li::before { content: ""; position: absolute; left: 0; top: 0.7em; width: 0.3rem; height: 0.3rem; background: color-mix(in oklab, var(--ta-color-text-base) 35%, transparent); border-radius: 50%; }
 </style>
