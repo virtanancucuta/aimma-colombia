@@ -36,6 +36,7 @@ const clientData = {
   nombre: p.nombre,
   slug: p.slug,
   sku_base: p.referencia ?? null,
+  foto_principal: p.foto_principal_url ?? null,
   precioBase: pdp.precioBase,
   tieneVariantes,
   axes: axes.map((a) => a.field),
@@ -183,11 +184,14 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
   .vsel--em .vsel__add { font-weight: 400; text-transform: uppercase; letter-spacing: 0.1em; }
 </style>
 
-<script is:inline>
-  (function () {
-    'use strict';
+<script>
+  import { writeItem, fmtCOP } from '~/lib/cart';
+
+  function initVsel() {
     var root = document.querySelector('[data-vsel]');
     if (!root) return;
+    if (root.dataset.vselBound) return;   // idempotente: no re-wirear el mismo nodo
+    root.dataset.vselBound = '1';
     var dataEl = root.querySelector('[data-pdp-data]');
     var D;
     try { D = JSON.parse(dataEl.textContent || '{}'); } catch (_) { return; }
@@ -195,12 +199,10 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
     var nojs = root.querySelector('[data-pdp-nojs]');
     var inter = root.querySelector('[data-pdp-interactive]');
     if (!inter) return;
-    // Progressive enhancement: revelar interactivo, ocultar fallback no-JS.
     nojs && (nojs.hidden = true);
     inter.hidden = false;
 
-    var CART_KEY = 'aimma_cart_' + location.hostname;
-    var fmt = function (n) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n); };
+    var fmt = fmtCOP;
 
     var sel = { color: null, talla: null };
     var hasColor = D.axes.indexOf('color') >= 0;
@@ -211,8 +213,6 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
       D.variantes.forEach(function (v) { if (v[field] && s.indexOf(v[field]) < 0) s.push(v[field]); });
       return s;
     }
-    // Auto-seleccionar ejes de una sola opcion: evita el click inutil que dejaba los CTAs deshabilitados
-    // (se percibia como "modo solo-ver"). Con multiples opciones el cliente sigue eligiendo.
     if (hasColor) { var _cv = uniqueVals('color'); if (_cv.length === 1) sel.color = _cv[0]; }
     if (hasTalla) { var _tv = uniqueVals('talla'); if (_tv.length === 1) sel.talla = _tv[0]; }
 
@@ -226,10 +226,9 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
     var buyBtn = root.querySelector('[data-pdp-buynow]');
     var toastEl = root.querySelector('[data-pdp-toast]');
     var toastTimer = null;
-    var mainImg = document.querySelector('[data-pdp-main-img]'); // hook en la galeria del ProductDetailX
+    var mainImg = document.querySelector('[data-pdp-main-img]');
 
     function matchVariant() {
-      // resuelve la fila si todos los ejes presentes estan elegidos
       if (hasColor && !sel.color) return null;
       if (hasTalla && !sel.talla) return null;
       return D.variantes.find(function (v) {
@@ -237,7 +236,6 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
       }) || null;
     }
 
-    // ¿hay variante CON stock para este valor de eje, dado lo elegido en el OTRO eje?
     function optionHasStock(field, value) {
       return D.variantes.some(function (v) {
         if (v[field] !== value) return false;
@@ -248,7 +246,6 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
     }
 
     function refresh() {
-      // estados de opciones (activo + disabled por stock)
       root.querySelectorAll('[data-pdp-opt]').forEach(function (btn) {
         var f = btn.getAttribute('data-axis');
         var val = btn.getAttribute('data-value');
@@ -257,29 +254,25 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
         btn.classList.toggle('vsel__opt-disabled', !stock);
         btn.disabled = !stock;
       });
-      // labels de eje
       root.querySelectorAll('[data-pdp-axis-sel]').forEach(function (s) {
         var f = s.getAttribute('data-pdp-axis-sel');
         s.textContent = sel[f] || '';
       });
 
       var v = matchVariant();
-      var noAxes = D.axes.length === 0; // producto simple sin variantes
+      var noAxes = D.axes.length === 0;
       var resolved = noAxes ? { id: null, precio: D.precioBase, disponible: Infinity, color: null, talla: null, sku: D.sku_base } : v;
 
       if (resolved && (noAxes || resolved.disponible > 0)) {
         if (precioEl) precioEl.textContent = fmt(resolved.precio);
-        if (precioAntEl) precioAntEl.hidden = true; // override de variante: sin "anterior"
+        if (precioAntEl) precioAntEl.hidden = true;
         if (stockEl) stockEl.textContent = noAxes ? '' : (resolved.disponible + ' disponibles');
-        // imagen por color
         if (mainImg && resolved.foto) mainImg.setAttribute('src', resolved.foto);
-        // cantidad clamp
         if (qtyEl && !noAxes) { qtyEl.max = String(resolved.disponible); if (+qtyEl.value > resolved.disponible) qtyEl.value = String(resolved.disponible); }
         if (+qtyEl.value < 1 || isNaN(+qtyEl.value)) qtyEl.value = '1';
         if (addBtn) addBtn.disabled = false;
-        if (buyBtn) buyBtn.disabled = false; // "comprar ya" rerutea a /checkout (no depende de wppDigits aca)
+        if (buyBtn) buyBtn.disabled = false;
       } else {
-        // sin combinacion valida / sin stock -> CTAs deshabilitados
         if (stockEl) stockEl.textContent = v && v.disponible === 0 ? 'Agotado en esta combinacion' : '';
         if (addBtn) addBtn.disabled = true;
         if (buyBtn) buyBtn.disabled = true;
@@ -287,7 +280,6 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
       syncQtyBtns();
     }
 
-    // habilita/deshabilita +/- segun el valor y el stock (max) de la variante elegida
     function syncQtyBtns() {
       if (!qtyEl) return;
       var val = parseInt(qtyEl.value, 10) || 1;
@@ -311,48 +303,31 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
       var precio = noAxes ? D.precioBase : v.precio;
       var color = noAxes ? null : (v.color || null);
       var talla = noAxes ? null : (v.talla || null);
-      var varianteStr = [color, talla].filter(Boolean).join(' / ');
-      // SUPERSET: satisface a checkout.astro (producto_id/variante_id/color/talla) Y carrito.astro (variante).
+      // CANÓNICO: color/talla estructurales (el string "variante" se DERIVA al render, no se guarda).
       return {
         producto_id: D.producto_id,
         variante_id: noAxes ? null : v.id,
+        slug: D.slug,
         sku: noAxes ? D.sku_base : (v.sku || null),
         nombre: D.nombre,
         color: color, talla: talla,
-        variante: varianteStr,
+        foto: (noAxes ? null : (v.foto || null)) || D.foto_principal || null,
         cantidad: cant,
         precio: precio,
       };
     }
 
-    function readCart() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch (_) { return []; } }
-    function cartCount() { return readCart().reduce(function (a, it) { return a + (it.cantidad || 0); }, 0); }
-    function notifyAdd() {
-      // avisa al badge del header (mismo tab) que el carrito cambio
-      try { window.dispatchEvent(new CustomEvent('aimma:cart-add', { detail: { count: cartCount() } })); } catch (_) {}
-    }
     function showToast() {
       if (!toastEl) return;
       toastEl.hidden = false;
       if (toastTimer) clearTimeout(toastTimer);
       toastTimer = setTimeout(function () { toastEl.hidden = true; }, 3200);
     }
-    // escribe el SUPERSET al carrito localStorage existente (merge por producto+variante). No toca EF/esquema.
-    function writeItem(it) {
-      var cart = readCart();
-      var ex = cart.find(function (c) { return c.producto_id === it.producto_id && (c.variante_id || null) === (it.variante_id || null); });
-      if (ex) ex.cantidad = (ex.cantidad || 0) + it.cantidad;
-      else cart.push(it);
-      localStorage.setItem(CART_KEY, JSON.stringify(cart));
-      notifyAdd();
-    }
     function addToCart() {
       var it = currentItem(); if (!it) return;
       writeItem(it);
       showToast();
     }
-    // "Comprar ya": agrega la variante + va DIRECTO a /checkout (express, saltea /carrito). El checkout
-    // existente captura datos -> EF (reserva + pedido pendiente) -> finaliza por WhatsApp (con idempotencia).
     function buyNow() {
       var it = currentItem(); if (!it) return;
       writeItem(it);
@@ -364,7 +339,7 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
         if (btn.disabled) return;
         var f = btn.getAttribute('data-axis');
         var val = btn.getAttribute('data-value');
-        sel[f] = (sel[f] === val) ? null : val; // toggle
+        sel[f] = (sel[f] === val) ? null : val;
         refresh();
       });
     });
@@ -375,5 +350,8 @@ const wppDirecto = wppDigits ? `https://wa.me/${wppDigits}?text=${encodeURICompo
     if (buyBtn) buyBtn.addEventListener('click', buyNow);
 
     refresh();
-  })();
+  }
+
+  document.addEventListener('astro:page-load', initVsel);
+  initVsel();
 </script>

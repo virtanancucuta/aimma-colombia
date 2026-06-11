@@ -1,0 +1,18 @@
+---
+import CheckoutApp from '~/components/CheckoutApp.astro';
+interface Props { hasWhatsApp: boolean; efUrl: string; anonKey: string; tiendaSlug: string; tiendaNombre: string }
+const { hasWhatsApp, efUrl, anonKey, tiendaSlug, tiendaNombre } = Astro.props;
+---
+<section class="ic-ck mx-auto w-full max-w-2xl px-6 py-10 lg:py-16">
+  {hasWhatsApp && (
+    <header class="mb-8">
+      <p class="font-body text-[13px] text-[var(--ta-color-text-base)]/55 mb-2"><a href="/carrito" class="hover:underline">&larr; Volver al carrito</a></p>
+      <h1 class="ic-ck__title">Finalizar pedido</h1>
+      <p class="mt-3 font-body text-[15px] text-[var(--ta-color-text-base)]/70 leading-[1.55]">Completa tus datos. Al confirmar te abrimos WhatsApp con el resumen del pedido para que coordines con la tienda.</p>
+    </header>
+  )}
+  <CheckoutApp hasWhatsApp={hasWhatsApp} efUrl={efUrl} anonKey={anonKey} tiendaSlug={tiendaSlug} tiendaNombre={tiendaNombre} />
+</section>
+<style>
+  .ic-ck__title { font-family: var(--ta-font-display); font-size: clamp(1.75rem,4vw,2.5rem); font-weight: 600; letter-spacing: -0.02em; color: var(--ta-color-text-base); line-height: 1.15; }
+</style>

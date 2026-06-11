@@ -125,6 +125,10 @@ export function normalize(html: string): string {
     // 2 + 3: eliminar anotaciones dev (con el espacio previo) — prod nunca las emite
     .replace(/ data-astro-source-file="[^"]*"/g, '')
     .replace(/ data-astro-source-loc="[^"]*"/g, '')
+    // F2: el Container (dev) emite <script type="module" src="<abs>/src/.../X.astro?astro&type=script...">.
+    // Prod emite chunks hasheados por el build (no esta ruta). Normalizar la ruta ABSOLUTA local a
+    // repo-relativa (estable entre maquinas/CI) preservando QUE componente referencia el script.
+    .replace(/src="[^"]*\/src\//g, 'src="src/')
     // 1: normalizar el hash de scope (atributo booleano sin '=')
     .replace(/data-astro-cid-[A-Za-z0-9]+/g, 'data-astro-cid-CID');
 }
@@ -159,4 +163,23 @@ export const COMBOS: Array<{ label: string; columnas: 'auto' | 2 | 3 | 4; mostra
   { label: 'col3-precio', columnas: 3, mostrar_precio: true, empty: false },
   { label: 'col4-precio', columnas: 4, mostrar_precio: true, empty: false },
   { label: 'auto-sinprecio', columnas: 'auto', mostrar_precio: false, empty: false },
+];
+
+// ---- F2: render por PROPS arbitrarias (shells de carrito/checkout no usan `section`) ----
+export async function renderComponentNormalized(
+  Component: AstroComponentFactory,
+  props: Record<string, any>,
+  tienda: any,
+  rows: any[] = []
+): Promise<string> {
+  const container = await AstroContainer.create();
+  const locals: any = { tienda, supabase: stubSupabase(rows) };
+  const html = await container.renderToString(Component, { props, locals, request: REQUEST });
+  return normalize(html);
+}
+
+// Upsell fixture (shape ProductoListItem que espera ProductGrid; cards linkean a /p/<slug>).
+export const UPSELL_FIXTURE = [
+  { id: 'u01', nombre: 'Producto Uno', slug: 'producto-uno', precio: 50000, precio_anterior: null, foto_principal: null, stock_disponible: 5, referencia: 'U01' },
+  { id: 'u02', nombre: 'Producto Dos', slug: 'producto-dos', precio: 75000, precio_anterior: 90000, foto_principal: 'https://rsmxklkxqsaptchcjszd.supabase.co/img/u2.jpg', stock_disponible: 3, referencia: null },
 ];

@@ -1,0 +1,356 @@
+---
+// AIMMA Storefront · CheckoutApp.astro · F2 · resumen + form + submit COMPARTIDO (×4 plantillas).
+// Lógica idéntica entre plantillas (resumen vía ~/lib/cart, submit -> EF tienda-crear-pedido, idempotencia,
+// guard anti doble-pedido, clearCart + redirect wa.me). El CONTRATO del POST a la EF se mantiene IDÉNTICO.
+// El chrome (título "Finalizar pedido") vive en el shell de cada plantilla.
+interface Props { hasWhatsApp: boolean; efUrl: string; anonKey: string; tiendaSlug: string; tiendaNombre: string }
+const { hasWhatsApp, efUrl, anonKey, tiendaSlug, tiendaNombre } = Astro.props;
+const ckCfg = { efUrl, anonKey, tiendaSlug };
+---
+
+{!hasWhatsApp && (
+  <div class="rounded-lg border border-amber-300 bg-amber-50 p-5 mb-8">
+    <p class="font-body text-sm text-amber-900">
+      Esta tienda aun no tiene WhatsApp configurado para recibir pedidos.
+      <a href="/" class="font-semibold underline ml-1">Volver al catalogo</a>
+    </p>
+  </div>
+)}
+
+{hasWhatsApp && (
+  <>
+    {/* Resumen items (renderizado en cliente desde el carrito) */}
+    <section id="ck-resumen" class="rounded-lg border border-[var(--ta-color-text-base)]/12 bg-[var(--ta-color-bg-base)] p-5 mb-6" aria-label="Resumen del pedido">
+      <h2 class="font-body text-[13px] font-medium uppercase tracking-wide text-[var(--ta-color-text-base)]/65 mb-3">
+        Tu pedido
+      </h2>
+      <ul id="ck-items" class="space-y-2 text-[14px]"></ul>
+      <div class="mt-4 pt-3 border-t border-[var(--ta-color-text-base)]/10 flex items-baseline justify-between">
+        <span class="font-body text-[14px] text-[var(--ta-color-text-base)]/75">Total estimado</span>
+        <span id="ck-total" class="font-display font-semibold text-[var(--ta-color-text-base)] tabular-nums" style="font-size:1.2rem;">$0</span>
+      </div>
+      <p class="mt-2 font-body text-[12px] text-[var(--ta-color-text-base)]/55 leading-[1.45]">
+        Los precios y disponibilidad se reconfirman antes de crear el pedido.
+      </p>
+    </section>
+
+    {/* Form */}
+    <form id="ck-form" class="space-y-5" novalidate>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label for="ck-nombre" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
+            Nombre completo <span class="text-red-600">*</span>
+          </label>
+          <input
+            id="ck-nombre"
+            name="nombre"
+            type="text"
+            required
+            minlength="2"
+            maxlength="120"
+            autocomplete="name"
+            class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15"
+          />
+        </div>
+        <div>
+          <label for="ck-telefono" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
+            Telefono <span class="text-red-600">*</span>
+          </label>
+          <input
+            id="ck-telefono"
+            name="telefono"
+            type="tel"
+            required
+            pattern="[\d\s+\-()]{7,20}"
+            autocomplete="tel"
+            placeholder="3001234567"
+            class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label for="ck-email" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
+          Email <span class="text-red-600">*</span>
+        </label>
+        <input
+          id="ck-email"
+          name="email"
+          type="email"
+          maxlength="180"
+          required
+          autocomplete="email"
+          placeholder="tu@correo.com"
+          class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15"
+        />
+        <p class="mt-1 font-body text-[12px] text-[var(--ta-color-text-base)]/50">
+          Para enviarte la confirmacion y el rastreo de tu pedido.
+        </p>
+      </div>
+
+      <div>
+        <label for="ck-direccion" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
+          Direccion de envio <span class="text-red-600">*</span>
+        </label>
+        <input
+          id="ck-direccion"
+          name="direccion"
+          type="text"
+          required
+          minlength="5"
+          maxlength="220"
+          autocomplete="street-address"
+          placeholder="Calle, numero, apartamento"
+          class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15"
+        />
+      </div>
+
+      <div class="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label for="ck-ciudad" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
+            Ciudad <span class="text-red-600">*</span>
+          </label>
+          <input
+            id="ck-ciudad"
+            name="ciudad"
+            type="text"
+            required
+            minlength="2"
+            maxlength="80"
+            autocomplete="address-level2"
+            placeholder="Bogota"
+            class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15"
+          />
+        </div>
+        <div>
+          <label for="ck-metodo" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
+            Metodo de envio
+          </label>
+          <select
+            id="ck-metodo"
+            name="metodo_envio"
+            class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15"
+          >
+            <option value="a_coordinar">A coordinar por WhatsApp</option>
+            <option value="tarifa_fija">Tarifa fija</option>
+            <option value="por_ciudad">Tarifa por ciudad</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label for="ck-observ" class="block font-body text-[13px] font-medium text-[var(--ta-color-text-base)] mb-1.5">
+          Notas adicionales <span class="font-normal text-[var(--ta-color-text-base)]/55">(opcional)</span>
+        </label>
+        <textarea
+          id="ck-observ"
+          name="observ"
+          rows="3"
+          maxlength="500"
+          placeholder="Color preferido, punto de referencia, horario para entrega..."
+          class="ck-input w-full px-3.5 py-2.5 rounded-md border border-[var(--ta-color-text-base)]/20 bg-white font-body text-[15px] text-[var(--ta-color-text-base)] focus:outline-none focus:border-[var(--ta-color-primary)] focus:ring-2 focus:ring-[var(--ta-color-primary)]/15 resize-y"
+        ></textarea>
+      </div>
+
+      {/* Aviso plataforma SaaS no marketplace */}
+      <div class="rounded-md bg-[var(--ta-color-text-base)]/[0.03] border border-[var(--ta-color-text-base)]/10 p-4">
+        <p class="font-body text-[12px] text-[var(--ta-color-text-base)]/65 leading-[1.5]">
+          Al continuar coordinas el pedido directamente con
+          <strong class="text-[var(--ta-color-text-base)]/85"> {tiendaNombre}</strong>.
+          Pago y entrega se acuerdan por WhatsApp con la tienda.
+          <a href="/legales/terminos" class="underline">Ver terminos</a>.
+        </p>
+      </div>
+
+      {/* Error feedback */}
+      <div id="ck-error" class="hidden rounded-md border border-red-300 bg-red-50 px-4 py-3 font-body text-[14px] text-red-900" role="alert" aria-live="polite"></div>
+
+      {/* Submit */}
+      <button
+        type="submit"
+        id="ck-submit"
+        class="w-full inline-flex items-center justify-center gap-2 rounded-md bg-[var(--ta-color-primary)] px-6 py-3.5 font-body text-[15px] font-semibold text-[var(--ta-color-on-primary)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+      >
+        <span id="ck-submit-label">Continuar a WhatsApp</span>
+        <svg id="ck-submit-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M5 12h14" />
+          <path d="M13 5l7 7-7 7" />
+        </svg>
+        <svg id="ck-submit-spinner" class="hidden animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke-opacity="0.25" />
+          <path d="M21 12a9 9 0 0 1-9 9" />
+        </svg>
+      </button>
+    </form>
+
+    <script type="application/json" data-ck-cfg set:html={JSON.stringify(ckCfg)}></script>
+
+    <script>
+      // F2 bundled: resumen + submit usando ~/lib/cart. Config (efUrl/anonKey/tiendaSlug) por JSON tag.
+      import { readCart, total, varianteLabel, fmtCOP, clearCart } from '~/lib/cart';
+
+      function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+          return ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c];
+        });
+      }
+
+      function initCheckout() {
+        var cfgEl = document.querySelector('[data-ck-cfg]');
+        if (!cfgEl) return;
+        var cfg;
+        try { cfg = JSON.parse(cfgEl.textContent || '{}'); } catch (_) { return; }
+        var EF_URL = cfg.efUrl, ANON_KEY = cfg.anonKey, tiendaSlug = cfg.tiendaSlug;
+        var idemKey = null;
+
+        function renderResumen() {
+          var items = readCart();
+          var lista = document.getElementById('ck-items');
+          var totalEl = document.getElementById('ck-total');
+          if (!lista || !totalEl) return items;
+          if (items.length === 0) {
+            lista.innerHTML = '<li class="text-[var(--ta-color-text-base)]/55">Carrito vacio. <a href="/" class="underline">Volver al catalogo</a></li>';
+            totalEl.textContent = fmtCOP(0);
+            var btn = document.getElementById('ck-submit');
+            if (btn) btn.disabled = true;
+            return items;
+          }
+          lista.innerHTML = items.map(function (it) {
+            var variante = varianteLabel(it.color, it.talla);
+            var varStr = variante ? ' (' + escapeHtml(variante) + ')' : '';
+            return '<li class="flex items-baseline justify-between gap-3 text-[var(--ta-color-text-base)]/85">' +
+              '<span>' + it.cantidad + 'x ' + escapeHtml(it.nombre) + varStr + '</span>' +
+              '<span class="tabular-nums shrink-0">' + fmtCOP(it.precio * it.cantidad) + '</span>' +
+              '</li>';
+          }).join('');
+          totalEl.textContent = fmtCOP(total());
+          return items;
+        }
+
+        function setLoading(loading) {
+          var btn = document.getElementById('ck-submit');
+          var label = document.getElementById('ck-submit-label');
+          var icon = document.getElementById('ck-submit-icon');
+          var spinner = document.getElementById('ck-submit-spinner');
+          if (btn) btn.disabled = loading;
+          if (label) label.textContent = loading ? 'Procesando...' : 'Continuar a WhatsApp';
+          if (icon) icon.classList.toggle('hidden', loading);
+          if (spinner) spinner.classList.toggle('hidden', !loading);
+        }
+
+        function showError(msg) {
+          var errEl = document.getElementById('ck-error');
+          if (!errEl) return;
+          errEl.textContent = msg;
+          errEl.classList.remove('hidden');
+          errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function hideError() {
+          var errEl = document.getElementById('ck-error');
+          if (errEl) errEl.classList.add('hidden');
+        }
+
+        async function submitPedido(formData, items) {
+          // CONTRATO EF IDÉNTICO: items = {producto_id, variante_id, cantidad}.
+          var payload = {
+            tienda_slug: tiendaSlug,
+            comprador: {
+              nombre: formData.get('nombre').trim(),
+              telefono: formData.get('telefono').trim(),
+              email: formData.get('email') ? formData.get('email').trim() : undefined,
+              direccion: formData.get('direccion').trim(),
+              ciudad: formData.get('ciudad').trim(),
+              observ: formData.get('observ') ? formData.get('observ').trim() : undefined,
+            },
+            items: items.map(function (it) {
+              return { producto_id: it.producto_id, variante_id: it.variante_id || null, cantidad: it.cantidad };
+            }),
+            metodo_envio: formData.get('metodo_envio') || 'a_coordinar',
+            idempotency_key: idemKey || undefined,
+          };
+
+          var res = await fetch(EF_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': ANON_KEY,
+              'Authorization': 'Bearer ' + ANON_KEY,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          var body = await res.json().catch(function () { return {}; });
+          if (!res.ok) {
+            if (body.error === 'stock_insuficiente') {
+              return { error: 'Sin stock disponible para ' + (body.producto || 'un producto') +
+                (body.variante ? ' (' + body.variante + ')' : '') + '. Reduce la cantidad o retira ese producto del carrito.' };
+            }
+            if (body.error === 'invalid_payload') {
+              var details = Array.isArray(body.details) ? body.details : [];
+              var firstError = (details[0] && details[0].message) || 'Datos invalidos';
+              return { error: firstError };
+            }
+            if (body.error === 'tienda_no_publicada') {
+              return { error: 'Esta tienda no esta disponible en este momento.' };
+            }
+            return { error: 'No pudimos procesar el pedido. Intentalo de nuevo.' };
+          }
+          return body;
+        }
+
+        function genUuid() {
+          try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (_) {}
+          return 'idem-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+        }
+
+        renderResumen();
+        idemKey = genUuid(); // un key por vista de la pagina (se comparte si hubiera doble submit)
+
+        var form = document.getElementById('ck-form');
+        if (!form) return;
+        // GUARD anti doble-pedido: adjuntar el submit UNA sola vez por <form>.
+        if (form.dataset.ckBound) return;
+        form.dataset.ckBound = '1';
+
+        form.addEventListener('submit', async function (e) {
+          e.preventDefault();
+          hideError();
+
+          var currentItems = readCart();
+          if (currentItems.length === 0) {
+            showError('Tu carrito esta vacio.');
+            return;
+          }
+
+          if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+          }
+
+          setLoading(true);
+
+          var formData = new FormData(form);
+          var result = await submitPedido(formData, currentItems);
+
+          if (result.error) {
+            setLoading(false);
+            showError(result.error);
+            return;
+          }
+
+          if (result.wa_url) {
+            clearCart();
+            window.location.href = result.wa_url;
+          } else {
+            setLoading(false);
+            showError('Pedido registrado (' + (result.codigo_publico || '') + ') pero la tienda no tiene WhatsApp configurado. Contactala directamente.');
+          }
+        });
+      }
+
+      document.addEventListener('astro:page-load', initCheckout);
+      initCheckout();
+    </script>
+  </>
+)}

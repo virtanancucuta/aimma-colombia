@@ -1,130 +1,16 @@
 ---
-// AIMMA Storefront · /carrito · v2 · 2026-06-01
-// Carrito localStorage. Boton "Hacer pedido" -> /checkout (Opcion 2 Hibrida).
-// Fallback wa.me directo si tienda no tiene whatsapp_dueno configurado.
-
 import Layout from '~/layouts/Layout.astro';
+import CartDispatcher from '~/components/CartDispatcher.astro';
+import { getProductosPorTienda } from '~/lib/catalogo';
 
-const { tienda } = Astro.locals;
+const { tienda, supabase } = Astro.locals;
+const hasWhatsApp = (tienda.whatsapp_dueno || '').replace(/\D/g, '').length > 0;
 
-const wppDigits = (tienda.whatsapp_dueno || '').replace(/\D/g, '');
-const hasWhatsApp = wppDigits.length > 0;
-const wppBase = wppDigits ? `https://wa.me/${wppDigits}?text=` : null;
+// Upsell pool: tenant-scoped, recientes/destacados. El cliente oculta los que ya estan en el carrito.
+let upsell: Awaited<ReturnType<typeof getProductosPorTienda>> = [];
+try { upsell = await getProductosPorTienda(supabase, tienda.id, { limit: 8 }); }
+catch (e) { console.error('[carrito] upsell', e); upsell = []; }
 ---
-
 <Layout title="Carrito" description={`Tu carrito de compras en ${tienda.nombre_negocio}.`} noindex>
-  <header class="mb-8">
-    <h1 class="text-3xl font-bold text-[var(--ta-color-text-base)]">Tu carrito</h1>
-  </header>
-
-  <section id="carrito-app" class="rounded-lg border p-6">
-    <p class="text-[var(--ta-color-text-base)]/60" id="carrito-vacio">
-      Tu carrito esta vacio. <a href="/" class="underline">Volver al inicio</a>.
-    </p>
-
-    <ul id="carrito-items" class="space-y-4" hidden></ul>
-
-    <div id="carrito-resumen" class="mt-6 hidden border-t pt-4">
-      <div class="flex items-center justify-between text-lg font-semibold">
-        <span>Total</span>
-        <span id="carrito-total">$0</span>
-      </div>
-      <a
-        id="carrito-checkout"
-        href={hasWhatsApp ? '/checkout' : '#'}
-        class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--ta-color-primary)] px-6 py-3 font-semibold text-[var(--ta-color-on-primary)] hover:opacity-90 transition-opacity"
-      >
-        {hasWhatsApp ? 'Continuar al pedido' : 'WhatsApp no disponible'}
-        {hasWhatsApp && (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M5 12h14" />
-            <path d="M13 5l7 7-7 7" />
-          </svg>
-        )}
-      </a>
-      <p class="mt-3 text-center font-body text-[12px] text-[var(--ta-color-text-base)]/55">
-        Coordinas pago y entrega directamente con la tienda.
-      </p>
-    </div>
-  </section>
-
-  <script is:inline define:vars={{ wppBase, tiendaNombre: tienda.nombre_negocio }}>
-    // ============================================================
-    // Carrito MVP — localStorage namespace: aimma_cart_<hostname>
-    // ============================================================
-    (function () {
-      'use strict';
-      const KEY = 'aimma_cart_' + location.hostname;
-
-      function read() {
-        try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
-        catch { return []; }
-      }
-
-      function fmt(n) {
-        return new Intl.NumberFormat('es-CO', {
-          style: 'currency', currency: 'COP',
-          minimumFractionDigits: 0, maximumFractionDigits: 0
-        }).format(n);
-      }
-
-      function render() {
-        const items = read();
-        const vacio = document.getElementById('carrito-vacio');
-        const lista = document.getElementById('carrito-items');
-        const resumen = document.getElementById('carrito-resumen');
-        const totalEl = document.getElementById('carrito-total');
-        const checkoutEl = document.getElementById('carrito-checkout');
-
-        if (items.length === 0) {
-          vacio.hidden = false;
-          lista.hidden = true;
-          resumen.hidden = true;
-          return;
-        }
-        vacio.hidden = true;
-        lista.hidden = false;
-        resumen.classList.remove('hidden');
-        resumen.hidden = false;
-
-        lista.innerHTML = items.map((it, i) => `
-          <li class="flex items-center justify-between gap-4 border-b pb-3">
-            <div class="flex-1">
-              <p class="font-medium">${escapeHtml(it.nombre)}</p>
-              <p class="text-sm text-black/60">${escapeHtml(it.variante || '')} · Cant: ${it.cantidad}</p>
-            </div>
-            <div class="text-right">
-              <p class="font-semibold">${fmt(it.precio * it.cantidad)}</p>
-              <button data-idx="${i}" class="text-xs text-red-600 hover:underline mt-1">Quitar</button>
-            </div>
-          </li>
-        `).join('');
-
-        const total = items.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
-        totalEl.textContent = fmt(total);
-
-        // El boton va a /checkout (form completo). Solo si no hay WhatsApp,
-        // dejarlo disabled. El wa.me se arma en EF tienda-crear-pedido.
-
-        lista.querySelectorAll('button[data-idx]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const idx = parseInt(btn.getAttribute('data-idx'), 10);
-            const items = read();
-            items.splice(idx, 1);
-            localStorage.setItem(KEY, JSON.stringify(items));
-            render();
-          });
-        });
-      }
-
-      function escapeHtml(s) {
-        return String(s).replace(/[<>&"]/g, c =>
-          ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
-      }
-
-      // Re-render en navegacion via ClientRouter (View Transitions)
-      document.addEventListener('astro:page-load', render);
-      render();
-    })();
-  </script>
+  <CartDispatcher hasWhatsApp={hasWhatsApp} upsell={upsell} />
 </Layout>

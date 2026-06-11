@@ -1,0 +1,16 @@
+---
+import CartIC from '~/components/templates/industrial_clean/CartIC.astro';
+import CartFB from '~/components/templates/fashion_bold/CartFB.astro';
+import CartMA from '~/components/templates/minimal_artesanal/CartMA.astro';
+import CartEM from '~/components/templates/editorial_magazine/CartEM.astro';
+interface Props { hasWhatsApp: boolean; upsell: any[] }
+const { hasWhatsApp, upsell } = Astro.props;
+const { tienda } = Astro.locals;
+const slug = tienda.plantilla?.slug;
+---
+{slug === 'fashion_bold' && <CartFB hasWhatsApp={hasWhatsApp} upsell={upsell} />}
+{slug === 'minimal_artesanal' && <CartMA hasWhatsApp={hasWhatsApp} upsell={upsell} />}
+{slug === 'editorial_magazine' && <CartEM hasWhatsApp={hasWhatsApp} upsell={upsell} />}
+{(slug === 'industrial_clean' || !slug || !['fashion_bold','minimal_artesanal','editorial_magazine'].includes(slug)) && (
+  <CartIC hasWhatsApp={hasWhatsApp} upsell={upsell} />
+)}
