@@ -1127,6 +1127,54 @@ export type Database = {
           },
         ]
       }
+      resenas: {
+        Row: {
+          calificacion: number
+          comentario: string | null
+          created_at: string
+          estado: string
+          id: string
+          nombre_cliente: string
+          producto_id: string
+          tienda_id: string
+        }
+        Insert: {
+          calificacion: number
+          comentario?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          nombre_cliente: string
+          producto_id: string
+          tienda_id: string
+        }
+        Update: {
+          calificacion?: number
+          comentario?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          nombre_cliente?: string
+          producto_id?: string
+          tienda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resenas_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resenas_tienda_id_fkey"
+            columns: ["tienda_id"]
+            isOneToOne: false
+            referencedRelation: "tiendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suscripciones: {
         Row: {
           activada_en: string | null

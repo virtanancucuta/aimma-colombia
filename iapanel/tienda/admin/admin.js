@@ -32,7 +32,7 @@
   const STOREFRONT_HOST = 'tienda.aimma.com.co'; // <slug>.tienda.aimma.com.co
 
   // 'pedidos' mantiene retrocompat con URLs viejas; alias a 'crm' (misma vista).
-  const ROUTES = ['', 'productos', 'categorias', 'crm', 'pedidos', 'configuracion', 'legales', 'vista-previa', 'editor'];
+  const ROUTES = ['', 'productos', 'categorias', 'crm', 'pedidos', 'resenas', 'configuracion', 'legales', 'vista-previa', 'editor'];
   const DEFAULT_ROUTE = '';
 
   // ============================================================
@@ -158,7 +158,7 @@
     // Tienda del user (1:1 en MVP)
     const { data: tienda, error: tErr } = await supabase
       .from('tiendas')
-      .select('id, user_id, slug, nombre_negocio, logo_url, plantilla_id, paleta_id, estado, idioma, whatsapp_dueno, mostrar_agotados, mostrar_buscador_header, nombre_legal, nit, direccion, ciudad_negocio, email_contacto, telefono_contacto, sync_dashboard_excel_activo, cortesia_razon, plan_tienda, horario_atencion, easypanel_domain_id, subdominio_publicado_at, created_at, updated_at, personalizaciones')
+      .select('id, user_id, slug, nombre_negocio, logo_url, plantilla_id, paleta_id, estado, idioma, whatsapp_dueno, mostrar_agotados, mostrar_buscador_header, mostrar_resenas_productos, nombre_legal, nit, direccion, ciudad_negocio, email_contacto, telefono_contacto, sync_dashboard_excel_activo, cortesia_razon, plan_tienda, horario_atencion, easypanel_domain_id, subdominio_publicado_at, created_at, updated_at, personalizaciones')
       .eq('user_id', userId)
       .maybeSingle();
     if (tErr) throw tErr;
