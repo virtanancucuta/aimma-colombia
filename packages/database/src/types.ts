@@ -892,8 +892,10 @@ export type Database = {
           created_at: string
           descripcion: string | null
           estado: string
+          ficha_editorial: Json | null
           foto_principal_url: string | null
           fotos_galeria: Json
+          guia_tallas_url: string | null
           id: string
           nombre: string
           precio_mayorista: number | null
@@ -913,8 +915,10 @@ export type Database = {
           created_at?: string
           descripcion?: string | null
           estado?: string
+          ficha_editorial?: Json | null
           foto_principal_url?: string | null
           fotos_galeria?: Json
+          guia_tallas_url?: string | null
           id?: string
           nombre: string
           precio_mayorista?: number | null
@@ -934,8 +938,10 @@ export type Database = {
           created_at?: string
           descripcion?: string | null
           estado?: string
+          ficha_editorial?: Json | null
           foto_principal_url?: string | null
           fotos_galeria?: Json
+          guia_tallas_url?: string | null
           id?: string
           nombre?: string
           precio_mayorista?: number | null
