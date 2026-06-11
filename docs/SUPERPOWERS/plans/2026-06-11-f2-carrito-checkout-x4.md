@@ -49,14 +49,33 @@ EF `tienda-crear-pedido`, `reservar_stock_variante`, tabla `pedidos`, `idempoten
 - [ ] **Step 1: Escribir el test que falla** (`test/cart.test.ts`)
 
 ```ts
-// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as cart from '../src/lib/cart';
+
+// Shims: el módulo es cliente (localStorage/window/location). La suite corre en node (sin jsdom),
+// así que inyectamos los globals mínimos en globalThis. cart.ts solo los toca dentro de funciones.
+class MemStorage {
+  private m = new Map<string, string>();
+  getItem(k: string) { return this.m.has(k) ? this.m.get(k)! : null; }
+  setItem(k: string, v: string) { this.m.set(k, String(v)); }
+  removeItem(k: string) { this.m.delete(k); }
+  clear() { this.m.clear(); }
+}
+const listeners: Record<string, Function[]> = {};
 
 const base = { producto_id: 'p1', variante_id: 'v1', slug: 'prod-1', sku: 'SKU1', nombre: 'Prod 1', color: 'Rojo', talla: 'M', foto: 'http://x/f.jpg', cantidad: 1, precio: 1000 };
 
 describe('lib/cart', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    (globalThis as any).localStorage = new MemStorage();
+    (globalThis as any).location = { hostname: 'aimma-test.tienda.aimma.com.co' };
+    (globalThis as any).CustomEvent = class { type: string; detail: any; constructor(t: string, o?: any) { this.type = t; this.detail = o && o.detail; } };
+    for (const k in listeners) delete listeners[k];
+    (globalThis as any).window = {
+      addEventListener: (t: string, cb: Function) => { (listeners[t] || (listeners[t] = [])).push(cb); },
+      dispatchEvent: (e: any) => { (listeners[e.type] || []).forEach((cb) => cb(e)); return true; },
+    };
+  });
 
   it('writeItem agrega y readCart devuelve el item', () => {
     cart.writeItem({ ...base });

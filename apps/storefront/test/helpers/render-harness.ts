@@ -125,6 +125,10 @@ export function normalize(html: string): string {
     // 2 + 3: eliminar anotaciones dev (con el espacio previo) — prod nunca las emite
     .replace(/ data-astro-source-file="[^"]*"/g, '')
     .replace(/ data-astro-source-loc="[^"]*"/g, '')
+    // F2: el Container (dev) emite <script type="module" src="<abs>/src/.../X.astro?astro&type=script...">.
+    // Prod emite chunks hasheados por el build (no esta ruta). Normalizar la ruta ABSOLUTA local a
+    // repo-relativa (estable entre maquinas/CI) preservando QUE componente referencia el script.
+    .replace(/src="[^"]*\/src\//g, 'src="src/')
     // 1: normalizar el hash de scope (atributo booleano sin '=')
     .replace(/data-astro-cid-[A-Za-z0-9]+/g, 'data-astro-cid-CID');
 }
