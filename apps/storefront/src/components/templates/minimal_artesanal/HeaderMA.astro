@@ -60,7 +60,11 @@ const catsLeft = categorias.slice(0, 3);
           alt={tienda.nombre_negocio}
           width="40"
           height="40"
-          class="h-10 w-auto object-contain"
+          {/* !h-10: global.css trae `img { height:auto }` SIN @layer -> pisa el `h-10` de utilities
+              (no-layered gana a layered en Tailwind v4). Con w-auto el logo quedaba sin constraint en
+              ningun eje = tamano natural gigante. El important fuerza el alto. FB/EM no sufren porque
+              fijan el ancho (h-9 w-9 / h-8 w-8). Raiz a corregir aparte: mover esa regla a @layer base. */}
+          class="!h-10 w-auto object-contain"
           loading="eager"
         />
       ) : (
