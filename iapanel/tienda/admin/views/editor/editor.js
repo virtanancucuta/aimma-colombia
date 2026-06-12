@@ -359,7 +359,7 @@
     try {
       const body = {
         tienda_id: ES.tienda_id,
-        page_id: 'home',
+        page_id: ES.pageId,
         mode: 'draft',
         personalizaciones: ES.serialize(),
         base_updated_at: ES.base_updated_at,
@@ -401,7 +401,7 @@
     try {
       const body = {
         tienda_id: ES.tienda_id,
-        page_id: 'home',
+        page_id: ES.pageId,
         mode: 'publish',
         personalizaciones: ES.serialize(),
         base_updated_at: ES.base_updated_at,
@@ -460,18 +460,20 @@
   function syncTiendaCache(mode, savedPage) {
     const T = window.TiendaIA;
     if (!T || !T.state || !T.state.tienda || !savedPage) return;
+    const pageId = T.editorState.pageId;          // pagina activa (default 'home')
+    const draftKey = pageId + '_draft';
     const cur = T.state.tienda.personalizaciones || { schema_version: 3, pages: {} };
     const draftTheme = T.editorState.serialize().theme; // el theme que se edita ES el borrador
     const next = { schema_version: 3, pages: { ...(cur.pages || {}) } };
     if (mode === 'publish') {
       next.theme = draftTheme;          // promueve
       // theme_draft se elimina (no se copia)
-      next.pages.home = savedPage;
-      delete next.pages.home_draft;
+      next.pages[pageId] = savedPage;
+      delete next.pages[draftKey];
     } else {
       next.theme = cur.theme;           // preserva el publicado intacto
       next.theme_draft = draftTheme;    // borrador
-      next.pages.home_draft = savedPage;
+      next.pages[draftKey] = savedPage;
     }
     T.state.tienda.personalizaciones = next;
   }
@@ -487,7 +489,7 @@
     );
     if (ok) {
       if (serverPers) {
-        ES.init(serverPers, ES.tienda_id);
+        ES.init(serverPers, ES.tienda_id, ES.pageId);
         if (window.TiendaIA?.editorCanvas?.reloadFull) window.TiendaIA.editorCanvas.reloadFull();
         toast('Cargamos la version del servidor.', 'info');
       } else {
