@@ -397,13 +397,17 @@
   function openCatalog() {
     window.TiendaIA.editorModalCatalog.open(async (tipo) => {
       const ES = window.TiendaIA.editorState;
-      const wasEmpty = ES.sections.length === 0; // L3: 0->1 cambia fallback/pagina-vacia -> BlockRenderer
+      const wasEmpty = ES.sections.length === 0;
       const id = ES.addSection(tipo);
       if (!id) return;
       ES.select(id);
-      // En pagina vacia el carril patch no tiene ancla ([data-section-id]) -> reload para que la
-      // primera seccion aparezca (aplica a home vacio y a coleccion vacia por igual).
-      if (wasEmpty && window.TiendaIA?.editorCanvas?.reloadFull) window.TiendaIA.editorCanvas.reloadFull();
+      // L3-fix: coleccion vacia tiene el contenedor [data-ed-sections] -> el patch-rail inserta la
+      // primera seccion LIVE (sin recarga). Home vacio muestra el fallback (sin contenedor) -> guardamos
+      // el draft (await) y recien recargamos, para que el reload lea el draft fresco (no el stale).
+      if (wasEmpty && ES.pageId === 'home') {
+        await flushDraft();
+        if (window.TiendaIA?.editorCanvas?.reloadFull) window.TiendaIA.editorCanvas.reloadFull();
+      }
       // Secciones que referencian datos del catalogo nacen con un placeholder all-zeros (Zod-valido).
       // Lo reemplazamos por data REAL de ESTA tienda para que la seccion no nazca vacia. Si falla o no
       // hay data, el placeholder queda -> degradacion graciosa (publico no muestra nada; preview hint).

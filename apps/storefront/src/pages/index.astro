@@ -85,7 +85,11 @@ const jsonLd = {
   isPreview={isPreview}
 >
   {homeSections ? (
-    <BlockRenderer sections={homeSections} />
+    isPreview ? (
+      <div data-ed-sections><BlockRenderer sections={homeSections} /></div>
+    ) : (
+      <BlockRenderer sections={homeSections} />
+    )
   ) : (
     <>
       <Hero />
