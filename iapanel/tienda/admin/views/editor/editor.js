@@ -32,6 +32,7 @@
     editingSection: null,   // C.2 Paso 2: seccion con patches SUSPENDIDOS (edicion inline en curso)
     editingTimer: null,     // auto-recuperacion del suspend (timeout, evita congelado silencioso)
     clearEditingAfterDrain: false, // liberar el suspend tras drenar el patch (salteado) del commit
+    sampleCategory: null,   // L3: {slug} de la categoria-muestra para preview de Coleccion (null = sin categorias)
   };
 
   function whenReady(cb, attempts) {
@@ -98,6 +99,8 @@
 
     // Init state v3
     window.TiendaIA.editorState.init(tienda.personalizaciones, tienda.id);
+    // L3: resolver la categoria-muestra (primera por orden) para habilitar/previsualizar Coleccion.
+    await resolveSampleCategory();
     // Autosave re-armado en CADA cambio de contenido (fix del latch: antes solo se
     // suscribia a 'dirty', que notifica solo en la transicion false->true -> sub-guardaba).
     // 'sections'/'theme' notifican en cada mutacion; 'dirty' cubre el primer cambio / starter.
@@ -126,6 +129,8 @@
 
     window.TiendaIA.editorSidebar.render(sidebarEl, {
       onAddSection: () => openCatalog(),
+      onSwitchPage: (pageId) => switchPage(pageId),
+      getPages: () => buildPageList(),
     });
 
     window.TiendaIA.editorCanvas.render(canvasEl, {});
@@ -307,12 +312,98 @@
     }, ERROR_RETRY_MS);
   }
 
+  // ============================================================
+  // Page switcher (L3)
+  // ============================================================
+  // Categoria-muestra (primera por orden) para previsualizar Coleccion (plantilla GLOBAL).
+  // null -> la tienda no tiene categorias -> Coleccion deshabilitada en el switcher.
+  async function resolveSampleCategory() {
+    state.sampleCategory = null;
+    const sb = window.TiendaIA.supabase && window.TiendaIA.supabase();
+    const ES = window.TiendaIA.editorState;
+    if (!sb || !ES.tienda_id) return;
+    try {
+      const { data } = await sb.from('categorias')
+        .select('slug').eq('tienda_id', ES.tienda_id)
+        .order('orden', { ascending: true }).limit(1);
+      if (data && data.length && data[0].slug) state.sampleCategory = { slug: data[0].slug };
+    } catch (e) { /* sin categorias -> Coleccion deshabilitada */ }
+  }
+
+  // Descriptores de pagina para el switcher. Inicio siempre; Coleccion segun haya categorias.
+  function buildPageList() {
+    const cur = window.TiendaIA.editorState.pageId;
+    const list = [{ id: 'home', label: 'Inicio', enabled: true }];
+    list.push({
+      id: 'coleccion',
+      label: 'Coleccion',
+      enabled: !!state.sampleCategory,
+      hint: state.sampleCategory ? '' : 'Necesitas al menos una categoria para editar la pagina de Coleccion',
+    });
+    return list.map((p) => Object.assign({}, p, { active: p.id === cur }));
+  }
+
+  // Flush del borrador de la pagina ACTUAL antes de cambiar. Reusa saveDraft (hotfix-14 intacto).
+  // CLAVE: dirty NO se limpia al guardar borrador -> el flush NO espera dirty=false; espera a que el
+  // save en vuelo termine y fuerza un ultimo saveDraft awaited. Si falla -> false (el caller ABORTA
+  // el switch). Sin carrera de mutacion concurrente (el click de cambiar pagina no coincide con tipeo).
+  async function flushDraft() {
+    const ES = window.TiendaIA.editorState;
+    if (state.autoSaveTimer) { clearTimeout(state.autoSaveTimer); state.autoSaveTimer = null; }
+    let guard = 0;
+    while (ES.saving && guard++ < 100) { await new Promise((r) => setTimeout(r, 50)); } // <=5s
+    if (ES.dirty) { await saveDraft(); } // no-op si !dirty
+    if (state.autoSaveTimer) { clearTimeout(state.autoSaveTimer); state.autoSaveTimer = null; }
+    return ES.draftSaveStatus !== 'error';
+  }
+
+  // Limpia el carril patch + el suspend inline (apuntan al iframe de la pagina vieja).
+  function clearPatchState() {
+    Object.keys(state.patchTimers).forEach((k) => clearTimeout(state.patchTimers[k]));
+    state.patchTimers = {};
+    state.patchQueue = [];
+    state.patchDraining = false;
+    state.pendingSelect = null;
+    clearEditingSection();
+  }
+
+  // Cambia de pagina: GUARD anti-perdida (flush) -> init(nueva) -> canvas recarga a su preview.
+  async function switchPage(pageId) {
+    const ES = window.TiendaIA.editorState;
+    if (!pageId || pageId === ES.pageId) return;
+    if (pageId === 'coleccion' && !state.sampleCategory) {
+      toast('Necesitas al menos una categoria para editar la pagina de Coleccion.', 'info');
+      return;
+    }
+    // 1) GUARD ANTI-PERDIDA: si no se pudo guardar el borrador, NO cambiamos (el usuario queda aca).
+    const ok = await flushDraft();
+    if (!ok) {
+      toast('No pudimos guardar tu borrador. Reintenta antes de cambiar de pagina.', 'error');
+      return;
+    }
+    // 2) limpiar el carril patch (apunta al iframe viejo)
+    clearPatchState();
+    // 3) cargar la pagina nueva (draft/publicada) desde la cache ya sincronizada por syncTiendaCache
+    const T = window.TiendaIA;
+    ES.init(T.state.tienda.personalizaciones, ES.tienda_id, pageId);
+    // 4) recargar el canvas al preview de la pagina nueva (token page-agnostic)
+    const path = pageId === 'coleccion' ? ('/c/' + state.sampleCategory.slug) : '/';
+    if (T.editorCanvas) {
+      T.editorCanvas.setPagePath(path);
+      T.editorCanvas.reloadFull();
+    }
+  }
+
   function openCatalog() {
     window.TiendaIA.editorModalCatalog.open(async (tipo) => {
       const ES = window.TiendaIA.editorState;
+      const wasEmpty = ES.sections.length === 0; // L3: 0->1 cambia fallback/pagina-vacia -> BlockRenderer
       const id = ES.addSection(tipo);
       if (!id) return;
       ES.select(id);
+      // En pagina vacia el carril patch no tiene ancla ([data-section-id]) -> reload para que la
+      // primera seccion aparezca (aplica a home vacio y a coleccion vacia por igual).
+      if (wasEmpty && window.TiendaIA?.editorCanvas?.reloadFull) window.TiendaIA.editorCanvas.reloadFull();
       // Secciones que referencian datos del catalogo nacen con un placeholder all-zeros (Zod-valido).
       // Lo reemplazamos por data REAL de ESTA tienda para que la seccion no nazca vacia. Si falla o no
       // hay data, el placeholder queda -> degradacion graciosa (publico no muestra nada; preview hint).

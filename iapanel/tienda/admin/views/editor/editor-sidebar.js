@@ -29,9 +29,21 @@
     if (state.sortable) { try { state.sortable.destroy(); } catch (e) {} state.sortable = null; }
     container.innerHTML = '';
 
-    // Encabezado Paginas
+    // Encabezado Paginas + switcher (L3). getPages() viene de editor.js (Inicio / Coleccion / ...).
     container.appendChild(E('p', { class: 'ed-sidebar__title' }, 'Paginas'));
-    container.appendChild(E('div', { class: 'ed-sidebar__page ed-sidebar__page--active' }, 'Inicio'));
+    const pages = (state.callbacks.getPages && state.callbacks.getPages()) ||
+      [{ id: 'home', label: 'Inicio', enabled: true, active: true }];
+    pages.forEach((p) => {
+      const cls = 'ed-sidebar__page' +
+        (p.active ? ' ed-sidebar__page--active' : '') +
+        (p.enabled ? '' : ' ed-sidebar__page--disabled');
+      const attrs = { class: cls };
+      if (!p.enabled && p.hint) attrs.title = p.hint;
+      if (p.enabled && !p.active) {
+        attrs.onClick = () => state.callbacks.onSwitchPage && state.callbacks.onSwitchPage(p.id);
+      }
+      container.appendChild(E('div', attrs, p.label));
+    });
 
     // Encabezado Secciones
     container.appendChild(E('p', { class: 'ed-sidebar__title', style: 'margin-top:1.25rem' }, 'Secciones'));

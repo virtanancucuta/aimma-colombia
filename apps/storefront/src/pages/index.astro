@@ -8,15 +8,13 @@ import Layout from '~/layouts/Layout.astro';
 import Hero from '~/components/Hero.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
 import BlockRenderer from '~/components/BlockRenderer.astro';
-import PreviewChrome from '~/components/PreviewChrome.astro';
-import InlineEdit from '~/components/InlineEdit.astro';
+import EditorPreviewBridge from '~/components/EditorPreviewBridge.astro';
 import { getProductosPorTienda } from '~/lib/catalogo';
-import { parsePersonalizaciones, FONT_PAIRINGS, CSS_COLOR_REGEX } from '@aimma/database';
+import { parsePersonalizaciones } from '@aimma/database';
 
 const { tienda, supabase } = Astro.locals;
 const plantillaSlug = tienda.plantilla?.slug;
 
-const ADMIN_ORIGIN = 'https://aimma.com.co';
 const previewToken = Astro.url.searchParams.get('preview');
 let isPreview = false;
 
@@ -159,90 +157,4 @@ const jsonLd = {
   )}
 </Layout>
 
-{isPreview && (
-  <script is:inline define:vars={{ ADMIN_ORIGIN, PAIRINGS: FONT_PAIRINGS, COLOR_RE: CSS_COLOR_REGEX.source }}>
-    // Puente Editor PRO-MAX (solo en preview). Click en seccion -> avisa al panel.
-    // Recibe {type:'reload'} -> recarga. Valida origin en ambos sentidos.
-    document.addEventListener('click', (e) => {
-      if (!(e.target instanceof Element)) return;
-      // Clicks del chrome de seleccion: los maneja PreviewChrome, no seleccionar/deseleccionar.
-      if (e.target.closest('[data-ed-chrome]')) return;
-      const el = e.target.closest('[data-section-id]');
-      if (el) {
-        e.preventDefault();
-        const sectionId = el.getAttribute('data-section-id');
-        try { parent.postMessage({ type: 'select', sectionId }, ADMIN_ORIGIN); } catch (_) {}
-      } else {
-        // Click en espacio vacio del canvas -> deseleccion (el admin nuevo hara set-selection(null)).
-        try { parent.postMessage({ type: 'select', sectionId: null }, ADMIN_ORIGIN); } catch (_) {}
-      }
-    }, true);
-
-    window.addEventListener('message', (e) => {
-      if (e.origin !== ADMIN_ORIGIN) return;
-      const msg = e.data || {};
-      if (msg.type === 'reload') location.reload();
-      if (msg.type === 'theme' && msg.colors && typeof msg.colors === 'object') {
-        const re = new RegExp(COLOR_RE);
-        for (const k in msg.colors) {
-          const v = msg.colors[k];
-          // Solo vars --ta-color-* con valor que pasa el MISMO regex que el Zod (preview == guardado).
-          if (typeof k === 'string' && k.indexOf('--ta-color-') === 0 && typeof v === 'string' && re.test(v)) {
-            document.documentElement.style.setProperty(k, v);
-          }
-        }
-        // Fuente: SOLO el ID del allowlist; la url/family se DERIVAN server-side de PAIRINGS (nunca URL cruda).
-        // hasOwnProperty: un id como 'constructor'/'__proto__' NO debe resolver a una cadena del prototipo.
-        const p = (typeof msg.font_pairing === 'string' && Object.prototype.hasOwnProperty.call(PAIRINGS, msg.font_pairing)) ? PAIRINGS[msg.font_pairing] : null;
-        if (p) {
-          document.documentElement.style.setProperty('--ta-font-display', p.display);
-          document.documentElement.style.setProperty('--ta-font-body', p.body);
-          if (!document.querySelector('link[data-theme-font="' + msg.font_pairing + '"]')) {
-            const l = document.createElement('link');
-            l.rel = 'stylesheet'; l.href = p.url; l.setAttribute('data-theme-font', msg.font_pairing);
-            document.head.appendChild(l);
-          }
-        }
-      }
-      if (msg.type === 'section-patch') {
-        // Origin ya validado arriba (=== exacto). Shape ESTRICTO antes de tocar el DOM.
-        const OPS = { replace: 1, insert: 1, remove: 1, move: 1 };
-        if (!OPS[msg.op]) return;
-        if (typeof msg.sectionId !== 'string' || !/^sec_[a-z0-9]{4,}$/.test(msg.sectionId)) return;
-        const first = document.querySelector('[data-section-id]');
-        const cont = first ? first.parentElement : null;
-        const el = document.querySelector('[data-section-id="' + msg.sectionId + '"]');
-        if (msg.op === 'remove') { if (el) el.remove(); return; }
-        if (msg.op === 'move') {
-          // splice semantics (== editorState.reorderSections): sacar el nodo PRIMERO y recien
-          // insertar en toIndex sobre el array ya sin el. Sin el remove previo, insertBefore con
-          // from<toIndex queda corrido (children[toIndex] cuenta a el todavia presente).
-          if (el && cont && Number.isInteger(msg.toIndex)) {
-            el.remove();
-            cont.insertBefore(el, cont.children[msg.toIndex] || null);
-          }
-          return;
-        }
-        // replace/insert: el html es NUESTRO SSR (sanitizado por la fn compartida) + origin-gated.
-        // SHAPE estricto del html ANTES del DOM: exactamente UN <section data-section-id=msg.sectionId>.
-        // NO re-sanitiza (Q4.3); valida que sea EL nodo section esperado -> nunca corrompe el DOM con
-        // html inesperado (caza render-bugs). Usa el nodo parseado (no outerHTML con string crudo).
-        if (typeof msg.html !== 'string') return;
-        const t = document.createElement('template');
-        t.innerHTML = msg.html.trim();
-        const node = t.content.children.length === 1 ? t.content.firstElementChild : null;
-        if (!node || node.tagName !== 'SECTION' || node.getAttribute('data-section-id') !== msg.sectionId) return;
-        if (msg.op === 'replace') { if (el) el.replaceWith(node); return; }
-        if (msg.op === 'insert' && cont && Number.isInteger(msg.index)) {
-          cont.insertBefore(node, cont.children[msg.index] || null);
-        }
-      }
-    });
-
-    // Avisar al panel que el preview esta listo.
-    try { parent.postMessage({ type: 'preview-ready' }, ADMIN_ORIGIN); } catch (_) {}
-  </script>
-)}
-
-{isPreview && <PreviewChrome />}
-{isPreview && <InlineEdit />}
+{isPreview && <EditorPreviewBridge />}
