@@ -9,6 +9,7 @@
 import Layout from '~/layouts/Layout.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
 import BlockRenderer from '~/components/BlockRenderer.astro';
+import EditorPreviewBridge from '~/components/EditorPreviewBridge.astro';
 import { getCategoriaPorSlug, getProductosPorTienda } from '~/lib/catalogo';
 import { parsePersonalizaciones } from '@aimma/database';
 
@@ -97,3 +98,5 @@ const jsonLd = {
 
   <ProductGrid productos={productos} emptyMessage="Esta categoria aun no tiene productos." />
 </Layout>
+
+{isPreview && <EditorPreviewBridge />}

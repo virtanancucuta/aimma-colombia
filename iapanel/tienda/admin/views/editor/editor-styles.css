@@ -149,6 +149,14 @@
   background: var(--ed-color-selection-bg);
   color: var(--ed-color-selection);
 }
+/* L3 switcher: hover en paginas clickeables (no activa, no deshabilitada) + estado deshabilitado. */
+.ed-sidebar__page:not(.ed-sidebar__page--active):not(.ed-sidebar__page--disabled):hover {
+  background: var(--ed-color-selection-bg);
+}
+.ed-sidebar__page--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .ed-sidebar__outline {
   margin: 0.5rem 0 0 0;

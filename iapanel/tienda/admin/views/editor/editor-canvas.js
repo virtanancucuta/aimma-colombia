@@ -26,6 +26,7 @@
     statusEl: null,
     tenantOrigin: null,   // https://<slug>.tienda.aimma.com.co
     previewUrl: null,
+    pagePath: '/',        // L3: ruta de la pagina activa en el preview ('/', '/c/<cat>', ...)
     ready: false,
     device: 'desktop',
     messageHandler: null,
@@ -91,15 +92,21 @@
         setStatus('No pudimos abrir la vista previa. Verifica que la tienda exista y vuelve a intentar.', true);
         return;
       }
-      state.previewUrl = data.preview_url;
       state.expiresAt = data.expires_at || null;
       // Derivar TENANT_ORIGIN de la URL real (robusto vs construir el slug a mano).
+      var origin;
       try {
-        state.tenantOrigin = new URL(data.preview_url).origin;
+        origin = new URL(data.preview_url).origin;
       } catch (e) {
         setStatus('La URL de vista previa no es valida.', true);
         return;
       }
+      state.tenantOrigin = origin;
+      // L3: el token es PAGE-AGNOSTIC (validate_preview_token anda en / y /c/[slug]).
+      // El iframe carga la PAGINA activa (state.pagePath); home '/' = comportamiento previo.
+      var tok = data.token || new URL(data.preview_url).searchParams.get('preview');
+      var path = state.pagePath || '/';
+      state.previewUrl = origin + path + '?preview=' + encodeURIComponent(tok);
       mountIframe();
       scheduleRemint(); // re-mint proactivo antes de que el token venza (evita el 403 en canvas)
     } catch (err) {
@@ -305,6 +312,12 @@
     if (state.container) state.container.setAttribute('data-device', state.device);
   }
 
+  // L3: setea la ruta de la pagina activa para el proximo loadPreview/reloadFull.
+  // NO recarga por si solo (el caller hace reloadFull tras setearla). Default '/'.
+  function setPagePath(path) {
+    state.pagePath = (typeof path === 'string' && path) ? path : '/';
+  }
+
   function setStatus(text, isError) {
     if (!state.statusEl) return;
     if (!text) {
@@ -388,8 +401,9 @@
 
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
-    render, refresh, reloadFull, setDevice, destroy, rebuild, applyThemePreview,
+    render, refresh, reloadFull, setDevice, setPagePath, destroy, rebuild, applyThemePreview,
     renderFragment, applyPatch, handleSectionAction, postSelection, selectionLabel, handleInlineMessage,
     get previewUrl() { return state.previewUrl; },
+    get pagePath() { return state.pagePath || '/'; },
   };
 })(window);
