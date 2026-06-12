@@ -30,15 +30,26 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
+// page_id = clave logica de pagina en personalizaciones.pages. Allowlist por PATRON
+// (no enum cerrado): 'home', 'coleccion', y 'pagina:<slug>' (paginas personalizadas, L5).
+// Asi multi-pagina entra sin re-tocar el write path. El slug es DNS-safe.
+const PAGE_ID_RE = /^(home|coleccion|pagina:[a-z0-9][a-z0-9-]{0,38}[a-z0-9])$/;
+
 const BodySchema = z.object({
   tienda_id: z.string().uuid(),
-  page_id: z.literal('home'),
+  page_id: z.string().regex(PAGE_ID_RE),
   mode: z.enum(['draft', 'publish']),
-  personalizaciones: PersonalizacionesSchema.refine(
-    (p) => p.pages['home'] !== undefined,
-    { message: 'personalizaciones.pages.home es requerido', path: ['pages', 'home'] },
-  ),
+  personalizaciones: PersonalizacionesSchema,
   base_updated_at: z.string().datetime().nullable(),
+}).superRefine((b, ctx) => {
+  // La pagina que se guarda DEBE venir en el payload (cross-field: depende de page_id).
+  if (b.personalizaciones.pages[b.page_id] === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'personalizaciones.pages[' + b.page_id + '] es requerido',
+      path: ['personalizaciones', 'pages', b.page_id],
+    });
+  }
 });
 
 const MAX_PAYLOAD_BYTES = 2_000_000;
@@ -46,10 +57,10 @@ const MAX_PAYLOAD_BYTES = 2_000_000;
 // Sanitize-and-store AUTORITATIVO: parse Zod + limpia el HTML de cada seccion 'texto' antes de persistir.
 // La BD nunca guarda HTML sucio, aunque alguien postee directo a la EF. Fuente unica: validate-section.ts
 // (mirror byte-identico del canonico packages/database/src/validate-section.ts, test 15 prueba byte-inalterado).
-function sanitizeHome(home: any): void {
-  if (!home || !Array.isArray(home.sections)) return;
+function sanitizePage(page: any): void {
+  if (!page || !Array.isArray(page.sections)) return;
   // Fuente unica: parse(Zod)+sanitize por seccion (test 15 prueba byte-inalterado del save).
-  home.sections = home.sections.map(validateAndSanitizeSection);
+  page.sections = page.sections.map(validateAndSanitizeSection);
 }
 
 function json(body: unknown, status = 200) {
@@ -117,7 +128,7 @@ serve(async (req) => {
   }
 
   // 3.5) Sanitizar HTML de secciones texto (autoritativo, antes de construir el JSON a guardar)
-  sanitizeHome(body.personalizaciones.pages.home);
+  sanitizePage(body.personalizaciones.pages[body.page_id]);
 
   // 4) Ownership check
   const supabaseSvc = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -133,13 +144,13 @@ serve(async (req) => {
     return json({ error: 'not_owner' }, 403);
   }
 
-  // 5) Locking optimista (sin cambios respecto a Plan 3)
-  const currentHome = (tienda.personalizaciones as any)?.pages?.home;
-  if (currentHome && body.base_updated_at &&
-      currentHome.updated_at > body.base_updated_at) {
+  // 5) Locking optimista por pagina (compara contra la pagina PUBLICADA correspondiente)
+  const currentPage = (tienda.personalizaciones as any)?.pages?.[body.page_id];
+  if (currentPage && body.base_updated_at &&
+      currentPage.updated_at > body.base_updated_at) {
     return json({
       error: 'stale_layout',
-      server_updated_at: currentHome.updated_at,
+      server_updated_at: currentPage.updated_at,
       server_personalizaciones: tienda.personalizaciones,
     }, 409);
   }
@@ -158,12 +169,13 @@ serve(async (req) => {
     delete next.theme_draft;
   }
 
-  const homeFromClient = body.personalizaciones.pages.home;
+  const pageFromClient = body.personalizaciones.pages[body.page_id];
+  const draftKey = body.page_id + '_draft';
   if (body.mode === 'draft') {
-    next.pages.home_draft = { ...homeFromClient, updated_at: now };
+    next.pages[draftKey] = { ...pageFromClient, updated_at: now };
   } else {
-    next.pages.home = { ...homeFromClient, updated_at: now };
-    delete next.pages.home_draft;
+    next.pages[body.page_id] = { ...pageFromClient, updated_at: now };
+    delete next.pages[draftKey];
   }
 
   // 7) Upsert
@@ -183,11 +195,16 @@ serve(async (req) => {
     );
   }
 
+  // 'home' = nombre legacy del campo; carrea la PAGINA guardada (sea cual sea page_id).
+  // editor.js lo lee como r.home en syncTiendaCache. Se agrega 'page' como alias claro.
+  const savedPage = body.mode === 'publish' ? next.pages[body.page_id] : next.pages[draftKey];
   return json({
     success: true,
     mode: body.mode,
+    page_id: body.page_id,
     updated_at: now,
-    home: body.mode === 'publish' ? next.pages.home : next.pages.home_draft,
+    home: savedPage,
+    page: savedPage,
     theme: next.theme,
     theme_draft: next.theme_draft,
   });

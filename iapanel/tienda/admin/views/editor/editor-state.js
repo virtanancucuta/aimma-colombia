@@ -76,16 +76,19 @@
   // ============================================================
   // Init
   // ============================================================
-  function init(personalizaciones, tienda_id) {
+  function init(personalizaciones, tienda_id, pageId) {
     state.tienda_id = tienda_id;
+    // L1: pagina logica que se edita. Default 'home' (comportamiento existente).
+    state.pageId = pageId || 'home';
     const pers = personalizaciones || {};
-    // En el editor priorizamos el borrador si existe, si no la home publicada.
-    const home = pers.pages?.home_draft || pers.pages?.home || null;
-    state.sections = Array.isArray(home?.sections) ? structuredClone(home.sections) : [];
+    const draftKey = state.pageId + '_draft';
+    // En el editor priorizamos el borrador de ESTA pagina si existe, si no la publicada.
+    const page = pers.pages?.[draftKey] || pers.pages?.[state.pageId] || null;
+    state.sections = Array.isArray(page?.sections) ? structuredClone(page.sections) : [];
     state.theme = normalizeTheme(pers.theme_draft || pers.theme);
-    // base_updated_at: usamos el de la home PUBLICADA para el locking optimista
-    // (el draft no participa del locking; guardar-layout compara contra home).
-    state.base_updated_at = pers.pages?.home?.updated_at || home?.updated_at || null;
+    // base_updated_at: el de la pagina PUBLICADA para el locking optimista
+    // (el draft no participa; guardar-layout compara contra la pagina publicada).
+    state.base_updated_at = pers.pages?.[state.pageId]?.updated_at || page?.updated_at || null;
     state.selection = null;
     state.dirty = false;
     state.snapshots = [];
@@ -340,11 +343,13 @@
 
   // SCHEMA v3: schema_version:3, page.version:2.
   function serialize() {
+    // L1: escribe SOLO la pagina activa (state.pageId). La EF mergea contra el resto
+    // de paginas existentes en la BD -> no pisa home/coleccion/otras custom.
     return {
       schema_version: 3,
       theme: state.theme,
       pages: {
-        home: {
+        [state.pageId || 'home']: {
           version: 2,
           updated_at: new Date().toISOString(),
           sections: structuredClone(state.sections),
@@ -366,6 +371,7 @@
     get saving() { return state.saving; },
     get draftSaveStatus() { return state.draftSaveStatus; },
     get tienda_id() { return state.tienda_id; },
+    get pageId() { return state.pageId || 'home'; },
     get base_updated_at() { return state.base_updated_at; },
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
     get lastOp() { return state.lastOp; },
