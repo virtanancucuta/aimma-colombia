@@ -81,7 +81,11 @@ const jsonLd = {
   jsonLd={jsonLd}
   noindex={isPreview}
   isPreview={isPreview}
->{coleccionSections && <BlockRenderer sections={coleccionSections} />}
+>{isPreview ? (
+    <div data-ed-sections>{coleccionSections && <BlockRenderer sections={coleccionSections} />}</div>
+  ) : (
+    coleccionSections && <BlockRenderer sections={coleccionSections} />
+  )}
   <header class="mb-8">
     <nav class="mb-2 text-sm text-[var(--ta-color-text-base)]/60" aria-label="Breadcrumb">
       <a href="/" class="hover:underline">Inicio</a>
