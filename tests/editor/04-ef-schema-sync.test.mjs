@@ -37,3 +37,15 @@ test('EF validate-section.ts es mirror del canonico modulo extension .ts en impo
     'el mirror EF de validate-section drifteo del canonico. El unico diff permitido es la extension .ts en imports relativos (exigencia Deno). Re-sincronizar y ajustar solo la extension.'
   );
 });
+
+// build-next-personalizaciones: nucleo de preservacion del write path multi-pagina. NO tiene imports
+// relativos -> el mirror EF es byte-identico EXACTO (sin normalizacion de extension). El EF lo importa
+// (index.ts) y tests/editor/20 ejerce el canonico, asi el test corre el CODIGO REAL, no una copia.
+test('EF build-next-personalizaciones.ts es mirror byte-identico del canonico', () => {
+  const canonicalBN = readFileSync(resolve(HERE, '../../packages/database/src/build-next-personalizaciones.ts'), 'utf8');
+  const efBN = readFileSync(resolve(HERE, '../../supabase/functions/tienda-guardar-layout/build-next-personalizaciones.ts'), 'utf8');
+  assert.equal(
+    efBN, canonicalBN,
+    'la copia EF de build-next-personalizaciones drifteo del canonico. Re-sincronizar: cp packages/database/src/build-next-personalizaciones.ts supabase/functions/tienda-guardar-layout/build-next-personalizaciones.ts'
+  );
+});

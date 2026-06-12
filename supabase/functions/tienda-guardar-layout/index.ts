@@ -15,6 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { z } from 'zod';
 import { PersonalizacionesSchema } from './editor-schema.ts';
 import { validateAndSanitizeSection } from './validate-section.ts';
+import { buildNextPersonalizaciones } from './build-next-personalizaciones.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -155,28 +156,20 @@ serve(async (req) => {
     }, 409);
   }
 
-  // 6) Construir nuevo JSON según mode
+  // 6) Construir nuevo JSON según mode. La logica de merge/preservacion (estructura que garantiza
+  //    que escribir una pagina NO pisa las otras keys) vive en build-next-personalizaciones.ts:
+  //    mirror byte-identico del canonico packages/database/src (sync-test 04), ejercido como
+  //    CODIGO REAL por el test de preservacion tests/editor/20.
   const now = new Date().toISOString();
-  const next: any = structuredClone(tienda.personalizaciones || { schema_version: 3, pages: {} });
-  next.schema_version = 3;
-  const themeFromClient = body.personalizaciones.theme;
-  if (body.mode === 'draft') {
-    // Borrador: escribe SOLO theme_draft; NO toca el theme publicado (preservado via structuredClone).
-    if (themeFromClient !== undefined) next.theme_draft = themeFromClient;
-  } else {
-    // Publicar: promueve el theme + limpia el borrador.
-    if (themeFromClient !== undefined) next.theme = themeFromClient;
-    delete next.theme_draft;
-  }
-
-  const pageFromClient = body.personalizaciones.pages[body.page_id];
   const draftKey = body.page_id + '_draft';
-  if (body.mode === 'draft') {
-    next.pages[draftKey] = { ...pageFromClient, updated_at: now };
-  } else {
-    next.pages[body.page_id] = { ...pageFromClient, updated_at: now };
-    delete next.pages[draftKey];
-  }
+  const next: any = buildNextPersonalizaciones(
+    tienda.personalizaciones,
+    body.page_id,
+    body.mode,
+    body.personalizaciones.pages[body.page_id],
+    body.personalizaciones.theme,
+    now,
+  );
 
   // 7) Upsert
   const { error: uErr } = await supabaseSvc

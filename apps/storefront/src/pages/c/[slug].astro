@@ -1,10 +1,16 @@
 ---
-// AIMMA Storefront · /c/[slug] · 2026-05-31
-// Pagina de categoria con grid de productos filtrados.
+// AIMMA Storefront · /c/[slug] · Editor multi-pagina L2 · 2026-06-12
+// Pagina de categoria: grid de productos (ancla fija) + secciones editables de la
+// plantilla GLOBAL de coleccion (pages.coleccion) renderizadas ARRIBA del grid via
+// BlockRenderer. Sin coleccion sections -> byte-identico al render previo.
+// Modo preview (?preview=<token>): lee pages.coleccion_draft fresco (mirror del home).
+// El puente del editor (PreviewChrome/InlineEdit/postMessage) llega en L3 (in-situ).
 
 import Layout from '~/layouts/Layout.astro';
 import ProductGrid from '~/components/ProductGrid.astro';
+import BlockRenderer from '~/components/BlockRenderer.astro';
 import { getCategoriaPorSlug, getProductosPorTienda } from '~/lib/catalogo';
+import { parsePersonalizaciones } from '@aimma/database';
 
 const { tienda, supabase } = Astro.locals;
 const { slug } = Astro.params;
@@ -21,6 +27,38 @@ if (!categoria) {
     { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   );
 }
+
+// ── Modo preview: validar token efimero + leer draft fresco (mirror del home) ──
+const previewToken = Astro.url.searchParams.get('preview');
+let isPreview = false;
+let persRaw: unknown = tienda.personalizaciones;
+if (previewToken) {
+  const { data: validTiendaId } = await supabase
+    .rpc('validate_preview_token', { p_token: previewToken });
+  if (!(validTiendaId && validTiendaId === tienda.id)) {
+    return new Response('Preview token invalido o expirado', {
+      status: 403,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+  isPreview = true;
+  const { data: fresh } = await supabase
+    .from('tiendas')
+    .select('personalizaciones')
+    .eq('id', tienda.id)
+    .single();
+  persRaw = fresh?.personalizaciones ?? tienda.personalizaciones;
+}
+Astro.locals.isPreview = isPreview;
+// L2: contexto de PAGINA para secciones context-aware (L4: encabezado/intro_coleccion).
+(Astro.locals as any).categoriaActual = categoria;
+
+const pers = parsePersonalizaciones(persRaw);
+// L2: secciones de la plantilla GLOBAL de coleccion (una para todas las categorias).
+// Preview -> coleccion_draft; publico -> coleccion. Sin la key -> null (render byte-identico).
+const coleccionSections =
+  (isPreview ? (pers?.pages?.coleccion_draft?.sections ?? pers?.pages?.coleccion?.sections)
+             : pers?.pages?.coleccion?.sections) ?? null;
 
 const productos = await getProductosPorTienda(supabase, tienda.id, {
   categoriaId: categoria.id,
@@ -40,7 +78,9 @@ const jsonLd = {
   title={categoria.nombre}
   description={`Productos de la categoria ${categoria.nombre} en ${tienda.nombre_negocio}.`}
   jsonLd={jsonLd}
->
+  noindex={isPreview}
+  isPreview={isPreview}
+>{coleccionSections && <BlockRenderer sections={coleccionSections} />}
   <header class="mb-8">
     <nav class="mb-2 text-sm text-[var(--ta-color-text-base)]/60" aria-label="Breadcrumb">
       <a href="/" class="hover:underline">Inicio</a>
