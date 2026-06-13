@@ -6,6 +6,7 @@ import HeaderFB from '~/components/templates/fashion_bold/HeaderFB.astro';
 import HeaderIC from '~/components/templates/industrial_clean/HeaderIC.astro';
 import HeaderMA from '~/components/templates/minimal_artesanal/HeaderMA.astro';
 import HeaderEM from '~/components/templates/editorial_magazine/HeaderEM.astro';
+import { buildMenu } from '~/lib/menu';
 
 const { tienda, supabase } = Astro.locals;
 const slug = tienda.plantilla?.slug;
@@ -20,6 +21,10 @@ const { data: categorias } = await supabase
 
 const cats = categorias || [];
 
+// M5: menu del ARBOL nav (Administrador de Paginas). FALLBACK robusto: sin nav util -> `cats` flat
+// (byte-identico a hoy). Publicado usa `nav`. M5.A: solo IC lo consume; las otras 3 siguen con `cats`.
+const menu = buildMenu((tienda as any).personalizaciones?.nav, cats);
+
 // Toggle de Configuracion "Mostrar buscador en el encabezado" (default true). El header dibuja
 // el buscador SOLO si esta en true. tienda viene de un select('*') -> el campo esta presente;
 // !== false cubre el default (true) y entradas de cache KV viejas (undefined -> se muestra).
@@ -30,5 +35,5 @@ const mostrarBuscador = (tienda as any).mostrar_buscador_header !== false;
 {slug === 'minimal_artesanal' && <HeaderMA tienda={tienda} categorias={cats} mostrarBuscador={mostrarBuscador} />}
 {slug === 'editorial_magazine' && <HeaderEM tienda={tienda} categorias={cats} mostrarBuscador={mostrarBuscador} />}
 {(slug === 'industrial_clean' || !slug || !['fashion_bold', 'minimal_artesanal', 'editorial_magazine'].includes(slug)) && (
-  <HeaderIC tienda={tienda} categorias={cats} mostrarBuscador={mostrarBuscador} />
+  <HeaderIC tienda={tienda} categorias={cats} menu={menu} mostrarBuscador={mostrarBuscador} />
 )}

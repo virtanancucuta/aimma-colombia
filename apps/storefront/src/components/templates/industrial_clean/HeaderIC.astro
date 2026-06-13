@@ -15,17 +15,28 @@ interface Categoria {
   orden: number;
 }
 
+import type { MenuItem } from '~/lib/menu';
+
 interface Props {
   tienda: Tienda;
   categorias: Categoria[];
+  menu?: MenuItem[];
   mostrarBuscador?: boolean;
 }
 
 import SearchBar from '~/components/SearchBar.astro';
 import CartBadge from '~/components/CartBadge.astro';
-const { tienda, categorias, mostrarBuscador } = Astro.props;
+const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
 ---
-
+<style is:global>
+  /* M5: dropdown de subcategorias CSS-only (sin JS). is:global -> Astro NO agrega data-astro-cid a los
+     elementos del header (canario: tienda sin nav queda byte-identica). Va al TOP para no dejar espacio
+     residual tras </header>. Clases ic-nav-* unicas, sin conflicto. focus-within = accesible por teclado;
+     pt-3 del panel = puente de hover (no se pierde el grupo al bajar del trigger al dropdown). */
+  .ic-nav-dropdown { display: none; }
+  .ic-nav-group:hover > .ic-nav-dropdown,
+  .ic-nav-group:focus-within > .ic-nav-dropdown { display: block; }
+</style>
 <header class="sticky top-0 z-40 border-b border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]/95 backdrop-blur-sm">
   <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-6 lg:px-8">
     {/* Logo (img or wordmark) */}
@@ -49,17 +60,42 @@ const { tienda, categorias, mostrarBuscador } = Astro.props;
       </span>
     </a>
 
-    {/* Nav central — uppercase tracking-wide, hover color shift */}
-    {categorias.length > 0 && (
+    {/* Nav central — uppercase tracking-wide, hover color shift. M5: items del arbol nav; los que
+        tienen hijos abren un dropdown CSS-only al hover. Sin hijos -> <a> identico al de hoy (fallback). */}
+    {menu.length > 0 && (
       <nav class="hidden lg:flex items-center gap-6" aria-label="Categorias">
-        {categorias.slice(0, 6).map((cat) => (
+        {menu.slice(0, 6).map((item) => (item.children.length > 0 ? (
+          <div class="ic-nav-group relative">
+            <a
+              href={item.href}
+              class="ic-nav-trigger text-[13px] font-medium uppercase tracking-[0.06em] text-[var(--ta-color-text-base)]/80 transition-colors duration-200 hover:text-[var(--ta-color-primary)]"
+              aria-haspopup="true"
+            >
+              {item.label}
+            </a>
+            <div class="ic-nav-dropdown absolute left-0 top-full z-50 pt-3">
+              <ul class="min-w-[12rem] rounded-sm border border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)] py-1 shadow-lg">
+                {item.children.map((child) => (
+                  <li>
+                    <a
+                      href={child.href}
+                      class="block px-4 py-2 text-[13px] font-medium text-[var(--ta-color-text-base)]/80 transition-colors duration-200 hover:bg-[var(--ta-color-text-base)]/5 hover:text-[var(--ta-color-primary)]"
+                    >
+                      {child.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
           <a
-            href={`/c/${cat.slug}`}
+            href={item.href}
             class="text-[13px] font-medium uppercase tracking-[0.06em] text-[var(--ta-color-text-base)]/80 transition-colors duration-200 hover:text-[var(--ta-color-primary)]"
           >
-            {cat.nombre}
+            {item.label}
           </a>
-        ))}
+        )))}
       </nav>
     )}
 
