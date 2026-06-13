@@ -53,6 +53,11 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
           document.head.appendChild(l);
         }
       }
+      // M5.C: tamano de texto del menu. Mapeo desde un allowlist FIJO a escalas numericas literales
+      // (nunca se hace eco del input -> sin inyeccion). 'md'/desconocido -> 1 (= tamano actual).
+      const NAV_SCALE = { sm: '0.875', md: '1', lg: '1.15' };
+      const navScale = (typeof msg.nav_text_size === 'string' && Object.prototype.hasOwnProperty.call(NAV_SCALE, msg.nav_text_size)) ? NAV_SCALE[msg.nav_text_size] : '1';
+      document.documentElement.style.setProperty('--nav-text-scale', navScale);
     }
     if (msg.type === 'section-patch') {
       // Origin ya validado arriba (=== exacto). Shape ESTRICTO antes de tocar el DOM.

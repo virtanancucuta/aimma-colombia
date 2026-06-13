@@ -60,7 +60,7 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
       </span>
     </a>
 
-    <nav class="hidden lg:flex items-center gap-9" aria-label="Categorias">
+    <nav class="em-nav-menu hidden lg:flex items-center gap-9" aria-label="Categorias">
       {menu.slice(0, 4).map((item) => (item.children.length > 0 ? (
         <div class="em-nav-group relative">
           <a
@@ -161,4 +161,10 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
   .em-menu-cb:checked ~ .em-menu-panel { display: block; }
   .em-menu-acc[open] > summary .em-menu-chev { transform: rotate(180deg); }
   @media (min-width: 1024px) { .em-menu-panel { display: none !important; } }
+  /* M5.C: tamano de texto del menu (escala desde el theme). var ausente => *1 = 13px (identico). Va en
+     este <style> scoped existente (regla dura M5: nada de scoped nuevo). El carrito esta en un <div>
+     (no en un <nav>) -> el selector solo alcanza el menu. */
+  .em-nav-menu a,
+  .em-menu-panel a,
+  .em-menu-panel summary { font-size: calc(13px * var(--nav-text-scale, 1)); }
 </style>

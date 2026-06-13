@@ -151,6 +151,24 @@ test('render: monta el panel #editor-theme-panel en el shellEl', () => {
 });
 
 // ============================================================
+// TEST M5.C: setThemeNavTextSize guarda el preset (sm/md/lg) y descarta valores invalidos
+// ============================================================
+test('M5.C: setThemeNavTextSize guarda sm/md/lg en el theme; invalido borra la clave', () => {
+  const win = bootWithPanel();
+  const T = win.TiendaIA;
+  T.editorState.init(null, 'tienda-test');
+  assert.equal(typeof T.editorState.setThemeNavTextSize, 'function', 'debe exportar setThemeNavTextSize');
+
+  for (const v of ['sm', 'md', 'lg']) {
+    T.editorState.setThemeNavTextSize(v);
+    assert.equal(T.editorState.theme.nav_text_size, v, `debe guardar '${v}'`);
+  }
+  // valor fuera del enum -> borra la clave (no contamina el theme)
+  T.editorState.setThemeNavTextSize('xl');
+  assert.ok(!('nav_text_size' in T.editorState.theme), 'valor invalido => clave borrada');
+});
+
+// ============================================================
 // TEST 5: close() quita la clase --open
 // ============================================================
 test('close: quita la clase ed-theme-panel--open', () => {

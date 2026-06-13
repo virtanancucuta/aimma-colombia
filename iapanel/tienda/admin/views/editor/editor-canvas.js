@@ -343,10 +343,10 @@
 
   // Preview en vivo del theme: postea los --ta-* (colores) + el ID del pairing al iframe.
   // targetOrigin = tenantOrigin (nunca '*'). El bridge del storefront valida origin + regex + allowlist.
-  function applyThemePreview(colors, fontPairingId) {
+  function applyThemePreview(colors, fontPairingId, navTextSize) {
     if (!state.iframe || !state.tenantOrigin) return;
     try {
-      state.iframe.contentWindow.postMessage({ type: 'theme', colors: colors, font_pairing: fontPairingId }, state.tenantOrigin);
+      state.iframe.contentWindow.postMessage({ type: 'theme', colors: colors, font_pairing: fontPairingId, nav_text_size: navTextSize }, state.tenantOrigin);
     } catch (e) { /* noop */ }
   }
 

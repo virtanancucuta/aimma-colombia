@@ -76,6 +76,12 @@ const displayFamily = pairing ? pairing.display : template.fonts.displayFamily;
 const bodyFamily = pairing ? pairing.body : template.fonts.bodyFamily;
 const fontUrl = pairing ? pairing.url : template.fonts.googleFontsUrl;
 
+// M5.C: tamano de texto del menu. Mapea el preset a una ESCALA (no a un tamano fijo) -> preserva la
+// proporcion de cada plantilla. Solo 'sm'/'lg' emiten la var; 'md' y ausente NO emiten nada -> el calc
+// del header cae al fallback 1 = tamano actual (byte-identico visual para quien no lo toca).
+const NAV_TEXT_SCALE: Record<string, string> = { sm: '0.875', lg: '1.15' };
+const navScale = themeActivo.nav_text_size ? NAV_TEXT_SCALE[themeActivo.nav_text_size] : undefined;
+
 // CSS vars en el style attribute del <html> = declaraciones validas + heredadas
 // por todos los descendientes. Incluye theming (paleta) + auto-contrast + fonts.
 const themeStyle =
@@ -87,7 +93,8 @@ const themeStyle =
   `--ta-color-on-accent:${onAccent};` +
   `--ta-color-on-bg:${onBg};` +
   `--ta-font-display:${displayFamily};` +
-  `--ta-font-body:${bodyFamily};`;
+  `--ta-font-body:${bodyFamily};` +
+  (navScale ? `--nav-text-scale:${navScale};` : '');
 ---
 
 <!doctype html>

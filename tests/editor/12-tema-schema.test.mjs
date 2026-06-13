@@ -28,6 +28,30 @@ test('tema: theme_draft acepta la misma forma', () => {
 });
 test('tema: 6 pairings en el allowlist', () => { assert.equal(FONT_PAIRING_IDS.length, 6); });
 
+// M5.C: nav_text_size (tamano de texto del menu) — 3 presets sm/md/lg.
+test('tema: acepta nav_text_size sm/md/lg', () => {
+  for (const v of ['sm', 'md', 'lg']) {
+    const r = PersonalizacionesSchema.safeParse({ ...base, theme: { nav_text_size: v } });
+    assert.ok(r.success, `nav_text_size '${v}' debe aceptarse`);
+    assert.equal(r.data.theme.nav_text_size, v, 'el valor debe preservarse (no stripearse)');
+  }
+});
+test('tema: RECHAZA nav_text_size fuera del enum', () => {
+  for (const v of ['xl', 'small', '1.15', 'grande', '']) {
+    assert.equal(PersonalizacionesSchema.safeParse({ ...base, theme: { nav_text_size: v } }).success, false, `nav_text_size '${v}' debe rechazarse`);
+  }
+});
+test('tema: nav_text_size es opcional (ausente parsea, theme queda sin la clave)', () => {
+  const r = PersonalizacionesSchema.safeParse({ ...base, theme: { colors: { primary: '#1B4965' } } });
+  assert.ok(r.success);
+  assert.ok(!('nav_text_size' in r.data.theme), 'ausente => no aparece la clave');
+});
+test('tema: theme_draft acepta nav_text_size', () => {
+  const r = PersonalizacionesSchema.safeParse({ ...base, theme_draft: { nav_text_size: 'lg' } });
+  assert.ok(r.success);
+  assert.equal(r.data.theme_draft.nav_text_size, 'lg');
+});
+
 // DRIFT-GUARD: el enum INLINE del editor-schema (THEME_FONT_PAIRINGS) debe cubrir EXACTO los IDs del
 // allowlist font-pairings.ts (que NO se mirror-ea al EF). Si alguien agrega un pairing al allowlist
 // pero olvida el enum (o viceversa), esto falla.
