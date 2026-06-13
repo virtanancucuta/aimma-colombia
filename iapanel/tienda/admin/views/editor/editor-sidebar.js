@@ -19,8 +19,42 @@
   function render(container, callbacks) {
     state.container = container;
     state.callbacks = callbacks || {};
+    detachActionsListener(); state.openActionsId = null; state.openSubAddId = null; // fresh mount
     rebuild();
     bindStateListeners();
+  }
+
+  // M4-polish: cierre del menu ⋮ por click-afuera / Escape (handler global solo mientras esta abierto).
+  function detachActionsListener() {
+    if (state._actionsListener) {
+      document.removeEventListener('click', state._actionsListener, true);
+      document.removeEventListener('keydown', state._actionsListener, true);
+      state._actionsListener = null;
+    }
+  }
+  function setOpenActions(id) {
+    state.openActionsId = id || null;
+    if (!state.openActionsId) {
+      state.openSubAddId = null;
+      detachActionsListener();
+    } else if (!state._actionsListener) {
+      const h = (e) => {
+        if (e.type === 'keydown') { if (e.key === 'Escape') setOpenActions(null); return; }
+        const t = e.target;
+        // no cerrar si el click es dentro del panel de acciones o en cualquier kebab (capture: corre antes del onClick)
+        if (t && t.closest && (t.closest('.ed-sidebar__actions') || t.closest('.ed-sidebar__page-kebab'))) return;
+        setOpenActions(null);
+      };
+      state._actionsListener = h;
+      // deferido: el click que ABRE el menu no debe dispararlo
+      setTimeout(() => {
+        if (state.openActionsId && state._actionsListener === h) {
+          document.addEventListener('click', h, true);
+          document.addEventListener('keydown', h, true);
+        }
+      }, 0);
+    }
+    rebuild();
   }
 
   function rebuild() {
@@ -38,7 +72,7 @@
 
     // M4: si cambio la pagina activa (switch / alta de subpagina), cerramos los paneles de acciones.
     const activeKey = (pages.find((p) => p.active) || {}).id || 'home';
-    if (activeKey !== state.lastActiveKey) { state.openActionsId = null; state.openSubAddId = null; state.lastActiveKey = activeKey; }
+    if (activeKey !== state.lastActiveKey) { detachActionsListener(); state.openActionsId = null; state.openSubAddId = null; state.lastActiveKey = activeKey; }
 
     pages.forEach((p) => {
       const cls = 'ed-sidebar__page' +
@@ -59,7 +93,7 @@
         kids.push(E('button', {
           type: 'button', class: 'ed-sidebar__page-kebab', title: 'Acciones de la pagina',
           style: 'flex:none;background:none;border:none;cursor:pointer;font-size:1rem;color:#64748b;padding:0 0.3rem',
-          onClick: (e) => { e.stopPropagation(); state.openActionsId = (state.openActionsId === p.nodeId ? null : p.nodeId); state.openSubAddId = null; rebuild(); },
+          onClick: (e) => { e.stopPropagation(); setOpenActions(state.openActionsId === p.nodeId ? null : p.nodeId); },
         }, '⋮')); // ⋮
       }
       container.appendChild(E('div', attrs, kids));
@@ -76,7 +110,7 @@
       container.appendChild(E('p', {
         class: 'ed-sidebar__note',
         style: 'font-size:0.72rem;line-height:1.35;color:#64748b;background:#f1f5f9;border-radius:6px;padding:0.45rem 0.6rem;margin:0.4rem 0 0;',
-      }, 'Editas la plantilla de las paginas de CATEGORIA: los cambios aplican a TODAS. El preview muestra esta categoria.'));
+      }, 'Este diseño se aplica a TODAS las páginas de categoría. Lo que agregues acá aparece en cada categoría; el preview muestra una de ejemplo.'));
     }
 
     // M3/M4: agregar pagina TOP-LEVEL -> selector de tipo (En blanco / Categoria) + picker.
