@@ -304,10 +304,53 @@ const ThemeSchema = z.object({
   font_pairing: z.enum(THEME_FONT_PAIRINGS).optional(),
 });
 
+// ============================================================
+// Administrador de Paginas (M1) · arbol de navegacion
+// ============================================================
+// Lista PLANA de nodos; el arbol se deriva por parentId. PROFUNDIDAD MAXIMA 2 niveles
+// (padre -> subpagina), enforced en NavSchema. El arbol maneja el menu del storefront (M5);
+// se siembra desde categorias (M1) para que el menu no cambie. tipos: home/coleccion/blanco.
+const NAV_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/; // DNS-safe (== slug de pagina:<slug>)
+const NAV_ID_RE = /^nav_[a-z0-9]{4,}$/;
+
+export const NavNodeSchema = z.object({
+  id: z.string().regex(NAV_ID_RE, 'id formato nav_xxxx'),
+  tipo: z.enum(['home', 'coleccion', 'blanco']),
+  label: z.string().max(80),                                   // renombrable siempre
+  parentId: z.string().regex(NAV_ID_RE).nullable().default(null),
+  orden: z.number().int().min(0),
+  mostrar_en_menu: z.boolean().default(true),
+  categoria_id: z.string().uuid().optional(),                 // coleccion -> referencia a Categorias
+  slug: z.string().regex(NAV_SLUG_RE).optional(),             // coleccion: slug categoria; blanco: slug propio
+}).superRefine((n, ctx) => {
+  if (n.tipo === 'coleccion') {
+    if (!n.categoria_id) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'coleccion requiere categoria_id', path: ['categoria_id'] });
+    if (!n.slug) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'coleccion requiere slug', path: ['slug'] });
+  } else if (n.tipo === 'blanco') {
+    if (!n.slug) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'pagina en blanco requiere slug', path: ['slug'] });
+  }
+});
+
+export type NavNode = z.infer<typeof NavNodeSchema>;
+
+// Lista de nodos. 2 NIVELES MAX (el padre de un nodo NO puede tener padre) + parentId valido.
+export const NavSchema = z.array(NavNodeSchema).max(200).superRefine((nodes, ctx) => {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  nodes.forEach((n, i) => {
+    if (n.parentId) {
+      const p = byId.get(n.parentId);
+      if (!p) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'parentId inexistente', path: [i, 'parentId'] });
+      else if (p.parentId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'profundidad maxima 2 niveles', path: [i, 'parentId'] });
+    }
+  });
+});
+
 export const PersonalizacionesSchema = z.object({
   schema_version: z.literal(3),
   theme: ThemeSchema.optional(),
   theme_draft: ThemeSchema.optional(),
+  nav: NavSchema.optional(),
+  nav_draft: NavSchema.optional(),
   pages: z.record(z.string(), PageSchema),
 });
 
