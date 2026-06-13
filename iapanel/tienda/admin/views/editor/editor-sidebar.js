@@ -1,6 +1,7 @@
-/* AIMMA Tienda IA · Editor PRO-MAX Plan 4 · editor-sidebar.js v2 (SCHEMA v3)
- * Panel izquierdo: lista de secciones REORDENABLE con SortableJS (handle ⋮⋮).
- * El orden del array = orden vertical. Click en item -> select. Boton +Agregar -> catalogo.
+/* AIMMA Tienda IA · Editor PRO-MAX · editor-sidebar.js (SCHEMA v3)
+ * Panel izquierdo: switcher de Paginas (arbol nav) + lista de Secciones REORDENABLE (SortableJS).
+ * M4: cada nodo (salvo Inicio) tiene un menu "⋮" con Renombrar / Subir / Bajar / Mostrar-Ocultar /
+ *     Agregar subpagina (solo top-level). "Agregar pagina/subpagina" reusa renderAddArea(host, parentId).
  * Marker: editor-plan4-v3-sidebar.
  */
 (function(window) {
@@ -12,7 +13,8 @@
     formulario: 'Formulario', espacio: 'Espacio en blanco', video: 'Video o mapa',
   };
 
-  const state = { container: null, callbacks: {}, sortable: null, listEl: null };
+  const state = { container: null, callbacks: {}, sortable: null, listEl: null,
+    openActionsId: null, openSubAddId: null, lastActiveKey: null };
 
   function render(container, callbacks) {
     state.container = container;
@@ -29,10 +31,15 @@
     if (state.sortable) { try { state.sortable.destroy(); } catch (e) {} state.sortable = null; }
     container.innerHTML = '';
 
-    // Encabezado Paginas + switcher (L3). getPages() viene de editor.js (Inicio / Coleccion / ...).
+    // Encabezado Paginas + switcher (arbol). getPages() viene de editor.js.
     container.appendChild(E('p', { class: 'ed-sidebar__title' }, 'Paginas'));
     const pages = (state.callbacks.getPages && state.callbacks.getPages()) ||
       [{ id: 'home', label: 'Inicio', enabled: true, active: true }];
+
+    // M4: si cambio la pagina activa (switch / alta de subpagina), cerramos los paneles de acciones.
+    const activeKey = (pages.find((p) => p.active) || {}).id || 'home';
+    if (activeKey !== state.lastActiveKey) { state.openActionsId = null; state.openSubAddId = null; state.lastActiveKey = activeKey; }
+
     pages.forEach((p) => {
       const cls = 'ed-sidebar__page' +
         (p.active ? ' ed-sidebar__page--active' : '') +
@@ -45,30 +52,38 @@
       if (p.enabled && !p.active) {
         attrs.onClick = () => state.callbacks.onSwitchPage && state.callbacks.onSwitchPage(p.id);
       }
-      const kids = [E('span', { class: 'ed-sidebar__page-label' }, p.label)];
-      // M2/M3: renombrar paginas EN BLANCO y nodos COLECCION (nodeId presente). El slug/ruta NO cambia.
-      if (p.nodeId && state.callbacks.onRenamePage) {
+      const labelStyle = (p.mostrar === false) ? 'opacity:0.5' : '';
+      const kids = [E('span', { class: 'ed-sidebar__page-label', style: labelStyle, title: p.mostrar === false ? 'Oculta del menu' : '' }, p.label + (p.mostrar === false ? '  (oculta)' : ''))];
+      // M4: menu "⋮" de acciones del nodo (Inicio no tiene nodeId -> no acciones).
+      if (p.nodeId && hasNodeActions()) {
         kids.push(E('button', {
-          type: 'button', class: 'ed-sidebar__page-rename', title: 'Renombrar pagina',
-          onClick: (e) => { e.stopPropagation(); state.callbacks.onRenamePage(p.nodeId, p.label); },
-        }, '✎'));
+          type: 'button', class: 'ed-sidebar__page-kebab', title: 'Acciones de la pagina',
+          style: 'flex:none;background:none;border:none;cursor:pointer;font-size:1rem;color:#64748b;padding:0 0.3rem',
+          onClick: (e) => { e.stopPropagation(); state.openActionsId = (state.openActionsId === p.nodeId ? null : p.nodeId); state.openSubAddId = null; rebuild(); },
+        }, '⋮')); // ⋮
       }
       container.appendChild(E('div', attrs, kids));
+
+      // M4: panel de acciones inline (abierto para este nodo)
+      if (p.nodeId && state.openActionsId === p.nodeId) {
+        container.appendChild(renderActionPanel(p));
+      }
     });
-    // M3: aviso "plantilla global" cuando la pagina activa es una Coleccion (editar afecta a TODAS).
+
+    // M3: aviso "plantilla global" cuando la pagina activa es una Categoria (editar afecta a TODAS).
     const activePg = pages.find((p) => p.active);
     if (activePg && activePg.tipo === 'coleccion') {
       container.appendChild(E('p', {
         class: 'ed-sidebar__note',
         style: 'font-size:0.72rem;line-height:1.35;color:#64748b;background:#f1f5f9;border-radius:6px;padding:0.45rem 0.6rem;margin:0.4rem 0 0;',
-      }, 'Editas la plantilla de Coleccion: los cambios aplican a TODAS las colecciones. El preview muestra esta categoria.'));
+      }, 'Editas la plantilla de las paginas de CATEGORIA: los cambios aplican a TODAS. El preview muestra esta categoria.'));
     }
-    // M3: agregar pagina -> selector de tipo (En blanco / Coleccion). Coleccion abre el picker de
-    // "categorias sin pagina" (D3). El area maneja su estado local; un alta dispara 'nav' -> rebuild -> resetea.
+
+    // M3/M4: agregar pagina TOP-LEVEL -> selector de tipo (En blanco / Categoria) + picker.
     if (state.callbacks.onAddBlankPage || state.callbacks.onAddColeccion) {
       const addHost = E('div', { class: 'ed-sidebar__add-host' });
       container.appendChild(addHost);
-      renderAddArea(addHost);
+      renderAddArea(addHost, null);
     }
 
     // Encabezado Secciones
@@ -83,17 +98,10 @@
           (sel && sel.sectionId === sec.id ? ' ed-sidebar__outline-item--selected' : ''),
         'data-section-id': sec.id,
       }, [
-        E('span', {
-          class: 'ed-sidebar__handle',
-          'aria-label': 'Mover seccion',
-          title: 'Arrastra para reordenar',
-        }, '⋮⋮'),
+        E('span', { class: 'ed-sidebar__handle', 'aria-label': 'Mover seccion', title: 'Arrastra para reordenar' }, '⋮⋮'),
         E('span', {
           class: 'ed-sidebar__outline-label',
-          onClick: () => {
-            ES.select(sec.id);
-            openInspectorDrawer();
-          },
+          onClick: () => { ES.select(sec.id); openInspectorDrawer(); },
         }, label),
       ]);
       list.appendChild(item);
@@ -106,7 +114,6 @@
         'Tu pagina no tiene secciones todavia. Agrega la primera abajo.'));
     }
 
-    // SortableJS reorder (vendorizado en lib/sortable.min.js)
     if (window.Sortable && ES.sections.length > 1) {
       state.sortable = new window.Sortable(list, {
         handle: '.ed-sidebar__handle',
@@ -120,13 +127,50 @@
       });
     }
 
-    // Boton +Agregar seccion
     const addBtn = E('button', {
-      type: 'button',
-      class: 'ed-sidebar__add-btn',
+      type: 'button', class: 'ed-sidebar__add-btn',
       onClick: () => state.callbacks.onAddSection && state.callbacks.onAddSection(),
     }, '+ Agregar seccion');
     container.appendChild(addBtn);
+  }
+
+  function hasNodeActions() {
+    const cb = state.callbacks;
+    return !!(cb.onRenamePage || cb.onMoveNode || cb.onToggleMostrar || cb.onAddBlankPage || cb.onDeleteNode);
+  }
+
+  // M4: panel de acciones de un nodo (Renombrar / Subir / Bajar / Mostrar-Ocultar / Agregar subpagina /
+  // Borrar). Agregar subpagina solo en top-level (depth 0) -> 2 niveles max.
+  function renderActionPanel(p) {
+    const E = window.TiendaIA.editorControls.el;
+    const cb = state.callbacks;
+    const act = (label, onClick, color) => E('button', {
+      type: 'button', class: 'ed-sidebar__act',
+      style: 'display:block;width:100%;text-align:left;background:none;border:none;padding:0.32rem 0.5rem;font-size:0.78rem;color:' + (color || '#334155') + ';cursor:pointer;border-radius:4px',
+      onClick: (e) => { e.stopPropagation(); onClick(); },
+    }, label);
+    const panel = E('div', {
+      class: 'ed-sidebar__actions',
+      style: 'margin:0.15rem 0 0.4rem;padding:0.25rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px',
+    }, []);
+    if (cb.onRenamePage) panel.appendChild(act('Renombrar', () => cb.onRenamePage(p.nodeId, p.label)));
+    if (cb.onMoveNode) {
+      panel.appendChild(act('Subir ↑', () => cb.onMoveNode(p.nodeId, -1)));
+      panel.appendChild(act('Bajar ↓', () => cb.onMoveNode(p.nodeId, 1)));
+    }
+    if (cb.onToggleMostrar) {
+      panel.appendChild(act(p.mostrar === false ? 'Mostrar en el menu' : 'Ocultar del menu', () => cb.onToggleMostrar(p.nodeId, p.mostrar === false)));
+    }
+    if (p.depth === 0 && (cb.onAddBlankPage || cb.onAddColeccion)) {
+      panel.appendChild(act('+ Agregar subpagina', () => { state.openSubAddId = (state.openSubAddId === p.nodeId ? null : p.nodeId); rebuild(); }));
+      if (state.openSubAddId === p.nodeId) {
+        const subHost = E('div', { class: 'ed-sidebar__sub-add', style: 'padding:0 0 0 0.4rem' });
+        panel.appendChild(subHost);
+        renderAddArea(subHost, p.nodeId, 'menu'); // ya pidio "agregar subpagina" -> abre directo el menu de tipo
+      }
+    }
+    if (cb.onDeleteNode) panel.appendChild(act('Borrar', () => cb.onDeleteNode(p.nodeId), '#dc2626'));
+    return panel;
   }
 
   function openInspectorDrawer() {
@@ -136,28 +180,30 @@
     }
   }
 
-  // M3: area "Agregar pagina" con estado local (closed -> menu de tipo -> picker de coleccion).
-  function renderAddArea(host) {
+  // M3/M4: area "Agregar pagina/subpagina" con estado local (closed -> menu de tipo -> picker de categoria).
+  // parentNodeId: null = pagina top-level; un nodeId = SUBpagina de ese nodo.
+  function renderAddArea(host, parentNodeId, initialMode) {
     const E = window.TiendaIA.editorControls.el;
     const cb = state.callbacks;
+    const sub = !!parentNodeId;
     const opt = (label, onClick) => E('button', { type: 'button', class: 'ed-sidebar__add-page', style: 'margin-top:0.3rem', onClick: onClick }, label);
     const link = (label, onClick) => E('button', { type: 'button', class: 'ed-sidebar__add-cancel', style: 'background:none;border:none;color:#64748b;font-size:0.74rem;cursor:pointer;padding:0.35rem 0;text-decoration:underline', onClick: onClick }, label);
-    let mode = 'closed';
+    let mode = initialMode || 'closed';
     const draw = () => {
       host.innerHTML = '';
       if (mode === 'closed') {
-        host.appendChild(E('button', { type: 'button', class: 'ed-sidebar__add-page', onClick: () => { mode = 'menu'; draw(); } }, '+ Agregar pagina'));
+        host.appendChild(E('button', { type: 'button', class: 'ed-sidebar__add-page', onClick: () => { mode = 'menu'; draw(); } }, sub ? '+ Agregar subpagina' : '+ Agregar pagina'));
         return;
       }
       if (mode === 'menu') {
         const kids = [];
-        if (cb.onAddBlankPage) kids.push(opt('Pagina en blanco', () => { mode = 'closed'; draw(); cb.onAddBlankPage(); }));
-        if (cb.onAddColeccion) kids.push(opt('Pagina de coleccion', () => { mode = 'coleccion'; draw(); }));
+        if (cb.onAddBlankPage) kids.push(opt(sub ? 'Subpagina en blanco' : 'Pagina en blanco', () => { mode = 'closed'; draw(); cb.onAddBlankPage(parentNodeId); }));
+        if (cb.onAddColeccion) kids.push(opt(sub ? 'Subpagina de categoria' : 'Pagina de categoria', () => { mode = 'categoria'; draw(); }));
         kids.push(link('Cancelar', () => { mode = 'closed'; draw(); }));
         host.appendChild(E('div', { class: 'ed-sidebar__add-menu' }, kids));
         return;
       }
-      // mode === 'coleccion': picker de categorias SIN pagina (D3)
+      // mode === 'categoria': picker de categorias SIN pagina (D3)
       const cats = (cb.getCategoriasSinPagina && cb.getCategoriasSinPagina()) || [];
       const kids = [E('p', { class: 'ed-sidebar__title', style: 'margin:0.4rem 0 0.2rem;font-size:0.72rem' }, 'Categorias sin pagina')];
       if (!cats.length) {
@@ -166,7 +212,7 @@
         cats.forEach((c) => {
           kids.push(E('div', { class: 'ed-sidebar__add-cat', style: 'display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.25rem 0' }, [
             E('span', { style: 'font-size:0.78rem;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, c.nombre + (c.esSub ? ' · sub' : '')),
-            E('button', { type: 'button', class: 'ed-sidebar__add-cat-btn', style: 'flex:none;font-size:0.72rem;padding:0.2rem 0.55rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer', onClick: () => { mode = 'closed'; draw(); cb.onAddColeccion(c.id); } }, 'Agregar'),
+            E('button', { type: 'button', class: 'ed-sidebar__add-cat-btn', style: 'flex:none;font-size:0.72rem;padding:0.2rem 0.55rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer', onClick: () => { mode = 'closed'; draw(); cb.onAddColeccion(c.id, parentNodeId); } }, 'Agregar'),
           ]));
         });
       }
@@ -180,7 +226,7 @@
     const ES = window.TiendaIA.editorState;
     ES.subscribe('sections', rebuild);
     ES.subscribe('selection', rebuild);
-    ES.subscribe('nav', rebuild); // M2: agregar/renombrar pagina -> re-render del switcher
+    ES.subscribe('nav', rebuild); // agregar/renombrar/reordenar/mostrar-ocultar/borrar -> re-render del switcher
   }
 
   window.TiendaIA = window.TiendaIA || {};

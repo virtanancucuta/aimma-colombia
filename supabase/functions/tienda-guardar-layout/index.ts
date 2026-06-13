@@ -42,6 +42,9 @@ const BodySchema = z.object({
   mode: z.enum(['draft', 'publish']),
   personalizaciones: PersonalizacionesSchema,
   base_updated_at: z.string().datetime().nullable(),
+  // M4 (Administrador de Paginas): claves de pagina a borrar. El merge SOLO borra pagina:<slug>
+  // (guardrail en buildNextPersonalizaciones); aca solo validamos forma + tope.
+  deletePages: z.array(z.string().max(60)).max(200).optional(),
 }).superRefine((b, ctx) => {
   // La pagina que se guarda DEBE venir en el payload (cross-field: depende de page_id).
   if (b.personalizaciones.pages[b.page_id] === undefined) {
@@ -170,6 +173,7 @@ serve(async (req) => {
     body.personalizaciones.theme,
     body.personalizaciones.nav,
     now,
+    body.deletePages,
   );
 
   // 7) Upsert

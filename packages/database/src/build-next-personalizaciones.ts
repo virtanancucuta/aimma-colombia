@@ -15,6 +15,7 @@ export function buildNextPersonalizaciones(
   themeFromClient: any,
   navFromClient: any,
   now: string,
+  deletePages?: string[],
 ): any {
   const next: any = structuredClone(current || { schema_version: 3, pages: {} });
   next.schema_version = 3;
@@ -37,6 +38,18 @@ export function buildNextPersonalizaciones(
   } else {
     next.pages[pageId] = { ...pageFromClient, updated_at: now };
     delete next.pages[draftKey];
+  }
+  // M4 (Administrador de Paginas) · BORRAR paginas EN BLANCO: elimina pages[pagina:<slug>] + su _draft.
+  // GUARDRAIL: SOLO claves que matchean pagina:<slug> (tenant-scoped por el EF). NUNCA home/coleccion
+  // (no llevan prefijo 'pagina:') ni theme/nav (no estan en pages). Un deletePages malicioso es inocuo.
+  if (Array.isArray(deletePages)) {
+    const PAGE_DEL_RE = /^pagina:[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/;
+    for (const key of deletePages) {
+      if (typeof key === 'string' && PAGE_DEL_RE.test(key)) {
+        delete next.pages[key];
+        delete next.pages[key + '_draft'];
+      }
+    }
   }
   return next;
 }
