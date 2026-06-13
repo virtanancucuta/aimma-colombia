@@ -53,6 +53,19 @@ export async function getProductosPorTienda(
 ): Promise<ProductoListItem[]> {
   const { limit = 24, categoriaId } = opts;
 
+  // Fix B (rollup): /c/[slug] muestra los productos de la categoria + TODAS sus subcategorias
+  // (productos.categoria_id es FK simple -> sin esto /c/ropa-dama omite los productos de las
+  // subcategorias como BLUSA DAMA). Resolvemos el subarbol con la RPC recursiva
+  // categoria_descendientes y filtramos por IN. Fallback a la categoria sola si la RPC falla.
+  let categoriaIds: string[] | null = null;
+  if (categoriaId) {
+    const { data: subcats, error: subErr } = await supabase
+      .rpc('categoria_descendientes', { p_categoria_id: categoriaId });
+    if (subErr) console.error('[catalogo] categoria_descendientes error:', subErr.message);
+    const ids = ((subcats as any[]) || []).map((r) => r.id);
+    categoriaIds = ids.length ? ids : [categoriaId];
+  }
+
   let q = supabase
     .from('productos')
     .select(
@@ -64,7 +77,7 @@ export async function getProductosPorTienda(
     .order('updated_at', { ascending: false })
     .limit(limit);
 
-  if (categoriaId) q = q.eq('categoria_id', categoriaId);
+  if (categoriaIds) q = q.in('categoria_id', categoriaIds);
 
   const { data, error } = await q;
   if (error) {
