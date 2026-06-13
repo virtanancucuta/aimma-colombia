@@ -107,6 +107,8 @@
     state.unsubs.push(window.TiendaIA.editorState.subscribe('sections', scheduleAutosave));
     state.unsubs.push(window.TiendaIA.editorState.subscribe('theme', scheduleAutosave));
     state.unsubs.push(window.TiendaIA.editorState.subscribe('dirty', scheduleAutosave));
+    // M2: cambios del arbol (agregar/renombrar pagina) tambien re-arman el autosave.
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('nav', scheduleAutosave));
     // Carril patch: cada mutacion de seccion notifica 'patch' -> actualiza iframe sin reload.
     state.unsubs.push(window.TiendaIA.editorState.subscribe('patch', onPatch));
     // C.2 Paso 2: auto-recuperacion on-next-interaction -> si la seleccion cambia a OTRA seccion
@@ -131,6 +133,8 @@
       onAddSection: () => openCatalog(),
       onSwitchPage: (pageId) => switchPage(pageId),
       getPages: () => buildPageList(),
+      onAddPage: () => addBlankPage(),
+      onRenamePage: (nodeId, label) => renamePage(nodeId, label),
     });
 
     window.TiendaIA.editorCanvas.render(canvasEl, {});
@@ -340,6 +344,10 @@
       enabled: !!state.sampleCategory,
       hint: state.sampleCategory ? '' : 'Necesitas al menos una categoria para editar la pagina de Coleccion',
     });
+    // M2: paginas EN BLANCO del arbol nav (nodeId -> permite renombrar desde el switcher).
+    (window.TiendaIA.editorState.nav || []).filter((n) => n.tipo === 'blanco').forEach((n) => {
+      list.push({ id: 'pagina:' + n.slug, label: n.label, enabled: true, nodeId: n.id });
+    });
     return list.map((p) => Object.assign({}, p, { active: p.id === cur }));
   }
 
@@ -387,11 +395,65 @@
     const T = window.TiendaIA;
     ES.init(T.state.tienda.personalizaciones, ES.tienda_id, pageId);
     // 4) recargar el canvas al preview de la pagina nueva (token page-agnostic)
-    const path = pageId === 'coleccion' ? ('/c/' + state.sampleCategory.slug) : '/';
+    const path = pageId === 'coleccion' ? ('/c/' + state.sampleCategory.slug)
+               : pageId.indexOf('pagina:') === 0 ? ('/pagina/' + pageId.slice(7)) // 'pagina:'.length=7
+               : '/';
     if (T.editorCanvas) {
       T.editorCanvas.setPagePath(path);
       T.editorCanvas.reloadFull();
     }
+  }
+
+  // ============================================================
+  // M2 · Paginas EN BLANCO (CRUD del Administrador de Paginas)
+  // ============================================================
+  // Slugs reservados (rutas del storefront + claves internas). El slug es INMUTABLE post-creacion.
+  const SLUGS_RESERVADOS = ['c', 'p', 'buscar', 'carrito', 'checkout', 'legales', 'internal', 'robots', 'sitemap', 'pagina', 'api', 'home'];
+
+  function slugify(nombre) {
+    return (nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '');
+  }
+  function navId() {
+    const c = '0123456789abcdefghijklmnopqrstuvwxyz'; let s = '';
+    for (let i = 0; i < 6; i++) s += c[Math.floor(Math.random() * c.length)];
+    return s;
+  }
+  // Valida el slug: url-safe (== NAV_SLUG_RE del schema) + no reservado + unico (nav + pages).
+  function validarSlug(slug) {
+    const ES = window.TiendaIA.editorState;
+    if (!/^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/.test(slug)) return 'El nombre genera un identificador invalido. Usa al menos 2 letras o numeros.';
+    if (SLUGS_RESERVADOS.indexOf(slug) >= 0) return 'Ese nombre esta reservado por el sistema. Elegi otro.';
+    if (ES.navSlugExists(slug)) return 'Ya tenes una pagina con ese nombre.';
+    const pers = window.TiendaIA?.state?.tienda?.personalizaciones || {};
+    if (pers.pages && (pers.pages['pagina:' + slug] || pers.pages['pagina:' + slug + '_draft'])) return 'Ya existe una pagina con ese identificador.';
+    return null;
+  }
+
+  // Crear pagina EN BLANCO: nodo nav (blanco) + persistir nav (flushDraft manda nav) -> switch a la nueva.
+  async function addBlankPage() {
+    const ES = window.TiendaIA.editorState;
+    const nombre = (window.prompt('Nombre de la pagina nueva:', '') || '').trim();
+    if (!nombre) return;
+    const slug = slugify(nombre);
+    const err = validarSlug(slug);
+    if (err) { toast(err, 'error'); return; }
+    ES.addNavNode({
+      id: 'nav_' + navId(), tipo: 'blanco', label: nombre.slice(0, 80), slug,
+      parentId: null, orden: (ES.nav || []).length, mostrar_en_menu: true,
+    });
+    // Persistir el nav (con el nodo nuevo) antes de cambiar -> flushDraft guarda la pagina actual + nav.
+    const ok = await flushDraft();
+    if (!ok) { toast('No pudimos crear la pagina. Reintenta.', 'error'); return; }
+    await switchPage('pagina:' + slug); // nace vacia -> /pagina/<slug> preview muestra el contenedor editable
+  }
+
+  // Renombrar una pagina (label del nodo nav). El slug/ruta NO cambia (inmutable).
+  function renamePage(nodeId, labelActual) {
+    const ES = window.TiendaIA.editorState;
+    const nombre = (window.prompt('Nuevo nombre de la pagina:', labelActual || '') || '').trim();
+    if (!nombre || nombre === labelActual) return;
+    ES.renameNavNode(nodeId, nombre.slice(0, 80)); // markDirty + notify('nav') -> autosave (subscrito) persiste
   }
 
   function openCatalog() {
@@ -559,16 +621,22 @@
     const draftKey = pageId + '_draft';
     const cur = T.state.tienda.personalizaciones || { schema_version: 3, pages: {} };
     const draftTheme = T.editorState.serialize().theme; // el theme que se edita ES el borrador
+    const draftNav = T.editorState.serialize().nav;     // M2: el arbol que se edita
     const next = { schema_version: 3, pages: { ...(cur.pages || {}) } };
+    // M2: preservar nav/nav_draft existentes (mirror del EF buildNext) antes de aplicar el del cliente.
+    if (cur.nav !== undefined) next.nav = cur.nav;
+    if (cur.nav_draft !== undefined) next.nav_draft = cur.nav_draft;
     if (mode === 'publish') {
       next.theme = draftTheme;          // promueve
       // theme_draft se elimina (no se copia)
       next.pages[pageId] = savedPage;
       delete next.pages[draftKey];
+      if (draftNav !== undefined) { next.nav = draftNav; delete next.nav_draft; } // promueve nav
     } else {
       next.theme = cur.theme;           // preserva el publicado intacto
       next.theme_draft = draftTheme;    // borrador
       next.pages[draftKey] = savedPage;
+      if (draftNav !== undefined) next.nav_draft = draftNav; // nav_draft
     }
     T.state.tienda.personalizaciones = next;
   }

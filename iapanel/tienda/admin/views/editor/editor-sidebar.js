@@ -42,8 +42,23 @@
       if (p.enabled && !p.active) {
         attrs.onClick = () => state.callbacks.onSwitchPage && state.callbacks.onSwitchPage(p.id);
       }
-      container.appendChild(E('div', attrs, p.label));
+      const kids = [E('span', { class: 'ed-sidebar__page-label' }, p.label)];
+      // M2: renombrar paginas EN BLANCO (nodeId presente). stopPropagation -> no dispara el switch.
+      if (p.nodeId && state.callbacks.onRenamePage) {
+        kids.push(E('button', {
+          type: 'button', class: 'ed-sidebar__page-rename', title: 'Renombrar pagina',
+          onClick: (e) => { e.stopPropagation(); state.callbacks.onRenamePage(p.nodeId, p.label); },
+        }, '✎'));
+      }
+      container.appendChild(E('div', attrs, kids));
     });
+    // M2: agregar pagina EN BLANCO (en M3 sera un selector de tipo Coleccion/En blanco).
+    if (state.callbacks.onAddPage) {
+      container.appendChild(E('button', {
+        type: 'button', class: 'ed-sidebar__add-page',
+        onClick: () => state.callbacks.onAddPage(),
+      }, '+ Agregar pagina'));
+    }
 
     // Encabezado Secciones
     container.appendChild(E('p', { class: 'ed-sidebar__title', style: 'margin-top:1.25rem' }, 'Secciones'));
@@ -114,6 +129,7 @@
     const ES = window.TiendaIA.editorState;
     ES.subscribe('sections', rebuild);
     ES.subscribe('selection', rebuild);
+    ES.subscribe('nav', rebuild); // M2: agregar/renombrar pagina -> re-render del switcher
   }
 
   window.TiendaIA = window.TiendaIA || {};

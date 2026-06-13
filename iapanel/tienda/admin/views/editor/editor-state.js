@@ -29,7 +29,7 @@
     snapshots: [],
     snapshotIdx: -1,
     lastOp: null,
-    _listeners: { sections: [], selection: [], dirty: [], saving: [], theme: [], draftsave: [], patch: [] },
+    _listeners: { sections: [], selection: [], dirty: [], saving: [], theme: [], draftsave: [], patch: [], nav: [] },
     _typingTimers: {},
   };
 
@@ -67,6 +67,7 @@
                     : channel === 'theme' ? state.theme
                     : channel === 'draftsave' ? state.draftSaveStatus
                     : channel === 'patch' ? state.lastOp
+                    : channel === 'nav' ? state.nav
                     : null;
         fn(value);
       } catch (err) { console.error('editor-state listener error', err); }
@@ -86,6 +87,10 @@
     const page = pers.pages?.[draftKey] || pers.pages?.[state.pageId] || null;
     state.sections = Array.isArray(page?.sections) ? structuredClone(page.sections) : [];
     state.theme = normalizeTheme(pers.theme_draft || pers.theme);
+    // M2 (Administrador de Paginas): arbol de navegacion GLOBAL. Prioriza el borrador.
+    // Se carga en cada init (page switch) desde la cache sincronizada; serialize lo manda en cada save.
+    state.nav = Array.isArray(pers.nav_draft) ? structuredClone(pers.nav_draft)
+              : Array.isArray(pers.nav) ? structuredClone(pers.nav) : [];
     // base_updated_at: el de la pagina PUBLICADA para el locking optimista
     // (el draft no participa; guardar-layout compara contra la pagina publicada).
     state.base_updated_at = pers.pages?.[state.pageId]?.updated_at || page?.updated_at || null;
@@ -241,6 +246,16 @@
   function setThemePalette(colors4) { state.theme.colors = { ...colors4 }; pushSnapshot(); markDirty(); notify('theme'); }
   function setThemeFontPairing(id) { state.theme.font_pairing = id; pushSnapshot(); markDirty(); notify('theme'); }
 
+  // ============================================================
+  // M2 · arbol de navegacion (Administrador de Paginas)
+  // ============================================================
+  function addNavNode(node) { state.nav.push(node); markDirty(); notify('nav'); }
+  function renameNavNode(id, label) {
+    const n = state.nav.find((x) => x.id === id);
+    if (n) { n.label = label; markDirty(); notify('nav'); }
+  }
+  function navSlugExists(slug) { return state.nav.some((n) => n.slug === slug); }
+
   function findSection(sectionId) {
     return state.sections.find(s => s.id === sectionId) || null;
   }
@@ -348,6 +363,7 @@
     return {
       schema_version: 3,
       theme: state.theme,
+      nav: structuredClone(state.nav || []), // M2: el arbol -> la EF escribe nav_draft (draft) / promueve nav (publish)
       pages: {
         [state.pageId || 'home']: {
           version: 2,
@@ -372,11 +388,13 @@
     get draftSaveStatus() { return state.draftSaveStatus; },
     get tienda_id() { return state.tienda_id; },
     get pageId() { return state.pageId || 'home'; },
+    get nav() { return state.nav || []; },
     get base_updated_at() { return state.base_updated_at; },
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
     get lastOp() { return state.lastOp; },
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
     setThemeColors, setThemePalette, setThemeFontPairing,
+    addNavNode, renameNavNode, navSlugExists,
     findSection,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
