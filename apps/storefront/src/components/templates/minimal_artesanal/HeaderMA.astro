@@ -15,37 +15,68 @@ interface Categoria {
   orden: number;
 }
 
+import type { MenuItem } from '~/lib/menu';
+
 interface Props {
   tienda: Tienda;
   categorias: Categoria[];
+  menu?: MenuItem[];
   mostrarBuscador?: boolean;
 }
 
 import SearchBar from '~/components/SearchBar.astro';
 import CartBadge from '~/components/CartBadge.astro';
-const { tienda, categorias, mostrarBuscador } = Astro.props;
-
-// Para split nav, dividir categorias: primeras 3 izquierda
-const catsLeft = categorias.slice(0, 3);
+const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
 ---
+<style is:global>
+  /* M5.B: dropdown CSS-only (sin JS) en Minimal Artesanal. is:global -> no agrega data-astro-cid
+     (canario fallback byte-identico). Clases ma-nav-* unicas. */
+  .ma-nav-dropdown { display: none; }
+  .ma-nav-group:hover > .ma-nav-dropdown,
+  .ma-nav-group:focus-within > .ma-nav-dropdown { display: block; }
+</style>
 
 <header
   id="ma-header"
   class="fixed inset-x-0 top-0 z-40 transition-colors duration-500 bg-[var(--ta-color-bg-base)]/0"
 >
   <nav class="mx-auto flex h-20 max-w-screen-2xl items-center justify-between gap-8 px-8 lg:px-16" aria-label="Principal">
-    {/* Nav izquierda — primeros 3 enlaces de categorias */}
+    {/* Nav izquierda — primeros 3 del arbol. M5.B: con hijos -> dropdown; sin hijos -> <li> identico. */}
     <ul class="hidden lg:flex items-center gap-10">
-      {catsLeft.map((cat) => (
+      {menu.slice(0, 3).map((item) => (item.children.length > 0 ? (
+        <li class="ma-nav-group relative">
+          <a
+            href={item.href}
+            class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65 transition-colors hover:text-[var(--ta-color-text-base)]"
+            aria-haspopup="true"
+          >
+            {item.label}
+          </a>
+          <div class="ma-nav-dropdown absolute left-0 top-full z-50 pt-3">
+            <ul class="min-w-[11rem] border border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)] py-1 shadow-lg">
+              {item.children.map((child) => (
+                <li>
+                  <a
+                    href={child.href}
+                    class="block px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65 transition-colors hover:text-[var(--ta-color-text-base)]"
+                  >
+                    {child.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </li>
+      ) : (
         <li>
           <a
-            href={`/c/${cat.slug}`}
+            href={item.href}
             class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65 transition-colors hover:text-[var(--ta-color-text-base)]"
           >
-            {cat.nombre}
+            {item.label}
           </a>
         </li>
-      ))}
+      )))}
     </ul>
 
     {/* Logo CENTRADO serif italic */}

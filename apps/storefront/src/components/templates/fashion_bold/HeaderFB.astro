@@ -16,16 +16,26 @@ interface Categoria {
   orden: number;
 }
 
+import type { MenuItem } from '~/lib/menu';
+
 interface Props {
   tienda: Tienda;
   categorias: Categoria[];
+  menu?: MenuItem[];
   mostrarBuscador?: boolean;
 }
 
 import SearchBar from '~/components/SearchBar.astro';
 import CartBadge from '~/components/CartBadge.astro';
-const { tienda, categorias, mostrarBuscador } = Astro.props;
+const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
 ---
+<style is:global>
+  /* M5.B: dropdown CSS-only (sin JS) en Fashion Bold. is:global -> no agrega data-astro-cid (canario
+     fallback byte-identico). Clases fb-nav-* unicas. */
+  .fb-nav-dropdown { display: none; }
+  .fb-nav-group:hover > .fb-nav-dropdown,
+  .fb-nav-group:focus-within > .fb-nav-dropdown { display: block; }
+</style>
 
 <header
   class="sticky top-0 z-40 h-[60px] md:h-[72px] border-b border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]/90 backdrop-blur-md"
@@ -51,18 +61,44 @@ const { tienda, categorias, mostrarBuscador } = Astro.props;
       )}
     </a>
 
-    {/* Nav uppercase tracking-wide. Underline grueso animado en hover */}
-    {categorias.length > 0 && (
+    {/* Nav uppercase tracking-wide. Underline grueso animado en hover. M5.B: items del arbol; con
+        hijos -> dropdown CSS-only. Sin hijos -> <a> identico al de hoy (fallback). */}
+    {menu.length > 0 && (
       <nav class="hidden md:flex items-center gap-8" aria-label="Categorias">
-        {categorias.slice(0, 5).map((cat) => (
+        {menu.slice(0, 5).map((item) => (item.children.length > 0 ? (
+          <div class="fb-nav-group relative">
+            <a
+              href={item.href}
+              class="group relative text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)] transition-opacity hover:opacity-80"
+              aria-haspopup="true"
+            >
+              {item.label}
+              <span class="absolute -bottom-1 left-0 right-0 h-[3px] origin-left scale-x-0 bg-[var(--ta-color-accent)] transition-transform duration-200 ease-out group-hover:scale-x-100"></span>
+            </a>
+            <div class="fb-nav-dropdown absolute left-0 top-full z-50 pt-3">
+              <ul class="min-w-[12rem] border border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)] py-1 shadow-lg">
+                {item.children.map((child) => (
+                  <li>
+                    <a
+                      href={child.href}
+                      class="block px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)] transition-opacity hover:opacity-70"
+                    >
+                      {child.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
           <a
-            href={`/c/${cat.slug}`}
+            href={item.href}
             class="group relative text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)] transition-opacity hover:opacity-80"
           >
-            {cat.nombre}
+            {item.label}
             <span class="absolute -bottom-1 left-0 right-0 h-[3px] origin-left scale-x-0 bg-[var(--ta-color-accent)] transition-transform duration-200 ease-out group-hover:scale-x-100"></span>
           </a>
-        ))}
+        )))}
       </nav>
     )}
 

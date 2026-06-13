@@ -15,16 +15,18 @@ interface Categoria {
   orden: number;
 }
 
+import type { MenuItem } from '~/lib/menu';
+
 interface Props {
   tienda: Tienda;
   categorias: Categoria[];
+  menu?: MenuItem[];
   mostrarBuscador?: boolean;
 }
 
 import SearchBar from '~/components/SearchBar.astro';
 import CartBadge from '~/components/CartBadge.astro';
-const { tienda, categorias, mostrarBuscador } = Astro.props;
-const navCats = categorias.slice(0, 4);
+const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
 ---
 
 <header class="em-header sticky top-0 z-40 transition-[background-color,border-bottom-color] duration-300">
@@ -49,14 +51,38 @@ const navCats = categorias.slice(0, 4);
     </a>
 
     <nav class="hidden lg:flex items-center gap-9" aria-label="Categorias">
-      {navCats.map((cat) => (
+      {menu.slice(0, 4).map((item) => (item.children.length > 0 ? (
+        <div class="em-nav-group relative">
+          <a
+            href={item.href}
+            class="font-body text-[13px] font-medium text-[var(--ta-color-text-base)]/72 hover:text-[var(--ta-color-text-base)] transition-colors duration-200"
+            aria-haspopup="true"
+          >
+            {item.label}
+          </a>
+          <div class="em-nav-dropdown absolute left-0 top-full z-50 pt-3">
+            <ul class="min-w-[12rem] rounded-sm border border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)] py-1 shadow-lg">
+              {item.children.map((child) => (
+                <li>
+                  <a
+                    href={child.href}
+                    class="block px-4 py-2 font-body text-[13px] font-medium text-[var(--ta-color-text-base)]/72 hover:text-[var(--ta-color-text-base)] transition-colors duration-200"
+                  >
+                    {child.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : (
         <a
-          href={`/c/${cat.slug}`}
+          href={item.href}
           class="font-body text-[13px] font-medium text-[var(--ta-color-text-base)]/72 hover:text-[var(--ta-color-text-base)] transition-colors duration-200"
         >
-          {cat.nombre}
+          {item.label}
         </a>
-      ))}
+      )))}
     </nav>
 
     <div class="flex items-center gap-5">
@@ -86,4 +112,8 @@ const navCats = categorias.slice(0, 4);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
+  /* M5.B: dropdown CSS-only (sin JS). EM ya scopea (este <style>), por eso va aca y no is:global. */
+  .em-nav-dropdown { display: none; }
+  .em-nav-group:hover > .em-nav-dropdown,
+  .em-nav-group:focus-within > .em-nav-dropdown { display: block; }
 </style>

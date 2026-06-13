@@ -32,6 +32,13 @@ describe('M5.A menu del arbol (IC) · CANARY fallback byte-identico', () => {
     const html = await renderHeaderHtml({ schema_version: 3, nav: navHome, pages: {} });
     await expect(html).toMatchFileSnapshot(fileURLToPath(new URL('./__snapshots__/menu/ic-fallback-solohome.html', import.meta.url)));
   });
+  // M5.B: canary fallback byte-identico de las otras 3 plantillas (golden capturado PRE-M5.B).
+  for (const slug of ['fashion_bold', 'minimal_artesanal', 'editorial_magazine']) {
+    test(`${slug} sin nav -> fallback byte-identico`, async () => {
+      const html = await renderHeaderHtml({ schema_version: 3, pages: {} }, CATS, slug);
+      await expect(html).toMatchFileSnapshot(fileURLToPath(new URL(`./__snapshots__/menu/${slug}-fallback-sinnav.html`, import.meta.url)));
+    });
+  }
 });
 
 // Arbol como aimma-test: aceites + calzado>tacon + ropa>blusa + Contactanos (blanco).
@@ -84,4 +91,24 @@ describe('M5.A DELTA: IC con nav sembrado -> top-level + dropdowns + pagina en b
     expect(html).toContain('ic-nav-dropdown');
     expect(html).toContain('Contactanos');
   });
+});
+
+// M5.B DELTA: dropdown del arbol en las otras 3 plantillas. Limite por-plantilla: IC 6 / FB 5 / MA 3 / EM 4.
+// CALZADO(orden1)+ROPA(orden2) entran en las 4 -> sus dropdowns (tacon/blusa) aparecen siempre.
+// Contactanos es el 4to top-level (orden3) -> MA (slice 3) lo corta; IC/FB/EM (>=4) lo muestran.
+const TPL_M5B = [
+  { slug: 'fashion_bold', drop: 'fb-nav-dropdown', limit: 5 },
+  { slug: 'minimal_artesanal', drop: 'ma-nav-dropdown', limit: 3 },
+  { slug: 'editorial_magazine', drop: 'em-nav-dropdown', limit: 4 },
+];
+describe('M5.B DELTA: dropdown del arbol en FB/MA/EM', () => {
+  for (const t of TPL_M5B) {
+    test(`${t.slug}: dropdowns (tacon/blusa) + clase ${t.drop}`, async () => {
+      const html = await renderHeaderHtml({ schema_version: 3, nav: NAV_TREE, pages: {} }, CATS, t.slug);
+      expect(html).toContain('href="/c/tacon-dama"');     // subcategoria de CALZADO
+      expect(html).toContain('href="/c/blusa-dama"');     // subcategoria de ROPA
+      expect(html).toContain(t.drop);                     // estructura de dropdown de la plantilla
+      if (t.limit >= 4) expect(html).toContain('href="/pagina/contactanos"'); // pagina en blanco (4to)
+    });
+  }
 });
