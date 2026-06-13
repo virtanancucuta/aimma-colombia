@@ -112,3 +112,29 @@ describe('M5.B DELTA: dropdown del arbol en FB/MA/EM', () => {
     });
   }
 });
+
+// MOBILE.A: hamburguesa + drawer (checkbox-hack + <details>) en IC. Canario desktop ya cubierto por
+// los goldens fallback (cambio solo aditivo; nav desktop byte-identico verificado aparte).
+describe('MOBILE.A: hamburguesa + drawer mobile (IC)', () => {
+  test('IC: checkbox-hack + hamburguesa lg:hidden + drawer con TODO el arbol + <details> hijos', async () => {
+    const html = await renderHeaderHtml({ schema_version: 3, nav: NAV_TREE, pages: {} });
+    expect(html).toContain('id="ic-menu-cb"');                  // checkbox-hack (no-JS)
+    expect(html).toContain('ic-menu-btn lg:hidden');            // hamburguesa, oculta en desktop
+    expect(html).toContain('ic-menu-panel');                    // drawer
+    expect(html).toContain('<details');                         // accordion para padres
+    expect(html).toContain('Ver CALZADO DAMA');                 // link del padre DENTRO del accordion (decision 2)
+    expect(html).toContain('Ver ROPA DAMA');
+    expect(html).toContain('href="/c/tacon-dama"');             // subcategoria en el drawer
+    expect(html).toContain('href="/c/blusa-dama"');
+    expect(html).toContain('href="/pagina/contactanos"');       // pagina en blanco alcanzable en mobile
+  });
+  test('mobile NO aplica limite por-plantilla: el drawer trae items aunque el desktop corte', async () => {
+    // 8 top-level (mas que el cap 6 de IC desktop) -> el drawer debe traer el 7mo/8vo igual.
+    const many = [{ id: 'nav_home0', tipo: 'home', label: 'Inicio', parentId: null, orden: 0, mostrar_en_menu: true }];
+    for (let i = 1; i <= 8; i++) many.push({ id: 'nav_c' + i + '000', tipo: 'coleccion', label: 'CAT' + i, slug: 'cat-' + i, categoria_id: '00000000-0000-4000-8000-00000000000' + i, parentId: null, orden: i, mostrar_en_menu: true });
+    const html = await renderHeaderHtml({ schema_version: 3, nav: many, pages: {} });
+    const panel = html.slice(html.indexOf('ic-menu-panel'));
+    expect(panel).toContain('href="/c/cat-7"'); // el 7mo, fuera del cap 6 del desktop, SI en el drawer
+    expect(panel).toContain('href="/c/cat-8"');
+  });
+});
