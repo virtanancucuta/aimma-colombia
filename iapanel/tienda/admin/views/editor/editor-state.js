@@ -280,6 +280,17 @@
     const n = state.nav.find((x) => x.id === id);
     if (n && n.tipo !== 'home' && n.mostrar_en_menu !== !!val) { n.mostrar_en_menu = !!val; markDirty(); notify('nav'); }
   }
+  // M4: borrar un nodo + su RAMA (hijos directos; 2 niveles max -> no hay nietos). Home NUNCA se borra.
+  // Devuelve los nodos quitados (para que editor.js calcule las pages[pagina:<slug>] a borrar en el EF).
+  function removeNavNode(id) {
+    const node = state.nav.find((n) => n.id === id);
+    if (!node || node.tipo === 'home') return [];
+    const removed = [node].concat(state.nav.filter((n) => n.parentId === id));
+    const ids = new Set(removed.map((n) => n.id));
+    state.nav = state.nav.filter((n) => !ids.has(n.id));
+    markDirty(); notify('nav');
+    return removed;
+  }
   // M3: ya existe un nodo coleccion que referencia esta categoria?
   function navHasCategoria(catId) { return state.nav.some((n) => n.tipo === 'coleccion' && n.categoria_id === catId); }
   // M3: id del nodo coleccion que referencia esta categoria (para colgar subpaginas), o null.
@@ -424,7 +435,7 @@
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
     setThemeColors, setThemePalette, setThemeFontPairing,
     addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
-    moveNavNode, setNavMostrarEnMenu,
+    moveNavNode, setNavMostrarEnMenu, removeNavNode,
     findSection,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,

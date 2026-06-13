@@ -113,3 +113,46 @@ test('no muta el objeto current de entrada (structuredClone aisla)', () => {
   buildNextPersonalizaciones(current, 'coleccion', 'publish', page('c', OLD), undefined, undefined, NOW);
   assert.equal(JSON.stringify(current), snapshot); // entrada sin mutar
 });
+
+// ============================================================
+// M4 · deletePages: borrar paginas EN BLANCO (key pagina:<slug>) + su _draft. GUARDRAIL #1: SOLO
+// pagina:<slug>; NUNCA home/coleccion/theme/nav. Ejerce el CODIGO REAL (mirror EF byte-identico, test 04).
+// ============================================================
+
+test('M4 deletePages: borra pagina:<slug> + su _draft; preserva las demas paginas', () => {
+  const current = { schema_version: 3, pages: {
+    home: page('home', OLD),
+    'pagina:contacto': page('contacto', OLD),
+    'pagina:contacto_draft': page('contacto-d', OLD),
+    'pagina:otra': page('otra', OLD),
+  } };
+  const next = buildNextPersonalizaciones(current, 'home', 'draft', page('home2', OLD), undefined, undefined, NOW, ['pagina:contacto']);
+  assert.equal(next.pages['pagina:contacto'], undefined);          // borrada
+  assert.equal(next.pages['pagina:contacto_draft'], undefined);    // su draft tambien
+  assert.ok(next.pages['pagina:otra']);                            // otra pagina preservada
+  assert.ok(next.pages.home_draft);                                // el draft de home (target) intacto
+  assert.ok(next.pages.home);                                      // home publicada intacta
+});
+
+test('M4 deletePages GUARDRAIL: ignora home/coleccion/theme/nav y claves que no son pagina:<slug>', () => {
+  const current = { schema_version: 3,
+    theme: { font_pairing: 'industrial' },
+    nav: [{ id: 'nav_home0', tipo: 'home', label: 'Inicio', parentId: null, orden: 0, mostrar_en_menu: true }],
+    pages: { home: page('home', OLD), coleccion: page('col', OLD), 'pagina:ok': page('ok', OLD) },
+  };
+  const next = buildNextPersonalizaciones(current, 'home', 'draft', page('home', OLD), undefined, undefined, NOW,
+    ['home', 'coleccion', 'theme', 'nav', 'pagina:OK', '../secret', 'pagina:ok']); // mezcla de ataques + 1 valida
+  assert.ok(next.pages.home);                          // home NO se borra (no matchea pagina:<slug>)
+  assert.ok(next.pages.coleccion);                     // coleccion NO se borra
+  assert.deepEqual(next.theme, { font_pairing: 'industrial' }); // theme intacto
+  assert.ok(Array.isArray(next.nav) && next.nav.length === 1);  // nav intacto
+  assert.equal(next.pages['pagina:ok'], undefined);    // la unica clave valida SI se borra
+});
+
+test('M4 deletePages NO descarta el nav_draft pendiente (delete-only no toca el arbol)', () => {
+  const navd = [{ id: 'nav_home0', tipo: 'home', label: 'Inicio', parentId: null, orden: 0, mostrar_en_menu: true }];
+  const current = { schema_version: 3, nav_draft: navd, pages: { home: page('home', OLD), 'pagina:xy': page('xy', OLD) } };
+  const next = buildNextPersonalizaciones(current, 'home', 'draft', page('home', OLD), undefined, navd, NOW, ['pagina:xy']);
+  assert.equal(next.pages['pagina:xy'], undefined);
+  assert.equal(JSON.stringify(next.nav_draft), JSON.stringify(navd)); // nav_draft preservado/escrito
+});

@@ -142,6 +142,7 @@
       onRenamePage: (nodeId, label) => renamePage(nodeId, label),
       onMoveNode: (nodeId, dir) => window.TiendaIA.editorState.moveNavNode(nodeId, dir),
       onToggleMostrar: (nodeId, val) => window.TiendaIA.editorState.setNavMostrarEnMenu(nodeId, val),
+      onDeleteNode: (nodeId) => deleteNode(nodeId),
     });
 
     window.TiendaIA.editorCanvas.render(canvasEl, {});
@@ -508,6 +509,35 @@
     ES.renameNavNode(nodeId, nombre.slice(0, 80)); // markDirty + notify('nav') -> autosave (subscrito) persiste
   }
 
+  // M4: borrar un nodo del arbol con REGLAS. Inicio NO se borra (sin nodeId/no llega). Categoria (coleccion)
+  // -> solo lo saca del arbol (NO toca la categoria ni la plantilla). En blanco -> lo saca Y borra su
+  // contenido (pages[pagina:slug]+draft via EF deletePages). Padre con hijos -> confirma (borra la rama).
+  // Si la pagina activa esta en la rama borrada -> vuelve a Inicio.
+  async function deleteNode(id) {
+    const T = window.TiendaIA;
+    const ES = T.editorState;
+    const node = (ES.nav || []).find((n) => n.id === id);
+    if (!node || node.tipo === 'home') return;
+    const children = (ES.nav || []).filter((n) => (n.parentId || null) === id);
+    const esBlanco = node.tipo === 'blanco';
+    const msg = esBlanco
+      ? ('Borrar la pagina "' + node.label + '"' + (children.length ? ' y sus ' + children.length + ' subpagina(s)' : '') + '?\n\nNo se puede deshacer.')
+      : ('Quitar "' + node.label + '" del menu?\n\nNO borra la categoria ni sus productos' + (children.length ? '. Tambien quita sus ' + children.length + ' subpagina(s).' : '.'));
+    if (!window.confirm(msg)) return;
+    const removed = [node].concat(children);
+    const deletePages = removed.filter((n) => n.tipo === 'blanco' && n.slug).map((n) => 'pagina:' + n.slug);
+    const removedKeys = removed.map((n) => n.tipo === 'blanco' ? ('pagina:' + n.slug) : ('col:' + n.slug));
+    const activeRemoved = removedKeys.indexOf(state.activePageKey || 'home') >= 0;
+    // 1) si la pagina activa esta en la rama -> ir a Inicio PRIMERO (deletePages limpia el draft re-flusheado).
+    if (activeRemoved) await switchPage('home');
+    // 2) sacar el nodo + su rama del nav
+    ES.removeNavNode(id);
+    // 3) guardar: nav reducido + deletePages. Cancela autosave pendiente (evita doble guardado).
+    if (state.autoSaveTimer) { clearTimeout(state.autoSaveTimer); state.autoSaveTimer = null; }
+    await saveDraft(deletePages.length ? deletePages : undefined);
+    toast(esBlanco ? 'Pagina borrada.' : 'Quitada del menu.', 'success');
+  }
+
   // ============================================================
   // M3 · Paginas de COLECCION (referencian una categoria existente) + auto-nest
   // ============================================================
@@ -615,9 +645,10 @@
   // ============================================================
   // Save
   // ============================================================
-  async function saveDraft() {
+  async function saveDraft(deletePages) {
     const ES = window.TiendaIA.editorState;
-    if (!ES.dirty) return;
+    const hasDeletes = Array.isArray(deletePages) && deletePages.length > 0; // M4: borrar paginas
+    if (!ES.dirty && !hasDeletes) return;
     // Si hay un save in-flight, NO lo descartamos: encolamos un re-guardado para no perder
     // el cambio que llego durante el save (antes 'return' silencioso = perdida de datos).
     if (ES.saving) { state.resaveQueued = true; return; }
@@ -631,12 +662,13 @@
         personalizaciones: ES.serialize(),
         base_updated_at: ES.base_updated_at,
       };
+      if (hasDeletes) body.deletePages = deletePages; // M4: el EF borra pages[pagina:<slug>] + _draft
       const r = await callEF(body);
       if (r && r.success) {
         ES.setLastDraftSavedAt(new Date());
         ES.setDraftSaveStatus('saved');
         state.saveErrorRetried = false;
-        syncTiendaCache('draft', r.home); // refresca state.tienda para re-entrar sin recargar
+        syncTiendaCache('draft', r.home, hasDeletes ? deletePages : null); // refresca state.tienda
         // El carril patch mantiene el iframe en sync: NO refrescamos aqui (evita reload cada autosave).
         // Tocar toolbar para actualizar "Borrador guardado hace ..."
         if (window.TiendaIA?.editorToolbar?.updateButtons) window.TiendaIA.editorToolbar.updateButtons();
@@ -724,7 +756,7 @@
   // en vez del valor de carga del admin. savedPage = r.home (pagina autoritativa de la EF,
   // con su updated_at -> evita falsos 409 en el siguiente guardado). draft toca home_draft;
   // publish reemplaza home y borra home_draft (igual que la EF).
-  function syncTiendaCache(mode, savedPage) {
+  function syncTiendaCache(mode, savedPage, deletePages) {
     const T = window.TiendaIA;
     if (!T || !T.state || !T.state.tienda || !savedPage) return;
     const pageId = T.editorState.pageId;          // pagina activa (default 'home')
@@ -733,6 +765,12 @@
     const draftTheme = T.editorState.serialize().theme; // el theme que se edita ES el borrador
     const draftNav = T.editorState.serialize().nav;     // M2: el arbol que se edita
     const next = { schema_version: 3, pages: { ...(cur.pages || {}) } };
+    // M4: borrar paginas (key pagina:<slug>) + su _draft del cache, igual que el EF (guardrail: solo pagina:<slug>).
+    if (Array.isArray(deletePages)) {
+      deletePages.forEach((k) => {
+        if (typeof k === 'string' && /^pagina:[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/.test(k)) { delete next.pages[k]; delete next.pages[k + '_draft']; }
+      });
+    }
     // M2: preservar nav/nav_draft existentes (mirror del EF buildNext) antes de aplicar el del cliente.
     if (cur.nav !== undefined) next.nav = cur.nav;
     if (cur.nav_draft !== undefined) next.nav_draft = cur.nav_draft;
