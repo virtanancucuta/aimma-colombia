@@ -57,7 +57,27 @@ test('buildNext preserva nav/nav_draft al guardar una pagina (el seed no se pisa
   const navd = [{ ...navHome, label: 'Inicio (draft)' }];
   const page = { version: 2, updated_at: '2026-06-01T10:00:00.000Z', sections: [] };
   const current = { schema_version: 3, nav, nav_draft: navd, pages: { home: page } };
-  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', page, undefined, '2026-06-12T20:00:00.000Z');
+  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', page, undefined, undefined, '2026-06-12T20:00:00.000Z');
   assert.equal(JSON.stringify(next.nav), JSON.stringify(nav));
+  assert.equal(JSON.stringify(next.nav_draft), JSON.stringify(navd));
+});
+
+const NOW2 = '2026-06-12T20:00:00.000Z';
+const emptyPage = { version: 2, updated_at: '2026-06-01T10:00:00.000Z', sections: [] };
+
+test('buildNext ESCRIBE nav (publish) / nav_draft (draft) cuando se provee navFromClient', () => {
+  const navNuevo = [navHome, { ...navHome, id: 'nav_extra1', label: 'Extra' }];
+  const base = { schema_version: 3, pages: { home: emptyPage } };
+  const d = buildNextPersonalizaciones(base, 'pagina:mi-pagina', 'draft', emptyPage, undefined, navNuevo, NOW2);
+  assert.equal(JSON.stringify(d.nav_draft), JSON.stringify(navNuevo));
+  assert.equal(d.nav, undefined);
+  const p = buildNextPersonalizaciones({ ...base, nav_draft: navNuevo }, 'pagina:mi-pagina', 'publish', emptyPage, undefined, navNuevo, NOW2);
+  assert.equal(JSON.stringify(p.nav), JSON.stringify(navNuevo));
+  assert.equal(p.nav_draft, undefined);
+});
+
+test('publish SIN nav NO descarta nav_draft pendiente (asimetria intencional vs theme)', () => {
+  const navd = [navHome];
+  const next = buildNextPersonalizaciones({ schema_version: 3, nav_draft: navd, pages: { home: emptyPage } }, 'home', 'publish', emptyPage, undefined, undefined, NOW2);
   assert.equal(JSON.stringify(next.nav_draft), JSON.stringify(navd));
 });
