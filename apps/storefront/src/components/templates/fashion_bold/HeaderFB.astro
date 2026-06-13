@@ -35,12 +35,28 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
   .fb-nav-dropdown { display: none; }
   .fb-nav-group:hover > .fb-nav-dropdown,
   .fb-nav-group:focus-within > .fb-nav-dropdown { display: block; }
+  /* MOBILE.B: drawer del menu (checkbox-hack, sin JS). Desktop (md+) SIEMPRE oculto. */
+  .fb-menu-panel { display: none; }
+  .fb-menu-cb:checked ~ .fb-menu-panel { display: block; }
+  .fb-menu-acc[open] > summary .fb-menu-chev { transform: rotate(180deg); }
+  @media (min-width: 768px) { .fb-menu-panel { display: none !important; } }
 </style>
 
 <header
   class="sticky top-0 z-40 h-[60px] md:h-[72px] border-b border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]/90 backdrop-blur-md"
 >
+  {menu.length > 0 && <input type="checkbox" id="fb-menu-cb" class="fb-menu-cb" hidden />}
   <div class="mx-auto flex h-full max-w-screen-2xl items-center justify-between px-6 md:px-12">
+    {/* MOBILE.B: hamburguesa (solo mobile, md:hidden). Abre el drawer de abajo. */}
+    {menu.length > 0 && (
+      <label for="fb-menu-cb" class="fb-menu-btn md:hidden -ml-1 flex cursor-pointer items-center p-2 text-[var(--ta-color-text-base)]" aria-label="Abrir menu" role="button" tabindex="0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </label>
+    )}
     {/* Logo wordmark — display font, uppercase, tight tracking */}
     <a
       href="/"
@@ -121,4 +137,34 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
       </a>
     </div>
   </div>
+
+  {/* MOBILE.B: drawer (full-width baja del header). Todo el arbol (sin limite). Hijos -> <details>. */}
+  {menu.length > 0 && (
+    <div class="fb-menu-panel md:hidden max-h-[80vh] overflow-y-auto border-t border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]">
+      <nav class="mx-auto max-w-screen-2xl px-6 py-1" aria-label="Menu movil">
+        <ul class="divide-y divide-[var(--ta-color-text-base)]/5">
+          {menu.map((item) => (
+            <li>
+              {item.children.length > 0 ? (
+                <details class="fb-menu-acc">
+                  <summary class="flex cursor-pointer list-none items-center justify-between py-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)]">
+                    <span>{item.label}</span>
+                    <svg class="fb-menu-chev transition-transform duration-200" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                  </summary>
+                  <ul class="pb-2">
+                    <li><a href={item.href} class="block py-2 pl-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)]/70">Ver {item.label}</a></li>
+                    {item.children.map((child) => (
+                      <li><a href={child.href} class="block py-2 pl-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)]/70">{child.label}</a></li>
+                    ))}
+                  </ul>
+                </details>
+              ) : (
+                <a href={item.href} class="block py-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ta-color-text-base)]">{item.label}</a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  )}
 </header>

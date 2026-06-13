@@ -34,12 +34,18 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
   .ma-nav-dropdown { display: none; }
   .ma-nav-group:hover > .ma-nav-dropdown,
   .ma-nav-group:focus-within > .ma-nav-dropdown { display: block; }
+  /* MOBILE.B: drawer del menu (checkbox-hack, sin JS). Desktop (lg+) SIEMPRE oculto. */
+  .ma-menu-panel { display: none; }
+  .ma-menu-cb:checked ~ .ma-menu-panel { display: block; }
+  .ma-menu-acc[open] > summary .ma-menu-chev { transform: rotate(180deg); }
+  @media (min-width: 1024px) { .ma-menu-panel { display: none !important; } }
 </style>
 
 <header
   id="ma-header"
   class="fixed inset-x-0 top-0 z-40 transition-colors duration-500 bg-[var(--ta-color-bg-base)]/0"
 >
+  {menu.length > 0 && <input type="checkbox" id="ma-menu-cb" class="ma-menu-cb" hidden />}
   <nav class="mx-auto flex h-20 max-w-screen-2xl items-center justify-between gap-8 px-8 lg:px-16" aria-label="Principal">
     {/* Nav izquierda — primeros 3 del arbol. M5.B: con hijos -> dropdown; sin hijos -> <li> identico. */}
     <ul class="hidden lg:flex items-center gap-10">
@@ -126,18 +132,25 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
       </li>
     </ul>
 
-    {/* Mobile: hamburguesa stroke-1 + logo center (oculta nav links). Bolsa derecha */}
+    {/* Mobile: hamburguesa stroke-1 + logo center (oculta nav links). Bolsa derecha. MOBILE.B: el
+        boton decorativo ahora es un <label> que togglea el checkbox (abre el drawer). Sin JS. */}
     <div class="lg:hidden flex items-center justify-between w-full">
-      <button
-        type="button"
-        aria-label="Menu"
-        class="text-[var(--ta-color-text-base)]"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
-          <line x1="3" y1="8" x2="21" y2="8" />
-          <line x1="3" y1="16" x2="21" y2="16" />
-        </svg>
-      </button>
+      {menu.length > 0 ? (
+        <label
+          for="ma-menu-cb"
+          aria-label="Abrir menu"
+          role="button"
+          tabindex="0"
+          class="ma-menu-btn cursor-pointer text-[var(--ta-color-text-base)]"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <line x1="3" y1="8" x2="21" y2="8" />
+            <line x1="3" y1="16" x2="21" y2="16" />
+          </svg>
+        </label>
+      ) : (
+        <span aria-hidden="true"></span>
+      )}
       <a
         href="/carrito"
         class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65"
@@ -147,6 +160,36 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
       </a>
     </div>
   </nav>
+
+  {/* MOBILE.B: drawer (full-width baja del header fijo). Todo el arbol (sin limite). Hijos -> <details>. */}
+  {menu.length > 0 && (
+    <div class="ma-menu-panel lg:hidden max-h-[80vh] overflow-y-auto border-t border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]">
+      <nav class="mx-auto max-w-screen-2xl px-8 py-1" aria-label="Menu movil">
+        <ul class="divide-y divide-[var(--ta-color-text-base)]/5">
+          {menu.map((item) => (
+            <li>
+              {item.children.length > 0 ? (
+                <details class="ma-menu-acc">
+                  <summary class="flex cursor-pointer list-none items-center justify-between py-3 text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65">
+                    <span>{item.label}</span>
+                    <svg class="ma-menu-chev transition-transform duration-200" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                  </summary>
+                  <ul class="pb-2">
+                    <li><a href={item.href} class="block py-2 pl-3 text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/50">Ver {item.label}</a></li>
+                    {item.children.map((child) => (
+                      <li><a href={child.href} class="block py-2 pl-3 text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/50">{child.label}</a></li>
+                    ))}
+                  </ul>
+                </details>
+              ) : (
+                <a href={item.href} class="block py-3 text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65">{item.label}</a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  )}
 </header>
 
 {/* Spacer para empujar el contenido al inicio (header fixed) */}

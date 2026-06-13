@@ -138,3 +138,24 @@ describe('MOBILE.A: hamburguesa + drawer mobile (IC)', () => {
     expect(panel).toContain('href="/c/cat-8"');
   });
 });
+
+// MOBILE.B: hamburguesa + drawer en las otras 3 plantillas (mismo patron checkbox-hack + <details>).
+const TPL_MOBILE_B = [
+  { slug: 'fashion_bold', cb: 'fb-menu-cb', btn: 'fb-menu-btn md:hidden', panel: 'fb-menu-panel' },
+  { slug: 'minimal_artesanal', cb: 'ma-menu-cb', btn: 'ma-menu-btn', panel: 'ma-menu-panel' }, // hamburguesa en div lg:hidden
+  { slug: 'editorial_magazine', cb: 'em-menu-cb', btn: 'em-menu-btn lg:hidden', panel: 'em-menu-panel' },
+];
+describe('MOBILE.B: hamburguesa + drawer en FB/MA/EM', () => {
+  for (const t of TPL_MOBILE_B) {
+    test(`${t.slug}: checkbox + hamburguesa + drawer (arbol completo) + <details>`, async () => {
+      const html = await renderHeaderHtml({ schema_version: 3, nav: NAV_TREE, pages: {} }, CATS, t.slug);
+      expect(html).toContain(`id="${t.cb}"`);                 // checkbox-hack (no-JS)
+      expect(html).toContain(t.btn);                          // hamburguesa
+      expect(html).toContain(t.panel);                        // drawer
+      expect(html).toContain('<details');                     // accordion para padres
+      expect(html).toContain('Ver CALZADO DAMA');             // link del padre adentro (decision 2)
+      expect(html).toContain('href="/c/tacon-dama"');         // subcategoria en el drawer
+      expect(html).toContain('href="/pagina/contactanos"');   // pagina en blanco en el drawer (incl. MA, sin limite mobile)
+    });
+  }
+});

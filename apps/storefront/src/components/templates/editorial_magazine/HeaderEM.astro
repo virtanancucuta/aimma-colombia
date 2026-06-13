@@ -30,7 +30,17 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
 ---
 
 <header class="em-header sticky top-0 z-40 transition-[background-color,border-bottom-color] duration-300">
+  {menu.length > 0 && <input type="checkbox" id="em-menu-cb" class="em-menu-cb" hidden />}
   <div class="mx-auto max-w-[1440px] px-6 md:px-10 lg:px-20 h-20 lg:h-24 flex items-center justify-between gap-6">
+    {menu.length > 0 && (
+      <label for="em-menu-cb" class="em-menu-btn lg:hidden -ml-1 flex cursor-pointer items-center p-2 text-[var(--ta-color-text-base)]" aria-label="Abrir menu" role="button" tabindex="0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </label>
+    )}
     <a href="/" class="flex items-center gap-3 group" aria-label={tienda.nombre_negocio}>
       {tienda.logo_url ? (
         <img
@@ -104,6 +114,36 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
     </div>
   </div>
   <span class="em-rule block h-px bg-[var(--ta-color-text-base)]/10"></span>
+
+  {/* MOBILE.B: drawer (full-width baja del header). Todo el arbol (sin limite). Hijos -> <details>. */}
+  {menu.length > 0 && (
+    <div class="em-menu-panel lg:hidden max-h-[80vh] overflow-y-auto bg-[var(--ta-color-bg-base)]">
+      <nav class="mx-auto max-w-[1440px] px-6 md:px-10 py-1" aria-label="Menu movil">
+        <ul class="divide-y divide-[var(--ta-color-text-base)]/5">
+          {menu.map((item) => (
+            <li>
+              {item.children.length > 0 ? (
+                <details class="em-menu-acc">
+                  <summary class="flex cursor-pointer list-none items-center justify-between py-3 font-body text-[13px] font-medium text-[var(--ta-color-text-base)]">
+                    <span>{item.label}</span>
+                    <svg class="em-menu-chev transition-transform duration-200" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                  </summary>
+                  <ul class="pb-2">
+                    <li><a href={item.href} class="block py-2 pl-3 font-body text-[13px] text-[var(--ta-color-text-base)]/72">Ver {item.label}</a></li>
+                    {item.children.map((child) => (
+                      <li><a href={child.href} class="block py-2 pl-3 font-body text-[13px] text-[var(--ta-color-text-base)]/72">{child.label}</a></li>
+                    ))}
+                  </ul>
+                </details>
+              ) : (
+                <a href={item.href} class="block py-3 font-body text-[13px] font-medium text-[var(--ta-color-text-base)]">{item.label}</a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  )}
 </header>
 
 <style>
@@ -116,4 +156,9 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
   .em-nav-dropdown { display: none; }
   .em-nav-group:hover > .em-nav-dropdown,
   .em-nav-group:focus-within > .em-nav-dropdown { display: block; }
+  /* MOBILE.B: drawer del menu (checkbox-hack, sin JS). Va aca (scoped existente, regla dura). Desktop oculto. */
+  .em-menu-panel { display: none; }
+  .em-menu-cb:checked ~ .em-menu-panel { display: block; }
+  .em-menu-acc[open] > summary .em-menu-chev { transform: rotate(180deg); }
+  @media (min-width: 1024px) { .em-menu-panel { display: none !important; } }
 </style>
