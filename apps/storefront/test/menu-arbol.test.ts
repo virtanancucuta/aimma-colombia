@@ -185,3 +185,23 @@ describe('MOBILE.B: hamburguesa + drawer en FB/MA/EM', () => {
     });
   }
 });
+
+// MA-mobile-search: la plantilla MA era la unica sin buscador en mobile (su SearchBar estaba en la barra
+// desktop-only hidden lg:flex). Fix: 2da instancia del SearchBar en el bar mobile (lg:hidden) con cbId
+// unico (hsearch-cb-m) + noScript -> sin colision del checkbox-hack. Respeta el toggle mostrarBuscador.
+describe('MA-mobile-search: buscador en el header mobile de MA (respeta el toggle)', () => {
+  test('ON (default): MA mobile tiene SearchBar con id unico, sin colisionar el desktop', async () => {
+    const html = await renderHeaderHtml({ schema_version: 3, nav: NAV_TREE, pages: {} }, CATS, 'minimal_artesanal');
+    expect(html).toContain('id="hsearch-cb-m"');                              // checkbox mobile (id unico)
+    expect(html).toContain('id="hsearch-cb"');                               // checkbox desktop (sigue)
+    expect((html.match(/id="hsearch-cb"/g) || []).length).toBe(1);           // 1 sola vez -> sin duplicado
+    expect((html.match(/id="hsearch-cb-m"/g) || []).length).toBe(1);
+    expect(html).toContain('hsearch--ma');                                   // estilo MA
+  });
+  test('OFF (toggle Configuracion mostrar_buscador_header=false): MA NO renderiza buscador', async () => {
+    const container = await AstroContainer.create();
+    const tienda: any = { id: 'tienda-test', nombre_negocio: 'Tienda Test', logo_url: null, plantilla: { slug: 'minimal_artesanal' }, mostrar_buscador_header: false, personalizaciones: { schema_version: 3, nav: NAV_TREE, pages: {} } };
+    const html = normalize(await container.renderToString(Header, { props: {}, locals: { tienda, supabase: stubSupabase(CATS) } as any, request: REQUEST }));
+    expect(html).not.toContain('hsearch');                                   // sin buscador (ni desktop ni mobile)
+  });
+});
