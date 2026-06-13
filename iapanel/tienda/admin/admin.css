@@ -252,6 +252,13 @@ a:hover { text-decoration: underline; }
   margin: 0 auto;
   width: 100%;
 }
+/* Editor PRO-MAX: ocupa todo el ancho disponible (sin el cap de 1400 ni el padding del admin).
+   Scopeado: solo cuando el editor esta montado (editor.js agrega/quita .ta-main--editor). Las demas
+   vistas del admin (Productos, Categorias, etc.) conservan el max-width centrado. */
+.ta-main--editor {
+  max-width: none;
+  padding: 0;
+}
 
 /* ============================ Botones ============================ */
 .ta-btn {

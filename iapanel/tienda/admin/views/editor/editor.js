@@ -69,6 +69,9 @@
     }
 
     container.innerHTML = '';
+    // Polish: el editor ocupa todo el ancho (saca el cap 1400 + padding de .ta-main). Scopeado:
+    // se quita en unmountEditor -> las demas vistas del admin quedan intactas.
+    container.classList.add('ta-main--editor');
     const view = document.createElement('div');
     view.className = 'ed-view';
     view.id = 'editor-root';
@@ -120,6 +123,11 @@
       const sel = window.TiendaIA.editorState.selection;
       if (state.editingSection && (!sel || sel.sectionId !== state.editingSection)) clearEditingSection();
     }));
+    // Polish: colapsar el inspector cuando NO hay seleccion (el preview gana esos 340px; transicion CSS
+    // suave en .ed-shell). Reaparece al seleccionar una seccion.
+    const syncInspectorCollapse = () => shell.classList.toggle('ed-shell--no-inspector', !window.TiendaIA.editorState.selection);
+    state.unsubs.push(window.TiendaIA.editorState.subscribe('selection', syncInspectorCollapse));
+    syncInspectorCollapse(); // estado inicial (sin seleccion -> colapsado)
 
     // Render paneles
     window.TiendaIA.editorToolbar.render(toolbarEl, {
@@ -186,6 +194,8 @@
     clearEditingSection(); // C.2 Paso 2: limpiar suspend + timer
     state.unsubs.forEach(u => { try { u(); } catch (e) {} });
     state.unsubs = [];
+    // Polish: devolver .ta-main a su layout normal (cap 1400 + padding) para las demas vistas del admin.
+    try { if (window.TiendaIA?.dom?.mainView) window.TiendaIA.dom.mainView.classList.remove('ta-main--editor'); } catch (e) {}
     window.removeEventListener('beforeunload', beforeUnloadGuard);
     if (window.TiendaIA?.editorCanvas?.destroy) window.TiendaIA.editorCanvas.destroy();
     if (window.TiendaIA?.editorToolbar?.unbindKeyboard) window.TiendaIA.editorToolbar.unbindKeyboard();
