@@ -33,6 +33,8 @@
     editingTimer: null,     // auto-recuperacion del suspend (timeout, evita congelado silencioso)
     clearEditingAfterDrain: false, // liberar el suspend tras drenar el patch (salteado) del commit
     sampleCategory: null,   // L3: {slug} de la categoria-muestra para preview de Coleccion (null = sin categorias)
+    categorias: [],         // M3: catalogo de categorias de la tienda ({id,nombre,slug,parent_id,orden}) para el arbol/picker
+    activePageKey: 'home',  // M3: seleccion del switcher (separada de ES.pageId; nodos coleccion -> 'col:<slug>' pero pageId='coleccion')
   };
 
   function whenReady(cb, attempts) {
@@ -99,8 +101,9 @@
 
     // Init state v3
     window.TiendaIA.editorState.init(tienda.personalizaciones, tienda.id);
-    // L3: resolver la categoria-muestra (primera por orden) para habilitar/previsualizar Coleccion.
-    await resolveSampleCategory();
+    state.activePageKey = 'home';
+    // M3: cargar el catalogo de categorias (arbol nav + picker) y derivar la categoria-muestra.
+    await resolveCategorias();
     // Autosave re-armado en CADA cambio de contenido (fix del latch: antes solo se
     // suscribia a 'dirty', que notifica solo en la transicion false->true -> sub-guardaba).
     // 'sections'/'theme' notifican en cada mutacion; 'dirty' cubre el primer cambio / starter.
@@ -131,9 +134,11 @@
 
     window.TiendaIA.editorSidebar.render(sidebarEl, {
       onAddSection: () => openCatalog(),
-      onSwitchPage: (pageId) => switchPage(pageId),
+      onSwitchPage: (key) => switchPage(key),
       getPages: () => buildPageList(),
-      onAddPage: () => addBlankPage(),
+      onAddBlankPage: () => addBlankPage(),
+      onAddColeccion: (catId) => addColeccionPage(catId),
+      getCategoriasSinPagina: () => getCategoriasSinPagina(),
       onRenamePage: (nodeId, label) => renamePage(nodeId, label),
     });
 
@@ -321,34 +326,60 @@
   // ============================================================
   // Categoria-muestra (primera por orden) para previsualizar Coleccion (plantilla GLOBAL).
   // null -> la tienda no tiene categorias -> Coleccion deshabilitada en el switcher.
-  async function resolveSampleCategory() {
+  async function resolveCategorias() {
+    state.categorias = [];
     state.sampleCategory = null;
     const sb = window.TiendaIA.supabase && window.TiendaIA.supabase();
     const ES = window.TiendaIA.editorState;
     if (!sb || !ES.tienda_id) return;
     try {
       const { data } = await sb.from('categorias')
-        .select('slug').eq('tienda_id', ES.tienda_id)
-        .order('orden', { ascending: true }).limit(1);
-      if (data && data.length && data[0].slug) state.sampleCategory = { slug: data[0].slug };
-    } catch (e) { /* sin categorias -> Coleccion deshabilitada */ }
+        .select('id,nombre,slug,parent_id,orden').eq('tienda_id', ES.tienda_id)
+        .order('orden', { ascending: true });
+      state.categorias = (data || []).filter((c) => c && c.slug);
+      // Categoria-muestra (primera por orden, top-level si hay) para el fallback de Coleccion.
+      const sample = state.categorias.find((c) => !c.parent_id) || state.categorias[0];
+      if (sample && sample.slug) state.sampleCategory = { slug: sample.slug };
+    } catch (e) { /* sin categorias -> Coleccion deshabilitada / sin nodos */ }
   }
 
-  // Descriptores de pagina para el switcher. Inicio siempre; Coleccion segun haya categorias.
+  // M3: un nodo nav -> item del switcher. id = clave UNICA del switcher; pageId = target de edicion;
+  // previewPath = ruta a previsualizar. Nodos coleccion -> pageId='coleccion' (plantilla GLOBAL) +
+  // preview /c/<slug>; comparten target, se distinguen por id 'col:<slug>' (activePageKey marca cual).
+  function navToItem(n, depth) {
+    if (n.tipo === 'home') return { id: 'home', label: 'Inicio', tipo: 'home', pageId: 'home', previewPath: '/', depth: depth, enabled: true };
+    if (n.tipo === 'coleccion') return { id: 'col:' + n.slug, label: n.label, tipo: 'coleccion', pageId: 'coleccion', previewPath: '/c/' + n.slug, depth: depth, enabled: true, nodeId: n.id };
+    if (n.tipo === 'blanco') return { id: 'pagina:' + n.slug, label: n.label, tipo: 'blanco', pageId: 'pagina:' + n.slug, previewPath: '/pagina/' + n.slug, depth: depth, enabled: true, nodeId: n.id };
+    return null;
+  }
+
+  // El switcher lista el ARBOL nav completo: Inicio + nodos coleccion anidados (2 niveles) + paginas en blanco.
   function buildPageList() {
-    const cur = window.TiendaIA.editorState.pageId;
-    const list = [{ id: 'home', label: 'Inicio', enabled: true }];
-    list.push({
-      id: 'coleccion',
-      label: 'Coleccion',
-      enabled: !!state.sampleCategory,
-      hint: state.sampleCategory ? '' : 'Necesitas al menos una categoria para editar la pagina de Coleccion',
+    const ES = window.TiendaIA.editorState;
+    const nav = ES.nav || [];
+    const byOrden = (a, b) => (a.orden || 0) - (b.orden || 0);
+    const childrenOf = (id) => nav.filter((n) => (n.parentId || null) === id).sort(byOrden);
+    const list = [];
+    // Inicio SIEMPRE primero (del nodo home si existe; si no, sintetizado).
+    const homeNode = nav.find((n) => n.tipo === 'home');
+    list.push(navToItem(homeNode || { tipo: 'home' }, 0));
+    // Top-level no-home, por orden, cada uno + sus hijos directos (profundidad 2 max).
+    nav.filter((n) => (n.parentId || null) === null && n.tipo !== 'home').sort(byOrden).forEach((n) => {
+      const it = navToItem(n, 0); if (!it) return;
+      list.push(it);
+      childrenOf(n.id).forEach((c) => { const ci = navToItem(c, 1); if (ci) list.push(ci); });
     });
-    // M2: paginas EN BLANCO del arbol nav (nodeId -> permite renombrar desde el switcher).
-    (window.TiendaIA.editorState.nav || []).filter((n) => n.tipo === 'blanco').forEach((n) => {
-      list.push({ id: 'pagina:' + n.slug, label: n.label, enabled: true, nodeId: n.id });
-    });
-    return list.map((p) => Object.assign({}, p, { active: p.id === cur }));
+    // Fallback "Coleccion" suelta SOLO si NO hay nodos coleccion en el arbol (tienda sin sembrar) pero hay categorias.
+    if (!list.some((i) => i.tipo === 'coleccion')) {
+      list.splice(1, 0, {
+        id: 'coleccion', label: 'Coleccion', tipo: 'coleccion', pageId: 'coleccion',
+        previewPath: state.sampleCategory ? ('/c/' + state.sampleCategory.slug) : null, depth: 0,
+        enabled: !!state.sampleCategory,
+        hint: state.sampleCategory ? '' : 'Necesitas al menos una categoria para editar la pagina de Coleccion',
+      });
+    }
+    const active = state.activePageKey || 'home';
+    return list.map((p) => Object.assign({}, p, { active: p.id === active }));
   }
 
   // Flush del borrador de la pagina ACTUAL antes de cambiar. Reusa saveDraft (hotfix-14 intacto).
@@ -375,11 +406,27 @@
     clearEditingSection();
   }
 
-  // Cambia de pagina: GUARD anti-perdida (flush) -> init(nueva) -> canvas recarga a su preview.
-  async function switchPage(pageId) {
+  // M3: deriva {pageId target, previewPath} desde la clave del switcher. Nodos coleccion ('col:<slug>')
+  // y la entrada suelta 'coleccion' editan la MISMA plantilla GLOBAL (pageId='coleccion'); el preview
+  // cambia segun la categoria. null = clave de coleccion sin categoria disponible.
+  function resolvePageTarget(key) {
+    if (key === 'home') return { pageId: 'home', previewPath: '/', coleccion: false };
+    if (key === 'coleccion') {
+      if (!state.sampleCategory) return null;
+      return { pageId: 'coleccion', previewPath: '/c/' + state.sampleCategory.slug, coleccion: true };
+    }
+    if (key.indexOf('col:') === 0) return { pageId: 'coleccion', previewPath: '/c/' + key.slice(4), coleccion: true };
+    if (key.indexOf('pagina:') === 0) return { pageId: 'pagina:' + key.slice(7), previewPath: '/pagina/' + key.slice(7), coleccion: false };
+    return null;
+  }
+
+  // Cambia de pagina: GUARD anti-perdida (flush) -> init(target) -> canvas recarga a su preview.
+  // `key` = clave del switcher (home / coleccion / col:<slug> / pagina:<slug>).
+  async function switchPage(key) {
     const ES = window.TiendaIA.editorState;
-    if (!pageId || pageId === ES.pageId) return;
-    if (pageId === 'coleccion' && !state.sampleCategory) {
+    if (!key || key === (state.activePageKey || 'home')) return;
+    const target = resolvePageTarget(key);
+    if (!target) {
       toast('Necesitas al menos una categoria para editar la pagina de Coleccion.', 'info');
       return;
     }
@@ -391,15 +438,14 @@
     }
     // 2) limpiar el carril patch (apunta al iframe viejo)
     clearPatchState();
-    // 3) cargar la pagina nueva (draft/publicada) desde la cache ya sincronizada por syncTiendaCache
+    // 3) marcar la seleccion del switcher ANTES de init (el rebuild por 'sections' lee activePageKey).
+    state.activePageKey = key;
+    // 4) cargar la pagina target (nodos coleccion comparten la plantilla GLOBAL 'coleccion')
     const T = window.TiendaIA;
-    ES.init(T.state.tienda.personalizaciones, ES.tienda_id, pageId);
-    // 4) recargar el canvas al preview de la pagina nueva (token page-agnostic)
-    const path = pageId === 'coleccion' ? ('/c/' + state.sampleCategory.slug)
-               : pageId.indexOf('pagina:') === 0 ? ('/pagina/' + pageId.slice(7)) // 'pagina:'.length=7
-               : '/';
+    ES.init(T.state.tienda.personalizaciones, ES.tienda_id, target.pageId);
+    // 5) recargar el canvas al preview correspondiente (token page-agnostic)
     if (T.editorCanvas) {
-      T.editorCanvas.setPagePath(path);
+      T.editorCanvas.setPagePath(target.previewPath);
       T.editorCanvas.reloadFull();
     }
   }
@@ -454,6 +500,55 @@
     const nombre = (window.prompt('Nuevo nombre de la pagina:', labelActual || '') || '').trim();
     if (!nombre || nombre === labelActual) return;
     ES.renameNavNode(nodeId, nombre.slice(0, 80)); // markDirty + notify('nav') -> autosave (subscrito) persiste
+  }
+
+  // ============================================================
+  // M3 · Paginas de COLECCION (referencian una categoria existente) + auto-nest
+  // ============================================================
+  // D3: categorias que TODAVIA no tienen nodo en el arbol -> el dueno las puede sumar (no se pierde ninguna).
+  function getCategoriasSinPagina() {
+    const ES = window.TiendaIA.editorState;
+    return (state.categorias || [])
+      .filter((c) => !ES.navHasCategoria(c.id))
+      .map((c) => ({ id: c.id, nombre: c.nombre || c.slug, slug: c.slug, esSub: !!c.parent_id }));
+  }
+
+  // Nodos a insertar al agregar una categoria como Coleccion: el nodo principal + AUTO-NEST de sus
+  // subcategorias SIN nodo. Respeta 2 niveles (solo anida si el principal queda top-level) y no duplica.
+  function buildColeccionNodes(catId) {
+    const ES = window.TiendaIA.editorState;
+    const cats = state.categorias || [];
+    const cat = cats.find((c) => c.id === catId);
+    if (!cat || ES.navHasCategoria(catId)) return [];
+    // parentId del nuevo nodo: si la categoria tiene padre Y el padre ya es nodo -> colgar ahi; si no, top-level.
+    const parentNodeId = cat.parent_id ? ES.navNodeIdForCategoria(cat.parent_id) : null;
+    const ordenBase = (ES.nav || []).reduce((m, n) => Math.max(m, (n.orden || 0)), 0) + 1;
+    const mainId = 'nav_' + navId();
+    const nodes = [{
+      id: mainId, tipo: 'coleccion', label: (cat.nombre || cat.slug).slice(0, 80), slug: cat.slug,
+      categoria_id: cat.id, parentId: parentNodeId, orden: ordenBase, mostrar_en_menu: true,
+    }];
+    // AUTO-NEST: subcategorias directas sin nodo, SOLO si el principal es top-level (sus hijos = nivel 2 -> ok).
+    if (!parentNodeId) {
+      cats.filter((c) => c.parent_id === catId && !ES.navHasCategoria(c.id)).forEach((sub, i) => {
+        nodes.push({
+          id: 'nav_' + navId(), tipo: 'coleccion', label: (sub.nombre || sub.slug).slice(0, 80), slug: sub.slug,
+          categoria_id: sub.id, parentId: mainId, orden: i + 1, mostrar_en_menu: true,
+        });
+      });
+    }
+    return nodes;
+  }
+
+  // Agregar pagina de COLECCION (categoria existente) + auto-nest -> persistir nav -> switch al nodo nuevo.
+  async function addColeccionPage(catId) {
+    const ES = window.TiendaIA.editorState;
+    const nodes = buildColeccionNodes(catId);
+    if (!nodes.length) { toast('Esa categoria ya tiene pagina.', 'info'); return; }
+    ES.insertNavNodes(nodes);
+    const ok = await flushDraft();
+    if (!ok) { toast('No pudimos agregar la pagina. Reintenta.', 'error'); return; }
+    await switchPage('col:' + nodes[0].slug); // selecciona el nodo principal nuevo (preview /c/<slug>)
   }
 
   function openCatalog() {
