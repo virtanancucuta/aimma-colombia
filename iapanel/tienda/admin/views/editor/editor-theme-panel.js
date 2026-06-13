@@ -179,6 +179,38 @@
     var tienda = window.TiendaIA.state && window.TiendaIA.state.tienda;
     var fp = window.TiendaIA.fontPairings;
 
+    // ---- Seccion: Tamano de texto del menu (M5.C) — PRIMERO (es texto + Jorge lo quiere arriba) ----
+    // Segmented control de 3 presets conectados (sin slider: un usuario sin experiencia no puede romper
+    // el layout). 'md' = default = sin cambio. El storefront escala SOLO el menu (no logo/carrito).
+    var navSec = E('section', { class: 'ed-theme-sec' });
+    navSec.appendChild(E('p', { class: 'ed-theme-sec__label' }, 'Tamano de texto del menu'));
+    var navOpts = [
+      { id: 'sm', label: 'Pequeno' },
+      { id: 'md', label: 'Mediano' },
+      { id: 'lg', label: 'Grande' },
+    ];
+    var selNav = (editorState.theme && editorState.theme.nav_text_size) || 'md';
+    var navRow = document.createElement('div');
+    navRow.className = 'ed-theme-navsize';
+    navRow.setAttribute('role', 'group');
+    navRow.setAttribute('aria-label', 'Tamano de texto del menu');
+    navOpts.forEach(function(opt) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ed-theme-navsize__btn' + (opt.id === selNav ? ' is-sel' : '');
+      b.setAttribute('aria-pressed', opt.id === selNav ? 'true' : 'false');
+      b.textContent = opt.label;
+      b.addEventListener('click', function() {
+        editorState.setThemeNavTextSize(opt.id);
+        applyPreview();
+        renderBody();
+      });
+      navRow.appendChild(b);
+    });
+    navSec.appendChild(navRow);
+    navSec.appendChild(E('p', { class: 'ed-theme-hint' }, 'Cambia el tamano de los textos del menu de navegacion (categorias y paginas) en tu tienda.'));
+    body.appendChild(navSec);
+
     // ---- Seccion: Color ----
     var colorSec = E('section', { class: 'ed-theme-sec' });
 
@@ -332,34 +364,6 @@
     fontSec.appendChild(pairsEl);
     fontSec.appendChild(hintFont);
     body.appendChild(fontSec);
-
-    // ---- Seccion: Tamano de texto del menu (M5.C) ----
-    // 3 presets (sin slider: evita que un usuario sin experiencia rompa el layout con un valor raro).
-    // 'md' = default = sin cambio. El storefront escala SOLO el menu de navegacion (no logo/carrito).
-    var navSec = E('section', { class: 'ed-theme-sec' });
-    navSec.appendChild(E('p', { class: 'ed-theme-sec__label' }, 'Tamano de texto del menu'));
-    var navOpts = [
-      { id: 'sm', label: 'Pequeno' },
-      { id: 'md', label: 'Mediano' },
-      { id: 'lg', label: 'Grande' },
-    ];
-    var selNav = (editorState.theme && editorState.theme.nav_text_size) || 'md';
-    var navRow = E('div', { class: 'ed-theme-navsize' });
-    navOpts.forEach(function(opt) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'ed-theme-navsize__btn' + (opt.id === selNav ? ' is-sel' : '');
-      b.textContent = opt.label;
-      b.addEventListener('click', function() {
-        editorState.setThemeNavTextSize(opt.id);
-        applyPreview();
-        renderBody();
-      });
-      navRow.appendChild(b);
-    });
-    navSec.appendChild(navRow);
-    navSec.appendChild(E('p', { class: 'ed-theme-hint' }, 'Cambia el tamano de los textos del menu de navegacion (categorias y paginas) en tu tienda.'));
-    body.appendChild(navSec);
   }
 
   // ============================================================
