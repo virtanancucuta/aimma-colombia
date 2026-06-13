@@ -1037,28 +1037,32 @@
   padding: 2px 6px;
 }
 
-/* ---- M5.C: Tamano de texto del menu (segmented control de 3 presets) ---- */
+/* ---- M5.C: Tamano de texto del menu — segmented control (3 presets conectados) ---- */
 .ed-theme-navsize {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.ed-theme-navsize__btn {
+  display: flex;
   border: 1.5px solid var(--ed-color-border);
   border-radius: var(--ed-radius);
-  padding: 9px 6px;
-  cursor: pointer;
+  overflow: hidden;
   background: var(--ed-color-surface);
+}
+.ed-theme-navsize__btn {
+  flex: 1 1 0;
+  padding: 9px 8px;
+  border: 0;
+  border-left: 1.5px solid var(--ed-color-border);   /* divisor entre segmentos */
+  background: transparent;
+  cursor: pointer;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   color: var(--ed-color-text);
-  transition: border-color 120ms, box-shadow 120ms;
+  transition: background-color 120ms, color 120ms;
 }
-.ed-theme-navsize__btn:hover { border-color: var(--ed-color-border-strong); }
+.ed-theme-navsize__btn:first-child { border-left: 0; }
+.ed-theme-navsize__btn:hover:not(.is-sel) { background: var(--ed-color-selection-bg); }
 .ed-theme-navsize__btn.is-sel {
-  border-color: var(--ed-color-primary);
-  box-shadow: 0 0 0 2px var(--ed-color-selection-bg);
+  background: var(--ed-color-primary);
+  color: #fff;
 }
 
 /* ---- Responsive: panel full-width en movil ---- */
