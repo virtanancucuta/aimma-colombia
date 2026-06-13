@@ -113,18 +113,6 @@
   display: grid;
   grid-template-columns: var(--ed-sidebar-w) 1fr var(--ed-inspector-w);
   min-height: 0;
-  transition: grid-template-columns 200ms ease; /* polish: el preview no salta al colapsar/expandir el inspector */
-}
-/* Polish: sin seccion seleccionada -> el inspector colapsa (columna a 0) y el preview gana ese ancho.
-   Animamos la 3er columna 340px->0 (el 1fr del canvas se expande). El inspector se recorta (overflow). */
-.ed-shell--no-inspector {
-  grid-template-columns: var(--ed-sidebar-w) 1fr 0px;
-}
-.ed-shell--no-inspector .ed-inspector {
-  overflow: hidden;
-  border-left-width: 0;
-  padding-left: 0;
-  padding-right: 0;
 }
 
 /* ============================================================

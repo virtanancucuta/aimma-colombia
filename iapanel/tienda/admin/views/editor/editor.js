@@ -123,11 +123,9 @@
       const sel = window.TiendaIA.editorState.selection;
       if (state.editingSection && (!sel || sel.sectionId !== state.editingSection)) clearEditingSection();
     }));
-    // Polish: colapsar el inspector cuando NO hay seleccion (el preview gana esos 340px; transicion CSS
-    // suave en .ed-shell). Reaparece al seleccionar una seccion.
-    const syncInspectorCollapse = () => shell.classList.toggle('ed-shell--no-inspector', !window.TiendaIA.editorState.selection);
-    state.unsubs.push(window.TiendaIA.editorState.subscribe('selection', syncInspectorCollapse));
-    syncInspectorCollapse(); // estado inicial (sin seleccion -> colapsado)
+    // NOTA: el inspector es FIJO (no colapsa). Decision UX: usuarios con 0 conocimiento -> un panel que
+    // aparece/desaparece confunde; el inspector vacio muestra el "tip" que los guia. El full-width
+    // (.ta-main--editor) SE MANTIENE. (Se revirtio el colapso de editor-polish a pedido de Jorge.)
 
     // Render paneles
     window.TiendaIA.editorToolbar.render(toolbarEl, {
