@@ -250,11 +250,21 @@
   // M2 · arbol de navegacion (Administrador de Paginas)
   // ============================================================
   function addNavNode(node) { state.nav.push(node); markDirty(); notify('nav'); }
+  // M3: inserta varios nodos de una (auto-nest coleccion) con UN solo markDirty/notify.
+  function insertNavNodes(nodes) {
+    if (!Array.isArray(nodes) || !nodes.length) return;
+    nodes.forEach((n) => state.nav.push(n));
+    markDirty(); notify('nav');
+  }
   function renameNavNode(id, label) {
     const n = state.nav.find((x) => x.id === id);
     if (n) { n.label = label; markDirty(); notify('nav'); }
   }
   function navSlugExists(slug) { return state.nav.some((n) => n.slug === slug); }
+  // M3: ya existe un nodo coleccion que referencia esta categoria?
+  function navHasCategoria(catId) { return state.nav.some((n) => n.tipo === 'coleccion' && n.categoria_id === catId); }
+  // M3: id del nodo coleccion que referencia esta categoria (para colgar subpaginas), o null.
+  function navNodeIdForCategoria(catId) { const n = state.nav.find((x) => x.tipo === 'coleccion' && x.categoria_id === catId); return n ? n.id : null; }
 
   function findSection(sectionId) {
     return state.sections.find(s => s.id === sectionId) || null;
@@ -394,7 +404,7 @@
     get lastOp() { return state.lastOp; },
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
     setThemeColors, setThemePalette, setThemeFontPairing,
-    addNavNode, renameNavNode, navSlugExists,
+    addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
     findSection,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
