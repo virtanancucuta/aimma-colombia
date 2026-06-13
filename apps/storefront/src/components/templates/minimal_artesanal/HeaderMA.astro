@@ -158,13 +158,20 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
       ) : (
         <span aria-hidden="true"></span>
       )}
-      <a
-        href="/carrito"
-        class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65"
-        aria-label="Carrito"
-      >
-        Bolsa
-      </a>
+      {/* MA-mobile-search: lupa en el bar mobile (consistente con IC/FB/EM, que ya la muestran en mobile).
+          2da instancia del SearchBar -> cbId unico + noScript (evita colision del checkbox-hack; el JS
+          hardcodea 'hsearch-cb' y cablea el desktop). Funciona via CSS (checkbox-hack + form GET).
+          Respeta el toggle mostrarBuscador (Configuracion). */}
+      <div class="flex items-center gap-4">
+        {mostrarBuscador && <SearchBar template="minimal_artesanal" cbId="hsearch-cb-m" noScript />}
+        <a
+          href="/carrito"
+          class="text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-text-base)]/65"
+          aria-label="Carrito"
+        >
+          Bolsa
+        </a>
+      </div>
     </div>
   </nav>
 

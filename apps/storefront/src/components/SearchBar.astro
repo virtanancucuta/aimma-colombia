@@ -5,8 +5,13 @@
 // es la base (Enter o boton navega a /buscar?q=). JS minimo de PULIDO: autofocus al abrir, Esc /
 // click-fuera / X cierra. Comportamiento UNIFICADO; estilo por plantilla via prefix sobre tokens --ta-*.
 // Se renderiza SOLO si el header decide mostrarlo (toggle de Configuracion mostrar_buscador_header).
-interface Props { template?: string }
-const { template = 'industrial_clean' } = Astro.props;
+// cbId: id del checkbox-hack (default 'hsearch-cb'). Parametrizable para permitir 2 instancias en una
+//   misma plantilla (ej. MA: buscador desktop + mobile) sin colisionar el `for`/id (que rompe el hack).
+// noScript: omite el <script> de pulido (autofocus/Esc/click-fuera) en instancias secundarias -> evita
+//   doble-cableado del primario (el JS hardcodea 'hsearch-cb'). El buscador igual FUNCIONA sin JS
+//   (checkbox-hack CSS + form GET). Las instancias con cbId != 'hsearch-cb' deben pasar noScript.
+interface Props { template?: string; cbId?: string; noScript?: boolean }
+const { template = 'industrial_clean', cbId = 'hsearch-cb', noScript = false } = Astro.props;
 const prefix = template === 'fashion_bold' ? 'fb'
   : template === 'minimal_artesanal' ? 'ma'
   : template === 'editorial_magazine' ? 'em'
@@ -14,8 +19,8 @@ const prefix = template === 'fashion_bold' ? 'fb'
 ---
 
 <div class={`hsearch hsearch--${prefix}`} data-hsearch>
-  <input type="checkbox" id="hsearch-cb" class="hsearch__cb" hidden />
-  <label for="hsearch-cb" class="hsearch__icon" aria-label="Buscar productos" title="Buscar" role="button" tabindex="0">
+  <input type="checkbox" id={cbId} class="hsearch__cb" hidden />
+  <label for={cbId} class="hsearch__icon" aria-label="Buscar productos" title="Buscar" role="button" tabindex="0">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
       <circle cx="11" cy="11" r="7"></circle>
       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -34,7 +39,7 @@ const prefix = template === 'fashion_bold' ? 'fb'
         data-hsearch-input
       />
       <button type="submit" class="hsearch__submit">Buscar</button>
-      <label for="hsearch-cb" class="hsearch__close" aria-label="Cerrar buscador" role="button" tabindex="0">✕</label>
+      <label for={cbId} class="hsearch__close" aria-label="Cerrar buscador" role="button" tabindex="0">✕</label>
     </form>
   </div>
 </div>
@@ -86,6 +91,7 @@ const prefix = template === 'fashion_bold' ? 'fb'
   .hsearch--em .hsearch__submit { font-weight: 300; text-transform: uppercase; letter-spacing: 0.1em; }
 </style>
 
+{!noScript && (
 <script is:inline>
   (function () {
     var cb = document.getElementById('hsearch-cb');
@@ -106,3 +112,4 @@ const prefix = template === 'fashion_bold' ? 'fb'
     });
   })();
 </script>
+)}
