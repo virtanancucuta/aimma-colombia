@@ -302,6 +302,9 @@ const THEME_FONT_PAIRINGS = ['industrial', 'moderno', 'geometrico', 'impacto', '
 const ThemeSchema = z.object({
   colors: ThemeColorsSchema.optional(),
   font_pairing: z.enum(THEME_FONT_PAIRINGS).optional(),
+  // M5.C: tamano de texto del menu (3 presets). El storefront mapea sm->0.875 / md->1 / lg->1.15
+  // a la var --nav-text-scale; ausente o 'md' => sin var => tamano actual (byte-identico visual).
+  nav_text_size: z.enum(['sm', 'md', 'lg']).optional(),
 });
 
 // ============================================================

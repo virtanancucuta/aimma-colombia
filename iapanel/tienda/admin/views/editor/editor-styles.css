@@ -1037,6 +1037,30 @@
   padding: 2px 6px;
 }
 
+/* ---- M5.C: Tamano de texto del menu (segmented control de 3 presets) ---- */
+.ed-theme-navsize {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.ed-theme-navsize__btn {
+  border: 1.5px solid var(--ed-color-border);
+  border-radius: var(--ed-radius);
+  padding: 9px 6px;
+  cursor: pointer;
+  background: var(--ed-color-surface);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ed-color-text);
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.ed-theme-navsize__btn:hover { border-color: var(--ed-color-border-strong); }
+.ed-theme-navsize__btn.is-sel {
+  border-color: var(--ed-color-primary);
+  box-shadow: 0 0 0 2px var(--ed-color-selection-bg);
+}
+
 /* ---- Responsive: panel full-width en movil ---- */
 @media (max-width: 1100px) {
   .ed-theme-panel {

@@ -245,6 +245,13 @@
   function setThemeColors(partial) { state.theme.colors = { ...(state.theme.colors || {}), ...partial }; pushSnapshot(); markDirty(); notify('theme'); }
   function setThemePalette(colors4) { state.theme.colors = { ...colors4 }; pushSnapshot(); markDirty(); notify('theme'); }
   function setThemeFontPairing(id) { state.theme.font_pairing = id; pushSnapshot(); markDirty(); notify('theme'); }
+  // M5.C: tamano de texto del menu. Guarda el preset (sm/md/lg). 'md' es el default; lo guardamos igual
+  // para que la UI lo muestre seleccionado (el storefront trata 'md' como sin-var = identico al actual).
+  function setThemeNavTextSize(size) {
+    if (size === 'sm' || size === 'md' || size === 'lg') { state.theme.nav_text_size = size; }
+    else { delete state.theme.nav_text_size; }
+    pushSnapshot(); markDirty(); notify('theme');
+  }
 
   // ============================================================
   // M2 · arbol de navegacion (Administrador de Paginas)
@@ -433,7 +440,7 @@
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
     get lastOp() { return state.lastOp; },
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
-    setThemeColors, setThemePalette, setThemeFontPairing,
+    setThemeColors, setThemePalette, setThemeFontPairing, setThemeNavTextSize,
     addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
     moveNavNode, setNavMostrarEnMenu, removeNavNode,
     findSection,

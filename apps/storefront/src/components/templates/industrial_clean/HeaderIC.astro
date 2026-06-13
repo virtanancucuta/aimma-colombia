@@ -44,6 +44,12 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
   .ic-menu-cb:checked ~ .ic-menu-panel { display: block; }
   .ic-menu-acc[open] > summary .ic-menu-chev { transform: rotate(180deg); }
   @media (min-width: 1024px) { .ic-menu-panel { display: none !important; } }
+  /* M5.C: tamano de texto del menu. Escala desde el theme (--nav-text-scale en <html>); var ausente =>
+     *1 = 13px (identico). Selector de mayor especificidad que .text-[13px] (utility) -> overridea sin
+     tocar el HTML de los links. Solo el menu: el carrito (text-sm, fuera del <nav>) no se ve afectado. */
+  .ic-nav-menu a,
+  .ic-menu-panel a,
+  .ic-menu-panel summary { font-size: calc(13px * var(--nav-text-scale, 1)); }
 </style>
 <header class="sticky top-0 z-40 border-b border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)]/95 backdrop-blur-sm">
   {/* MOBILE.A: checkbox-hack del drawer (hermano del panel; lo toglea el label de abajo). */}
@@ -83,7 +89,7 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
     {/* Nav central — uppercase tracking-wide, hover color shift. M5: items del arbol nav; los que
         tienen hijos abren un dropdown CSS-only al hover. Sin hijos -> <a> identico al de hoy (fallback). */}
     {menu.length > 0 && (
-      <nav class="hidden lg:flex items-center gap-6" aria-label="Categorias">
+      <nav class="ic-nav-menu hidden lg:flex items-center gap-6" aria-label="Categorias">
         {menu.slice(0, 6).map((item) => (item.children.length > 0 ? (
           <div class="ic-nav-group relative">
             <a

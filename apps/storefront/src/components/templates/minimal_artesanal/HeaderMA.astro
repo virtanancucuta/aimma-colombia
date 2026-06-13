@@ -39,6 +39,12 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
   .ma-menu-cb:checked ~ .ma-menu-panel { display: block; }
   .ma-menu-acc[open] > summary .ma-menu-chev { transform: rotate(180deg); }
   @media (min-width: 1024px) { .ma-menu-panel { display: none !important; } }
+  /* M5.C: tamano de texto del menu (escala desde el theme). var ausente => *1 = 11px (identico). El
+     <nav aria-label="Principal"> de MA mezcla menu (ul izq) Y carrito/Contacto (ul der) -> NO uso el nav
+     como selector; uso el marker .ma-nav-menu de la ul izquierda. Asi el carrito/Contacto no se escalan. */
+  .ma-nav-menu a,
+  .ma-menu-panel a,
+  .ma-menu-panel summary { font-size: calc(11px * var(--nav-text-scale, 1)); }
 </style>
 
 <header
@@ -47,8 +53,9 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
 >
   {menu.length > 0 && <input type="checkbox" id="ma-menu-cb" class="ma-menu-cb" hidden />}
   <nav class="mx-auto flex h-20 max-w-screen-2xl items-center justify-between gap-8 px-8 lg:px-16" aria-label="Principal">
-    {/* Nav izquierda — primeros 3 del arbol. M5.B: con hijos -> dropdown; sin hijos -> <li> identico. */}
-    <ul class="hidden lg:flex items-center gap-10">
+    {/* Nav izquierda — primeros 3 del arbol. M5.B: con hijos -> dropdown; sin hijos -> <li> identico.
+        ma-nav-menu (M5.C): marker para escalar SOLO el texto del menu, no el carrito/Contacto (ul der). */}
+    <ul class="ma-nav-menu hidden lg:flex items-center gap-10">
       {menu.slice(0, 3).map((item) => (item.children.length > 0 ? (
         <li class="ma-nav-group relative">
           <a

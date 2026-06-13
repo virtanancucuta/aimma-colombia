@@ -40,6 +40,12 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
   .fb-menu-cb:checked ~ .fb-menu-panel { display: block; }
   .fb-menu-acc[open] > summary .fb-menu-chev { transform: rotate(180deg); }
   @media (min-width: 768px) { .fb-menu-panel { display: none !important; } }
+  /* M5.C: tamano de texto del menu (escala desde el theme). var ausente => *1 = 12px (identico). Mayor
+     especificidad que .text-[12px] -> override sin tocar el HTML. El carrito (text-[12px] PERO fuera del
+     <nav aria-label="Categorias">) NO entra al selector -> no se escala (decision: solo el menu). */
+  .fb-nav-menu a,
+  .fb-menu-panel a,
+  .fb-menu-panel summary { font-size: calc(12px * var(--nav-text-scale, 1)); }
 </style>
 
 <header
@@ -80,7 +86,7 @@ const { tienda, categorias, menu = [], mostrarBuscador } = Astro.props;
     {/* Nav uppercase tracking-wide. Underline grueso animado en hover. M5.B: items del arbol; con
         hijos -> dropdown CSS-only. Sin hijos -> <a> identico al de hoy (fallback). */}
     {menu.length > 0 && (
-      <nav class="hidden md:flex items-center gap-8" aria-label="Categorias">
+      <nav class="fb-nav-menu hidden md:flex items-center gap-8" aria-label="Categorias">
         {menu.slice(0, 5).map((item) => (item.children.length > 0 ? (
           <div class="fb-nav-group relative">
             <a

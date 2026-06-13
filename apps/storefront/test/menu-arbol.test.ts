@@ -113,6 +113,32 @@ describe('M5.B DELTA: dropdown del arbol en FB/MA/EM', () => {
   }
 });
 
+// M5.C: tamano de texto del menu. La regla de escala vive en el <style> de cada plantilla; renderToString
+// (Container API) NO inlinea el <style> -> NO se puede asertar la regla aca (se verifica en el browser
+// test contra el CSS compilado + grep del bundle). Lo que SI toca el HTML es el marker ma-nav-menu de MA
+// (su <nav> mezcla menu + carrito -> el marker excluye carrito/Contacto del escalado). IC/FB/EM no cambian
+// HTML (el carrito ya esta fuera del <nav aria-label="Categorias">). Canario: goldens fallback IC/FB/EM
+// byte-identicos; MA suma SOLO el marker en la ul del menu.
+describe('M5.C: marker {prefix}-nav-menu (escala SOLO el menu; selector prefijado evita colision entre plantillas)', () => {
+  // El bundle compilado incluye las 4 plantillas (Header.astro las importa todas) -> el selector NO puede
+  // ser generico (nav[aria-label="Categorias"] colisionaria IC=13 vs FB=12). Cada plantilla usa su marker.
+  const MARKER: Record<string, string> = {
+    industrial_clean: 'ic-nav-menu', fashion_bold: 'fb-nav-menu', minimal_artesanal: 'ma-nav-menu', editorial_magazine: 'em-nav-menu',
+  };
+  for (const slug of Object.keys(MARKER)) {
+    test(`${slug}: el nav del menu lleva el marker ${MARKER[slug]}`, async () => {
+      const html = await renderHeaderHtml({ schema_version: 3, nav: NAV_TREE, pages: {} }, CATS, slug);
+      expect(html).toContain(MARKER[slug]);
+    });
+  }
+  test('MA: el marker va en la ul del menu (izq), NO en la ul del carrito/Contacto', async () => {
+    const html = await renderHeaderHtml({ schema_version: 3, nav: NAV_TREE, pages: {} }, CATS, 'minimal_artesanal');
+    expect(html).toContain('class="ma-nav-menu hidden lg:flex items-center gap-10"'); // ul del menu (izq)
+    expect(html).toContain('class="hidden lg:flex items-center gap-10"');             // ul carrito SIN marker
+    expect(html).toContain('href="/carrito"');                                         // carrito intacto
+  });
+});
+
 // MOBILE.A: hamburguesa + drawer (checkbox-hack + <details>) en IC. Canario desktop ya cubierto por
 // los goldens fallback (cambio solo aditivo; nav desktop byte-identico verificado aparte).
 describe('MOBILE.A: hamburguesa + drawer mobile (IC)', () => {
