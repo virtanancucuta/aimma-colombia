@@ -136,10 +136,12 @@
       onAddSection: () => openCatalog(),
       onSwitchPage: (key) => switchPage(key),
       getPages: () => buildPageList(),
-      onAddBlankPage: () => addBlankPage(),
-      onAddColeccion: (catId) => addColeccionPage(catId),
+      onAddBlankPage: (parentNodeId) => addBlankPage(parentNodeId),
+      onAddColeccion: (catId, parentNodeId) => addColeccionPage(catId, parentNodeId),
       getCategoriasSinPagina: () => getCategoriasSinPagina(),
       onRenamePage: (nodeId, label) => renamePage(nodeId, label),
+      onMoveNode: (nodeId, dir) => window.TiendaIA.editorState.moveNavNode(nodeId, dir),
+      onToggleMostrar: (nodeId, val) => window.TiendaIA.editorState.setNavMostrarEnMenu(nodeId, val),
     });
 
     window.TiendaIA.editorCanvas.render(canvasEl, {});
@@ -347,9 +349,10 @@
   // previewPath = ruta a previsualizar. Nodos coleccion -> pageId='coleccion' (plantilla GLOBAL) +
   // preview /c/<slug>; comparten target, se distinguen por id 'col:<slug>' (activePageKey marca cual).
   function navToItem(n, depth) {
-    if (n.tipo === 'home') return { id: 'home', label: 'Inicio', tipo: 'home', pageId: 'home', previewPath: '/', depth: depth, enabled: true };
-    if (n.tipo === 'coleccion') return { id: 'col:' + n.slug, label: n.label, tipo: 'coleccion', pageId: 'coleccion', previewPath: '/c/' + n.slug, depth: depth, enabled: true, nodeId: n.id };
-    if (n.tipo === 'blanco') return { id: 'pagina:' + n.slug, label: n.label, tipo: 'blanco', pageId: 'pagina:' + n.slug, previewPath: '/pagina/' + n.slug, depth: depth, enabled: true, nodeId: n.id };
+    const mostrar = n.mostrar_en_menu !== false; // default true
+    if (n.tipo === 'home') return { id: 'home', label: 'Inicio', tipo: 'home', pageId: 'home', previewPath: '/', depth: depth, enabled: true, mostrar: true };
+    if (n.tipo === 'coleccion') return { id: 'col:' + n.slug, label: n.label, tipo: 'coleccion', pageId: 'coleccion', previewPath: '/c/' + n.slug, depth: depth, enabled: true, nodeId: n.id, mostrar: mostrar };
+    if (n.tipo === 'blanco') return { id: 'pagina:' + n.slug, label: n.label, tipo: 'blanco', pageId: 'pagina:' + n.slug, previewPath: '/pagina/' + n.slug, depth: depth, enabled: true, nodeId: n.id, mostrar: mostrar };
     return null;
   }
 
@@ -476,17 +479,20 @@
     return null;
   }
 
-  // Crear pagina EN BLANCO: nodo nav (blanco) + persistir nav (flushDraft manda nav) -> switch a la nueva.
-  async function addBlankPage() {
+  // Crear pagina EN BLANCO. parentNodeId (M4) -> nace como SUBpagina del nodo dado (2 niveles max:
+  // el sidebar solo lo ofrece en nodos top-level). null -> top-level. Persiste nav + switch a la nueva.
+  async function addBlankPage(parentNodeId) {
     const ES = window.TiendaIA.editorState;
-    const nombre = (window.prompt('Nombre de la pagina nueva:', '') || '').trim();
+    const pid = parentNodeId || null;
+    const nombre = (window.prompt(pid ? 'Nombre de la subpagina nueva:' : 'Nombre de la pagina nueva:', '') || '').trim();
     if (!nombre) return;
     const slug = slugify(nombre);
     const err = validarSlug(slug);
     if (err) { toast(err, 'error'); return; }
+    const orden = (ES.nav || []).filter((n) => (n.parentId || null) === pid).length;
     ES.addNavNode({
       id: 'nav_' + navId(), tipo: 'blanco', label: nombre.slice(0, 80), slug,
-      parentId: null, orden: (ES.nav || []).length, mostrar_en_menu: true,
+      parentId: pid, orden, mostrar_en_menu: true,
     });
     // Persistir el nav (con el nodo nuevo) antes de cambiar -> flushDraft guarda la pagina actual + nav.
     const ok = await flushDraft();
@@ -540,15 +546,24 @@
     return nodes;
   }
 
-  // Agregar pagina de COLECCION (categoria existente) + auto-nest -> persistir nav -> switch al nodo nuevo.
-  async function addColeccionPage(catId) {
+  // Agregar pagina de CATEGORIA (categoria existente). parentNodeId (M4) -> cuelga explicito del padre
+  // SIN auto-nest (ya es nivel 2). null -> top-level + auto-nest de subcategorias (M3). Switch al nodo nuevo.
+  async function addColeccionPage(catId, parentNodeId) {
     const ES = window.TiendaIA.editorState;
-    const nodes = buildColeccionNodes(catId);
+    let nodes;
+    if (parentNodeId) {
+      const cat = (state.categorias || []).find((c) => c.id === catId);
+      if (!cat || ES.navHasCategoria(catId)) { toast('Esa categoria ya tiene pagina.', 'info'); return; }
+      const orden = (ES.nav || []).filter((n) => (n.parentId || null) === parentNodeId).length;
+      nodes = [{ id: 'nav_' + navId(), tipo: 'coleccion', label: (cat.nombre || cat.slug).slice(0, 80), slug: cat.slug, categoria_id: cat.id, parentId: parentNodeId, orden, mostrar_en_menu: true }];
+    } else {
+      nodes = buildColeccionNodes(catId);
+    }
     if (!nodes.length) { toast('Esa categoria ya tiene pagina.', 'info'); return; }
     ES.insertNavNodes(nodes);
     const ok = await flushDraft();
     if (!ok) { toast('No pudimos agregar la pagina. Reintenta.', 'error'); return; }
-    await switchPage('col:' + nodes[0].slug); // selecciona el nodo principal nuevo (preview /c/<slug>)
+    await switchPage('col:' + nodes[0].slug); // selecciona el nodo nuevo (preview /c/<slug>)
   }
 
   function openCatalog() {

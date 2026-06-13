@@ -261,6 +261,25 @@
     if (n) { n.label = label; markDirty(); notify('nav'); }
   }
   function navSlugExists(slug) { return state.nav.some((n) => n.slug === slug); }
+  // M4: reordenar un nodo entre sus HERMANOS (mismo parentId; home excluido = siempre primero).
+  // dir = -1 sube, +1 baja. Renumera orden 0..n entre los hermanos no-home.
+  function moveNavNode(id, dir) {
+    const node = state.nav.find((n) => n.id === id);
+    if (!node || node.tipo === 'home') return;
+    const pid = node.parentId || null;
+    const sibs = state.nav.filter((n) => (n.parentId || null) === pid && n.tipo !== 'home').sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    const i = sibs.findIndex((n) => n.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= sibs.length) return; // borde -> no-op
+    sibs.splice(i, 1); sibs.splice(j, 0, node);
+    sibs.forEach((n, k) => { n.orden = k; });
+    markDirty(); notify('nav');
+  }
+  // M4: mostrar/ocultar un nodo del menu (M5 lo respeta). No toca home.
+  function setNavMostrarEnMenu(id, val) {
+    const n = state.nav.find((x) => x.id === id);
+    if (n && n.tipo !== 'home' && n.mostrar_en_menu !== !!val) { n.mostrar_en_menu = !!val; markDirty(); notify('nav'); }
+  }
   // M3: ya existe un nodo coleccion que referencia esta categoria?
   function navHasCategoria(catId) { return state.nav.some((n) => n.tipo === 'coleccion' && n.categoria_id === catId); }
   // M3: id del nodo coleccion que referencia esta categoria (para colgar subpaginas), o null.
@@ -405,6 +424,7 @@
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
     setThemeColors, setThemePalette, setThemeFontPairing,
     addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
+    moveNavNode, setNavMostrarEnMenu,
     findSection,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
