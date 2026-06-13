@@ -168,6 +168,7 @@ serve(async (req) => {
     body.mode,
     body.personalizaciones.pages[body.page_id],
     body.personalizaciones.theme,
+    body.personalizaciones.nav,
     now,
   );
 

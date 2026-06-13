@@ -31,7 +31,7 @@ test('caso 1: publish coleccion preserva home BYTE-IDENTICO (contenido + updated
   const H = page('home', OLD);
   const current = { schema_version: 3, pages: { home: H } };
   const C = page('coleccion-nueva', OLD); // updated_at entrante DEBE ser reemplazado por `now`
-  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', C, undefined, NOW);
+  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', C, undefined, undefined, NOW);
 
   // home intacto byte-a-byte (incluido updated_at)
   assert.equal(JSON.stringify(next.pages.home), JSON.stringify(H));
@@ -48,7 +48,7 @@ test('caso 2: publish coleccion preserva home Y una key arbitraria (otra)', () =
   const X = page('otra', OLD);
   const current = { schema_version: 3, pages: { home: H, otra: X } };
   const C = page('coleccion', OLD);
-  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', C, undefined, NOW);
+  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', C, undefined, undefined, NOW);
 
   assert.equal(JSON.stringify(next.pages.home), JSON.stringify(H));
   assert.equal(JSON.stringify(next.pages.otra), JSON.stringify(X));
@@ -62,7 +62,7 @@ test('caso 3 (inverso): publish home preserva TODAS las no-target (coleccion + o
   const X = page('otra', OLD);
   const current = { schema_version: 3, pages: { home: H, coleccion: C, otra: X } };
   const H2 = page('home-nuevo', OLD);
-  const next = buildNextPersonalizaciones(current, 'home', 'publish', H2, undefined, NOW);
+  const next = buildNextPersonalizaciones(current, 'home', 'publish', H2, undefined, undefined, NOW);
 
   // target home actualizado + sellado
   assert.deepEqual(next.pages.home.sections, H2.sections);
@@ -78,7 +78,7 @@ test('draft escribe <pageId>_draft, preserva las publicadas y el theme publicado
   const C = page('coleccion', OLD);
   const current = { schema_version: 3, theme: { font_pairing: 'industrial' }, pages: { home: H, coleccion: C } };
   const Cdraft = page('coleccion-draft', OLD);
-  const next = buildNextPersonalizaciones(current, 'coleccion', 'draft', Cdraft, undefined, NOW);
+  const next = buildNextPersonalizaciones(current, 'coleccion', 'draft', Cdraft, undefined, undefined, NOW);
 
   assert.equal(next.pages.coleccion_draft.updated_at, NOW);
   assert.deepEqual(next.pages.coleccion_draft.sections, Cdraft.sections);
@@ -96,7 +96,7 @@ test('publish limpia SOLO el draft de la pagina target, no los drafts de otras',
   const Hdraft = page('home-draft', OLD);
   const current = { schema_version: 3, pages: { home: H, coleccion_draft: Cdraft, home_draft: Hdraft } };
   const C = page('coleccion-pub', OLD);
-  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', C, undefined, NOW);
+  const next = buildNextPersonalizaciones(current, 'coleccion', 'publish', C, undefined, undefined, NOW);
 
   // draft de la target eliminado al publicar
   assert.equal(next.pages.coleccion_draft, undefined);
@@ -110,6 +110,6 @@ test('no muta el objeto current de entrada (structuredClone aisla)', () => {
   const H = page('home', OLD);
   const current = { schema_version: 3, pages: { home: H } };
   const snapshot = JSON.stringify(current);
-  buildNextPersonalizaciones(current, 'coleccion', 'publish', page('c', OLD), undefined, NOW);
+  buildNextPersonalizaciones(current, 'coleccion', 'publish', page('c', OLD), undefined, undefined, NOW);
   assert.equal(JSON.stringify(current), snapshot); // entrada sin mutar
 });

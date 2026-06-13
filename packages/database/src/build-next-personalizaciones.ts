@@ -13,17 +13,23 @@ export function buildNextPersonalizaciones(
   mode: 'draft' | 'publish',
   pageFromClient: any,
   themeFromClient: any,
+  navFromClient: any,
   now: string,
 ): any {
   const next: any = structuredClone(current || { schema_version: 3, pages: {} });
   next.schema_version = 3;
   if (mode === 'draft') {
-    // Borrador: escribe SOLO theme_draft; NO toca el theme publicado (preservado via structuredClone).
+    // Borrador: escribe SOLO theme_draft/nav_draft; NO toca lo publicado (preservado via structuredClone).
     if (themeFromClient !== undefined) next.theme_draft = themeFromClient;
+    if (navFromClient !== undefined) next.nav_draft = navFromClient;
   } else {
-    // Publicar: promueve el theme + limpia el borrador.
+    // Publicar: promueve theme + limpia su borrador.
     if (themeFromClient !== undefined) next.theme = themeFromClient;
     delete next.theme_draft;
+    // nav (Administrador de Paginas): GUARDADO -> solo se promueve/limpia si el cliente envia nav.
+    // Asi publicar una pagina sin tocar el menu NO descarta el nav_draft pendiente (asimetria
+    // intencional vs theme, que el editor envia siempre).
+    if (navFromClient !== undefined) { next.nav = navFromClient; delete next.nav_draft; }
   }
   const draftKey = pageId + '_draft';
   if (mode === 'draft') {

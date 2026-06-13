@@ -1,0 +1,86 @@
+---
+// AIMMA Storefront · /pagina/[slug] · Administrador de Paginas M2 · pagina EN BLANCO (pura).
+// Renderiza pages['pagina:<slug>'] via BlockRenderer. SIN grid, SIN contexto de categoria.
+// Modo preview (?preview=<token>): lee el draft fresco + monta EditorPreviewBridge (editable en
+// vivo, contenedor [data-ed-sections] estable como el fix L3). Ruta aditiva -> publico byte-safe.
+// El nodo en el MENU de la tienda llega en M5 (el flip); en M2 se llega por URL.
+
+import Layout from '~/layouts/Layout.astro';
+import BlockRenderer from '~/components/BlockRenderer.astro';
+import EditorPreviewBridge from '~/components/EditorPreviewBridge.astro';
+import { parsePersonalizaciones } from '@aimma/database';
+
+const { tienda, supabase } = Astro.locals;
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/', 302);
+}
+
+const pageKey = 'pagina:' + slug;
+
+// ── Modo preview: validar token efimero + leer draft fresco (mirror del home) ──
+const previewToken = Astro.url.searchParams.get('preview');
+let isPreview = false;
+let persRaw: unknown = tienda.personalizaciones;
+if (previewToken) {
+  const { data: validTiendaId } = await supabase
+    .rpc('validate_preview_token', { p_token: previewToken });
+  if (!(validTiendaId && validTiendaId === tienda.id)) {
+    return new Response('Preview token invalido o expirado', {
+      status: 403,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+  isPreview = true;
+  const { data: fresh } = await supabase
+    .from('tiendas')
+    .select('personalizaciones')
+    .eq('id', tienda.id)
+    .single();
+  persRaw = fresh?.personalizaciones ?? tienda.personalizaciones;
+}
+Astro.locals.isPreview = isPreview;
+
+const pers = parsePersonalizaciones(persRaw);
+// pagina EN BLANCO: secciones propias de pages['pagina:<slug>']. Preview -> _draft.
+const sections =
+  (isPreview ? (pers?.pages?.[pageKey + '_draft']?.sections ?? pers?.pages?.[pageKey]?.sections)
+             : pers?.pages?.[pageKey]?.sections) ?? null;
+
+// 404 SOLO en publico si la pagina no existe. En preview siempre renderiza (aun vacia ->
+// contenedor [data-ed-sections] vacio para que el editor agregue la 1ra seccion live).
+if (!sections && !isPreview) {
+  return new Response(
+    `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8" /><title>Pagina no encontrada</title></head><body><h1>Pagina no encontrada</h1><p><a href="/">Volver al inicio</a></p></body></html>`,
+    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+
+// Titulo: label del nodo nav (renombrable) si existe, si no el slug.
+const navNode = (pers?.nav ?? []).find((n) => n.tipo === 'blanco' && n.slug === slug);
+const titulo = navNode?.label ?? slug;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: titulo,
+  url: Astro.url.toString(),
+  isPartOf: { '@type': 'WebSite', name: tienda.nombre_negocio },
+};
+---
+
+<Layout
+  title={titulo}
+  description={`${titulo} · ${tienda.nombre_negocio}.`}
+  jsonLd={jsonLd}
+  noindex={isPreview}
+  isPreview={isPreview}
+>{isPreview ? (
+    <div data-ed-sections>{sections && <BlockRenderer sections={sections} />}</div>
+  ) : (
+    sections && <BlockRenderer sections={sections} />
+  )}
+</Layout>
+
+{isPreview && <EditorPreviewBridge />}
