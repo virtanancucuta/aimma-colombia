@@ -1,0 +1,127 @@
+---
+// AIMMA Editor PRO-MAX · Contenedor · UNIFICADO ×4 · Fase D (D2)
+// Seccion `contenedor`: agrupa BLOQUES HIJOS (hoja) en columnas. Profundidad 2 por schema
+// (HijoSchema no incluye contenedor). Render recursivo de hijos via <BlockOne> -> cada hijo sale
+// byte-identico a su version standalone; el contenedor solo agrega los divs de grid alrededor.
+//
+// Columnas: base 1 (mobile). 2/3 expanden a >=768px; 4 = paso intermedio (2 en >=768, 4 en >=1024)
+// para no apretar a ancho tablet. Estilo SCOPED + clases prefijadas {ic,fb,ma,em}- (regla anti-colision
+// cid de M5.C: nada de selectores genericos). El contenedor es ESTRUCTURAL; el look lo ponen los hijos.
+
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+import BlockOne from '~/components/blocks/_BlockOne.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'contenedor' }>).props;
+const { tienda } = Astro.locals;
+const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+
+const prefix = plantilla === 'fashion_bold' ? 'fb'
+  : plantilla === 'minimal_artesanal' ? 'ma'
+  : plantilla === 'editorial_magazine' ? 'em'
+  : 'ic';
+
+const columnas = p.columnas ?? 1;
+const gap = p.gap ?? 'normal';
+const alineacion = p.alineacion_vertical ?? 'start';
+
+// Reparte los hijos por columna (clamp a [0, columnas-1]); columnas=1 => todos apilan.
+const cols: Section[][] = Array.from({ length: columnas }, () => []);
+for (const bloque of p.bloques) {
+  const idx = Math.min(Math.max((bloque as any).columna ?? 0, 0), columnas - 1);
+  cols[idx].push(bloque as Section);
+}
+
+const gridClass = [
+  `${prefix}-contenedor-grid`,
+  `${prefix}-contenedor-grid--${columnas}`,
+  `${prefix}-contenedor-grid--gap-${gap}`,
+  `${prefix}-contenedor-grid--align-${alineacion}`,
+].join(' ');
+---
+
+<SectionShell section={section}>
+  <div class={gridClass}>
+    {cols.map((col) => (
+      <div class={`${prefix}-contenedor-col`}>
+        {col.map((child) => <BlockOne section={child} />)}
+      </div>
+    ))}
+  </div>
+</SectionShell>
+
+<style>
+  /* ===== industrial_clean ===== */
+  .ic-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--ic-cont-gap, 1.5rem); }
+  .ic-contenedor-col { display: flex; flex-direction: column; row-gap: var(--ic-cont-gap, 1.5rem); min-width: 0; }
+  .ic-contenedor-grid--gap-tight { --ic-cont-gap: 0.75rem; }
+  .ic-contenedor-grid--gap-normal { --ic-cont-gap: 1.5rem; }
+  .ic-contenedor-grid--gap-loose { --ic-cont-gap: 3rem; }
+  .ic-contenedor-grid--align-start { align-items: start; }
+  .ic-contenedor-grid--align-center { align-items: center; }
+  .ic-contenedor-grid--align-stretch { align-items: stretch; }
+  @media (min-width: 768px) {
+    .ic-contenedor-grid--2 { grid-template-columns: repeat(2, 1fr); }
+    .ic-contenedor-grid--3 { grid-template-columns: repeat(3, 1fr); }
+    .ic-contenedor-grid--4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .ic-contenedor-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ===== fashion_bold ===== */
+  .fb-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--fb-cont-gap, 1.5rem); }
+  .fb-contenedor-col { display: flex; flex-direction: column; row-gap: var(--fb-cont-gap, 1.5rem); min-width: 0; }
+  .fb-contenedor-grid--gap-tight { --fb-cont-gap: 0.75rem; }
+  .fb-contenedor-grid--gap-normal { --fb-cont-gap: 1.5rem; }
+  .fb-contenedor-grid--gap-loose { --fb-cont-gap: 3rem; }
+  .fb-contenedor-grid--align-start { align-items: start; }
+  .fb-contenedor-grid--align-center { align-items: center; }
+  .fb-contenedor-grid--align-stretch { align-items: stretch; }
+  @media (min-width: 768px) {
+    .fb-contenedor-grid--2 { grid-template-columns: repeat(2, 1fr); }
+    .fb-contenedor-grid--3 { grid-template-columns: repeat(3, 1fr); }
+    .fb-contenedor-grid--4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .fb-contenedor-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ===== minimal_artesanal (mas aire por defecto) ===== */
+  .ma-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--ma-cont-gap, 2rem); }
+  .ma-contenedor-col { display: flex; flex-direction: column; row-gap: var(--ma-cont-gap, 2rem); min-width: 0; }
+  .ma-contenedor-grid--gap-tight { --ma-cont-gap: 1rem; }
+  .ma-contenedor-grid--gap-normal { --ma-cont-gap: 2rem; }
+  .ma-contenedor-grid--gap-loose { --ma-cont-gap: 3.5rem; }
+  .ma-contenedor-grid--align-start { align-items: start; }
+  .ma-contenedor-grid--align-center { align-items: center; }
+  .ma-contenedor-grid--align-stretch { align-items: stretch; }
+  @media (min-width: 768px) {
+    .ma-contenedor-grid--2 { grid-template-columns: repeat(2, 1fr); }
+    .ma-contenedor-grid--3 { grid-template-columns: repeat(3, 1fr); }
+    .ma-contenedor-grid--4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .ma-contenedor-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ===== editorial_magazine ===== */
+  .em-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--em-cont-gap, 1.5rem); }
+  .em-contenedor-col { display: flex; flex-direction: column; row-gap: var(--em-cont-gap, 1.5rem); min-width: 0; }
+  .em-contenedor-grid--gap-tight { --em-cont-gap: 0.75rem; }
+  .em-contenedor-grid--gap-normal { --em-cont-gap: 1.5rem; }
+  .em-contenedor-grid--gap-loose { --em-cont-gap: 3rem; }
+  .em-contenedor-grid--align-start { align-items: start; }
+  .em-contenedor-grid--align-center { align-items: center; }
+  .em-contenedor-grid--align-stretch { align-items: stretch; }
+  @media (min-width: 768px) {
+    .em-contenedor-grid--2 { grid-template-columns: repeat(2, 1fr); }
+    .em-contenedor-grid--3 { grid-template-columns: repeat(3, 1fr); }
+    .em-contenedor-grid--4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .em-contenedor-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>

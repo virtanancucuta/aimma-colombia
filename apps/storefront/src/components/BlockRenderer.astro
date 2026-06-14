@@ -1,12 +1,14 @@
 ---
 // AIMMA Editor PRO-MAX · BlockRenderer dispatcher · Fase D (D2)
-// Mapea cada seccion top-level a <BlockOne> (el despacho UNIFIED/BLOCKS/pickBlock vive en
-// _BlockOne.astro, extraido verbatim). El render por seccion es byte-identico al inline previo
-// (guard: test/blockrenderer.golden ×4). El routing de `contenedor` -> Contenedor.astro se agrega
-// en el commit siguiente, tras validar la byte-identidad de la extraccion.
+// Mapea cada seccion top-level: `contenedor` -> Contenedor.astro (bloques hijos anidados, columnas);
+// el resto -> <BlockOne> (despacho UNIFIED/BLOCKS/pickBlock extraido verbatim a _BlockOne.astro).
+// El render de secciones NO-contenedor es byte-identico al inline previo (guard: blockrenderer.golden
+// ×4). Contenedor renderea sus hijos hoja con el MISMO BlockOne -> sin import circular (los hijos son
+// hoja por schema, asi BlockOne no conoce contenedor; solo este router lo conoce).
 
 import type { Section } from '@aimma/database';
 import BlockOne from '~/components/blocks/_BlockOne.astro';
+import Contenedor from '~/components/blocks/contenedor/Contenedor.astro';
 
 interface Props {
   sections: Section[];
@@ -15,4 +17,8 @@ interface Props {
 const { sections } = Astro.props;
 ---
 
-{sections.map((section) => <BlockOne section={section} />)}
+{sections.map((section) => (
+  section.tipo === 'contenedor'
+    ? <Contenedor section={section} />
+    : <BlockOne section={section} />
+))}
