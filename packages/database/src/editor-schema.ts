@@ -251,6 +251,47 @@ const SectionBase = z.object({
   }).optional(),
 });
 
+// ============================================================
+// FASE D · Bloques anidables (sections + blocks) · contenedor + union hija
+// ============================================================
+// Un `contenedor` es una seccion top-level (18o miembro de SectionSchema) que agrupa BLOQUES
+// HIJOS en columnas. PROFUNDIDAD MAXIMA 2 NIVELES (contenedor -> hijo): la union hija NO incluye
+// `contenedor`, asi la profundidad queda acotada POR CONSTRUCCION (sin z.lazy, sin recursion, sin
+// contador runtime). Aditivo: la data sin contenedor valida y renderiza identico (igual que los
+// Lotes 1/2/3 sumaron tipos sin bump de schema_version).
+
+// ChildBase = SectionBase + columna destino. Tipos hoja permitidos dentro de un contenedor (PASO 0):
+// texto, imagen, botones, imagen_con_texto, cita, video, espacio, producto_destacado. Excluidos a
+// proposito: productos-grid, galeria, formulario, categorias_destacadas, banner y el propio contenedor.
+const ChildBase = SectionBase.extend({
+  // columna destino dentro del contenedor (0..columnas-1). El render (D2) reparte por este indice;
+  // en mobile el contenedor colapsa a 1 columna. Default 0 (primera columna).
+  columna: z.number().int().min(0).max(3).default(0),
+});
+
+export const HijoSchema = z.discriminatedUnion('tipo', [
+  ChildBase.extend({ tipo: z.literal('texto'), props: TextoProps }),
+  ChildBase.extend({ tipo: z.literal('imagen'), props: ImagenProps }),
+  ChildBase.extend({ tipo: z.literal('botones'), props: BotonesProps }),
+  ChildBase.extend({ tipo: z.literal('imagen_con_texto'), props: ImagenConTextoProps }),
+  ChildBase.extend({ tipo: z.literal('cita'), props: CitaProps }),
+  ChildBase.extend({ tipo: z.literal('video'), props: VideoProps }),
+  ChildBase.extend({ tipo: z.literal('espacio'), props: EspacioProps }),
+  ChildBase.extend({ tipo: z.literal('producto_destacado'), props: ProductoDestacadoProps }),
+]);
+
+export type Hijo = z.infer<typeof HijoSchema>;
+export type HijoTipo = Hijo['tipo'];
+
+const ContenedorProps = z.object({
+  // 1 = pila vertical; 2-4 = fila que colapsa a 1 columna en mobile (render = D2).
+  columnas: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).default(1),
+  gap: z.enum(['tight', 'normal', 'loose']).default('normal'),
+  alineacion_vertical: z.enum(['start', 'center', 'stretch']).default('start'),
+  // Tope 8 hijos por contenedor (PASO 0). El contenedor cuenta como 1 de las 20 secciones de la pagina.
+  bloques: z.array(HijoSchema).min(1).max(8),
+});
+
 export const SectionSchema = z.discriminatedUnion('tipo', [
   SectionBase.extend({ tipo: z.literal('banner'), props: BannerProps }),
   SectionBase.extend({ tipo: z.literal('texto'), props: TextoProps }),
@@ -269,6 +310,8 @@ export const SectionSchema = z.discriminatedUnion('tipo', [
   SectionBase.extend({ tipo: z.literal('logos'), props: LogosProps }),
   SectionBase.extend({ tipo: z.literal('categorias_destacadas'), props: CategoriasDestacadasProps }),
   SectionBase.extend({ tipo: z.literal('producto_destacado'), props: ProductoDestacadoProps }),
+  // FASE D: contenedor (bloques hijos anidados, profundidad 2). Aditivo; ultimo miembro.
+  SectionBase.extend({ tipo: z.literal('contenedor'), props: ContenedorProps }),
 ]);
 
 export type Section = z.infer<typeof SectionSchema>;
