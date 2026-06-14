@@ -54,6 +54,14 @@ for (const tipo of TIPOS) {
       } else if (campo.control === 'toggle-object') {
         // el toggle siempre renderiza su label; los subfields son condicionales al estado on -> no se exigen
         assert.ok(rendered(campo.label), `[${tipo}] toggle "${campo.key}" (label "${campo.label}") NO renderiza`);
+      } else if (campo.control === 'child-blocks') {
+        // FASE D: control anidado (no emite .ed-ctrl__label propio). Cobertura REAL = el sub-editor de
+        // bloques renderiza ("Agregar bloque") Y el generador de campos del hijo corre (el hijo texto
+        // por defecto del contenedor renderiza su control "Contenido").
+        assert.ok((container.textContent || '').includes('Agregar bloque'),
+          `[${tipo}] child-blocks "${campo.key}" NO renderiza el sub-editor (falta "Agregar bloque")`);
+        assert.ok(rendered('Contenido'),
+          `[${tipo}] child-blocks "${campo.key}": el generador de campos del hijo NO corre (falta label "Contenido")`);
       } else {
         assert.ok(rendered(campo.label), `[${tipo}] campo "${campo.key}" (label "${campo.label}") NO renderiza control`);
       }

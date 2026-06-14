@@ -15,8 +15,8 @@ test('createSectionDefault identico al golden (9 tipos)', () => {
   T.editorState.init({}, 'tienda-test');
   for (const tipo of TIPOS) {
     const id = T.editorState.addSection(tipo);
-    const sec = JSON.parse(JSON.stringify(T.editorState.findSection(id)));
-    sec.id = 'sec_GOLDEN';
+    // Normaliza TODOS los ids sec_ (top-level + hijos de un contenedor, que llevan id generado).
+    const sec = JSON.parse(JSON.stringify(T.editorState.findSection(id)).replace(/sec_[a-z0-9]{4,}/g, 'sec_GOLDEN'));
     assert.deepEqual(sec, golden[tipo], `defaultProps drift en tipo ${tipo}`);
     T.editorState.removeSection(id);
   }

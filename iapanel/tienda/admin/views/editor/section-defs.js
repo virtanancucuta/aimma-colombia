@@ -35,6 +35,10 @@
     COLUMNAS_TESTIM: [{ v: 1, l: '1 columna' }, { v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }],
     RATING_OPTS: [{ v: '', l: 'Sin estrellas' }, { v: 1, l: '1 estrella' }, { v: 2, l: '2 estrellas' }, { v: 3, l: '3 estrellas' }, { v: 4, l: '4 estrellas' }, { v: 5, l: '5 estrellas' }],
     LOGOS_LAYOUT: [{ v: 'grilla', l: 'Grilla' }, { v: 'tira', l: 'Tira' }],
+    // FASE D · contenedor
+    CONT_COLUMNAS: [{ v: 1, l: '1 columna' }, { v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }, { v: 4, l: '4 columnas' }],
+    CONT_GAP: [{ v: 'tight', l: 'Compacto' }, { v: 'normal', l: 'Normal' }, { v: 'loose', l: 'Aireado' }],
+    CONT_ALIGN: [{ v: 'start', l: 'Arriba' }, { v: 'center', l: 'Centro' }, { v: 'stretch', l: 'Estirar' }],
   };
 
   const defs = {
@@ -363,6 +367,24 @@
         { key: 'titulo', control: 'text', label: 'Titulo (opcional)', optional: true, opts: { maxLength: 200 }, empty_to_undefined: true },
         { key: 'texto', control: 'textarea', label: 'Texto (opcional)', optional: true, opts: { maxLength: 2000, rows: 3 }, empty_to_undefined: true },
         { key: 'cta_texto', control: 'text', label: 'Texto del boton (opcional)', optional: true, opts: { maxLength: 80 }, empty_to_undefined: true },
+      ],
+    },
+
+    // FASE D (D3b): contenedor de bloques en columnas. UX ANIDADA via control 'child-blocks'
+    // (NO 'list' -> el drift-guard no lo trata como lista de sub-campos). Keys = props Zod
+    // {columnas, gap, alineacion_vertical, bloques}, todas no-opcionales. Default amarrado:
+    // columnas 1 / gap normal / align start (defaults de campo) + fondo transparente + 1 hijo texto
+    // (lo agrega createSectionDefault). bloques SIN default -> defaultProps lo saltea.
+    contenedor: {
+      label: 'Contenedor',
+      catalog: { group: 'avanzado', icon: '▥', desc: 'Agrupa varios bloques en columnas (1 a 4).' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'contenido', padding_default: 'md',
+      campos: [
+        { key: 'columnas', control: 'select', label: 'Columnas', default: 1, opts: { options: 'CONT_COLUMNAS' } },
+        { key: 'gap', control: 'select', label: 'Separacion entre bloques', default: 'normal', opts: { options: 'CONT_GAP' } },
+        { key: 'alineacion_vertical', control: 'select', label: 'Alineacion vertical', default: 'start', opts: { options: 'CONT_ALIGN' } },
+        { key: 'bloques', control: 'child-blocks', label: 'Bloques' },
       ],
     },
   };

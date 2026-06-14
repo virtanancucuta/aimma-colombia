@@ -181,5 +181,38 @@
       "html": "",
       "aspect_ratio": "16/9"
     }
+  },
+  "contenedor": {
+    "id": "sec_GOLDEN",
+    "tipo": "contenedor",
+    "ancho": "contenido",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "md",
+    "props": {
+      "columnas": 1,
+      "gap": "normal",
+      "alineacion_vertical": "start",
+      "bloques": [
+        {
+          "id": "sec_GOLDEN",
+          "tipo": "texto",
+          "ancho": "contenido",
+          "fondo": {
+            "tipo": "transparente",
+            "valor": ""
+          },
+          "padding": "md",
+          "props": {
+            "contenido": "Escribi aqui tu texto.",
+            "alineacion": "left",
+            "tamanio": "md"
+          },
+          "columna": 0
+        }
+      ]
+    }
   }
 }
