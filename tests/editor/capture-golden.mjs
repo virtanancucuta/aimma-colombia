@@ -9,7 +9,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLD = resolve(HERE, 'golden');
 mkdirSync(GOLD, { recursive: true });
 
-const TIPOS = ['banner', 'texto', 'imagen', 'botones', 'productos', 'galeria', 'formulario', 'espacio', 'video'];
+const TIPOS = ['banner', 'texto', 'imagen', 'botones', 'productos', 'galeria', 'formulario', 'espacio', 'video', 'contenedor'];
 
 const win = bootWindow(['editor-controls.js', 'section-defs.js', 'editor-state.js', 'editor-inspector.js']);
 const T = win.TiendaIA;
@@ -21,8 +21,8 @@ T.editorState.init({}, 'tienda-test');
 const defaults = {};
 for (const tipo of TIPOS) {
   const id = T.editorState.addSection(tipo);
-  const sec = JSON.parse(JSON.stringify(T.editorState.findSection(id)));
-  sec.id = 'sec_GOLDEN';
+  // Normaliza TODOS los ids sec_ (top-level + hijos de contenedor con id generado).
+  const sec = JSON.parse(JSON.stringify(T.editorState.findSection(id)).replace(/sec_[a-z0-9]{4,}/g, 'sec_GOLDEN'));
   defaults[tipo] = sec;
   T.editorState.removeSection(id);
 }

@@ -135,7 +135,7 @@
   }
 
   function createSectionDefault(tipo) {
-    return {
+    const sec = {
       id: 'sec_' + nanoid(6),
       tipo,
       ancho: defaultAncho(tipo),
@@ -143,6 +143,20 @@
       padding: defaultPadding(tipo),
       props: defaultProps(tipo),
     };
+    // FASE D: el contenedor nuevo respeta el default amarrado (transparente + 1 col + gap normal +
+    // align start -> via defaults de section-defs) y nace con 1 hijo texto placeholder (schema min 1,
+    // con id GENERADO para no colisionar). createChildDefault esta hoisteada (function declaration).
+    if (tipo === 'contenedor') {
+      sec.props.bloques = [createChildDefault('texto', 0)];
+    }
+    return sec;
+  }
+
+  // FASE D (D3b): un bloque hijo = una seccion hoja default + indice de columna.
+  function createChildDefault(tipo, columna) {
+    const c = createSectionDefault(tipo);
+    c.columna = (typeof columna === 'number' && columna >= 0) ? columna : 0;
+    return c;
   }
 
   // ============================================================
@@ -308,10 +322,88 @@
   }
 
   // ============================================================
+  // FASE D (D3b) · bloques HIJOS de un contenedor (parentId + childId)
+  // Cada mutacion emite lastOp = {kind:'replace', sectionId: PADRE} -> el carril de patch existente
+  // re-renderiza el contenedor entero (con sus hijos, via la recursion de D2). Undo/redo: los snapshots
+  // ya clonan state.sections en profundidad (los hijos viajan adentro). Autosave: notify('sections').
+  // ============================================================
+  function findContenedor(parentId) {
+    const s = state.sections.find(x => x.id === parentId);
+    return (s && s.tipo === 'contenedor' && s.props && Array.isArray(s.props.bloques)) ? s : null;
+  }
+  function _colsDe(sec) { return sec.props.columnas || 1; }
+  function _colDe(b, cols) { return Math.min(Math.max(b.columna || 0, 0), cols - 1); }
+  function _notifyChild(parentId) {
+    state.lastOp = { kind: 'replace', sectionId: parentId };
+    notify('sections'); notify('patch');
+  }
+  function addChildBlock(parentId, tipo, columna) {
+    const sec = findContenedor(parentId);
+    if (!sec) return null;
+    if (sec.props.bloques.length >= 8) {
+      if (window.TiendaIA?.toast) window.TiendaIA.toast('Maximo 8 bloques por contenedor', 'error');
+      return null;
+    }
+    const cols = _colsDe(sec);
+    const col = Math.min(Math.max(typeof columna === 'number' ? columna : 0, 0), cols - 1);
+    const child = createChildDefault(tipo, col);
+    sec.props.bloques.push(child);
+    pushSnapshot(); markDirty(); _notifyChild(parentId);
+    return child.id;
+  }
+  function removeChildBlock(parentId, childId) {
+    const sec = findContenedor(parentId);
+    if (!sec) return;
+    if (sec.props.bloques.length <= 1) return; // schema min(1): no se borra el ultimo hijo
+    sec.props.bloques = sec.props.bloques.filter(b => b.id !== childId);
+    pushSnapshot(); markDirty(); _notifyChild(parentId);
+  }
+  function updateChildProps(parentId, childId, patch) {
+    const sec = findContenedor(parentId);
+    if (!sec) return;
+    const child = sec.props.bloques.find(b => b.id === childId);
+    if (!child) return;
+    child.props = { ...child.props, ...patch };
+    debouncedSnapshot(parentId + ':' + childId + ':props'); // coalescing de tipeo (== updateSectionProps)
+    markDirty(); _notifyChild(parentId);
+  }
+  function updateChildBase(parentId, childId, key, value) {
+    const sec = findContenedor(parentId);
+    if (!sec) return;
+    const child = sec.props.bloques.find(b => b.id === childId);
+    if (!child) return;
+    child[key] = value;
+    pushSnapshot(); markDirty(); _notifyChild(parentId);
+  }
+  // Reordena un hijo entre sus HERMANOS de la MISMA columna (dir -1 sube / +1 baja), via swap en bloques.
+  function reorderChildBlock(parentId, childId, dir) {
+    const sec = findContenedor(parentId);
+    if (!sec) return;
+    const cols = _colsDe(sec);
+    const child = sec.props.bloques.find(b => b.id === childId);
+    if (!child) return;
+    const k = _colDe(child, cols);
+    const sibIdx = sec.props.bloques.map((b, i) => ({ b, i })).filter(o => _colDe(o.b, cols) === k).map(o => o.i);
+    const pos = sibIdx.indexOf(sec.props.bloques.indexOf(child));
+    const tgt = pos + dir;
+    if (pos < 0 || tgt < 0 || tgt >= sibIdx.length) return;
+    const a = sibIdx[pos], b = sibIdx[tgt];
+    const tmp = sec.props.bloques[a]; sec.props.bloques[a] = sec.props.bloques[b]; sec.props.bloques[b] = tmp;
+    pushSnapshot(); markDirty(); _notifyChild(parentId);
+  }
+  function findChild(parentId, childId) {
+    const sec = findContenedor(parentId);
+    if (!sec) return null;
+    return sec.props.bloques.find(b => b.id === childId) || null;
+  }
+
+  // ============================================================
   // Selection (solo seccion en v3)
   // ============================================================
-  function select(sectionId) {
-    state.selection = sectionId ? { sectionId } : null;
+  function select(sectionId, childId) {
+    // FASE D: childId opcional (lo usa el chrome de canvas de D4 para seleccionar un hijo; en D3b el
+    // inspector renderiza los hijos inline). Aditivo: los callers existentes pasan solo sectionId.
+    state.selection = sectionId ? { sectionId, childId: childId || null } : null;
     notify('selection');
   }
 
@@ -443,9 +535,10 @@
     setThemeColors, setThemePalette, setThemeFontPairing, setThemeNavTextSize,
     addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
     moveNavNode, setNavMostrarEnMenu, removeNavNode,
-    findSection,
+    findSection, findChild, findContenedor,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
+    addChildBlock, removeChildBlock, updateChildProps, updateChildBase, reorderChildBlock,
     select, deselect,
     undo, redo, canUndo, canRedo, pushSnapshot,
     markDirty, markClean, markSaving, setDraftSaveStatus,

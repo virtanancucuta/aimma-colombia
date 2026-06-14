@@ -33,17 +33,14 @@ function itemShape(v) {
   return out;
 }
 
-// FASE D · D1: `contenedor` es schema-DORMANT (aditivo a SectionSchema, EF mirror dormido). Su entrada
-// en section-defs NO es campos genericos (lleva `bloques` = lista de secciones HIJAS + UX anidada) y
-// llega en D3. Hasta entonces se excluye del drift-guard a proposito (asi NO aparece en el catalogo del
-// admin = sigue invisible). EN D3: agregar su def y QUITAR de aca para que el guard re-enganche.
-const PENDING_DEFS = new Set(['contenedor']);
+// FASE D · D3b: `contenedor` YA tiene def en section-defs (control 'child-blocks' para `bloques`,
+// que NO es 'list' -> el drift-guard no lo trata como lista de sub-campos). El guard re-enganchado
+// valida que sus campos {columnas,gap,alineacion_vertical,bloques} cuadran con el Zod.
 
 function zodByTipo() {
   const out = {};
   for (const opt of SectionSchema._def.options) {
     const tipo = opt.shape.tipo._def.value;
-    if (PENDING_DEFS.has(tipo)) continue; // D1 dormant -> sin def todavia (ver nota arriba)
     const propsShape = opt.shape.props.shape;
     const fields = {}, items = {};
     for (const [k, v] of Object.entries(propsShape)) {

@@ -11,31 +11,39 @@
   const D = window.TiendaIA.editorSectionDefs.defs;
   const toCard = (tipo) => ({ tipo, icon: D[tipo].catalog.icon, title: D[tipo].label, desc: D[tipo].catalog.desc });
   const ESENCIALES = ['banner', 'productos', 'botones', 'texto', 'imagen_con_texto'].map(toCard);
-  const AVANZADOS = ['galeria', 'imagen', 'caracteristicas', 'cita', 'testimonios', 'faq', 'logos', 'categorias_destacadas', 'producto_destacado', 'espacio', 'formulario', 'video'].map(toCard);
+  const AVANZADOS = ['galeria', 'imagen', 'caracteristicas', 'cita', 'testimonios', 'faq', 'logos', 'categorias_destacadas', 'producto_destacado', 'contenedor', 'espacio', 'formulario', 'video'].map(toCard);
 
   let modalEl = null;
 
-  function open(onPick) {
+  // FASE D: open(onPick, allowedTipos?) — si se pasa allowedTipos, muestra SOLO esos tipos (plano,
+  // sin split Esenciales/Avanzados ni boton "Mas"). Lo usa "Agregar bloque" del contenedor (tipos hoja).
+  function open(onPick, allowedTipos) {
     if (modalEl) close();
     const E = window.TiendaIA.editorControls.el;
+    const filtered = Array.isArray(allowedTipos);
+    const titulo = filtered ? 'Agrega un bloque' : 'Agrega una seccion';
 
     const grid = E('div', { class: 'ed-catalog-grid', id: 'ed-catalog-grid' });
-    ESENCIALES.forEach(item => grid.appendChild(buildCard(E, item, onPick)));
-
-    // Boton "Mas" que inyecta los avanzados.
-    const moreBtn = E('button', {
-      type: 'button',
-      class: 'ed-catalog-more',
-      id: 'ed-catalog-more',
-      onClick: () => {
-        AVANZADOS.forEach(item => grid.appendChild(buildCard(E, item, onPick)));
-        moreBtn.remove();
-      },
-    }, 'Mas opciones (galeria, imagen, caracteristicas, cita, testimonios, faq, logos, categorias destacadas, producto destacado, espacio, formulario, video)');
+    let moreBtn = null;
+    if (filtered) {
+      allowedTipos.filter(t => D[t]).map(toCard).forEach(item => grid.appendChild(buildCard(E, item, onPick)));
+    } else {
+      ESENCIALES.forEach(item => grid.appendChild(buildCard(E, item, onPick)));
+      // Boton "Mas" que inyecta los avanzados.
+      moreBtn = E('button', {
+        type: 'button',
+        class: 'ed-catalog-more',
+        id: 'ed-catalog-more',
+        onClick: () => {
+          AVANZADOS.forEach(item => grid.appendChild(buildCard(E, item, onPick)));
+          moreBtn.remove();
+        },
+      }, 'Mas opciones (galeria, imagen, caracteristicas, cita, testimonios, faq, logos, categorias destacadas, producto destacado, contenedor, espacio, formulario, video)');
+    }
 
     const modal = E('div', { class: 'ed-modal' }, [
       E('div', { class: 'ed-modal__header' }, [
-        E('h3', { class: 'ed-modal__title' }, 'Agrega una seccion'),
+        E('h3', { class: 'ed-modal__title' }, titulo),
         E('button', {
           type: 'button',
           class: 'ed-modal__close',
@@ -43,7 +51,7 @@
           onClick: close,
         }, '×'),
       ]),
-      E('div', { class: 'ed-modal__body' }, [grid, moreBtn]),
+      E('div', { class: 'ed-modal__body' }, moreBtn ? [grid, moreBtn] : [grid]),
     ]);
 
     modalEl = E('div', {
