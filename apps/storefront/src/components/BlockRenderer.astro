@@ -1,95 +1,18 @@
 ---
-// AIMMA Editor PRO-MAX · BlockRenderer dispatcher · SCHEMA v3 (2026-06-03)
-// Despacha por section.tipo. Dos familias:
-//   - UNIFIED (Fase A.2): 1 renderer por tipo que resuelve la plantilla internamente
-//     (tienda.plantilla.slug) y reproduce las 4 variantes byte-identico. Se chequea
-//     ANTES que BLOCKS para evitar una pila de ifs.
-//   - BLOCKS (per-template): tipos aun bespoke por plantilla -> [tipo][plantilla].
-//     banner es bespoke por diseno (hero/Hero<Plantilla>.astro). botones + formulario
-//     siguen per-template (botones queda asi; formulario se unifica aparte, Fase A.2 final).
-// espacio y video son agnosticos (sin variante). Fallback a industrial_clean.
+// AIMMA Editor PRO-MAX · BlockRenderer dispatcher · Fase D (D2)
+// Mapea cada seccion top-level a <BlockOne> (el despacho UNIFIED/BLOCKS/pickBlock vive en
+// _BlockOne.astro, extraido verbatim). El render por seccion es byte-identico al inline previo
+// (guard: test/blockrenderer.golden ×4). El routing de `contenedor` -> Contenedor.astro se agrega
+// en el commit siguiente, tras validar la byte-identidad de la extraccion.
 
 import type { Section } from '@aimma/database';
-
-// Per-template (banner bespoke + botones). banner es bespoke por diseno; botones
-// queda per-template (geometria/sets de iconos reales, no rinde unificar).
-import BannerIC from '~/components/blocks/hero/HeroIndustrialClean.astro';
-import BotonesIC from '~/components/blocks/botones/BotonesIndustrialClean.astro';
-
-import BannerFB from '~/components/blocks/hero/HeroFashionBold.astro';
-import BotonesFB from '~/components/blocks/botones/BotonesFashionBold.astro';
-
-import BannerMA from '~/components/blocks/hero/HeroMinimalArtesanal.astro';
-import BotonesMA from '~/components/blocks/botones/BotonesMinimalArtesanal.astro';
-
-import BannerEM from '~/components/blocks/hero/HeroEditorialMagazine.astro';
-import BotonesEM from '~/components/blocks/botones/BotonesEditorialMagazine.astro';
-
-// Unificados (Fase A.2): un renderer resuelve la plantilla internamente. 4 archivos -> 1.
-import Productos from '~/components/blocks/productos/Productos.astro';
-import Texto from '~/components/blocks/texto/Texto.astro';
-import Imagen from '~/components/blocks/imagen/Imagen.astro';
-import Galeria from '~/components/blocks/galeria/Galeria.astro';
-import Formulario from '~/components/blocks/formulario/Formulario.astro';
-// B-secciones Lote 1
-import ImagenConTexto from '~/components/blocks/imagen_con_texto/ImagenConTexto.astro';
-import Caracteristicas from '~/components/blocks/caracteristicas/Caracteristicas.astro';
-import Cita from '~/components/blocks/cita/Cita.astro';
-// B-secciones Lote 2
-import Testimonios from '~/components/blocks/testimonios/Testimonios.astro';
-import Faq from '~/components/blocks/faq/Faq.astro';
-import Logos from '~/components/blocks/logos/Logos.astro';
-// B-secciones Lote 3
-import CategoriasDestacadas from '~/components/blocks/categorias_destacadas/CategoriasDestacadas.astro';
-import ProductoDestacado from '~/components/blocks/producto_destacado/ProductoDestacado.astro';
-
-// Agnosticos (sin variante por plantilla)
-import Espacio from '~/components/blocks/espaciador/Espaciador.astro';
-import Video from '~/components/blocks/video/Video.astro';
+import BlockOne from '~/components/blocks/_BlockOne.astro';
 
 interface Props {
   sections: Section[];
 }
 
 const { sections } = Astro.props;
-const { tienda } = Astro.locals;
-const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
-
-// Tipos unificados: 1 renderer para las 4 plantillas. Chequeado ANTES que BLOCKS.
-const UNIFIED = {
-  productos: Productos,
-  texto: Texto,
-  imagen: Imagen,
-  galeria: Galeria,
-  formulario: Formulario,
-  imagen_con_texto: ImagenConTexto,
-  caracteristicas: Caracteristicas,
-  cita: Cita,
-  testimonios: Testimonios,
-  faq: Faq,
-  logos: Logos,
-  categorias_destacadas: CategoriasDestacadas,
-  producto_destacado: ProductoDestacado,
-} as const;
-
-const BLOCKS = {
-  banner:  { industrial_clean: BannerIC,  fashion_bold: BannerFB,  minimal_artesanal: BannerMA,  editorial_magazine: BannerEM },
-  botones: { industrial_clean: BotonesIC, fashion_bold: BotonesFB, minimal_artesanal: BotonesMA, editorial_magazine: BotonesEM },
-} as const;
-
-function pickBlock(tipo: Section['tipo'], plantillaSlug: string) {
-  if (tipo === 'espacio') return Espacio;
-  if (tipo === 'video') return Video;
-  const unified = UNIFIED[tipo as keyof typeof UNIFIED];
-  if (unified) return unified;
-  const byTipo = BLOCKS[tipo as keyof typeof BLOCKS];
-  if (!byTipo) return null;
-  return byTipo[plantillaSlug as keyof typeof byTipo] ?? byTipo.industrial_clean;
-}
 ---
 
-{sections.map((section) => {
-  const Block = pickBlock(section.tipo, plantilla);
-  if (!Block) return null;
-  return <Block section={section} />;
-})}
+{sections.map((section) => <BlockOne section={section} />)}
