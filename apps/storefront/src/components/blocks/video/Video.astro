@@ -5,19 +5,33 @@
 // CodePen/CodeSandbox/Google Maps/Spotify). aspect_ratio controla el contenedor.
 
 import type { Section } from '@aimma/database';
+import { buildEmbedFromUrl } from '@aimma/database';
 import SectionShell from '~/components/blocks/_SectionShell.astro';
 
 interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'video' }>).props;
+const isPreview = Astro.locals?.isPreview;
 
 const ratio = p.aspect_ratio ?? '16/9';
+
+// FASE D (2a): el `html` guardado es la fuente (lo construye la EF desde `url`, o es un iframe legacy).
+// Fallback defensivo: si hay `url` pero todavia no hay `html` (ej. preview de un cambio recien tecleado,
+// antes del save por la EF), se construye el iframe al render. buildEmbedFromUrl devuelve null si no es
+// un proveedor soportado -> sin video. Para legacy (html presente) el render es BYTE-IDENTICO al anterior.
+const html = (p.html && p.html.trim())
+  ? p.html
+  : ((p as any).url ? (buildEmbedFromUrl((p as any).url) ?? '') : '');
 ---
 
 <SectionShell section={section}>
-  <div class="video-embed" style={`aspect-ratio:${ratio};`}>
-    <Fragment set:html={p.html} />
-  </div>
+  {html ? (
+    <div class="video-embed" style={`aspect-ratio:${ratio};`}>
+      <Fragment set:html={html} />
+    </div>
+  ) : isPreview ? (
+    <div class="video-empty">Pega un link de YouTube o Vimeo para mostrar el video.</div>
+  ) : null}
 </SectionShell>
 
 <style>
@@ -32,5 +46,15 @@ const ratio = p.aspect_ratio ?? '16/9';
     height: 100%;
     border: 0;
     display: block;
+  }
+  /* FASE D (2a): hint SOLO en preview cuando aun no hay video (publico nunca lo ve). */
+  .video-empty {
+    padding: 2rem;
+    text-align: center;
+    border: 1px dashed color-mix(in oklab, var(--ta-color-text-base) 22%, transparent);
+    border-radius: 4px;
+    color: color-mix(in oklab, var(--ta-color-text-base) 55%, transparent);
+    font-family: var(--ta-font-body);
+    font-size: 0.95rem;
   }
 </style>

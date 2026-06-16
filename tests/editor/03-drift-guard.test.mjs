@@ -41,7 +41,11 @@ function zodByTipo() {
   const out = {};
   for (const opt of SectionSchema._def.options) {
     const tipo = opt.shape.tipo._def.value;
-    const propsShape = opt.shape.props.shape;
+    // FASE D (2a): VideoProps usa .superRefine (XOR url/html) -> ZodEffects, no ZodObject.
+    // Unwrap al ZodObject interno para leer su .shape (vale para cualquier props refinada).
+    let propsObj = opt.shape.props;
+    while (propsObj._def && propsObj._def.typeName === 'ZodEffects') propsObj = propsObj._def.schema;
+    const propsShape = propsObj.shape;
     const fields = {}, items = {};
     for (const [k, v] of Object.entries(propsShape)) {
       fields[k] = v._def.typeName === 'ZodOptional';
