@@ -55,7 +55,7 @@ const gridClass = [
 <style>
   /* ===== industrial_clean ===== */
   .ic-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--ic-cont-gap, 1.5rem); }
-  .ic-contenedor-col { display: flex; flex-direction: column; row-gap: var(--ic-cont-gap, 1.5rem); min-width: 0; }
+  .ic-contenedor-col { display: flex; flex-direction: column; row-gap: var(--ic-cont-gap, 1.5rem); min-width: 0; container-type: inline-size; container-name: aimma-col; }
   .ic-contenedor-grid--gap-tight { --ic-cont-gap: 0.75rem; }
   .ic-contenedor-grid--gap-normal { --ic-cont-gap: 1.5rem; }
   .ic-contenedor-grid--gap-loose { --ic-cont-gap: 3rem; }
@@ -73,7 +73,7 @@ const gridClass = [
 
   /* ===== fashion_bold ===== */
   .fb-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--fb-cont-gap, 1.5rem); }
-  .fb-contenedor-col { display: flex; flex-direction: column; row-gap: var(--fb-cont-gap, 1.5rem); min-width: 0; }
+  .fb-contenedor-col { display: flex; flex-direction: column; row-gap: var(--fb-cont-gap, 1.5rem); min-width: 0; container-type: inline-size; container-name: aimma-col; }
   .fb-contenedor-grid--gap-tight { --fb-cont-gap: 0.75rem; }
   .fb-contenedor-grid--gap-normal { --fb-cont-gap: 1.5rem; }
   .fb-contenedor-grid--gap-loose { --fb-cont-gap: 3rem; }
@@ -91,7 +91,7 @@ const gridClass = [
 
   /* ===== minimal_artesanal (mas aire por defecto) ===== */
   .ma-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--ma-cont-gap, 2rem); }
-  .ma-contenedor-col { display: flex; flex-direction: column; row-gap: var(--ma-cont-gap, 2rem); min-width: 0; }
+  .ma-contenedor-col { display: flex; flex-direction: column; row-gap: var(--ma-cont-gap, 2rem); min-width: 0; container-type: inline-size; container-name: aimma-col; }
   .ma-contenedor-grid--gap-tight { --ma-cont-gap: 1rem; }
   .ma-contenedor-grid--gap-normal { --ma-cont-gap: 2rem; }
   .ma-contenedor-grid--gap-loose { --ma-cont-gap: 3.5rem; }
@@ -109,7 +109,7 @@ const gridClass = [
 
   /* ===== editorial_magazine ===== */
   .em-contenedor-grid { display: grid; grid-template-columns: 1fr; column-gap: var(--em-cont-gap, 1.5rem); }
-  .em-contenedor-col { display: flex; flex-direction: column; row-gap: var(--em-cont-gap, 1.5rem); min-width: 0; }
+  .em-contenedor-col { display: flex; flex-direction: column; row-gap: var(--em-cont-gap, 1.5rem); min-width: 0; container-type: inline-size; container-name: aimma-col; }
   .em-contenedor-grid--gap-tight { --em-cont-gap: 0.75rem; }
   .em-contenedor-grid--gap-normal { --em-cont-gap: 1.5rem; }
   .em-contenedor-grid--gap-loose { --em-cont-gap: 3rem; }
@@ -123,5 +123,16 @@ const gridClass = [
   }
   @media (min-width: 1024px) {
     .em-contenedor-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ===== FASE D (1a) · RC2: gutter de pagina OFF dentro de un contenedor =====
+     Toda seccion hija pasa por _SectionShell -> .block-inner { padding-inline: 1.25rem; >=1024px: 3rem }.
+     Ese gutter es el margen de PAGINA y no tiene sentido dentro de una columna angosta (comia ~96px).
+     `@container aimma-col` solo matchea .block-inner con un ancestro `.{prefix}-contenedor-col` (el unico
+     container-name aimma-col del sitio) -> ADITIVO y DORMIDO en standalone (sin contenedor, nunca aplica).
+     min-width:0 = "siempre que exista el container" (no es un umbral de ancho). :global porque .block-inner
+     vive en otro componente (SectionShell), no en este scope. */
+  @container aimma-col (min-width: 0px) {
+    :global(.block-inner) { padding-inline: 0; }
   }
 </style>
