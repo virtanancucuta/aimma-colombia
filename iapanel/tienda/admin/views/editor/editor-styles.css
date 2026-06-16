@@ -356,6 +356,11 @@
   padding: 0.75rem;
   background: #fbfbfc;
 }
+/* FASE D (D4): hijo seleccionado en el canvas -> resaltado en el sub-editor (mismo target, en sync). */
+.ed-list-item--sel {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px color-mix(in oklab, #2563eb 22%, transparent);
+}
 .ed-list-item__head {
   display: flex;
   align-items: center;

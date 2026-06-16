@@ -397,6 +397,38 @@
     return sec.props.bloques.find(b => b.id === childId) || null;
   }
 
+  // FASE D (D4): resuelve un id (de un clic en el canvas) a su target. El id-space es UNICO por
+  // construccion (top-level Y hijos usan 'sec_'+nanoid(6)), asi que: top-level primero; si no, en
+  // los bloques de los contenedores -> {sectionId:padre, childId}. null si no existe.
+  function findTarget(id) {
+    if (!id) return null;
+    if (findSection(id)) return { sectionId: id, childId: undefined };
+    for (const s of state.sections) {
+      if (s.tipo === 'contenedor' && s.props && Array.isArray(s.props.bloques)) {
+        if (s.props.bloques.some(b => b.id === id)) return { sectionId: s.id, childId: id };
+      }
+    }
+    return null;
+  }
+
+  // FASE D (D4): duplica un hijo (clon con id nuevo, MISMA columna) insertado JUSTO DESPUES del
+  // original en el array plano. lastOp=replace al PADRE (via _notifyChild) -> re-render del contenedor.
+  function duplicateChildBlock(parentId, childId) {
+    const sec = findContenedor(parentId);
+    if (!sec) return null;
+    if (sec.props.bloques.length >= 8) {
+      if (window.TiendaIA?.toast) window.TiendaIA.toast('Maximo 8 bloques por contenedor', 'error');
+      return null;
+    }
+    const idx = sec.props.bloques.findIndex(b => b.id === childId);
+    if (idx < 0) return null;
+    const copy = structuredClone(sec.props.bloques[idx]); // structuredClone preserva copy.columna
+    copy.id = 'sec_' + nanoid(6);
+    sec.props.bloques.splice(idx + 1, 0, copy);
+    pushSnapshot(); markDirty(); _notifyChild(parentId);
+    return copy.id;
+  }
+
   // ============================================================
   // Selection (solo seccion en v3)
   // ============================================================
@@ -535,10 +567,10 @@
     setThemeColors, setThemePalette, setThemeFontPairing, setThemeNavTextSize,
     addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
     moveNavNode, setNavMostrarEnMenu, removeNavNode,
-    findSection, findChild, findContenedor,
+    findSection, findChild, findContenedor, findTarget,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
-    addChildBlock, removeChildBlock, updateChildProps, updateChildBase, reorderChildBlock,
+    addChildBlock, removeChildBlock, updateChildProps, updateChildBase, reorderChildBlock, duplicateChildBlock,
     select, deselect,
     undo, redo, canUndo, canRedo, pushSnapshot,
     markDirty, markClean, markSaving, setDraftSaveStatus,

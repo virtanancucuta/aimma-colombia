@@ -352,6 +352,8 @@
           card.body.appendChild(C.select('Columna', String(colOf(child)), colOpts,
             v => { ES.updateChildBase(parentId, child.id, 'columna', parseInt(v, 10) || 0); rebuild(); }));
         }
+        // D4: resalta el hijo seleccionado (chrome en canvas + sub-editor en sync = mismo target).
+        if (ES.selection && ES.selection.childId === child.id) card.root.classList.add('ed-list-item--sel');
         const ct = childTarget(parentId, child, ES);
         if (def) def.campos.forEach((cf) => renderCampo(card.body, ct, cf, C));
         wrap.appendChild(card.root);
@@ -407,5 +409,6 @@
   }
 
   window.TiendaIA = window.TiendaIA || {};
-  window.TiendaIA.editorInspector = { render, rebuild };
+  // D4: editor-canvas reusa CHILD_TIPOS para filtrar el catalogo del "+ agregar bloque" del canvas.
+  window.TiendaIA.editorInspector = { render, rebuild, CHILD_TIPOS };
 })(window);

@@ -16,6 +16,7 @@ interface Props { section: Section; }
 const { section } = Astro.props;
 const p = (section as Extract<Section, { tipo: 'contenedor' }>).props;
 const { tienda } = Astro.locals;
+const isPreview = Astro.locals?.isPreview;   // FASE D (D4): chrome "+ agregar bloque" SOLO en preview
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
 
 const prefix = plantilla === 'fashion_bold' ? 'fb'
@@ -44,9 +45,9 @@ const gridClass = [
 
 <SectionShell section={section}>
   <div class={gridClass}>
-    {cols.map((col) => (
+    {cols.map((col, ci) => (
       <div class={`${prefix}-contenedor-col`}>
-        {col.map((child) => <BlockOne section={child} />)}
+        {col.map((child) => <BlockOne section={child} />)}{isPreview && (<button type="button" class="ed-add-child" data-ed-add-child data-parent={section.id} data-col={ci} aria-label="Agregar bloque a esta columna"><span class="ed-add-child__plus" aria-hidden="true">+</span><span class="ed-add-child__txt">Agregar bloque</span></button>)}
       </div>
     ))}
   </div>
@@ -135,4 +136,32 @@ const gridClass = [
   @container aimma-col (min-width: 0px) {
     :global(.block-inner) { padding-inline: 0; }
   }
+
+  /* ===== FASE D (D4) · "+ agregar bloque" — chrome del editor (SOLO preview) =====
+     Slot de "agregar" al final de CADA columna (incl. vacias). En publico no se emite (isPreview)
+     -> estas reglas quedan inertes (cero elementos). Color azul del chrome (#2563eb), dashed estilo
+     Webflow/Notion, descubrible, con feedback de hover y touch target comodo. */
+  .ed-add-child {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.7rem 1rem;
+    border: 1.5px dashed color-mix(in oklab, #2563eb 55%, transparent);
+    border-radius: 6px;
+    background: color-mix(in oklab, #2563eb 5%, transparent);
+    color: #2563eb;
+    font: 600 0.85rem/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+    transition: background-color 160ms ease-out, border-color 160ms ease-out;
+  }
+  .ed-add-child:hover,
+  .ed-add-child:focus-visible {
+    background: color-mix(in oklab, #2563eb 12%, transparent);
+    border-color: #2563eb;
+    outline: none;
+  }
+  .ed-add-child__plus { font-size: 1.15rem; line-height: 1; font-weight: 700; }
 </style>

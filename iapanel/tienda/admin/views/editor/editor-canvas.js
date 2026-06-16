@@ -149,20 +149,28 @@
       const msg = event.data || {};
       if (msg.type === 'select') {
         if (msg.sectionId === null) { ES.select(null); return; } // deseleccion (click en vacio del canvas)
-        if (typeof msg.sectionId === 'string' && ES.findSection(msg.sectionId)) {
-          ES.select(msg.sectionId);
-          openInspectorDrawer();
-        }
+        if (typeof msg.sectionId !== 'string') return;
+        // D4: el id clickeado puede ser una seccion top-level O un hijo de contenedor -> findTarget
+        // resuelve a {sectionId, childId}. Seleccionar el target (chrome enmarca el hijo, inspector lo refleja).
+        const t = ES.findTarget(msg.sectionId);
+        if (!t) return;
+        if (t.childId) ES.select(t.sectionId, t.childId);
+        else ES.select(t.sectionId);
+        openInspectorDrawer();
       } else if (msg.type === 'section-action') {
         // origin ya validado; el dispatcher revalida action + seccion ANTES de mutar.
         handleSectionAction(msg);
+      } else if (msg.type === 'add-child') {
+        // D4: "+ agregar bloque" del canvas -> abre el catalogo de hijos filtrado e inserta en la columna.
+        handleAddChild(msg);
       } else if (msg.type === 'inline-edit-start' || msg.type === 'inline-commit' || msg.type === 'inline-cancel') {
         handleInlineMessage(msg);
       } else if (msg.type === 'preview-ready') {
         state.ready = true;
         setStatus('', false);
         // Tras (re)cargar el iframe: restaurar la seleccion vigente (chrome) + re-habilitar la edicion inline.
-        postSelection(ES.selection ? ES.selection.sectionId : null);
+        // D4: enmarca el childId si la seleccion es un hijo (cae a sectionId si no).
+        postSelection(ES.selection ? (ES.selection.childId || ES.selection.sectionId) : null);
         sendInlineEnable();
       }
     };
@@ -174,7 +182,8 @@
     const ES0 = window.TiendaIA.editorState;
     if (ES0 && ES0.subscribe) {
       state.selUnsub = ES0.subscribe('selection', function() {
-        postSelection(ES0.selection ? ES0.selection.sectionId : null);
+        // D4: enmarca el childId si la seleccion es un hijo (cae a sectionId si no).
+        postSelection(ES0.selection ? (ES0.selection.childId || ES0.selection.sectionId) : null);
       });
     }
   }
@@ -185,6 +194,18 @@
     const ES = window.TiendaIA.editorState;
     if (!SECTION_ACTIONS[msg.action]) return;
     if (typeof msg.sectionId !== 'string' || !SECTION_ID_RE.test(msg.sectionId)) return;
+    // D4: si la seleccion vigente es un HIJO y el action vino para ese hijo -> ops de hijo (scopeadas
+    // al contenedor: reorden SAME-COLUMN, duplicar, borrar). El section-action solo trae sectionId, asi
+    // que confirmamos contra ES.selection (un frame stale/hostil no dispara ops de hijo ajenas).
+    const sel = ES.selection || {};
+    if (sel.childId && msg.sectionId === sel.childId) {
+      const parentId = sel.sectionId, childId = sel.childId;
+      if (msg.action === 'up') ES.reorderChildBlock(parentId, childId, -1);
+      else if (msg.action === 'down') ES.reorderChildBlock(parentId, childId, 1);
+      else if (msg.action === 'duplicate') { const nid = ES.duplicateChildBlock(parentId, childId); if (nid) ES.select(parentId, nid); }
+      else if (msg.action === 'remove') ES.removeChildBlock(parentId, childId);
+      return;
+    }
     if (!ES.findSection(msg.sectionId)) return;
     const idx = ES.sections.findIndex(function(s) { return s.id === msg.sectionId; });
     if (msg.action === 'up') {
@@ -203,15 +224,35 @@
     }
   }
 
+  // D4: "+ agregar bloque" del canvas. Abre el catalogo de hijos (filtrado a CHILD_TIPOS) e inserta
+  // en el contenedor + columna indicados; selecciona el hijo nuevo (chrome + inspector en sync).
+  function handleAddChild(msg) {
+    const ES = window.TiendaIA.editorState;
+    if (typeof msg.parentId !== 'string' || !SECTION_ID_RE.test(msg.parentId)) return;
+    if (!ES.findContenedor(msg.parentId)) return;            // gate: contenedor CONOCIDO antes de abrir
+    const col = Number.isInteger(msg.column) ? msg.column : 0;
+    const insp = window.TiendaIA.editorInspector;
+    const tipos = (insp && insp.CHILD_TIPOS) || null;
+    window.TiendaIA.editorModalCatalog.open(function (tipo) {
+      const nid = ES.addChildBlock(msg.parentId, tipo, col);
+      if (nid) ES.select(msg.parentId, nid);
+    }, tipos);
+  }
+
   // Label de la seccion desde sectionDefs (fuente unica A.1). NULL-SAFE: '' si no hay seccion
   // (deseleccion: sectionId null) o tipo desconocido -> NUNCA accede defs[undefined] (no tira).
-  function selectionLabel(sectionId) {
-    if (!sectionId) return '';
-    const sec = window.TiendaIA.editorState.findSection(sectionId);
-    if (!sec) return '';
+  function selectionLabel(id) {
+    if (!id) return '';
+    const ES = window.TiendaIA.editorState;
+    // D4: el id enmarcado puede ser un hijo -> resolver su tipo via findTarget/findChild.
+    const t = ES.findTarget(id);
+    if (!t) return '';
+    let tipo = null;
+    if (t.childId) { const ch = ES.findChild(t.sectionId, t.childId); tipo = ch ? ch.tipo : null; }
+    else { const sec = ES.findSection(t.sectionId); tipo = sec ? sec.tipo : null; }
     const defs = window.TiendaIA.editorSectionDefs && window.TiendaIA.editorSectionDefs.defs;
-    const def = defs && defs[sec.tipo];
-    return (def && def.label) ? def.label : sec.tipo;
+    const def = defs && tipo && defs[tipo];
+    return (def && def.label) ? def.label : (tipo || '');
   }
 
   // set-selection (admin -> iframe). origin = tenantOrigin. DEFENSIVO: todo el cuerpo (label +
@@ -402,7 +443,7 @@
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
     render, refresh, reloadFull, setDevice, setPagePath, destroy, rebuild, applyThemePreview,
-    renderFragment, applyPatch, handleSectionAction, postSelection, selectionLabel, handleInlineMessage,
+    renderFragment, applyPatch, handleSectionAction, handleAddChild, postSelection, selectionLabel, handleInlineMessage,
     get previewUrl() { return state.previewUrl; },
     get pagePath() { return state.pagePath || '/'; },
   };
