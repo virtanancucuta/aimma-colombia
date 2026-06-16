@@ -557,4 +557,21 @@ const precioAnteriorStr = (prod?.precio_anterior != null && prod.precio_anterior
     border-top: 1px solid color-mix(in oklab, var(--ta-color-accent) 25%, transparent);
     border-bottom: 1px solid color-mix(in oklab, var(--ta-color-accent) 25%, transparent);
   }
+
+  /* ===== FASE D (1b) · column-aware dentro de un CONTENEDOR =====
+     Las 4 plantillas conmutan a imagen|contenido lado-a-lado con @media(min-width:640px) de VIEWPORT
+     -> en columna angosta la foto caia a un sliver ("se pierde"). Aca, por ANCHO DE COLUMNA real (cqi),
+     volvemos al layout APILADO (imagen arriba, contenido abajo) que ya existe en mobile. ADITIVO +
+     DORMIDO en standalone (sin ancestro `aimma-col` no aplica -> el @media de 640px sigue mandando).
+     Umbral 520px: 1col del contenedor mantiene side-by-side; 3/4col apilan, foto recupera tamano. */
+  @container aimma-col (max-width: 520px) {
+    .ic-proddest-wrap, .fb-proddest-wrap, .em-proddest-wrap { grid-template-columns: 1fr; gap: 1.5rem; }
+    .ma-proddest-wrap { flex-direction: column; align-items: center; gap: 1.75rem; max-width: none; }
+    .ma-proddest-img-wrap { width: min(320px, 100%); }
+    .ma-proddest-content { text-align: center; padding-top: 0; }
+    .fb-proddest-content { padding: 1.75rem; }
+    .ic-proddest-nombre, .fb-proddest-nombre, .ma-proddest-nombre, .em-proddest-nombre {
+      font-size: clamp(1.2rem, 8cqi, 1.9rem);
+    }
+  }
 </style>
