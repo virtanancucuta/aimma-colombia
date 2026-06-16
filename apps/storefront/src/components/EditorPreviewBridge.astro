@@ -15,6 +15,15 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
   // Recibe {type:'reload'} -> recarga. Valida origin en ambos sentidos.
   document.addEventListener('click', (e) => {
     if (!(e.target instanceof Element)) return;
+    // D4: "+ agregar bloque" del contenedor -> avisa al admin (parentId + columna); NO selecciona.
+    const addBtn = e.target.closest('[data-ed-add-child]');
+    if (addBtn) {
+      e.preventDefault();
+      const parentId = addBtn.getAttribute('data-parent');
+      const column = parseInt(addBtn.getAttribute('data-col'), 10);
+      try { parent.postMessage({ type: 'add-child', parentId: parentId, column: column }, ADMIN_ORIGIN); } catch (_) {}
+      return;
+    }
     // Clicks del chrome de seleccion: los maneja PreviewChrome, no seleccionar/deseleccionar.
     if (e.target.closest('[data-ed-chrome]')) return;
     const el = e.target.closest('[data-section-id]');
