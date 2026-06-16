@@ -179,4 +179,22 @@ const iconPath: Record<string, string> = {
     .em-imgtxt-img { transition: none; }
     .em-imgtxt-imgcell:hover .em-imgtxt-img { transform: none; }
   }
+
+  /* ===== FASE D (1b) · column-aware dentro de un CONTENEDOR =====
+     Cuando este bloque vive en una columna angosta (no por viewport: por ANCHO DE COLUMNA real),
+     APILA imagen arriba / texto abajo en vez de forzar el grid 2-col (md:grid-cols-2 es @media de
+     viewport y se disparaba aunque la columna fuera de ~180px). Tipografia por `cqi` (ancho de
+     contenedor), no por `vw`, para que el titulo no quede tamano-hero en columna chica.
+     ADITIVO + DORMIDO en standalone: sin ancestro `aimma-col` la regla nunca aplica (identidad
+     standalone por construccion). Umbral 520px -> 1col del contenedor (ancho) mantiene side-by-side;
+     3/4col (y 2col en pantallas medianas) apilan. */
+  @container aimma-col (max-width: 520px) {
+    .ic-imgtxt, .fb-imgtxt, .ma-imgtxt, .em-imgtxt { grid-template-columns: 1fr; gap: 1.25rem; }
+    .ic-imgtxt-imgcell, .fb-imgtxt-imgcell, .ma-imgtxt-imgcell, .em-imgtxt-imgcell,
+    .ic-imgtxt-txtcell, .fb-imgtxt-txtcell, .ma-imgtxt-txtcell, .em-imgtxt-txtcell { order: 0; }
+    .ic-imgtxt-title, .fb-imgtxt-title, .ma-imgtxt-title, .em-imgtxt-title {
+      font-size: clamp(1.15rem, 7cqi, 1.9rem);
+      line-height: 1.15;
+    }
+  }
 </style>
