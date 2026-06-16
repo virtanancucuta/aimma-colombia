@@ -1,8 +1,10 @@
 ---
-// AIMMA Editor PRO-MAX · Video o mapa (embed) · SCHEMA v3
-// Agnostica (sin variantes por plantilla). Renderiza props.html: un iframe ya
-// validado contra EMBED_WHITELIST_REGEX por el schema Zod (solo YouTube/Vimeo/
-// CodePen/CodeSandbox/Google Maps/Spotify). aspect_ratio controla el contenedor.
+// AIMMA Editor PRO-MAX · Video o mapa (embed) · SCHEMA v3 + Fase D 2a + 2a-polish (fachada)
+// Render: el `html` guardado es la fuente (lo construye la EF desde `url`, o es un iframe legacy).
+// FACHADA (2a-polish): para YouTube/Vimeo (players pesados) NO se carga el iframe al inicio —
+// se muestra una miniatura/poster + boton play, y el iframe real se inserta SOLO al clic (autoplay).
+// Ahorra ~0.5-1.5MB por video en la carga inicial (mejor LCP/SEO). Maps/Spotify/CodePen/iframe legacy
+// renderean DIRECTO (un mapa es contenido interactivo, no click-to-load).
 
 import type { Section } from '@aimma/database';
 import { buildEmbedFromUrl } from '@aimma/database';
@@ -15,24 +17,77 @@ const isPreview = Astro.locals?.isPreview;
 
 const ratio = p.aspect_ratio ?? '16/9';
 
-// FASE D (2a): el `html` guardado es la fuente (lo construye la EF desde `url`, o es un iframe legacy).
-// Fallback defensivo: si hay `url` pero todavia no hay `html` (ej. preview de un cambio recien tecleado,
-// antes del save por la EF), se construye el iframe al render. buildEmbedFromUrl devuelve null si no es
-// un proveedor soportado -> sin video. Para legacy (html presente) el render es BYTE-IDENTICO al anterior.
+// html guardado (iframe construido o legacy) o fallback build desde url (preview pre-save).
 const html = (p.html && p.html.trim())
   ? p.html
   : ((p as any).url ? (buildEmbedFromUrl((p as any).url) ?? '') : '');
+
+// Provider + id desde el src del iframe -> decide si va fachada. Solo YouTube/Vimeo.
+function parseEmbed(h: string): { provider: 'youtube' | 'vimeo' | null; id: string; src: string } {
+  const m = h.match(/src=["']([^"']+)["']/i);
+  const src = m ? m[1] : '';
+  const yt = src.match(/youtube(?:-nocookie)?\.com\/embed\/([A-Za-z0-9_-]+)/i);
+  if (yt) return { provider: 'youtube', id: yt[1], src };
+  const vi = src.match(/player\.vimeo\.com\/video\/([0-9]+)/i);
+  if (vi) return { provider: 'vimeo', id: vi[1], src };
+  return { provider: null, id: '', src };
+}
+const emb = html ? parseEmbed(html) : { provider: null as const, id: '', src: '' };
+const useFacade = emb.provider === 'youtube' || emb.provider === 'vimeo';
+const thumb = emb.provider === 'youtube' ? `https://i.ytimg.com/vi/${emb.id}/hqdefault.jpg` : null;
+const playSrc = emb.src ? emb.src + (emb.src.includes('?') ? '&' : '?') + 'autoplay=1' : '';
 ---
 
 <SectionShell section={section}>
-  {html ? (
+  {!html ? (
+    isPreview ? <div class="video-empty">Pega un link de YouTube o Vimeo para mostrar el video.</div> : null
+  ) : useFacade ? (
+    <button
+      type="button"
+      class={`video-facade${thumb ? '' : ' video-facade--poster'}`}
+      style={`aspect-ratio:${ratio};`}
+      data-embed={playSrc}
+      aria-label="Reproducir video"
+    >
+      {thumb && <img class="video-facade__thumb" src={thumb} alt="" loading="lazy" decoding="async" />}
+      <span class="video-facade__play" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+      </span>
+    </button>
+  ) : (
     <div class="video-embed" style={`aspect-ratio:${ratio};`}>
       <Fragment set:html={html} />
     </div>
-  ) : isPreview ? (
-    <div class="video-empty">Pega un link de YouTube o Vimeo para mostrar el video.</div>
-  ) : null}
+  )}
 </SectionShell>
+
+<script>
+  // Fachada click-to-play: al clic inserta el iframe real (autoplay). Idempotente + re-bind en
+  // astro:page-load (View Transitions). El guard data-bound evita doble binding.
+  function initVideoFacades() {
+    document.querySelectorAll('.video-facade:not([data-bound])').forEach((btn) => {
+      btn.setAttribute('data-bound', '1');
+      btn.addEventListener('click', () => {
+        const src = btn.getAttribute('data-embed');
+        if (!src) return;
+        const ifr = document.createElement('iframe');
+        ifr.src = src;
+        ifr.setAttribute('frameborder', '0');
+        ifr.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+        ifr.setAttribute('allowfullscreen', '');
+        ifr.setAttribute('title', 'Video');
+        ifr.style.cssText = 'width:100%;height:100%;border:0;display:block';
+        const wrap = document.createElement('div');
+        wrap.className = 'video-embed';
+        wrap.style.aspectRatio = (btn as HTMLElement).style.aspectRatio || '16/9';
+        wrap.appendChild(ifr);
+        btn.replaceWith(wrap);
+      });
+    });
+  }
+  initVideoFacades();
+  document.addEventListener('astro:page-load', initVideoFacades);
+</script>
 
 <style>
   .video-embed {
@@ -47,6 +102,64 @@ const html = (p.html && p.html.trim())
     border: 0;
     display: block;
   }
+
+  /* ===== Fachada click-to-play (YouTube/Vimeo) ===== */
+  .video-facade {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    border-radius: 4px;
+    cursor: pointer;
+    background: color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+  }
+  /* poster (Vimeo, sin miniatura): degradado sutil con tokens de la plantilla */
+  .video-facade--poster {
+    background:
+      radial-gradient(120% 120% at 50% 40%,
+        color-mix(in oklab, var(--ta-color-text-base) 10%, transparent),
+        color-mix(in oklab, var(--ta-color-text-base) 16%, transparent));
+  }
+  .video-facade__thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .video-facade__play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    padding-left: 4px; /* centra optico del triangulo */
+    border-radius: 999px;
+    color: var(--ta-color-bg-base);
+    background: color-mix(in oklab, var(--ta-color-text-base) 78%, transparent);
+    box-shadow: 0 6px 24px color-mix(in oklab, var(--ta-color-text-base) 30%, transparent);
+    transition: transform 200ms ease-out, background-color 200ms ease-out;
+  }
+  .video-facade:hover .video-facade__play,
+  .video-facade:focus-visible .video-facade__play {
+    transform: translate(-50%, -50%) scale(1.06);
+    background: var(--ta-color-text-base);
+  }
+  .video-facade:focus-visible {
+    outline: 2px solid var(--ta-color-accent);
+    outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .video-facade__play { transition: none; }
+    .video-facade:hover .video-facade__play { transform: translate(-50%, -50%); }
+  }
+
   /* FASE D (2a): hint SOLO en preview cuando aun no hay video (publico nunca lo ve). */
   .video-empty {
     padding: 2rem;
