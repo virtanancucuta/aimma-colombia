@@ -189,4 +189,17 @@ const alignClass = ({ left: 'text-left', center: 'text-center', right: 'text-rig
     letter-spacing: 0.02em;
     color: var(--ta-color-accent);
   }
+
+  /* ===== FASE D (1c) · cita column-aware dentro de un CONTENEDOR =====
+     El tamano de la cita es `clamp(..., Xvw, ...)` (viewport): en columna angosta quedaba tamano-hero,
+     y la FB (Anton uppercase, hasta ~96px) DESBORDABA horizontalmente. Aca se redimensiona por ANCHO
+     DE COLUMNA (`cqi`) + break-word de respaldo. ADITIVO + DORMIDO en standalone (sin `aimma-col` no
+     aplica -> el clamp(vw) original sigue intacto). Umbral 640px (la cita falla a mayor ancho que los
+     compuestos): cubre 2/3/4col; el contenedor de 1col (ancho) mantiene el tamano hero original. */
+  @container aimma-col (max-width: 640px) {
+    .ic-cita-texto, .em-cita-texto { font-size: clamp(1.25rem, 7cqi, 2.1rem); }
+    .ma-cita-texto { font-size: clamp(1.35rem, 8cqi, 2.3rem); }
+    .fb-cita-texto { font-size: clamp(1.6rem, 12cqi, 3.2rem); overflow-wrap: break-word; }
+    .ma-cita::before { font-size: clamp(4rem, 26cqi, 9rem); }
+  }
 </style>
