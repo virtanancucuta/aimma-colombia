@@ -41,6 +41,19 @@
     CONT_ALIGN: [{ v: 'start', l: 'Arriba' }, { v: 'center', l: 'Centro' }, { v: 'stretch', l: 'Estirar' }],
   };
 
+  // 2a-polish: validacion inline (UX) del campo URL del video. PERMISIVA — solo avisa si el host no
+  // es YouTube/Vimeo; el server (EF) sigue siendo la autoridad (valida el id). Vacio -> sin aviso
+  // (el campo es opcional + existe el campo iframe avanzado). No bloquea el commit, solo muestra hint.
+  const VIDEO_HOSTS = ['youtube.com', 'youtu.be', 'm.youtube.com', 'youtube-nocookie.com', 'vimeo.com', 'player.vimeo.com'];
+  function videoUrlValidate(v) {
+    v = (v || '').trim();
+    if (!v) return null;
+    let host;
+    try { host = new URL(v).hostname.toLowerCase().replace(/^www\./, ''); }
+    catch (_) { return 'Pega un link completo (https://...) de YouTube o Vimeo.'; }
+    return VIDEO_HOSTS.indexOf(host) >= 0 ? null : 'Pega un link de YouTube o Vimeo. Para Maps/Spotify usa el campo de abajo.';
+  }
+
   const defs = {
     banner: {
       label: 'Banner principal',
@@ -200,7 +213,7 @@
       campos: [
         // FASE D (2a): link de proveedor (YouTube/Vimeo) -> la EF construye el iframe. SIN default
         // (createSectionDefault no lo incluye -> el default del video queda identico: {html:'', aspect_ratio}).
-        { key: 'url', control: 'text', label: 'Link del video (YouTube o Vimeo)', optional: true, empty_to_undefined: true, opts: { maxLength: 500, placeholder: 'https://www.youtube.com/watch?v=...' } },
+        { key: 'url', control: 'text', label: 'Link del video (YouTube o Vimeo)', optional: true, empty_to_undefined: true, opts: { maxLength: 500, placeholder: 'https://www.youtube.com/watch?v=...', validate: videoUrlValidate } },
         { __info: 'Pega el link de YouTube o Vimeo y listo. Para Google Maps, Spotify u otros, pega el codigo <iframe> en el campo de abajo.' },
         { key: 'html', control: 'textarea', label: 'O pega un codigo <iframe> (avanzado)', default: '', optional: true, empty_to_undefined: true, opts: { maxLength: 2000, rows: 4, placeholder: '<iframe src="https://www.youtube.com/embed/..."></iframe>' } },
         { key: 'aspect_ratio', control: 'select', label: 'Proporcion', default: '16/9', opts: { options: 'ASPECT_VIDEO' } },

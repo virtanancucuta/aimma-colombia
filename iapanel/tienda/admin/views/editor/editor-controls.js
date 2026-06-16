@@ -58,11 +58,22 @@
       maxlength: opts.maxLength,
       placeholder: opts.placeholder || '',
     });
+    // 2a-polish: validacion inline opcional (opts.validate(v) -> mensaje | null). Es solo UX (hint
+    // permisivo); el server sigue siendo la autoridad. Corre INMEDIATO en cada input; el commit
+    // (onChange) sigue debounced. El valor SIEMPRE se commitea (no bloquea), solo muestra el aviso.
+    const validate = typeof opts.validate === 'function' ? opts.validate : null;
+    const showValidation = (v) => {
+      if (!validate) return;
+      const msg = validate(v);
+      if (msg) { errorEl.textContent = msg; errorEl.hidden = false; }
+      else { errorEl.hidden = true; }
+    };
     const fire = debounce(v => {
       onChange(v);
-      errorEl.hidden = true;
+      if (!validate) errorEl.hidden = true;
     }, DEBOUNCE_MS);
-    input.addEventListener('input', e => fire(e.target.value));
+    input.addEventListener('input', e => { showValidation(e.target.value); fire(e.target.value); });
+    showValidation(value || '');
     return fieldWrapper(label, input, errorEl);
   }
 
