@@ -198,8 +198,11 @@
       context: null, render_strategy: 'unified',
       ancho_default: 'completo', padding_default: 'md',
       campos: [
-        { key: 'html', control: 'textarea', label: 'Codigo del video (iframe)', default: '', opts: { maxLength: 2000, rows: 6, placeholder: '<iframe src="https://www.youtube.com/embed/..."></iframe>' } },
-        { __info: 'Solo se permiten videos o mapas de: YouTube, Vimeo, CodePen, CodeSandbox, Google Maps o Spotify.' },
+        // FASE D (2a): link de proveedor (YouTube/Vimeo) -> la EF construye el iframe. SIN default
+        // (createSectionDefault no lo incluye -> el default del video queda identico: {html:'', aspect_ratio}).
+        { key: 'url', control: 'text', label: 'Link del video (YouTube o Vimeo)', optional: true, empty_to_undefined: true, opts: { maxLength: 500, placeholder: 'https://www.youtube.com/watch?v=...' } },
+        { __info: 'Pega el link de YouTube o Vimeo y listo. Para Google Maps, Spotify u otros, pega el codigo <iframe> en el campo de abajo.' },
+        { key: 'html', control: 'textarea', label: 'O pega un codigo <iframe> (avanzado)', default: '', optional: true, empty_to_undefined: true, opts: { maxLength: 2000, rows: 4, placeholder: '<iframe src="https://www.youtube.com/embed/..."></iframe>' } },
         { key: 'aspect_ratio', control: 'select', label: 'Proporcion', default: '16/9', opts: { options: 'ASPECT_VIDEO' } },
       ],
     },

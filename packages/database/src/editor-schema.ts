@@ -28,6 +28,52 @@ const EMBED_WHITELIST_REGEX = new RegExp(
 );
 
 // ============================================================
+// FASE D (2a) · Video por URL · builder server-side (la EF es la autoridad)
+// ============================================================
+// Toma una URL de proveedor SOPORTADO (YouTube / Vimeo) y CONSTRUYE el iframe embed canonico,
+// extrayendo SOLO el id seguro hacia un template hardcodeado -> NUNCA pasa la URL cruda al `src`
+// (anti-XSS). Devuelve null si el proveedor no es soportado o la URL es invalida (Spotify / Maps /
+// CodePen siguen disponibles via el paste-iframe legacy `html`). El iframe construido pasa, por
+// diseno, EMBED_WHITELIST_REGEX. Pura (new URL + regex) -> identica en Deno (EF), Node (tests) y
+// Cloudflare Workers (storefront). Es la frontera de confianza: cualquier cosa que no parsee a un
+// id de proveedor conocido se rechaza.
+const YT_ID_RE = /^[A-Za-z0-9_-]{6,20}$/;
+const VIMEO_ID_RE = /^[0-9]{6,12}$/;
+
+export function buildEmbedFromUrl(raw: string): string | null {
+  let u: URL;
+  try { u = new URL(String(raw).trim()); } catch { return null; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  const host = u.hostname.toLowerCase().replace(/^www\./, '');
+  const seg = u.pathname.split('/').filter(Boolean);
+  let src: string | null = null;
+
+  // ---- YouTube ----
+  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+    let id = '';
+    if (seg[0] === 'watch') id = u.searchParams.get('v') || '';
+    else if ((seg[0] === 'embed' || seg[0] === 'shorts' || seg[0] === 'v') && seg[1]) id = seg[1];
+    if (YT_ID_RE.test(id)) src = `https://www.youtube.com/embed/${id}`;
+  } else if (host === 'youtu.be') {
+    const id = seg[0] || '';
+    if (YT_ID_RE.test(id)) src = `https://www.youtube.com/embed/${id}`;
+  }
+  // ---- Vimeo ----
+  else if (host === 'vimeo.com') {
+    const id = seg.filter((s) => /^[0-9]+$/.test(s)).pop() || '';
+    if (VIMEO_ID_RE.test(id)) src = `https://player.vimeo.com/video/${id}`;
+  } else if (host === 'player.vimeo.com') {
+    const id = (seg[0] === 'video' && seg[1]) ? seg[1] : '';
+    if (VIMEO_ID_RE.test(id)) src = `https://player.vimeo.com/video/${id}`;
+  }
+
+  if (!src) return null;
+  return `<iframe src="${src}" width="100%" height="100%" frameborder="0" ` +
+    `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
+    `allowfullscreen loading="lazy" title="Video"></iframe>`;
+}
+
+// ============================================================
 // Enums + sub-schemas compartidos
 // ============================================================
 
@@ -137,12 +183,29 @@ const EspacioProps = z.object({
   altura: TamanioEnum.default('md'),
 });
 
+// FASE D (2a): el video acepta `url` (link de YouTube/Vimeo -> la EF construye el iframe) O `html`
+// (paste-iframe legacy/avanzado para Maps/Spotify/CodePen). Backward-compat: filas viejas con solo
+// `html` siguen validando por EMBED_WHITELIST_REGEX. Al menos uno requerido. Si viene `url`, la EF
+// (validate-section) construye `html` autoritativamente; aca solo validamos que la url SEA parseable
+// a un proveedor soportado (misma funcion que construye -> imposible aceptar lo que no se podria construir).
 const VideoProps = z.object({
-  html: z.string().max(2000).refine(
-    (val) => EMBED_WHITELIST_REGEX.test(val.trim()),
-    'video.html solo permite iframes de YouTube, Vimeo, CodePen, CodeSandbox, Google Maps o Spotify'
-  ),
+  url: z.string().max(500).optional(),
+  html: z.string().max(2000).optional(),
   aspect_ratio: z.enum(['16/9', '4/3', '1/1']).default('16/9'),
+}).superRefine((p, ctx) => {
+  const hasUrl = typeof p.url === 'string' && p.url.trim() !== '';
+  const hasHtml = typeof p.html === 'string' && p.html.trim() !== '';
+  if (!hasUrl && !hasHtml) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'el video necesita un link (YouTube/Vimeo) o un codigo iframe', path: ['url'] });
+    return;
+  }
+  if (hasUrl && buildEmbedFromUrl(p.url!.trim()) === null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'link de video no soportado (pega un link de YouTube o Vimeo)', path: ['url'] });
+  }
+  // Si no hay url, el html legacy/avanzado debe ser un iframe de proveedor permitido.
+  if (!hasUrl && hasHtml && !EMBED_WHITELIST_REGEX.test(p.html!.trim())) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'el iframe no es de un proveedor permitido (YouTube, Vimeo, Maps, Spotify, CodePen, CodeSandbox)', path: ['html'] });
+  }
 });
 
 // ---- B-secciones Lote 1 (2026-06-07) ----
