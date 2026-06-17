@@ -87,18 +87,18 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
 
       let current = 0;
       const setDots = () => dots.forEach((d, i) => d.setAttribute('aria-current', i === current ? 'true' : 'false'));
-      const goTo = (i) => {
-        current = Math.max(0, Math.min(slides.length - 1, i));
-        track.scrollTo({ left: slides[current].offsetLeft - track.offsetLeft, behavior: 'smooth' });
-        setDots();
+      // current = slide bajo el viewport del track, DETERMINISTICO via scrollLeft (cada slide = clientWidth).
+      // Sirve igual para clic/flecha/swipe/scroll manual; sin el "burst" inicial del IntersectionObserver
+      // (donde las 3 slides intersectaban al cargar y current quedaba en la ultima).
+      const syncFromScroll = () => {
+        const i = Math.round(track.scrollLeft / track.clientWidth);
+        if (i !== current) { current = i; setDots(); }
       };
-      // slide visible -> actualiza el punto activo (sirve para swipe/scroll manual tambien).
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) { current = slides.indexOf(e.target); setDots(); }
-        });
-      }, { root: track, threshold: 0.6 });
-      slides.forEach((s) => io.observe(s));
+      track.addEventListener('scroll', syncFromScroll, { passive: true });
+      const goTo = (i) => {
+        const idx = Math.max(0, Math.min(slides.length - 1, i));
+        track.scrollTo({ left: idx * track.clientWidth, behavior: 'smooth' });
+      };
       setDots();
 
       if (prev) prev.addEventListener('click', () => goTo(current - 1));
