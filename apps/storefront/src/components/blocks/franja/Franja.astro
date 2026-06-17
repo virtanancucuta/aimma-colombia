@@ -1,0 +1,110 @@
+---
+// AIMMA · Franja de imagenes · UNIFICADO x4 · FASE F (F-2: render estatico)
+// Banda FULL-BLEED viewport edge-to-edge: `width:100vw; margin-left:calc(50% - 50vw)` rompe el max-width
+// del <main> (3 de 4 plantillas lo capan) + el gutter de .block-inner. El truco funciona porque <main>/
+// .block-inner estan centrados (mx-auto). El overflow del scrollbar lo recorta `body{overflow-x:clip}`
+// (global.css) -> clip, NO hidden (no rompe el nav sticky ni el scroll del editor).
+//
+// Estructura COMPARTIDA x4 (el sabor por plantilla viene de los tokens --ta-* del tema, ej. la fuente
+// del overlay). F-2 renderiza el PRIMER slide (1-3 imagenes lado a lado + gap + overlay opcional + link);
+// el slider (todos los slides, scroll-snap) llega en F-3.
+//
+// Overlay: el recuadro (scrim color_fondo + texto color_texto + borde) se rinde SOLO cuando hay texto
+// (sin texto = imagen limpia). Posicion = grilla 3x3 (vertical align-items / horizontal justify-content).
+import type { Section } from '@aimma/database';
+import SectionShell from '~/components/blocks/_SectionShell.astro';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const p = (section as Extract<Section, { tipo: 'franja' }>).props;
+const slide = p.slides[0];          // F-2: primer slide. F-3 renderea todos en el slider.
+const gap = p.gap ?? 'min';
+---
+
+<SectionShell section={section}>
+  <div class={`franja franja--gap-${gap}`}>
+    <div class="franja__slide">
+      {slide.imagenes.map((img: any) => {
+        const ov = img.overlay && img.overlay.texto ? img.overlay : null;
+        const body = (
+          <Fragment>
+            <img class="franja__img" src={img.url} alt={img.alt ?? ''} loading="lazy" decoding="async" />
+            {ov && (
+              <span class={`franja__ov franja__ov--${ov.posicion ?? 'centro'}`}>
+                <span
+                  class={`franja__ov-txt franja__ov-txt--b-${ov.borde ?? 'ninguno'}`}
+                  style={`--ov-text:${ov.color_texto};--ov-bg:${ov.color_fondo};`}
+                >{ov.texto}</span>
+              </span>
+            )}
+          </Fragment>
+        );
+        return img.link
+          ? <a class="franja__cell" href={img.link}>{body}</a>
+          : <div class="franja__cell">{body}</div>;
+      })}
+    </div>
+  </div>
+</SectionShell>
+
+<style>
+  /* full-bleed viewport edge-to-edge (ver cabecera) */
+  .franja { width: 100vw; margin-left: calc(50% - 50vw); }
+
+  .franja__slide {
+    display: flex;
+    height: clamp(220px, 32vw, 460px);
+  }
+  .franja--gap-none  .franja__slide { gap: 0; }
+  .franja--gap-min   .franja__slide { gap: 4px; }
+  .franja--gap-small .franja__slide { gap: 12px; }
+
+  .franja__cell {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    display: block;
+    overflow: hidden;
+    text-decoration: none;
+  }
+  .franja__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* overlay: contenedor de posicion (3x3). pointer-events:none -> el clic pasa al <a> de la celda. */
+  .franja__ov {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    padding: clamp(1rem, 3vw, 2.5rem);
+    pointer-events: none;
+  }
+  /* recuadro de texto: scrim (color_fondo) + texto (color_texto). */
+  .franja__ov-txt {
+    background: var(--ov-bg);
+    color: var(--ov-text);
+    font-family: var(--ta-font-display, system-ui, sans-serif);
+    font-size: clamp(1rem, 2.4vw, 1.75rem);
+    line-height: 1.2;
+    padding: 0.5em 0.7em;
+    border-radius: 2px;
+    max-width: min(92%, 40ch);
+    text-wrap: balance;
+  }
+  /* borde del recuadro: color = color del texto (default sensato que combina) */
+  .franja__ov-txt--b-fino   { border: 1px solid var(--ov-text); }
+  .franja__ov-txt--b-grueso { border: 3px solid var(--ov-text); }
+
+  /* posicion 3x3 */
+  .franja__ov--arriba-izquierda { align-items: flex-start; justify-content: flex-start; }
+  .franja__ov--arriba-centro    { align-items: flex-start; justify-content: center; }
+  .franja__ov--arriba-derecha   { align-items: flex-start; justify-content: flex-end; }
+  .franja__ov--medio-izquierda  { align-items: center;     justify-content: flex-start; }
+  .franja__ov--centro           { align-items: center;     justify-content: center; }
+  .franja__ov--medio-derecha    { align-items: center;     justify-content: flex-end; }
+  .franja__ov--abajo-izquierda  { align-items: flex-end;   justify-content: flex-start; }
+  .franja__ov--abajo-centro     { align-items: flex-end;   justify-content: center; }
+  .franja__ov--abajo-derecha    { align-items: flex-end;   justify-content: flex-end; }
+  /* centro horizontal -> texto centrado */
+  .franja__ov--arriba-centro .franja__ov-txt,
+  .franja__ov--centro .franja__ov-txt,
+  .franja__ov--abajo-centro .franja__ov-txt { text-align: center; }
+</style>

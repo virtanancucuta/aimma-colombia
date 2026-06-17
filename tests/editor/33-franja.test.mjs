@@ -56,6 +56,17 @@ test('defaults: gap=min, autorotar=false, overlay colores/posicion', () => {
   assert.equal(ov.borde, 'ninguno');
 });
 
+test('overlay: las 9 posiciones de la grilla 3x3 validan', () => {
+  for (const posicion of [
+    'arriba-izquierda', 'arriba-centro', 'arriba-derecha',
+    'medio-izquierda', 'centro', 'medio-derecha',
+    'abajo-izquierda', 'abajo-centro', 'abajo-derecha',
+  ]) {
+    assert.ok(SectionSchema.safeParse(sec({ slides: [slide([img({ texto: 'x', posicion })])] })).success, posicion);
+  }
+  assert.ok(!SectionSchema.safeParse(sec({ slides: [slide([img({ texto: 'x', posicion: 'centro-centro' })])] })).success, 'posicion invalida');
+});
+
 test('retrocompat: una seccion existente (sin franja) valida igual (aditivo)', () => {
   assert.ok(SectionSchema.safeParse({ id: 'sec_t00001', tipo: 'texto', ancho: 'completo',
     fondo: { tipo: 'transparente', valor: '' }, padding: 'md', props: { contenido: '<p>hola</p>' } }).success);

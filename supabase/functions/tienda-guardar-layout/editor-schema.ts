@@ -384,7 +384,12 @@ const FRANJA_LINK_RE = /^(https:\/\/|mailto:|tel:)/;
 
 const FranjaOverlay = z.object({
   texto: z.string().max(160).optional(),
-  posicion: z.enum(['centro', 'arriba-izquierda', 'arriba-derecha', 'abajo-izquierda', 'abajo-centro', 'abajo-derecha']).default('centro'),
+  // Grilla 3x3 (vertical x horizontal). 'centro' = celda del medio. Default 'centro'.
+  posicion: z.enum([
+    'arriba-izquierda', 'arriba-centro', 'arriba-derecha',
+    'medio-izquierda', 'centro', 'medio-derecha',
+    'abajo-izquierda', 'abajo-centro', 'abajo-derecha',
+  ]).default('centro'),
   color_texto: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').default('#ffffff'),
   color_fondo: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').default('rgba(0,0,0,0.4)'), // scrim
   borde: z.enum(['ninguno', 'fino', 'grueso']).default('ninguno'),

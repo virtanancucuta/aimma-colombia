@@ -48,6 +48,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* FASE F: secciones full-bleed (`.franja` usa width:100vw) sobresalen por el ancho del scrollbar.
+     `clip` lo recorta SIN crear un contenedor de scroll -> NO rompe el nav sticky ni scrollIntoView
+     (a diferencia de overflow:hidden). Inerte para el contenido existente (nada mas desborda en X). */
+  overflow-x: clip;
 }
 
 /* Mejor LCP: imagenes con dimensions implicitas */

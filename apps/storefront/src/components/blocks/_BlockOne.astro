@@ -45,6 +45,9 @@ import Logos from '~/components/blocks/logos/Logos.astro';
 import CategoriasDestacadas from '~/components/blocks/categorias_destacadas/CategoriasDestacadas.astro';
 import ProductoDestacado from '~/components/blocks/producto_destacado/ProductoDestacado.astro';
 
+// FASE F: franja (banda full-bleed de imagenes, unificada x4)
+import Franja from '~/components/blocks/franja/Franja.astro';
+
 // Agnosticos (sin variante por plantilla)
 import Espacio from '~/components/blocks/espaciador/Espaciador.astro';
 import Video from '~/components/blocks/video/Video.astro';
@@ -72,6 +75,7 @@ const UNIFIED = {
   logos: Logos,
   categorias_destacadas: CategoriasDestacadas,
   producto_destacado: ProductoDestacado,
+  franja: Franja,
 } as const;
 
 const BLOCKS = {
