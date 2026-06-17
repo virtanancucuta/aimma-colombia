@@ -339,15 +339,19 @@
 
     for (let k = 0; k < columnas; k++) {
       if (columnas > 1) wrap.appendChild(C.el('div', { class: 'ed-col-label' }, 'Columna ' + (k + 1)));
+      // FASE D (DnD): contenedor Sortable POR columna. data-col -> onEnd conoce la columna destino.
+      // min-height (CSS .ed-childcol) hace que una columna VACIA siga siendo drop-target.
+      const colBox = C.el('div', { class: 'ed-childcol', 'data-col': String(k) });
       const enCol = bloques.filter((b) => colOf(b) === k);
       enCol.forEach((child, ci) => {
         const def = defsFor(child.tipo);
         const card = listItemCard(C, (def ? def.label : child.tipo), {
-          idx: ci, total: enCol.length,
+          idx: ci, total: enCol.length, handle: true,   // grip de arrastre (unico disparador del DnD)
           onUp: () => { ES.reorderChildBlock(parentId, child.id, -1); rebuild(); },
           onDown: () => { ES.reorderChildBlock(parentId, child.id, +1); rebuild(); },
           onRemove: bloques.length > 1 ? () => { ES.removeChildBlock(parentId, child.id); rebuild(); } : null,
         });
+        card.root.setAttribute('data-child-id', child.id);   // onEnd lee el id arrastrado
         if (columnas > 1) {
           card.body.appendChild(C.select('Columna', String(colOf(child)), colOpts,
             v => { ES.updateChildBase(parentId, child.id, 'columna', parseInt(v, 10) || 0); rebuild(); }));
@@ -356,8 +360,10 @@
         if (ES.selection && ES.selection.childId === child.id) card.root.classList.add('ed-list-item--sel');
         const ct = childTarget(parentId, child, ES);
         if (def) def.campos.forEach((cf) => renderCampo(card.body, ct, cf, C));
-        wrap.appendChild(card.root);
+        colBox.appendChild(card.root);
       });
+      wrap.appendChild(colBox);
+      initChildSortable(colBox, parentId);
       if (bloques.length < MAX) {
         wrap.appendChild(C.primaryButton('+ Agregar bloque', () => {
           window.TiendaIA.editorModalCatalog.open((tipo) => { ES.addChildBlock(parentId, tipo, k); rebuild(); }, CHILD_TIPOS);
@@ -378,6 +384,28 @@
     return next;
   }
 
+  // FASE D (DnD): hace arrastrable una columna del sub-editor. group UNICO por parentId -> cruzar
+  // contenedores distintos es ESTRUCTURALMENTE imposible (ademas el sub-editor muestra 1 contenedor a
+  // la vez). handle: el grip es el unico disparador (no choca con clic-seleccionar ni con ↑↓ de D4).
+  // onEnd: id del card arrastrado + columna destino (data-col del contenedor donde cayo) + newIndex.
+  // En jsdom (tests) window.Sortable no existe -> no-op (la estructura DOM queda, el DnD se prueba en vivo).
+  function initChildSortable(colBox, parentId) {
+    if (!window.Sortable) return;
+    new window.Sortable(colBox, {
+      group: 'cont-' + parentId,
+      handle: '.ed-child-handle',
+      animation: 160,
+      ghostClass: 'ed-childcard--ghost',
+      onEnd: function (evt) {
+        const childId = evt.item && evt.item.getAttribute('data-child-id');
+        const toCol = evt.to ? parseInt(evt.to.getAttribute('data-col'), 10) : NaN;
+        if (!childId || isNaN(toCol)) { rebuild(); return; }
+        window.TiendaIA.editorState.moveChildToColumn(parentId, childId, toCol, evt.newIndex);
+        rebuild();
+      },
+    });
+  }
+
   function listItemCard(C, title, opts) {
     const body = C.el('div', { class: 'ed-list-item__body' });
     const actions = [];
@@ -390,10 +418,13 @@
     if (opts.onRemove) {
       actions.push(C.el('button', { type: 'button', class: 'ed-list-item__act ed-list-item__act--danger', title: 'Quitar', onClick: opts.onRemove }, '×'));
     }
-    const head = C.el('div', { class: 'ed-list-item__head' }, [
+    const headKids = [
       C.el('span', { class: 'ed-list-item__title' }, title),
       C.el('div', { class: 'ed-list-item__acts' }, actions),
-    ]);
+    ];
+    // FASE D (DnD): grip de arrastre al inicio del head (solo cuando opts.handle, p.ej. cards de hijo).
+    if (opts.handle) headKids.unshift(C.el('span', { class: 'ed-child-handle', title: 'Arrastrar para mover de columna', 'aria-hidden': 'true' }, '⠿'));
+    const head = C.el('div', { class: 'ed-list-item__head' }, headKids);
     const root = C.el('div', { class: 'ed-list-item' }, [head, body]);
     return { root, body };
   }
