@@ -339,7 +339,8 @@ export const HijoSchema = z.discriminatedUnion('tipo', [
   ChildBase.extend({ tipo: z.literal('imagen_con_texto'), props: ImagenConTextoProps }),
   ChildBase.extend({ tipo: z.literal('cita'), props: CitaProps }),
   ChildBase.extend({ tipo: z.literal('video'), props: VideoProps }),
-  ChildBase.extend({ tipo: z.literal('espacio'), props: EspacioProps }),
+  // FASE D · P2-2: 'espacio' REMOVIDO de los hijos (redundante: la columna ya separa con row-gap;
+  // verificado en prod: 0 hijos 'espacio'). 'espacio' SIGUE como seccion top-level (SectionSchema).
   ChildBase.extend({ tipo: z.literal('producto_destacado'), props: ProductoDestacadoProps }),
 ]);
 

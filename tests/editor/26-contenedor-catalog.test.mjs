@@ -30,10 +30,11 @@ test('Agregar bloque abre el catalogo FILTRADO (solo tipos hoja; sin contenedor/
   const tipos = cards.map(c => c.getAttribute('data-tipo'));
   assert.ok(tipos.length > 0, 'el catalogo no muestra cards');
   // Tipos hoja permitidos presentes; tipos NO permitidos ausentes.
-  for (const t of ['texto', 'imagen', 'cita', 'botones', 'producto_destacado', 'espacio', 'video', 'imagen_con_texto']) {
+  // FASE D · P2-2: 'espacio' YA NO es tipo hijo (redundante con el row-gap) -> excluido del catalogo.
+  for (const t of ['texto', 'imagen', 'cita', 'botones', 'producto_destacado', 'video', 'imagen_con_texto']) {
     assert.ok(tipos.includes(t), `falta el tipo hijo permitido "${t}"`);
   }
-  for (const t of ['contenedor', 'banner', 'productos', 'galeria', 'formulario', 'categorias_destacadas']) {
+  for (const t of ['espacio', 'contenedor', 'banner', 'productos', 'galeria', 'formulario', 'categorias_destacadas']) {
     assert.ok(!tipos.includes(t), `el tipo NO permitido "${t}" no deberia estar en el catalogo de bloques`);
   }
 });

@@ -160,4 +160,18 @@ const contenidoSafe = normalizeVoidEls(sanitizeHtml(p.contenido, toSanitizeHtml(
     padding-right: 0.08em;
     margin-top: 0.04em;
   }
+
+  /* ===== FASE D · P2-4: texto size 'xl' column-aware dentro de un CONTENEDOR =====
+     .block-text--size-xl (blocks.css) usa clamp(...3vw...) por VIEWPORT -> tamano-hero en columna
+     angosta. Cap por ANCHO DE COLUMNA (cqi), mismo molde que la cita (1c). ADITIVO + DORMIDO standalone
+     (sin ancestro aimma-col no aplica -> el clamp(vw) original queda intacto). */
+  @container aimma-col (max-width: 520px) {
+    .ic-texto.block-text--size-xl,
+    .fb-texto.block-text--size-xl,
+    .ma-texto.block-text--size-xl,
+    .em-texto.block-text--size-xl {
+      font-size: clamp(1.5rem, 8cqi, 2.25rem);
+      overflow-wrap: break-word;
+    }
+  }
 </style>
