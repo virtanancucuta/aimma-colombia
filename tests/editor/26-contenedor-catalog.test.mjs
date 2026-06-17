@@ -63,3 +63,18 @@ test('catalogo SIN filtro (agregar seccion top-level) SI incluye contenedor', ()
   const tipos = [...win.document.querySelectorAll('.ed-catalog-card[data-tipo]')].map(c => c.getAttribute('data-tipo'));
   assert.ok(tipos.includes('contenedor'), 'el catalogo general debe incluir contenedor');
 });
+
+// GUARD (FASE F): el catalogo tiene una lista HARDCODED (ESENCIALES + AVANZADOS); si se agrega un tipo a
+// section-defs y NO al catalogo, queda inalcanzable (el bug de franja). Este test exige que TODO tipo de
+// section-defs sea alcanzable en el catalogo general (esenciales + "Mas opciones").
+test('TODO tipo de section-defs es alcanzable en el catalogo general', () => {
+  const win = bootWindow(['editor-controls.js', 'section-defs.js', 'editor-modal-catalog.js']);
+  const defs = win.TiendaIA.editorSectionDefs.defs;
+  win.TiendaIA.editorModalCatalog.open(() => {});
+  const more = win.document.querySelector('#ed-catalog-more');
+  if (more) more.click();
+  const enCatalogo = new Set([...win.document.querySelectorAll('.ed-catalog-card[data-tipo]')].map(c => c.getAttribute('data-tipo')));
+  for (const tipo of Object.keys(defs)) {
+    assert.ok(enCatalogo.has(tipo), `el tipo "${tipo}" NO esta en el catalogo general (falta en ESENCIALES/AVANZADOS de editor-modal-catalog.js)`);
+  }
+});
