@@ -140,3 +140,17 @@ test('validate: hijo video de un contenedor con url -> html construido', () => {
   const out = validateAndSanitizeSection(cont([child({ url: 'https://vimeo.com/123456789', aspect_ratio: '16/9' })]));
   assert.ok(out.props.bloques[0].props.html && out.props.bloques[0].props.html.startsWith(VI), 'el hijo video deberia construir su iframe');
 });
+
+// FASE D (2b): precedencia mp4_url -> con un MP4, NO se construye html desde url (el render muestra el <video>).
+test('validate: con mp4_url + url, NO construye html (mp4 precede)', () => {
+  const out = validateAndSanitizeSection(sec({ mp4_url: MP4_OK, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', aspect_ratio: '16/9' }));
+  assert.equal(out.props.mp4_url, MP4_OK, 'mp4_url preservado');
+  assert.ok(!out.props.html, 'no construye html desde url cuando hay mp4_url');
+});
+
+test('validate: hijo video con mp4_url -> tampoco construye html (precedencia)', () => {
+  const out = validateAndSanitizeSection(cont([child({ mp4_url: MP4_OK, url: 'https://vimeo.com/123456789', aspect_ratio: '16/9' })]));
+  const b = out.props.bloques[0];
+  assert.equal(b.props.mp4_url, MP4_OK);
+  assert.ok(!b.props.html, 'el hijo con mp4_url no construye html');
+});

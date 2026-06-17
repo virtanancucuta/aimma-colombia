@@ -211,6 +211,10 @@
       context: null, render_strategy: 'unified',
       ancho_default: 'completo', padding_default: 'md',
       campos: [
+        // FASE D (2b): subi tu propio MP4 a R2 (fuente PRIORITARIA sobre url/html). Control de subida
+        // directa (presign + PUT). SIN default -> el default del video queda identico ({html:'', aspect_ratio}).
+        { key: 'mp4_url', control: 'video-upload', label: 'Subí tu propio video (MP4, máximo 15 MB)', optional: true, empty_to_undefined: true },
+        { __info: 'O, si preferís, pegá un link de YouTube o Vimeo abajo. Si subís un MP4, ese tiene prioridad.' },
         // FASE D (2a): link de proveedor (YouTube/Vimeo) -> la EF construye el iframe. SIN default
         // (createSectionDefault no lo incluye -> el default del video queda identico: {html:'', aspect_ratio}).
         { key: 'url', control: 'text', label: 'Link del video (YouTube o Vimeo)', optional: true, empty_to_undefined: true, opts: { maxLength: 500, placeholder: 'https://www.youtube.com/watch?v=...', validate: videoUrlValidate } },

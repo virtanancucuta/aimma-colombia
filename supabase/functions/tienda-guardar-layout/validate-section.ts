@@ -11,11 +11,12 @@ export function validateAndSanitizeSection(raw: unknown): Section {
   const s = SectionSchema.parse(raw);
   if (s.tipo === 'texto' && s.props && typeof s.props.contenido === 'string') {
     s.props.contenido = normalizeVoidEls(sanitizeHtml(s.props.contenido, RICHTEXT_OPTS));
-  } else if (s.tipo === 'video' && s.props && typeof s.props.url === 'string' && s.props.url.trim()) {
+  } else if (s.tipo === 'video' && s.props && !s.props.mp4_url && typeof s.props.url === 'string' && s.props.url.trim()) {
     // FASE D (2a): la EF es la AUTORIDAD — construye el iframe canonico desde la url de proveedor
     // (YouTube/Vimeo) ya validada por el schema. Legacy/avanzado (solo `html`) no entra aca -> conserva
     // su iframe tal cual. buildEmbedFromUrl no puede devolver null aca (el schema ya lo valido), pero
-    // si lo hiciera no tocamos html (defensivo).
+    // si lo hiciera no tocamos html (defensivo). FASE D (2b): si hay mp4_url (fuente prioritaria) NO se
+    // construye el embed (el render muestra el <video>; el url/html quedan como fallback latente).
     const built = buildEmbedFromUrl(s.props.url.trim());
     if (built) s.props.html = built;
   } else if (s.tipo === 'contenedor' && s.props && Array.isArray(s.props.bloques)) {
@@ -26,7 +27,7 @@ export function validateAndSanitizeSection(raw: unknown): Section {
     for (const b of s.props.bloques) {
       if (b && b.tipo === 'texto' && b.props && typeof b.props.contenido === 'string') {
         b.props.contenido = normalizeVoidEls(sanitizeHtml(b.props.contenido, RICHTEXT_OPTS));
-      } else if (b && b.tipo === 'video' && b.props && typeof b.props.url === 'string' && b.props.url.trim()) {
+      } else if (b && b.tipo === 'video' && b.props && !b.props.mp4_url && typeof b.props.url === 'string' && b.props.url.trim()) {
         const built = buildEmbedFromUrl(b.props.url.trim());
         if (built) b.props.html = built;
       }
