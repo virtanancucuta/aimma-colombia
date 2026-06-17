@@ -36,3 +36,14 @@ test('PreviewChrome: las 4 acciones estructurales presentes', async () => {
     expect(html).toContain(a);
   }
 });
+
+// Condicion #2: secciones full-bleed (franja width:100vw) desbordan su wrapper content-width;
+// el chrome debe anclarse al hijo [data-fullbleed] (la banda real) y no al wrapper. Contrato a
+// nivel source (el dibujo runtime left:0/width:viewport lo prueba Playwright). Cierra que el rect
+// para posicionar el recuadro consulte data-fullbleed.
+test('PreviewChrome: ancla el recuadro al hijo [data-fullbleed] si existe (condicion #2)', async () => {
+  const html = await render();
+  expect(html).toContain('data-fullbleed');
+  // el rect que posiciona el recuadro sale de (fb || el), no solo del wrapper.
+  expect(html).toMatch(/\(fb\s*\|\|\s*el\)\.getBoundingClientRect\(\)/);
+});

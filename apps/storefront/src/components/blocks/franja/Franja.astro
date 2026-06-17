@@ -31,7 +31,7 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
 ---
 
 <SectionShell section={section}>
-  <div class={`franja franja--gap-${gap}${isSlider ? ' franja--slider' : ''}`} {...sliderAttrs}>
+  <div class={`franja franja--gap-${gap}${isSlider ? ' franja--slider' : ''}`} data-fullbleed {...sliderAttrs}>
     <div class="franja__track" {...trackAttrs}>
       {slides.map((slide: any) => (
         <div class="franja__slide">

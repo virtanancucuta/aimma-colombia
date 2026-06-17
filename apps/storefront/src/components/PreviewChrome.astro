@@ -81,7 +81,12 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
       if (!selId || !root) return;
       var el = document.querySelector('[data-section-id="' + selId + '"]');
       if (!el) { clear(); return; }
-      var r = el.getBoundingClientRect();
+      // Condicion #2: las secciones full-bleed (franja: width:100vw) DESBORDAN su wrapper
+      // content-width; el rect del wrapper sub-enmarca la banda visible (~112px/lado a 1440).
+      // Si la seccion marca un hijo [data-fullbleed], anclamos el recuadro a ESE rect (la banda
+      // real: left:0 / width:viewport). Solo afecta el dibujo; los botones operan sobre la seccion.
+      var fb = el.querySelector('[data-fullbleed]');
+      var r = (fb || el).getBoundingClientRect();
       root.style.display = 'block';
       root.style.top = (r.top + (window.scrollY || window.pageYOffset || 0)) + 'px';
       root.style.left = (r.left + (window.scrollX || window.pageXOffset || 0)) + 'px';
