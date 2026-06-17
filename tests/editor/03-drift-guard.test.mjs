@@ -37,6 +37,11 @@ function itemShape(v) {
 // que NO es 'list' -> el drift-guard no lo trata como lista de sub-campos). El guard re-enganchado
 // valida que sus campos {columnas,gap,alineacion_vertical,bloques} cuadran con el Zod.
 
+// FASE D (2b): `mp4_url` YA esta en el Zod (schema del MP4 a R2 listo) pero su control de subida (upload
+// modal) todavia NO esta en section-defs -> se EXCLUYE del drift hasta que aterrice la UI del editor. Se
+// re-engancha quitando esta entrada (mismo patron que el PENDING_DEFS de contenedor en D1).
+const PENDING_FIELDS = { video: new Set(['mp4_url']) };
+
 function zodByTipo() {
   const out = {};
   for (const opt of SectionSchema._def.options) {
@@ -48,6 +53,7 @@ function zodByTipo() {
     const propsShape = propsObj.shape;
     const fields = {}, items = {};
     for (const [k, v] of Object.entries(propsShape)) {
+      if (PENDING_FIELDS[tipo] && PENDING_FIELDS[tipo].has(k)) continue; // pendiente: UI editor sin construir
       fields[k] = v._def.typeName === 'ZodOptional';
       const it = itemShape(v);
       if (it) items[k] = it;

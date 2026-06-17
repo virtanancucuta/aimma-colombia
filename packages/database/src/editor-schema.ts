@@ -183,20 +183,36 @@ const EspacioProps = z.object({
   altura: TamanioEnum.default('md'),
 });
 
+// FASE D (2b): MP4 subido a Cloudflare R2. La URL final guardada DEBE ser del dominio publico de R2
+// con ruta <tienda_id:uuid>/<archivo:uuid>.mp4. Anti-SSRF: el <video src> JAMAS puede apuntar a otro
+// host; el path lo genera server-side la EF de presign (tienda-presign-video), no el cliente. Literal
+// (no env) -> mirror EF byte-identico. El navegador sube por presigned PUT; aca validamos la URL final.
+const R2_UUID_SRC = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const R2_VIDEO_URL_REGEX = new RegExp(`^https:\\/\\/videos\\.aimma\\.com\\.co\\/${R2_UUID_SRC}\\/${R2_UUID_SRC}\\.mp4$`);
+
 // FASE D (2a): el video acepta `url` (link de YouTube/Vimeo -> la EF construye el iframe) O `html`
-// (paste-iframe legacy/avanzado para Maps/Spotify/CodePen). Backward-compat: filas viejas con solo
-// `html` siguen validando por EMBED_WHITELIST_REGEX. Al menos uno requerido. Si viene `url`, la EF
-// (validate-section) construye `html` autoritativamente; aca solo validamos que la url SEA parseable
-// a un proveedor soportado (misma funcion que construye -> imposible aceptar lo que no se podria construir).
+// (paste-iframe legacy/avanzado para Maps/Spotify/CodePen). FASE D (2b): O `mp4_url` (archivo subido a
+// R2). Backward-compat: filas viejas con solo `html` siguen validando por EMBED_WHITELIST_REGEX. Al menos
+// una fuente requerida. PRECEDENCIA: mp4_url es la fuente si esta presente (la modal setea UNA sola). Si
+// viene `url`, la EF construye `html` autoritativamente; aca validamos que sea parseable a un proveedor.
 const VideoProps = z.object({
   url: z.string().max(500).optional(),
   html: z.string().max(2000).optional(),
+  mp4_url: z.string().max(200).optional(),
   aspect_ratio: z.enum(['16/9', '4/3', '1/1']).default('16/9'),
 }).superRefine((p, ctx) => {
   const hasUrl = typeof p.url === 'string' && p.url.trim() !== '';
   const hasHtml = typeof p.html === 'string' && p.html.trim() !== '';
-  if (!hasUrl && !hasHtml) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'el video necesita un link (YouTube/Vimeo) o un codigo iframe', path: ['url'] });
+  const hasMp4 = typeof p.mp4_url === 'string' && p.mp4_url.trim() !== '';
+  if (!hasUrl && !hasHtml && !hasMp4) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'el video necesita un archivo MP4, un link (YouTube/Vimeo) o un codigo iframe', path: ['url'] });
+    return;
+  }
+  // mp4_url es la fuente prioritaria: si esta, solo validamos su dominio (anti-SSRF) y cortamos.
+  if (hasMp4) {
+    if (!R2_VIDEO_URL_REGEX.test(p.mp4_url!.trim())) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'el archivo de video no es valido', path: ['mp4_url'] });
+    }
     return;
   }
   if (hasUrl && buildEmbedFromUrl(p.url!.trim()) === null) {

@@ -90,6 +90,39 @@ test('schema: html iframe NO-proveedor -> 400', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// FASE D (2b) · VideoProps.mp4_url (MP4 subido a R2) · regex anti-SSRF
+// ─────────────────────────────────────────────────────────────
+const UU = '123e4567-e89b-12d3-a456-426614174000';
+const MP4_OK = `https://videos.aimma.com.co/${UU}/${UU}.mp4`;
+
+test('schema: {mp4_url valido del dominio R2} OK (top-level + hijo de contenedor)', () => {
+  assert.ok(SectionSchema.safeParse(sec({ mp4_url: MP4_OK, aspect_ratio: '16/9' })).success, 'mp4_url valido top-level');
+  assert.ok(SectionSchema.safeParse(cont([child({ mp4_url: MP4_OK, aspect_ratio: '16/9' })])).success, 'mp4_url valido en hijo');
+});
+
+test('schema: mp4_url solo (sin url ni html) es fuente valida', () => {
+  const r = SectionSchema.safeParse(sec({ mp4_url: MP4_OK }));
+  assert.ok(r.success, 'mp4_url solo deberia bastar como fuente');
+});
+
+test('schema: mp4_url adversarial (anti-SSRF) -> 400', () => {
+  for (const bad of [
+    `https://evil.com/${UU}/${UU}.mp4`,                          // host ajeno
+    `https://videos.aimma.com.co.evil.com/${UU}/${UU}.mp4`,      // spoof de host
+    `https://evil.videos.aimma.com.co/${UU}/${UU}.mp4`,          // subdominio prefijado
+    `http://videos.aimma.com.co/${UU}/${UU}.mp4`,                // http (no https)
+    `https://videos.aimma.com.co/${UU}/${UU}.exe`,               // no .mp4
+    `https://videos.aimma.com.co/../../etc/passwd.mp4`,          // path traversal (no uuid)
+    `https://videos.aimma.com.co/${UU}/${UU}.mp4?x=1`,           // query extra (no anclado)
+    `https://videos.aimma.com.co/${UU}/${UU}.mp4/evil`,          // sufijo de ruta
+    `https://videos.aimma.com.co/${UU}.mp4`,                     // falta el segmento tienda
+    `javascript:alert(1)//videos.aimma.com.co/${UU}/${UU}.mp4`,  // esquema raro
+  ]) {
+    assert.ok(!SectionSchema.safeParse(sec({ mp4_url: bad, aspect_ratio: '16/9' })).success, `deberia rechazar: ${bad}`);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // validateAndSanitizeSection · la EF construye html desde url (autoridad)
 // ─────────────────────────────────────────────────────────────
 test('validate: video top-level con url -> html construido', () => {
