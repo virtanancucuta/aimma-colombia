@@ -37,6 +37,7 @@
   function rebuild() {
     const ES = window.TiendaIA.editorState;
     const sel = ES.selection;
+    destroyChildSortables();   // FASE D (DnD pulido): destruye los Sortable previos ANTES de detach -> sin leak
     state.container.innerHTML = '';
 
     if (!sel) {
@@ -384,26 +385,55 @@
     return next;
   }
 
-  // FASE D (DnD): hace arrastrable una columna del sub-editor. group UNICO por parentId -> cruzar
-  // contenedores distintos es ESTRUCTURALMENTE imposible (ademas el sub-editor muestra 1 contenedor a
-  // la vez). handle: el grip es el unico disparador (no choca con clic-seleccionar ni con ↑↓ de D4).
-  // onEnd: id del card arrastrado + columna destino (data-col del contenedor donde cayo) + newIndex.
-  // En jsdom (tests) window.Sortable no existe -> no-op (la estructura DOM queda, el DnD se prueba en vivo).
+  // FASE D (DnD pulido): instancias Sortable VIVAS -> se destruyen en cada rebuild antes de detach
+  // (sin leak; mismo patron que el sidebar, editor-sidebar.js:65). En jsdom no hay window.Sortable.
+  let childSortables = [];
+  function destroyChildSortables() {
+    childSortables.forEach(function (s) { try { s.destroy(); } catch (e) {} });
+    childSortables = [];
+  }
+
+  // Hace arrastrable una columna del sub-editor. group UNICO por parentId -> cruzar contenedores =
+  // ESTRUCTURALMENTE imposible (+ el sub-editor muestra 1 contenedor a la vez). handle: el grip es el
+  // UNICO disparador (no choca con clic-seleccionar ni con ↑↓ de D4). forceFallback: Sortable maneja el
+  // drag por pointer -> auto-scroll FIABLE del panel + clon de arrastre estilizable. scroll apuntado a
+  // .ed-inspector (el que realmente scrollea, no la lista). onMove: resalta la columna destino.
+  // onEnd: columna destino (data-col) + newIndex -> moveChildToColumn (op INTACTO).
   function initChildSortable(colBox, parentId) {
     if (!window.Sortable) return;
-    new window.Sortable(colBox, {
+    const scrollEl = document.getElementById('editor-inspector') || true;
+    const s = new window.Sortable(colBox, {
       group: 'cont-' + parentId,
       handle: '.ed-child-handle',
       animation: 160,
+      forceFallback: true,
+      fallbackClass: 'ed-childcard--drag',
+      chosenClass: 'ed-childcard--chosen',
       ghostClass: 'ed-childcard--ghost',
+      scroll: scrollEl,
+      scrollSensitivity: 60,
+      scrollSpeed: 12,
+      bubbleScroll: true,
+      onMove: function (evt) {
+        // resalta SOLO la columna destino bajo el cursor (limpia las demas).
+        const prev = document.querySelectorAll('.ed-childcol--over');
+        for (let i = 0; i < prev.length; i++) prev[i].classList.remove('ed-childcol--over');
+        if (evt.to) evt.to.classList.add('ed-childcol--over');
+        return true;
+      },
       onEnd: function (evt) {
+        const over = document.querySelectorAll('.ed-childcol--over');
+        for (let i = 0; i < over.length; i++) over[i].classList.remove('ed-childcol--over');
         const childId = evt.item && evt.item.getAttribute('data-child-id');
         const toCol = evt.to ? parseInt(evt.to.getAttribute('data-col'), 10) : NaN;
         if (!childId || isNaN(toCol)) { rebuild(); return; }
+        // INVARIANTE: bajo forceFallback evt.to/evt.newIndex tienen la MISMA semantica que el drag
+        // nativo (Sortable los normaliza) -> el calculo columna+indice NO cambia.
         window.TiendaIA.editorState.moveChildToColumn(parentId, childId, toCol, evt.newIndex);
         rebuild();
       },
     });
+    childSortables.push(s);
   }
 
   function listItemCard(C, title, opts) {
