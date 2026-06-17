@@ -7,8 +7,9 @@
 // SLIDER (F-3): 1 slide = panel estatico. 2-3 slides = carrusel con MEJORA PROGRESIVA:
 //   - Base (sin JS): track scroll-snap (scroll-snap-type:x mandatory + snap-align) = tira scrolleable
 //     funcional (swipe en mobile, scrollbar en desktop). Las flechas/puntos quedan OCULTAS sin JS.
-//   - Mejorado (JS, clase .franja--js): oculta el scrollbar, muestra flechas + puntos (activo via
-//     IntersectionObserver), y auto-rotar OPCIONAL que RESPETA prefers-reduced-motion (no rota) y PAUSA
+//   - Mejorado (JS, clase .franja--js): muestra flechas + puntos (el punto activo se deriva de
+//     track.scrollLeft, deterministico para clic/flecha/swipe/scroll), y auto-rotar OPCIONAL que
+//     RESPETA prefers-reduced-motion (no rota) y PAUSA
 //     en hover/focus/interaccion (condicion #3). Sin libreria. La logica vive en el <script> bundleado.
 //
 // Estructura COMPARTIDA x4 (sabor por tokens --ta-*). Overlay: recuadro (scrim color_fondo + texto
@@ -38,7 +39,7 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
             const ov = img.overlay && img.overlay.texto ? img.overlay : null;
             const cellBody = (
               <Fragment>
-                <img class="franja__img" src={img.url} alt={img.alt ?? ''} loading="lazy" decoding="async" />
+                <img class="franja__img" src={img.url} alt={img.alt ?? ''} decoding="async" />
                 {ov && (
                   <span class={`franja__ov franja__ov--${ov.posicion ?? 'centro'}`}>
                     <span class={`franja__ov-txt franja__ov-txt--b-${ov.borde ?? 'ninguno'}`} style={`--ov-text:${ov.color_texto};--ov-bg:${ov.color_fondo};`}>{ov.texto}</span>
@@ -130,7 +131,9 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
   .franja { position: relative; width: 100vw; margin-left: calc(50% - 50vw); }
 
   .franja__track { display: flex; }
-  .franja__slide { display: flex; height: clamp(220px, 32vw, 460px); }
+  /* width:100% es CRITICO fuera del slider: sin el, el slide queda content-width y con 1 imagen chica
+     la banda colapsa al ancho de la imagen (bug #1). Con 100% el slide siempre llena el track. */
+  .franja__slide { display: flex; width: 100%; height: clamp(220px, 32vw, 460px); }
 
   /* gap ENTRE imagenes de un slide */
   .franja--gap-none  .franja__slide { gap: 0; }
@@ -150,6 +153,9 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
     font-family: var(--ta-font-display, system-ui, sans-serif);
     font-size: clamp(1rem, 2.4vw, 1.75rem); line-height: 1.2;
     padding: 0.5em 0.7em; border-radius: 2px; max-width: min(92%, 40ch); text-wrap: balance;
+    /* #6: sombra sutil SIEMPRE -> el texto (tipicamente blanco) se lee sobre cualquier foto aunque el
+       velo sea suave/transparente. Discreta para no arruinar el caso de velo claro + texto oscuro. */
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
   }
   .franja__ov-txt--b-fino   { border: 1px solid var(--ov-text); }
   .franja__ov-txt--b-grueso { border: 3px solid var(--ov-text); }
@@ -176,9 +182,11 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
   @media (prefers-reduced-motion: reduce) {
     .franja--slider .franja__track { scroll-behavior: auto; }
   }
-  /* JS-enhanced: oculta el scrollbar (sin JS queda visible = tira scrolleable funcional) */
-  .franja--js .franja__track { scrollbar-width: none; -ms-overflow-style: none; }
-  .franja--js .franja__track::-webkit-scrollbar { display: none; }
+  /* #8: oculta el scrollbar para TODO slider (independiente de franja--js), asi nunca reaparece la barra
+     fea. Mobile = swipe; con JS = flechas/puntos. (Desktop sin-JS pierde el scroll manual: edge case raro
+     -> el script va bundleado y carga en la practica.) */
+  .franja--slider .franja__track { scrollbar-width: none; -ms-overflow-style: none; }
+  .franja--slider .franja__track::-webkit-scrollbar { display: none; }
 
   /* flechas + puntos: OCULTOS sin JS (no botones muertos); revelados con .franja--js */
   .franja__arrow, .franja__dots { display: none; }

@@ -3,8 +3,12 @@
 // link envuelve la celda. Estructura COMPARTIDA x4 (plantilla-agnostica). El CSS full-bleed (width:100vw)
 // vive en <style> (lo valida el build + el OK visual x4); aca assertimos el HTML.
 import { describe, test, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { renderNormalized, makeSection, makeTienda } from './helpers/render-harness.ts';
 import Franja from '../src/components/blocks/franja/Franja.astro';
+
+const FRANJA_SRC = readFileSync(fileURLToPath(new URL('../src/components/blocks/franja/Franja.astro', import.meta.url)), 'utf8');
 
 const IMG = (over?: any, link?: string) => ({ url: 'https://cdn.x/a.jpg', alt: 'foto', ...(over ? { overlay: over } : {}), ...(link ? { link } : {}) });
 const OV = { texto: 'Hola', posicion: 'abajo-derecha', color_texto: '#ffffff', color_fondo: 'rgba(0,0,0,0.5)', borde: 'fino' };
@@ -21,8 +25,20 @@ describe('Franja.astro · F-2 render estatico', () => {
     expect((html.match(/franja__cell/g) || []).length).toBe(1);
     expect(html).toContain('<img');
     expect(html).toContain('src="https://cdn.x/a.jpg"');
-    expect(html).toContain('loading="lazy"');
+    // FASE F (fix): imagenes EAGER (sin loading="lazy"). Una banda full-bleed suele ser hero -> lazy
+    // perjudica el LCP, y en el canvas del editor las lazy off-screen no cargan tras el patch.
+    expect(html).not.toContain('loading="lazy"');
     expect(html).not.toContain('franja__ov');     // sin overlay
+  });
+
+  // GUARD (bug #1): con 1 imagen chica, la banda colapsaba al ancho de la imagen porque el slide solo
+  // tenia ancho en el caso slider (.franja--slider .franja__slide { flex:0 0 100% }). El harness es node
+  // (sin layout -> no hay ancho computado), asi que el guard es a nivel SOURCE: la regla BASE .franja__slide
+  // DEBE tener width:100%. El ancho computado real (1 imagen llena el viewport) se verifica en vivo (Playwright).
+  test('GUARD #1: .franja__slide base es width:100% (sin esto, 1 imagen chica colapsa la banda)', () => {
+    const base = FRANJA_SRC.match(/\.franja__slide\s*\{[^}]*\}/);
+    expect(base, 'no se encontro la regla base .franja__slide').toBeTruthy();
+    expect(base![0]).toMatch(/width:\s*100%/);
   });
 
   test('3 imagenes: 3 celdas lado a lado', async () => {
