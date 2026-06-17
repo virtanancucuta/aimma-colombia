@@ -39,8 +39,16 @@ const playSrc = emb.src ? emb.src + (emb.src.includes('?') ? '&' : '?') + 'autop
 ---
 
 <SectionShell section={section}>
-  {!html ? (
-    isPreview ? <div class="video-empty">Pega un link de YouTube o Vimeo para mostrar el video.</div> : null
+  {(p as any).mp4_url ? (
+    // FASE D (2b): MP4 subido a R2 (precede a url/html). <video> nativo: controls + preload metadata
+    // (no baja el video entero en la carga, muestra el primer frame como poster) + playsinline (mobile).
+    // El contenedor fija el aspect-ratio elegido -> reserva espacio, sin layout shift. object-fit:contain
+    // -> nunca recorta el contenido del merchant (barras con el bg del tema si el video no calza el frame).
+    <div class="video-mp4" style={`aspect-ratio:${ratio};`}>
+      <video class="video-mp4__el" src={(p as any).mp4_url} controls preload="metadata" playsinline></video>
+    </div>
+  ) : !html ? (
+    isPreview ? <div class="video-empty">Subí un MP4 o pegá un link de YouTube/Vimeo para mostrar el video.</div> : null
   ) : useFacade ? (
     <button
       type="button"
@@ -101,6 +109,21 @@ const playSrc = emb.src ? emb.src + (emb.src.includes('?') ? '&' : '?') + 'autop
     height: 100%;
     border: 0;
     display: block;
+  }
+
+  /* ===== FASE D (2b): MP4 subido a R2 (<video> nativo) ===== */
+  .video-mp4 {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 4px;
+    /* fondo del posible letterbox (object-fit:contain): tinte del tema, no negro duro */
+    background: color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
+  }
+  .video-mp4__el {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   /* ===== Fachada click-to-play (YouTube/Vimeo) ===== */
