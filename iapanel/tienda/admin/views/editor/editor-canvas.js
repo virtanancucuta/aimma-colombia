@@ -163,6 +163,9 @@
       } else if (msg.type === 'add-child') {
         // D4: "+ agregar bloque" del canvas -> abre el catalogo de hijos filtrado e inserta en la columna.
         handleAddChild(msg);
+      } else if (msg.type === 'move-child') {
+        // A1: DnD de hijos EN EL CANVAS -> mueve el hijo a (toCol, toIndex). Mismo gate G3 que add-child.
+        handleMoveChild(msg);
       } else if (msg.type === 'inline-edit-start' || msg.type === 'inline-commit' || msg.type === 'inline-cancel') {
         handleInlineMessage(msg);
       } else if (msg.type === 'preview-ready') {
@@ -237,6 +240,22 @@
       const nid = ES.addChildBlock(msg.parentId, tipo, col);
       if (nid) ES.select(msg.parentId, nid);
     }, tipos);
+  }
+
+  // A1: DnD de hijos EN EL CANVAS. El iframe (preview) postea {parentId,childId,toCol,toIndex} al SOLTAR
+  // el bloque en otra columna/posicion. origin ya validado en messageHandler; aca el resto del gate G3:
+  // ids en el regex + contenedor CONOCIDO + el hijo pertenece a ESE contenedor + indices enteros >=0,
+  // ANTES de mutar. Llama moveChildToColumn INTACTO (misma ruta patch/undo que el DnD del inspector).
+  function handleMoveChild(msg) {
+    const ES = window.TiendaIA.editorState;
+    if (typeof msg.parentId !== 'string' || !SECTION_ID_RE.test(msg.parentId)) return;
+    if (typeof msg.childId !== 'string' || !SECTION_ID_RE.test(msg.childId)) return;
+    if (!Number.isInteger(msg.toCol) || msg.toCol < 0) return;
+    if (!Number.isInteger(msg.toIndex) || msg.toIndex < 0) return;
+    const sec = ES.findContenedor(msg.parentId);
+    if (!sec) return;                                                   // contenedor CONOCIDO antes de mutar
+    if (!sec.props.bloques.some(function (b) { return b.id === msg.childId; })) return; // el hijo es de ESTE contenedor
+    ES.moveChildToColumn(msg.parentId, msg.childId, msg.toCol, msg.toIndex);
   }
 
   // Label de la seccion desde sectionDefs (fuente unica A.1). NULL-SAFE: '' si no hay seccion
@@ -443,7 +462,7 @@
   window.TiendaIA = window.TiendaIA || {};
   window.TiendaIA.editorCanvas = {
     render, refresh, reloadFull, setDevice, setPagePath, destroy, rebuild, applyThemePreview,
-    renderFragment, applyPatch, handleSectionAction, handleAddChild, postSelection, selectionLabel, handleInlineMessage,
+    renderFragment, applyPatch, handleSectionAction, handleAddChild, handleMoveChild, postSelection, selectionLabel, handleInlineMessage,
     get previewUrl() { return state.previewUrl; },
     get pagePath() { return state.pagePath || '/'; },
   };
