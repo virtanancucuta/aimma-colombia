@@ -135,6 +135,10 @@ const gridClass = [
      vive en otro componente (SectionShell), no en este scope. */
   @container aimma-col (min-width: 0px) {
     :global(.block-inner) { padding-inline: 0; }
+    /* FASE D · P2-1: el ritmo vertical lo da el row-gap de la columna, NO el padding-block de cada hijo.
+       Cada hijo pasa por _SectionShell -> .block-section--pad-X (padding-block de seccion completa) que
+       se SUMABA al row-gap -> espaciado vertical doble/desparejo. Aditivo + dormido standalone. */
+    :global(.block-section) { padding-block: 0; }
   }
 
   /* ===== FASE D (D4) · "+ agregar bloque" — chrome del editor (SOLO preview) =====
@@ -164,4 +168,17 @@ const gridClass = [
     outline: none;
   }
   .ed-add-child__plus { font-size: 1.15rem; line-height: 1; font-weight: 700; }
+
+  /* ===== FASE D · P2-3: botones hijos NO desbordan una columna angosta =====
+     .block-button / .fb-btn son inline-flex con padding lateral grande (2-2.75rem) + texto sin wrap ->
+     un label largo se sale de una columna de ~280px. Dentro de columna chica: permitir wrap del texto y
+     achicar el padding lateral por ancho de columna (cqi). Aditivo + dormido standalone. */
+  @container aimma-col (max-width: 360px) {
+    :global(.block-button), :global(.fb-btn) {
+      overflow-wrap: anywhere;
+      white-space: normal;
+      max-width: 100%;
+      padding-inline: clamp(0.9rem, 6cqi, 2rem);
+    }
+  }
 </style>

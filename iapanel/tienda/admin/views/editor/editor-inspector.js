@@ -15,7 +15,8 @@
 
   // FASE D: tipos hoja permitidos dentro de un contenedor (== HijoSchema). El catalogo de
   // "Agregar bloque" se filtra a esta lista; el orden replica el catalogo general.
-  const CHILD_TIPOS = ['texto', 'imagen_con_texto', 'imagen', 'cita', 'botones', 'producto_destacado', 'video', 'espacio'];
+  // FASE D · P2-2: 'espacio' removido de los hijos (redundante con el row-gap de la columna; 0 en prod).
+  const CHILD_TIPOS = ['texto', 'imagen_con_texto', 'imagen', 'cita', 'botones', 'producto_destacado', 'video'];
 
   // Solo se conservan las opciones del bloque base "Apariencia" (no migrado a sectionDefs).
   const PADDING_OPTS = [
