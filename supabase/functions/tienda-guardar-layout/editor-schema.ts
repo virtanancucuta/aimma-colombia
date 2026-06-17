@@ -372,6 +372,42 @@ const ContenedorProps = z.object({
   bloques: z.array(HijoSchema).min(1).max(8),
 });
 
+// ============================================================
+// FASE F (Franja de imagenes) · banda FULL-BLEED con hasta 3 slides (slider si >1), cada slide con
+// 1-3 imagenes lado a lado, overlay de texto + link OPCIONAL por imagen. `franja` = 19o miembro de
+// SectionSchema (seccion TOP-LEVEL, no hija del contenedor). Aditivo -> SIN bump de schema_version
+// (igual que contenedor fue el 18). Bounded, sin recursion: slides 1..3 -> imagenes 1..3 = MAX 9.
+// La EF es la AUTORIDAD: el overlay.texto se sanitiza en validate-section (capa write-side).
+// ============================================================
+// Link de overlay: allowlist https / mailto / tel (NO protocol-relative //, NO javascript:).
+const FRANJA_LINK_RE = /^(https:\/\/|mailto:|tel:)/;
+
+const FranjaOverlay = z.object({
+  texto: z.string().max(160).optional(),
+  posicion: z.enum(['centro', 'arriba-izquierda', 'arriba-derecha', 'abajo-izquierda', 'abajo-centro', 'abajo-derecha']).default('centro'),
+  color_texto: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').default('#ffffff'),
+  color_fondo: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').default('rgba(0,0,0,0.4)'), // scrim
+  borde: z.enum(['ninguno', 'fino', 'grueso']).default('ninguno'),
+});
+
+const FranjaImagen = z.object({
+  url: z.string().url().regex(/^https:\/\//, 'imagen debe ser https'),
+  alt: z.string().max(160).optional(),
+  overlay: FranjaOverlay.optional(),
+  link: z.string().regex(FRANJA_LINK_RE, 'link debe ser https, mailto o tel').optional(),
+});
+
+const FranjaSlide = z.object({
+  imagenes: z.array(FranjaImagen).min(1).max(3),
+});
+
+const FranjaProps = z.object({
+  slides: z.array(FranjaSlide).min(1).max(3),         // tope 3 slides x 3 imagenes = 9
+  gap: z.enum(['none', 'min', 'small']).default('min'), // nivel franja; aplica a todos los slides (incluido 0 = 'none')
+  autorotar: z.boolean().default(false),               // slider: auto-rotar (default OFF; respeta reduced-motion en el render)
+  intervalo_seg: z.number().int().min(3).max(15).optional(),
+});
+
 export const SectionSchema = z.discriminatedUnion('tipo', [
   SectionBase.extend({ tipo: z.literal('banner'), props: BannerProps }),
   SectionBase.extend({ tipo: z.literal('texto'), props: TextoProps }),
@@ -390,8 +426,10 @@ export const SectionSchema = z.discriminatedUnion('tipo', [
   SectionBase.extend({ tipo: z.literal('logos'), props: LogosProps }),
   SectionBase.extend({ tipo: z.literal('categorias_destacadas'), props: CategoriasDestacadasProps }),
   SectionBase.extend({ tipo: z.literal('producto_destacado'), props: ProductoDestacadoProps }),
-  // FASE D: contenedor (bloques hijos anidados, profundidad 2). Aditivo; ultimo miembro.
+  // FASE D: contenedor (bloques hijos anidados, profundidad 2). Aditivo.
   SectionBase.extend({ tipo: z.literal('contenedor'), props: ContenedorProps }),
+  // FASE F: franja (banda full-bleed de imagenes con slider). Aditivo; ultimo miembro (19o).
+  SectionBase.extend({ tipo: z.literal('franja'), props: FranjaProps }),
 ]);
 
 export type Section = z.infer<typeof SectionSchema>;

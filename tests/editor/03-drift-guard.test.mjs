@@ -37,10 +37,15 @@ function itemShape(v) {
 // que NO es 'list' -> el drift-guard no lo trata como lista de sub-campos). El guard re-enganchado
 // valida que sus campos {columnas,gap,alineacion_vertical,bloques} cuadran con el Zod.
 
+// FASE F: `franja` esta en el Zod (schema dormant listo) pero su def en section-defs + UI del editor
+// AUN no existen -> se EXCLUYE del drift hasta F-4 (mismo patron PENDING que el contenedor en D1).
+const PENDING_TIPOS = new Set(['franja']);
+
 function zodByTipo() {
   const out = {};
   for (const opt of SectionSchema._def.options) {
     const tipo = opt.shape.tipo._def.value;
+    if (PENDING_TIPOS.has(tipo)) continue; // pendiente: section-defs/UI sin construir (re-engancha F-4)
     // FASE D (2a): VideoProps usa .superRefine (XOR url/html) -> ZodEffects, no ZodObject.
     // Unwrap al ZodObject interno para leer su .shape (vale para cualquier props refinada).
     let propsObj = opt.shape.props;
