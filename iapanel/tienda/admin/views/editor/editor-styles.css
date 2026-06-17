@@ -361,6 +361,36 @@
   border-color: #2563eb;
   box-shadow: 0 0 0 2px color-mix(in oklab, #2563eb 22%, transparent);
 }
+
+/* FASE D (DnD entre columnas): columna del sub-editor = drop-target (min-height -> columna VACIA
+   sigue recibiendo drops, gotcha clasico de Sortable) + grip de arrastre + ghost. */
+.ed-childcol {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ed-childcol:empty::before {
+  content: 'Soltá un bloque acá';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1.5px dashed var(--ed-color-border);
+  border-radius: var(--ed-radius);
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+.ed-child-handle {
+  cursor: grab;
+  user-select: none;
+  color: #94a3b8;
+  padding: 0 6px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.ed-child-handle:active { cursor: grabbing; }
+.ed-childcard--ghost { opacity: 0.5; }
 .ed-list-item__head {
   display: flex;
   align-items: center;

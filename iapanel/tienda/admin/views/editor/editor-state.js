@@ -391,6 +391,32 @@
     const tmp = sec.props.bloques[a]; sec.props.bloques[a] = sec.props.bloques[b]; sec.props.bloques[b] = tmp;
     pushSnapshot(); markDirty(); _notifyChild(parentId);
   }
+  // FASE D (DnD entre columnas): mueve un hijo a la columna `toCol` en la posicion `toIndex` (indice
+  // ENTRE los hermanos de esa columna, NO el indice del array plano). Saca el hijo, le setea columna, y
+  // lo re-inserta en el flat-index tal que exactamente `toIndex` hermanos de toCol lo preceden -> maneja
+  // entre-hermanos, append, y columna VACIA. lastOp=replace al padre (via _notifyChild) -> re-render.
+  function moveChildToColumn(parentId, childId, toCol, toIndex) {
+    const sec = findContenedor(parentId);
+    if (!sec) return;
+    const arr = sec.props.bloques;
+    const cols = _colsDe(sec);
+    const tc = Math.min(Math.max((toCol | 0), 0), cols - 1);   // clamp a columna valida
+    const from = arr.findIndex(b => b.id === childId);
+    if (from < 0) return;
+    const child = arr.splice(from, 1)[0];                      // sacar del array plano
+    child.columna = tc;
+    const ti = Math.max(0, toIndex | 0);
+    // flat-index de insercion: primer punto donde `ti` hermanos de tc ya pasaron (entre-hermanos);
+    // si ti >= cantidad de hermanos de tc -> insertAt queda en arr.length (append: ultimo de tc).
+    let seen = 0, insertAt = arr.length;
+    for (let i = 0; i < arr.length; i++) {
+      if (seen === ti) { insertAt = i; break; }
+      if (_colDe(arr[i], cols) === tc) seen++;
+    }
+    arr.splice(insertAt, 0, child);
+    pushSnapshot(); markDirty(); _notifyChild(parentId);
+  }
+
   function findChild(parentId, childId) {
     const sec = findContenedor(parentId);
     if (!sec) return null;
@@ -570,7 +596,7 @@
     findSection, findChild, findContenedor, findTarget,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
-    addChildBlock, removeChildBlock, updateChildProps, updateChildBase, reorderChildBlock, duplicateChildBlock,
+    addChildBlock, removeChildBlock, updateChildProps, updateChildBase, reorderChildBlock, duplicateChildBlock, moveChildToColumn,
     select, deselect,
     undo, redo, canUndo, canRedo, pushSnapshot,
     markDirty, markClean, markSaving, setDraftSaveStatus,
