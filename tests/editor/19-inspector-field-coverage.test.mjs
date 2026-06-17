@@ -62,6 +62,16 @@ for (const tipo of TIPOS) {
           `[${tipo}] child-blocks "${campo.key}" NO renderiza el sub-editor (falta "Agregar bloque")`);
         assert.ok(rendered('Contenido'),
           `[${tipo}] child-blocks "${campo.key}": el generador de campos del hijo NO corre (falta label "Contenido")`);
+      } else if (campo.control === 'franja-slides') {
+        // FASE F: control anidado bespoke (slide->imagen->overlay; no emite .ed-ctrl__label propio).
+        // Cobertura REAL = el sub-editor renderiza ("Agregar imagen") + el generador de la imagen corre
+        // (el image-picker emite su label "Imagen") + el overlay corre (label "Texto sobre la imagen").
+        assert.ok((container.textContent || '').includes('Agregar imagen'),
+          `[${tipo}] franja-slides "${campo.key}" NO renderiza el sub-editor (falta "Agregar imagen")`);
+        assert.ok(rendered('Imagen'),
+          `[${tipo}] franja-slides "${campo.key}": el generador de la imagen NO corre (falta label "Imagen")`);
+        assert.ok(rendered('Texto sobre la imagen'),
+          `[${tipo}] franja-slides "${campo.key}": el overlay no corre (falta label "Texto sobre la imagen")`);
       } else {
         assert.ok(rendered(campo.label), `[${tipo}] campo "${campo.key}" (label "${campo.label}") NO renderiza control`);
       }

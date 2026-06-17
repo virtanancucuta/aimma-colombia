@@ -1,0 +1,88 @@
+// AIMMA Fase F · F-2 · Franja.astro (render estatico, primer slide). Verifica la estructura PUBLICA:
+// banda full-bleed (.franja), 1-3 celdas lado a lado, gap, overlay 3x3 (scrim+texto SOLO con texto),
+// link envuelve la celda. Estructura COMPARTIDA x4 (plantilla-agnostica). El CSS full-bleed (width:100vw)
+// vive en <style> (lo valida el build + el OK visual x4); aca assertimos el HTML.
+import { describe, test, expect } from 'vitest';
+import { renderNormalized, makeSection, makeTienda } from './helpers/render-harness.ts';
+import Franja from '../src/components/blocks/franja/Franja.astro';
+
+const IMG = (over?: any, link?: string) => ({ url: 'https://cdn.x/a.jpg', alt: 'foto', ...(over ? { overlay: over } : {}), ...(link ? { link } : {}) });
+const OV = { texto: 'Hola', posicion: 'abajo-derecha', color_texto: '#ffffff', color_fondo: 'rgba(0,0,0,0.5)', borde: 'fino' };
+// strip del <script> (F-3 lo embarca; su contenido referencia las clases .franja__* y contaminaria
+// los conteos por regex). Las aserciones van sobre el HTML puro; el JS se verifica en vivo.
+const render = async (props: any, slug = 'industrial_clean') =>
+  (await renderNormalized(Franja, makeSection('franja', props), makeTienda(slug), [])).replace(/<script[\s\S]*?<\/script>/gi, '');
+
+describe('Franja.astro · F-2 render estatico', () => {
+  test('1 imagen sin overlay/link: 1 celda div, sin overlay, banda + gap', async () => {
+    const html = await render({ slides: [{ imagenes: [IMG()] }], gap: 'min' });
+    expect(html).toContain('class="franja franja--gap-min"');
+    expect(html).toContain('franja__slide');
+    expect((html.match(/franja__cell/g) || []).length).toBe(1);
+    expect(html).toContain('<img');
+    expect(html).toContain('src="https://cdn.x/a.jpg"');
+    expect(html).toContain('loading="lazy"');
+    expect(html).not.toContain('franja__ov');     // sin overlay
+  });
+
+  test('3 imagenes: 3 celdas lado a lado', async () => {
+    const html = await render({ slides: [{ imagenes: [IMG(), IMG(), IMG()] }], gap: 'none' });
+    expect((html.match(/franja__cell/g) || []).length).toBe(3);
+    expect(html).toContain('franja--gap-none');
+  });
+
+  test('overlay con texto: recuadro posicionado (3x3) + scrim/color por var + texto', async () => {
+    const html = await render({ slides: [{ imagenes: [IMG(OV)] }] });
+    expect(html).toContain('franja__ov--abajo-derecha');
+    expect(html).toContain('franja__ov-txt--b-fino');
+    expect(html).toContain('--ov-text:#ffffff');
+    expect(html).toContain('--ov-bg:rgba(0,0,0,0.5)');
+    expect(html).toContain('Hola');
+  });
+
+  test('overlay SIN texto: imagen limpia, sin scrim/recuadro', async () => {
+    const html = await render({ slides: [{ imagenes: [IMG({ color_texto: '#fff', color_fondo: '#000' })] }] });
+    expect(html).not.toContain('franja__ov');     // sin texto = sin overlay
+  });
+
+  test('link: la celda es un <a> que envuelve la imagen', async () => {
+    const html = await render({ slides: [{ imagenes: [IMG(undefined, 'https://x.com')] }] });
+    expect(html).toMatch(/<a[^>]*class="franja__cell"[^>]*href="https:\/\/x\.com"/);
+  });
+
+  // ── F-3: slider (2-3 slides) ──
+  test('slider (3 slides): renderea los 3 en el track + flechas + 3 puntos + data-franja + role region', async () => {
+    const html = await render({ slides: [{ imagenes: [IMG()] }, { imagenes: [IMG(), IMG()] }, { imagenes: [IMG()] }] });
+    expect((html.match(/class="franja__slide"/g) || []).length).toBe(3);   // los 3 slides
+    expect((html.match(/class="franja__cell"/g) || []).length).toBe(4);    // 1 + 2 + 1 imagenes
+    expect(html).toContain('franja--slider');
+    expect(html).toContain('data-franja');
+    expect(html).toContain('franja__arrow--prev');
+    expect(html).toContain('franja__arrow--next');
+    expect((html.match(/class="franja__dot"/g) || []).length).toBe(3);     // 3 puntos
+    expect(html).toContain('role="region"');                               // track accesible
+  });
+
+  test('slider: data-autorotar + data-intervalo reflejan los props (default intervalo 5)', async () => {
+    const on = await render({ slides: [{ imagenes: [IMG()] }, { imagenes: [IMG()] }], autorotar: true, intervalo_seg: 7 });
+    expect(on).toContain('data-autorotar="1"');
+    expect(on).toContain('data-intervalo="7"');
+    const off = await render({ slides: [{ imagenes: [IMG()] }, { imagenes: [IMG()] }], autorotar: false });
+    expect(off).toContain('data-autorotar="0"');
+    expect(off).toContain('data-intervalo="5"');
+  });
+
+  test('1 slide: NO es slider (sin franja--slider, sin data-franja, sin flechas/puntos)', async () => {
+    const html = await render({ slides: [{ imagenes: [IMG(), IMG()] }] });
+    expect(html).not.toContain('franja--slider');
+    expect(html).not.toContain('data-franja');
+    expect(html).not.toContain('franja__arrow');
+    expect(html).not.toContain('franja__dot');
+  });
+
+  test('plantilla-agnostico: fashion_bold produce la misma estructura', async () => {
+    const a = await render({ slides: [{ imagenes: [IMG(OV)] }] }, 'industrial_clean');
+    const b = await render({ slides: [{ imagenes: [IMG(OV)] }] }, 'fashion_bold');
+    expect(b).toBe(a);
+  });
+});

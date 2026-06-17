@@ -104,6 +104,10 @@ test('drift-guard (items): sub-campos de arrays coinciden (keys + opcionalidad)'
   const defs = defsByTipo(win);
 
   for (const tipo of Object.keys(zod)) {
+    // FASE F: franja.slides es array de objetos (Zod) pero se edita con el control BESPOKE 'franja-slides'
+    // (slide->imagen->overlay), NO con el control generico 'list'. El guard de items valida sub-campos de
+    // listas 'list'; no aplica a franja-slides (sus campos los maneja renderFranjaSlides a mano). Se excluye.
+    if (tipo === 'franja') continue;
     const zItems = zod[tipo].items, dItems = defs[tipo].items;
     // todo array de objetos en el Zod debe tener su item en defs (y viceversa)
     assert.deepEqual(

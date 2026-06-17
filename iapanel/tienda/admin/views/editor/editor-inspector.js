@@ -237,6 +237,9 @@
       case 'child-blocks':
         renderChildBlocks(wrap, target, campo, C);
         break;
+      case 'franja-slides':
+        renderFranjaSlides(wrap, target, campo, C);
+        break;
       default:
         break;
     }
@@ -378,6 +381,66 @@
       }
     }
     if (bloques.length >= MAX) wrap.appendChild(C.infoBox('Maximo ' + MAX + ' bloques por contenedor.'));
+  }
+
+  // ── franja-slides (FASE F): sub-editor ANIDADO slide -> imagen -> overlay. Estructura FIJA (no catalogo).
+  //   Slides 1-3 (↑↓✕ + agregar) -> imagenes 1-3 (image-picker + alt + link + overlay colapsable) (↑↓✕ +
+  //   agregar). Edicion de campos = debounced (sin rebuild); cambios estructurales = rebuild. Reusa los
+  //   controles del toolkit (image-picker, color, select) + las ops de editor-state (find/add/remove/reorder).
+  function renderFranjaSlides(wrap, target, campo, C) {
+    const ES = window.TiendaIA.editorState;
+    const secId = target.id;
+    const s = ES.findFranja(secId);
+    const slides = (s && s.props.slides) || [];
+
+    wrap.appendChild(C.el('h5', { class: 'ed-inspector__subhead' }, 'Slides e imagenes'));
+
+    slides.forEach((slide, si) => {
+      const slideCard = listItemCard(C, 'Slide ' + (si + 1), {
+        idx: si, total: slides.length,
+        onUp: () => { ES.reorderSlide(secId, si, -1); rebuild(); },
+        onDown: () => { ES.reorderSlide(secId, si, +1); rebuild(); },
+        onRemove: slides.length > 1 ? () => { ES.removeSlide(secId, si); rebuild(); } : null,
+      });
+      const imgs = Array.isArray(slide.imagenes) ? slide.imagenes : [];
+      imgs.forEach((img, ii) => {
+        const imgCard = listItemCard(C, 'Imagen ' + (ii + 1), {
+          idx: ii, total: imgs.length,
+          onUp: () => { ES.reorderImagen(secId, si, ii, -1); rebuild(); },
+          onDown: () => { ES.reorderImagen(secId, si, ii, +1); rebuild(); },
+          onRemove: imgs.length > 1 ? () => { ES.removeImagen(secId, si, ii); rebuild(); } : null,
+        });
+        imgCard.body.appendChild(C.imagePicker('Imagen', img.url || '',
+          v => ES.updateImagenFranja(secId, si, ii, { url: v }), { tiendaId: target.tiendaId }));
+        imgCard.body.appendChild(C.textInput('Texto alternativo (alt)', img.alt || '',
+          v => ES.updateImagenFranja(secId, si, ii, { alt: v || undefined }), { maxLength: 160 }));
+        imgCard.body.appendChild(C.urlInput('Link al hacer clic (opcional)', img.link || '',
+          v => ES.updateImagenFranja(secId, si, ii, { link: v || undefined }), { placeholder: 'https://...' }));
+        // Overlay colapsable. El velo+texto SOLO se rinde si hay texto (sin texto = imagen limpia).
+        const ov = img.overlay || {};
+        const ovCtrls = [
+          C.textInput('Texto sobre la imagen', ov.texto || '',
+            v => ES.updateOverlayFranja(secId, si, ii, { texto: v || undefined }), { maxLength: 160, placeholder: 'Ej: Nueva coleccion' }),
+          C.select('Posicion del texto', ov.posicion || 'centro', optList('FRANJA_POSICION'),
+            v => ES.updateOverlayFranja(secId, si, ii, { posicion: v })),
+          C.colorPicker('Color del texto', ov.color_texto || '#ffffff',
+            v => ES.updateOverlayFranja(secId, si, ii, { color_texto: v })),
+          C.select('Velo detras del texto', ov.color_fondo || 'rgba(0,0,0,0.4)', optList('FRANJA_SCRIM'),
+            v => ES.updateOverlayFranja(secId, si, ii, { color_fondo: v })),
+          C.select('Borde del recuadro', ov.borde || 'ninguno', optList('FRANJA_BORDE'),
+            v => ES.updateOverlayFranja(secId, si, ii, { borde: v })),
+        ];
+        imgCard.body.appendChild(C.collapsibleSection('Texto sobre la imagen (opcional)', ovCtrls));
+        slideCard.body.appendChild(imgCard.root);
+      });
+      if (imgs.length < 3) {
+        slideCard.body.appendChild(C.primaryButton('+ Agregar imagen', () => { ES.addImagen(secId, si); rebuild(); }));
+      }
+      wrap.appendChild(slideCard.root);
+    });
+    if (slides.length < 3) {
+      wrap.appendChild(C.primaryButton('+ Agregar slide', () => { ES.addSlide(secId); rebuild(); }));
+    }
   }
 
   // ============================================================

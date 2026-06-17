@@ -149,6 +149,11 @@
     if (tipo === 'contenedor') {
       sec.props.bloques = [createChildDefault('texto', 0)];
     }
+    // FASE F: la franja nace con 1 slide / 1 imagen placeholder (schema min 1/1). gap/autorotar/intervalo
+    // salen de los defaults de section-defs (defaultProps). 'slides' no tiene default -> se setea aca.
+    if (tipo === 'franja') {
+      sec.props.slides = [{ imagenes: [{ url: 'https://placehold.co/1400x900' }] }];
+    }
     return sec;
   }
 
@@ -456,6 +461,82 @@
   }
 
   // ============================================================
+  // FASE F: Franja (slides -> imagenes -> overlay). Top-level (NO contenedor). Cada mutacion =
+  // lastOp replace a la franja -> el carril de patch re-renderiza la seccion (mismo mecanismo que D2/D3).
+  // ============================================================
+  function findFranja(secId) {
+    const s = state.sections.find(x => x.id === secId);
+    return (s && s.tipo === 'franja' && s.props && Array.isArray(s.props.slides)) ? s : null;
+  }
+  function _notifyFranja(secId) {
+    state.lastOp = { kind: 'replace', sectionId: secId };
+    notify('sections'); notify('patch');
+  }
+  // Imagen default: placeholder https (savable; el dueno la reemplaza con el image-picker). Sin overlay/link.
+  function _defImagenFranja() { return { url: 'https://placehold.co/1400x900' }; }
+
+  function addSlide(secId) {
+    const s = findFranja(secId); if (!s) return;
+    if (s.props.slides.length >= 3) { if (window.TiendaIA?.toast) window.TiendaIA.toast('Maximo 3 slides', 'error'); return; }
+    s.props.slides.push({ imagenes: [_defImagenFranja()] });
+    pushSnapshot(); markDirty(); _notifyFranja(secId);
+  }
+  function removeSlide(secId, slideIdx) {
+    const s = findFranja(secId); if (!s) return;
+    if (s.props.slides.length <= 1) return;                 // schema min 1
+    s.props.slides.splice(slideIdx, 1);
+    pushSnapshot(); markDirty(); _notifyFranja(secId);
+  }
+  function reorderSlide(secId, slideIdx, dir) {
+    const s = findFranja(secId); if (!s) return;
+    const arr = s.props.slides, j = slideIdx + dir;
+    if (j < 0 || j >= arr.length) return;
+    const t = arr[slideIdx]; arr[slideIdx] = arr[j]; arr[j] = t;
+    pushSnapshot(); markDirty(); _notifyFranja(secId);
+  }
+  function addImagen(secId, slideIdx) {
+    const s = findFranja(secId); if (!s || !s.props.slides[slideIdx]) return;
+    const imgs = s.props.slides[slideIdx].imagenes;
+    if (imgs.length >= 3) { if (window.TiendaIA?.toast) window.TiendaIA.toast('Maximo 3 imagenes por slide', 'error'); return; }
+    imgs.push(_defImagenFranja());
+    pushSnapshot(); markDirty(); _notifyFranja(secId);
+  }
+  function removeImagen(secId, slideIdx, imgIdx) {
+    const s = findFranja(secId); if (!s || !s.props.slides[slideIdx]) return;
+    const imgs = s.props.slides[slideIdx].imagenes;
+    if (imgs.length <= 1) return;                            // schema min 1 por slide
+    imgs.splice(imgIdx, 1);
+    pushSnapshot(); markDirty(); _notifyFranja(secId);
+  }
+  function reorderImagen(secId, slideIdx, imgIdx, dir) {
+    const s = findFranja(secId); if (!s || !s.props.slides[slideIdx]) return;
+    const imgs = s.props.slides[slideIdx].imagenes, j = imgIdx + dir;
+    if (j < 0 || j >= imgs.length) return;
+    const t = imgs[imgIdx]; imgs[imgIdx] = imgs[j]; imgs[j] = t;
+    pushSnapshot(); markDirty(); _notifyFranja(secId);
+  }
+  // Edita campos base de una imagen (url/alt/link). undefined -> borra la key (alt/link opcionales).
+  function updateImagenFranja(secId, slideIdx, imgIdx, patch) {
+    const s = findFranja(secId); if (!s || !s.props.slides[slideIdx]) return;
+    const img = s.props.slides[slideIdx].imagenes[imgIdx]; if (!img) return;
+    for (const k in patch) { if (patch[k] === undefined) delete img[k]; else img[k] = patch[k]; }
+    debouncedSnapshot(secId + ':' + slideIdx + ':' + imgIdx + ':img'); markDirty(); _notifyFranja(secId);
+  }
+  // Edita el overlay de una imagen. patch.texto undefined+'' -> el render lo trata como sin texto.
+  function updateOverlayFranja(secId, slideIdx, imgIdx, patch) {
+    const s = findFranja(secId); if (!s || !s.props.slides[slideIdx]) return;
+    const img = s.props.slides[slideIdx].imagenes[imgIdx]; if (!img) return;
+    img.overlay = { ...(img.overlay || {}), ...patch };
+    debouncedSnapshot(secId + ':' + slideIdx + ':' + imgIdx + ':ov'); markDirty(); _notifyFranja(secId);
+  }
+  // Props del carrusel (gap / autorotar / intervalo_seg).
+  function updateFranjaProps(secId, patch) {
+    const s = findFranja(secId); if (!s) return;
+    s.props = { ...s.props, ...patch };
+    debouncedSnapshot(secId + ':franjaprops'); markDirty(); _notifyFranja(secId);
+  }
+
+  // ============================================================
   // Selection (solo seccion en v3)
   // ============================================================
   function select(sectionId, childId) {
@@ -593,10 +674,11 @@
     setThemeColors, setThemePalette, setThemeFontPairing, setThemeNavTextSize,
     addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
     moveNavNode, setNavMostrarEnMenu, removeNavNode,
-    findSection, findChild, findContenedor, findTarget,
+    findSection, findChild, findContenedor, findTarget, findFranja,
     addSection, removeSection, reorderSections, duplicateSection,
     updateSectionProps, updateSectionBase,
     addChildBlock, removeChildBlock, updateChildProps, updateChildBase, reorderChildBlock, duplicateChildBlock, moveChildToColumn,
+    addSlide, removeSlide, reorderSlide, addImagen, removeImagen, reorderImagen, updateImagenFranja, updateOverlayFranja, updateFranjaProps,
     select, deselect,
     undo, redo, canUndo, canRedo, pushSnapshot,
     markDirty, markClean, markSaving, setDraftSaveStatus,

@@ -32,6 +32,19 @@ export function validateAndSanitizeSection(raw: unknown): Section {
         if (built) b.props.html = built;
       }
     }
+  } else if (s.tipo === 'franja' && s.props && Array.isArray(s.props.slides)) {
+    // FASE F: el overlay.texto es un rotulo PLANO sobre la imagen -> strip de TODO HTML (no es rich-text;
+    // allowedTags:[] deja solo el texto). Capa write-side de la disciplina de sanitizacion. El resto del
+    // overlay (colores/posicion/borde) + el link ya los acota el Zod (CSS_COLOR_REGEX / enums / allowlist).
+    for (const slide of s.props.slides) {
+      if (slide && Array.isArray(slide.imagenes)) {
+        for (const img of slide.imagenes) {
+          if (img && img.overlay && typeof img.overlay.texto === 'string') {
+            img.overlay.texto = sanitizeHtml(img.overlay.texto, { allowedTags: [], allowedAttributes: {} });
+          }
+        }
+      }
+    }
   }
   return s;
 }
