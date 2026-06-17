@@ -96,6 +96,17 @@ describe('canvas-dnd · inyeccion del grip', () => {
     expect(firstChild.querySelector(':scope > [data-ed-grip]')).not.toBeNull();
   });
 
+  it('inyecta el CSS del chrome en runtime, UNA sola vez (idempotente, no via bundle)', () => {
+    buildContenedor({ cols: [['sec_aaaaa'], ['sec_bbbbb']] });
+    setupCanvasDnD(makeDeps([]));
+    setupCanvasDnD(makeDeps([]));
+    setupCanvasDnD(makeDeps([]));
+    const styles = document.querySelectorAll('style#ed-canvas-dnd-css');
+    expect(styles.length).toBe(1);                           // un solo <style>, no N
+    expect(styles[0].textContent).toContain('[data-ed-grip]');
+    expect(styles[0].textContent).toContain('.ed-canvas-col-over');
+  });
+
   it('el grip NO lleva data-section-id ni data-ed-add-child (no dispara select/add)', () => {
     buildContenedor({ cols: [['sec_aaaaa']] });
     setupCanvasDnD(makeDeps([]));

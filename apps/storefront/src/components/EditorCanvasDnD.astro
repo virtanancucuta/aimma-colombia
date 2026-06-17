@@ -35,64 +35,6 @@
   document.addEventListener('astro:before-swap', destroyCanvasDnD);
 </script>
 
-<style is:global>
-  /* SOLO preview (este componente es preview-gated). Los grips + clases se inyectan en runtime sobre
-     elementos del contenedor -> estilos GLOBALES. Lenguaje azul del chrome del editor. */
-
-  /* Grip de arrastre (inyectado por hijo). Aparece al hover del hijo; touch target >=44x44. */
-  [data-ed-grip] {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    z-index: 30;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 0;
-    border-radius: 8px;
-    background: color-mix(in oklab, #2563eb 88%, transparent);
-    color: #fff;
-    font-size: 18px;
-    line-height: 1;
-    cursor: grab;
-    opacity: 0;
-    transition: opacity 140ms ease-out, background-color 140ms ease-out;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
-  }
-  [data-section-id]:hover > [data-ed-grip],
-  [data-ed-grip]:focus-visible { opacity: 1; }
-  [data-ed-grip]:hover { background: #2563eb; }
-  [data-ed-grip]:active { cursor: grabbing; }
-
-  /* Barra de inserción (ghost = hueco de caída): slot azul dashed + contenido oculto. */
-  .ed-canvas-ghost { position: relative; }
-  .ed-canvas-ghost > * { visibility: hidden; }
-  .ed-canvas-ghost::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 2px dashed #2563eb;
-    border-radius: 6px;
-    background: color-mix(in oklab, #2563eb 9%, transparent);
-    pointer-events: none;
-  }
-
-  /* Clon de arrastre (forceFallback): bloque "levantado" sólido con borde azul + sombra. */
-  .ed-canvas-drag {
-    opacity: 1 !important;
-    outline: 2px solid #2563eb;
-    box-shadow: 0 12px 32px rgba(37, 99, 235, 0.32);
-    border-radius: 6px;
-    cursor: grabbing;
-  }
-  .ed-canvas-chosen { opacity: 0.6; }
-
-  /* Resalte de la columna destino (onMove). */
-  .ed-canvas-col-over {
-    outline: 2px solid #14b8a6;
-    outline-offset: -2px;
-    background: color-mix(in oklab, #14b8a6 7%, transparent);
-  }
-</style>
+<!-- El CSS del chrome (grip/ghost/clon/columna-destino) lo INYECTA canvas-dnd.ts en runtime (injectStyles)
+     SOLO en preview, no via <style> de Astro: un <style> de un componente importado entra al bundle
+     PUBLICO aunque el render sea {isPreview && ...}. Sin <style> aca -> render publico byte-identico. -->
