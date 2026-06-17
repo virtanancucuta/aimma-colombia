@@ -39,6 +39,21 @@
     CONT_COLUMNAS: [{ v: 1, l: '1 columna' }, { v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }, { v: 4, l: '4 columnas' }],
     CONT_GAP: [{ v: 'tight', l: 'Compacto' }, { v: 'normal', l: 'Normal' }, { v: 'loose', l: 'Aireado' }],
     CONT_ALIGN: [{ v: 'start', l: 'Arriba' }, { v: 'center', l: 'Centro' }, { v: 'stretch', l: 'Estirar' }],
+    // FASE F (franja)
+    FRANJA_GAP: [{ v: 'none', l: 'Sin separacion' }, { v: 'min', l: 'Minima' }, { v: 'small', l: 'Pequena' }],
+    FRANJA_BORDE: [{ v: 'ninguno', l: 'Sin borde' }, { v: 'fino', l: 'Fino' }, { v: 'grueso', l: 'Grueso' }],
+    FRANJA_POSICION: [
+      { v: 'arriba-izquierda', l: 'Arriba izquierda' }, { v: 'arriba-centro', l: 'Arriba centro' }, { v: 'arriba-derecha', l: 'Arriba derecha' },
+      { v: 'medio-izquierda', l: 'Medio izquierda' }, { v: 'centro', l: 'Centro' }, { v: 'medio-derecha', l: 'Medio derecha' },
+      { v: 'abajo-izquierda', l: 'Abajo izquierda' }, { v: 'abajo-centro', l: 'Abajo centro' }, { v: 'abajo-derecha', l: 'Abajo derecha' },
+    ],
+    // Velo (scrim) detras del texto: presets con transparencia (rgba) -> el merchant elige nivel, no tipea rgba.
+    FRANJA_SCRIM: [
+      { v: 'rgba(0,0,0,0.4)', l: 'Velo oscuro (recomendado)' },
+      { v: 'rgba(0,0,0,0.25)', l: 'Velo oscuro suave' },
+      { v: 'rgba(0,0,0,0.6)', l: 'Velo oscuro fuerte' },
+      { v: 'rgba(255,255,255,0.55)', l: 'Velo claro' },
+    ],
   };
 
   // 2a-polish: validacion inline (UX) del campo URL del video. PERMISIVA — solo avisa si el host no
@@ -405,6 +420,20 @@
         { key: 'gap', control: 'select', label: 'Separacion entre bloques', default: 'normal', opts: { options: 'CONT_GAP' } },
         { key: 'alineacion_vertical', control: 'select', label: 'Alineacion vertical', default: 'start', opts: { options: 'CONT_ALIGN' } },
         { key: 'bloques', control: 'child-blocks', label: 'Bloques' },
+      ],
+    },
+    // FASE F: franja = banda full-bleed de imagenes (1-3 por slide) con slider opcional. Control anidado
+    // 'franja-slides' (slides -> imagenes -> overlay). gap/autorotar/intervalo_seg = props del carrusel.
+    franja: {
+      label: 'Franja de imagenes',
+      catalog: { group: 'avanzado', icon: '▭', desc: 'Banda full-bleed de imagenes (1-3 por slide), con slider si hay varias.' },
+      context: null, render_strategy: 'unified',
+      ancho_default: 'completo', padding_default: 'sm',
+      campos: [
+        { key: 'slides', control: 'franja-slides', label: 'Slides e imagenes' },
+        { key: 'gap', control: 'select', label: 'Separacion entre imagenes', default: 'min', opts: { options: 'FRANJA_GAP' } },
+        { key: 'autorotar', control: 'switch', label: 'Auto-rotar el slider', default: false },
+        { key: 'intervalo_seg', control: 'slider', label: 'Intervalo del auto-rotar (segundos)', default: 5, opts: { min: 3, max: 15, step: 1 } },
       ],
     },
   };

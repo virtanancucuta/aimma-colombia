@@ -410,7 +410,7 @@ const FranjaProps = z.object({
   slides: z.array(FranjaSlide).min(1).max(3),         // tope 3 slides x 3 imagenes = 9
   gap: z.enum(['none', 'min', 'small']).default('min'), // nivel franja; aplica a todos los slides (incluido 0 = 'none')
   autorotar: z.boolean().default(false),               // slider: auto-rotar (default OFF; respeta reduced-motion en el render)
-  intervalo_seg: z.number().int().min(3).max(15).optional(),
+  intervalo_seg: z.number().int().min(3).max(15).default(5), // segundos entre slides (cuando autorotar)
 });
 
 export const SectionSchema = z.discriminatedUnion('tipo', [

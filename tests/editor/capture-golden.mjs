@@ -9,7 +9,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLD = resolve(HERE, 'golden');
 mkdirSync(GOLD, { recursive: true });
 
-const TIPOS = ['banner', 'texto', 'imagen', 'botones', 'productos', 'galeria', 'formulario', 'espacio', 'video', 'contenedor'];
+const TIPOS = ['banner', 'texto', 'imagen', 'botones', 'productos', 'galeria', 'formulario', 'espacio', 'video', 'contenedor', 'franja'];
 
 const win = bootWindow(['editor-controls.js', 'section-defs.js', 'editor-state.js', 'editor-inspector.js']);
 const T = win.TiendaIA;

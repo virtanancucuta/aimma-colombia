@@ -214,5 +214,29 @@
         }
       ]
     }
+  },
+  "franja": {
+    "id": "sec_GOLDEN",
+    "tipo": "franja",
+    "ancho": "completo",
+    "fondo": {
+      "tipo": "transparente",
+      "valor": ""
+    },
+    "padding": "sm",
+    "props": {
+      "gap": "min",
+      "autorotar": false,
+      "intervalo_seg": 5,
+      "slides": [
+        {
+          "imagenes": [
+            {
+              "url": "https://placehold.co/1400x900"
+            }
+          ]
+        }
+      ]
+    }
   }
 }
