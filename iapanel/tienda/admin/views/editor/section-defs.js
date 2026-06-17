@@ -41,6 +41,11 @@
     CONT_ALIGN: [{ v: 'start', l: 'Arriba' }, { v: 'center', l: 'Centro' }, { v: 'stretch', l: 'Estirar' }],
     // FASE F (franja)
     FRANJA_GAP: [{ v: 'none', l: 'Sin separacion' }, { v: 'min', l: 'Minima' }, { v: 'small', l: 'Pequena' }],
+    // PASO C #3: altura de la banda (nivel seccion). 'adaptarse' = ratio real (ideal para fotos horizontales).
+    FRANJA_ALTURA: [
+      { v: 'corto', l: 'Corta' }, { v: 'medio', l: 'Media (recomendada)' }, { v: 'alto', l: 'Alta' },
+      { v: 'adaptarse', l: 'Adaptarse a la imagen' },
+    ],
     FRANJA_BORDE: [{ v: 'ninguno', l: 'Sin borde' }, { v: 'fino', l: 'Fino' }, { v: 'grueso', l: 'Grueso' }],
     FRANJA_POSICION: [
       { v: 'arriba-izquierda', l: 'Arriba izquierda' }, { v: 'arriba-centro', l: 'Arriba centro' }, { v: 'arriba-derecha', l: 'Arriba derecha' },
@@ -431,6 +436,7 @@
       ancho_default: 'completo', padding_default: 'sm',
       campos: [
         { key: 'slides', control: 'franja-slides', label: 'Slides e imagenes' },
+        { key: 'altura', control: 'select', label: 'Altura de la banda', default: 'medio', opts: { options: 'FRANJA_ALTURA' } },
         { key: 'gap', control: 'select', label: 'Separacion entre imagenes', default: 'min', opts: { options: 'FRANJA_GAP' } },
         { key: 'autorotar', control: 'switch', label: 'Auto-rotar el slider', default: false },
         { key: 'intervalo_seg', control: 'slider', label: 'Intervalo del auto-rotar (segundos)', default: 5, opts: { min: 3, max: 15, step: 1 } },

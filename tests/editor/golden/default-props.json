@@ -225,6 +225,7 @@
     },
     "padding": "sm",
     "props": {
+      "altura": "medio",
       "gap": "min",
       "autorotar": false,
       "intervalo_seg": 5,

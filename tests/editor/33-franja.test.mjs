@@ -67,6 +67,29 @@ test('overlay: las 9 posiciones de la grilla 3x3 validan', () => {
   assert.ok(!SectionSchema.safeParse(sec({ slides: [slide([img({ texto: 'x', posicion: 'centro-centro' })])] })).success, 'posicion invalida');
 });
 
+test('PASO C #3: altura default=medio, valores validos, rechaza invalido', () => {
+  const r = SectionSchema.safeParse(sec({ slides: [slide([img()])] }));
+  assert.equal(r.success, true);
+  assert.equal(r.data.props.altura, 'medio', 'default medio (retrocompat byte-identica)');
+  for (const altura of ['corto', 'medio', 'alto', 'adaptarse']) {
+    assert.ok(SectionSchema.safeParse(sec({ slides: [slide([img()])], altura })).success, altura);
+  }
+  assert.ok(!SectionSchema.safeParse(sec({ slides: [slide([img()])], altura: 'gigante' })).success, 'altura invalida');
+});
+
+test('PASO C #4: foco por imagen default=centro, 9 anclas validan, rechaza invalido', () => {
+  const r = SectionSchema.safeParse(sec({ slides: [slide([img()])] }));
+  assert.equal(r.data.props.slides[0].imagenes[0].foco, 'centro', 'default centro');
+  for (const foco of [
+    'arriba-izquierda', 'arriba-centro', 'arriba-derecha',
+    'medio-izquierda', 'centro', 'medio-derecha',
+    'abajo-izquierda', 'abajo-centro', 'abajo-derecha',
+  ]) {
+    assert.ok(SectionSchema.safeParse(sec({ slides: [slide([{ url: 'https://cdn.x/a.jpg', foco }])] })).success, foco);
+  }
+  assert.ok(!SectionSchema.safeParse(sec({ slides: [slide([{ url: 'https://cdn.x/a.jpg', foco: 'centro-centro' }])] })).success, 'foco invalido');
+});
+
 test('retrocompat: una seccion existente (sin franja) valida igual (aditivo)', () => {
   assert.ok(SectionSchema.safeParse({ id: 'sec_t00001', tipo: 'texto', ancho: 'completo',
     fondo: { tipo: 'transparente', valor: '' }, padding: 'md', props: { contenido: '<p>hola</p>' } }).success);

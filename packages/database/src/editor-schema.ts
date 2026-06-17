@@ -382,14 +382,18 @@ const ContenedorProps = z.object({
 // Link de overlay: allowlist https / mailto / tel (NO protocol-relative //, NO javascript:).
 const FRANJA_LINK_RE = /^(https:\/\/|mailto:|tel:)/;
 
+// Grilla 3x3 (vertical x horizontal). 'centro' = celda del medio. Vocabulario UNICO reusado por
+// overlay.posicion (donde cae el texto) y por imagen.foco (object-position del recorte) -> misma
+// etiqueta para el comerciante, menos superficie de enums.
+const POSICION_3X3 = [
+  'arriba-izquierda', 'arriba-centro', 'arriba-derecha',
+  'medio-izquierda', 'centro', 'medio-derecha',
+  'abajo-izquierda', 'abajo-centro', 'abajo-derecha',
+] as const;
+
 const FranjaOverlay = z.object({
   texto: z.string().max(160).optional(),
-  // Grilla 3x3 (vertical x horizontal). 'centro' = celda del medio. Default 'centro'.
-  posicion: z.enum([
-    'arriba-izquierda', 'arriba-centro', 'arriba-derecha',
-    'medio-izquierda', 'centro', 'medio-derecha',
-    'abajo-izquierda', 'abajo-centro', 'abajo-derecha',
-  ]).default('centro'),
+  posicion: z.enum(POSICION_3X3).default('centro'),
   color_texto: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').default('#ffffff'),
   color_fondo: z.string().regex(CSS_COLOR_REGEX, 'color CSS invalido').default('rgba(0,0,0,0.4)'), // scrim
   borde: z.enum(['ninguno', 'fino', 'grueso']).default('ninguno'),
@@ -400,6 +404,10 @@ const FranjaImagen = z.object({
   alt: z.string().max(160).optional(),
   overlay: FranjaOverlay.optional(),
   link: z.string().regex(FRANJA_LINK_RE, 'link debe ser https, mailto o tel').optional(),
+  // PASO C #4: punto focal del recorte -> object-position. Mismo vocabulario 3x3 que overlay.posicion.
+  // Activo cuando la imagen se recorta (presets corto/medio/alto, o adaptarse-vertical que topa 90vh);
+  // inerte cuando no hay recorte (adaptarse-horizontal). Default 'centro' (50% 50%).
+  foco: z.enum(POSICION_3X3).default('centro'),
 });
 
 const FranjaSlide = z.object({
@@ -409,6 +417,11 @@ const FranjaSlide = z.object({
 const FranjaProps = z.object({
   slides: z.array(FranjaSlide).min(1).max(3),         // tope 3 slides x 3 imagenes = 9
   gap: z.enum(['none', 'min', 'small']).default('min'), // nivel franja; aplica a todos los slides (incluido 0 = 'none')
+  // PASO C #3: altura de la banda. NIVEL SECCION (un slider debe compartir alto o el carrusel salta).
+  // corto/medio/alto = alturas fijas via clamp (recorte + foco). 'adaptarse' = ratio real SOLO en el
+  // caso hero (1 slide / 1 imagen); multi -> fallback a 'medio' (sin w/h en schema, sin salto de alto).
+  // Default 'medio' = clamp(220px,32vw,460px) actual -> franjas existentes byte-identicas.
+  altura: z.enum(['corto', 'medio', 'alto', 'adaptarse']).default('medio'),
   autorotar: z.boolean().default(false),               // slider: auto-rotar (default OFF; respeta reduced-motion en el render)
   intervalo_seg: z.number().int().min(3).max(15).default(5), // segundos entre slides (cuando autorotar)
 });
