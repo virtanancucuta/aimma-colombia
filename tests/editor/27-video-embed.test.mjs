@@ -90,6 +90,39 @@ test('schema: html iframe NO-proveedor -> 400', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// FASE D (2b) · VideoProps.mp4_url (MP4 subido a R2) · regex anti-SSRF
+// ─────────────────────────────────────────────────────────────
+const UU = '123e4567-e89b-12d3-a456-426614174000';
+const MP4_OK = `https://videos.aimma.com.co/${UU}/${UU}.mp4`;
+
+test('schema: {mp4_url valido del dominio R2} OK (top-level + hijo de contenedor)', () => {
+  assert.ok(SectionSchema.safeParse(sec({ mp4_url: MP4_OK, aspect_ratio: '16/9' })).success, 'mp4_url valido top-level');
+  assert.ok(SectionSchema.safeParse(cont([child({ mp4_url: MP4_OK, aspect_ratio: '16/9' })])).success, 'mp4_url valido en hijo');
+});
+
+test('schema: mp4_url solo (sin url ni html) es fuente valida', () => {
+  const r = SectionSchema.safeParse(sec({ mp4_url: MP4_OK }));
+  assert.ok(r.success, 'mp4_url solo deberia bastar como fuente');
+});
+
+test('schema: mp4_url adversarial (anti-SSRF) -> 400', () => {
+  for (const bad of [
+    `https://evil.com/${UU}/${UU}.mp4`,                          // host ajeno
+    `https://videos.aimma.com.co.evil.com/${UU}/${UU}.mp4`,      // spoof de host
+    `https://evil.videos.aimma.com.co/${UU}/${UU}.mp4`,          // subdominio prefijado
+    `http://videos.aimma.com.co/${UU}/${UU}.mp4`,                // http (no https)
+    `https://videos.aimma.com.co/${UU}/${UU}.exe`,               // no .mp4
+    `https://videos.aimma.com.co/../../etc/passwd.mp4`,          // path traversal (no uuid)
+    `https://videos.aimma.com.co/${UU}/${UU}.mp4?x=1`,           // query extra (no anclado)
+    `https://videos.aimma.com.co/${UU}/${UU}.mp4/evil`,          // sufijo de ruta
+    `https://videos.aimma.com.co/${UU}.mp4`,                     // falta el segmento tienda
+    `javascript:alert(1)//videos.aimma.com.co/${UU}/${UU}.mp4`,  // esquema raro
+  ]) {
+    assert.ok(!SectionSchema.safeParse(sec({ mp4_url: bad, aspect_ratio: '16/9' })).success, `deberia rechazar: ${bad}`);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // validateAndSanitizeSection · la EF construye html desde url (autoridad)
 // ─────────────────────────────────────────────────────────────
 test('validate: video top-level con url -> html construido', () => {
@@ -106,4 +139,18 @@ test('validate: video legacy (solo html) -> html intacto (backward-compat)', () 
 test('validate: hijo video de un contenedor con url -> html construido', () => {
   const out = validateAndSanitizeSection(cont([child({ url: 'https://vimeo.com/123456789', aspect_ratio: '16/9' })]));
   assert.ok(out.props.bloques[0].props.html && out.props.bloques[0].props.html.startsWith(VI), 'el hijo video deberia construir su iframe');
+});
+
+// FASE D (2b): precedencia mp4_url -> con un MP4, NO se construye html desde url (el render muestra el <video>).
+test('validate: con mp4_url + url, NO construye html (mp4 precede)', () => {
+  const out = validateAndSanitizeSection(sec({ mp4_url: MP4_OK, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', aspect_ratio: '16/9' }));
+  assert.equal(out.props.mp4_url, MP4_OK, 'mp4_url preservado');
+  assert.ok(!out.props.html, 'no construye html desde url cuando hay mp4_url');
+});
+
+test('validate: hijo video con mp4_url -> tampoco construye html (precedencia)', () => {
+  const out = validateAndSanitizeSection(cont([child({ mp4_url: MP4_OK, url: 'https://vimeo.com/123456789', aspect_ratio: '16/9' })]));
+  const b = out.props.bloques[0];
+  assert.equal(b.props.mp4_url, MP4_OK);
+  assert.ok(!b.props.html, 'el hijo con mp4_url no construye html');
 });

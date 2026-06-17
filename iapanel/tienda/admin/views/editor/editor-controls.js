@@ -197,6 +197,62 @@
     return fieldWrapper(label, el('div', { class: 'ed-imgpicker' }, [preview, btn]), errorEl);
   }
 
+  // video-upload (Fase D 2b): sube un MP4 a R2 por presigned PUT. El VALOR es la URL publica
+  // (mismo shape que urlInput -> Clase A). Estados: vacio / subiendo (barra de progreso real) /
+  // cargado (Reemplazar + Quitar). NO toca la red en el render (solo en el cambio del file input
+  // -> el inspector renderea sin cliente, tests jsdom OK). La logica de subida vive en editorUploadVideo.
+  function videoUpload(label, value, onChange, opts) {
+    opts = opts || {};
+    const errorEl = el('p', { class: 'ed-ctrl__error', hidden: true });
+    const status = el('span', { class: 'ed-vidup__status' });
+    const fill = el('div', { class: 'ed-vidup__fill' });
+    const bar = el('div', { class: 'ed-vidup__bar', hidden: true }, [fill]);
+    const fileInput = el('input', { type: 'file', accept: 'video/mp4', class: 'ed-vidup__file' });
+    const removeBtn = el('button', { type: 'button', class: 'ed-btn ed-btn--ghost ed-vidup__remove' }, 'Quitar');
+    const btn = el('button', { type: 'button', class: 'ed-btn ed-btn--secondary ed-vidup__btn', onClick: () => fileInput.click() });
+
+    function renderState(url, uploading) {
+      status.textContent = url ? '✓ Video subido' : (uploading ? 'Subiendo...' : 'Sin video');
+      btn.textContent = url ? 'Reemplazar video' : 'Subir video MP4';
+      btn.disabled = !!uploading;
+      removeBtn.hidden = !url || !!uploading;
+      bar.hidden = !uploading;
+    }
+    renderState(value, false);
+
+    removeBtn.addEventListener('click', () => { errorEl.hidden = true; onChange(undefined); renderState('', false); });
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = ''; // permite re-elegir el mismo archivo
+      if (!file) return;
+      errorEl.hidden = true;
+      const U = window.TiendaIA && window.TiendaIA.editorUploadVideo;
+      if (!U) return;
+      const v = U.validate(file);
+      if (!v.ok) { errorEl.textContent = v.error; errorEl.hidden = false; return; }
+      renderState('', true);
+      fill.style.width = '0%';
+      try {
+        const url = await U.upload(file, {
+          tiendaId: opts.tiendaId,
+          getAccessToken: window.TiendaIA.getAccessToken,
+          onProgress: (frac) => { fill.style.width = Math.round(frac * 100) + '%'; },
+        });
+        onChange(url);
+        renderState(url, false);
+      } catch (err) {
+        errorEl.textContent = (err && err.message) || 'No se pudo subir el video.';
+        errorEl.hidden = false;
+        renderState(value, false);
+      }
+    });
+
+    return fieldWrapper(label, el('div', { class: 'ed-vidup' }, [
+      el('div', { class: 'ed-vidup__row' }, [status, btn, removeBtn]), bar, fileInput,
+    ]), errorEl);
+  }
+
   // category picker (Fase B-controles): elige una categoria (o "Todas") visualmente
   // en vez de tipear el uuid. El VALOR es categoria_id (uuid|null, mismo shape que el
   // control 'text' de hoy -> Clase A). Patron bendecido: el modal (y supabase) se abren
@@ -443,7 +499,7 @@
   window.TiendaIA.editorControls = {
     textInput, textarea, urlInput,
     select: selectCtrl,
-    colorPicker, imagePicker, categoryPicker, productPicker, richText, slider,
+    colorPicker, imagePicker, videoUpload, categoryPicker, productPicker, richText, slider,
     switch: switchCtrl,
     headerLabel, primaryButton, dangerButton, collapsibleSection, infoBox,
     ALIGN_OPTIONS,

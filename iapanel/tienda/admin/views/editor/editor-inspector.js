@@ -198,6 +198,12 @@
         wrap.appendChild(C.imagePicker(campo.label, p[campo.key] || '',
           v => setProp(target, campo.key, v, campo), { ...(campo.opts || {}), tiendaId: target.tiendaId }));
         break;
+      case 'video-upload':
+        // FASE D (2b): sube un MP4 a R2; el valor es la URL publica. La precedencia mp4_url>url/html
+        // la maneja el render (Video.astro) y validate-section -> no hace falta limpiar url/html aca.
+        wrap.appendChild(C.videoUpload(campo.label, p[campo.key] || '',
+          v => setProp(target, campo.key, v, campo), { tiendaId: target.tiendaId }));
+        break;
       case 'category':
         wrap.appendChild(C.categoryPicker(campo.label, p[campo.key] || null,
           v => setProp(target, campo.key, v, campo), { tiendaId: target.tiendaId }));
