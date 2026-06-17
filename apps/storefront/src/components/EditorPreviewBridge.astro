@@ -5,6 +5,7 @@
 // Contenido byte-identico al inline original del home: mismo script + PreviewChrome + InlineEdit.
 import PreviewChrome from '~/components/PreviewChrome.astro';
 import InlineEdit from '~/components/InlineEdit.astro';
+import EditorCanvasDnD from '~/components/EditorCanvasDnD.astro';
 import { FONT_PAIRINGS, CSS_COLOR_REGEX } from '@aimma/database';
 
 const ADMIN_ORIGIN = 'https://aimma.com.co';
@@ -24,6 +25,9 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
       try { parent.postMessage({ type: 'add-child', parentId: parentId, column: column }, ADMIN_ORIGIN); } catch (_) {}
       return;
     }
+    // A1: el grip de arrastre EN EL CANVAS (handle del DnD de hijos) NO selecciona ni deselecciona;
+    // solo dispara el drag de Sortable (mousedown). Un click pelado en el grip se ignora.
+    if (e.target.closest('[data-ed-grip]')) return;
     // Clicks del chrome de seleccion: los maneja PreviewChrome, no seleccionar/deseleccionar.
     if (e.target.closest('[data-ed-chrome]')) return;
     const el = e.target.closest('[data-section-id]');
@@ -112,3 +116,4 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
 
 <PreviewChrome />
 <InlineEdit />
+<EditorCanvasDnD />
