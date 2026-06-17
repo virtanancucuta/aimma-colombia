@@ -465,9 +465,29 @@
     if (insp) insp.classList.remove('ed-inspector--open');
   }
 
+  // FASE D (A1 QoL): tras seleccionar un HIJO de contenedor (click/chrome en el canvas), el inspector se
+  // reconstruye desde arriba -> el sub-editor del hijo elegido puede quedar bajo el "fold". Lo trae a la
+  // vista DENTRO del panel (.ed-inspector tiene overflow:auto). Solo hijos (childId); una seccion top-level
+  // ya queda arriba tras el rebuild. block:'nearest' = scroll minimo (no salta si ya esta visible).
+  function scrollSelectedChildIntoView() {
+    const ES = window.TiendaIA.editorState;
+    const sel = ES.selection;
+    if (!sel || !sel.childId || !state.container) return;
+    const card = state.container.querySelector('.ed-list-item--sel') ||
+                 state.container.querySelector('[data-child-id="' + sel.childId + '"]');
+    if (!card || typeof card.scrollIntoView !== 'function') return;
+    try { card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    catch (_e) { try { card.scrollIntoView(); } catch (_e2) { /* noop */ } }
+  }
+
   function bindStateListeners() {
     const ES = window.TiendaIA.editorState;
-    ES.subscribe('selection', rebuild);
+    ES.subscribe('selection', function () {
+      rebuild();
+      // tras reconstruir, traer el sub-editor del hijo seleccionado a la vista (rAF = post-layout si existe).
+      if (window.requestAnimationFrame) window.requestAnimationFrame(scrollSelectedChildIntoView);
+      else scrollSelectedChildIntoView();
+    });
   }
 
   window.TiendaIA = window.TiendaIA || {};
