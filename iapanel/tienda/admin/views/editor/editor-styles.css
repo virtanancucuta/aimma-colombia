@@ -362,74 +362,27 @@
   box-shadow: 0 0 0 2px color-mix(in oklab, #2563eb 22%, transparent);
 }
 
-/* FASE D (DnD entre columnas): columna del sub-editor = drop-target (min-height -> columna VACIA
-   sigue recibiendo drops, gotcha clasico de Sortable) + grip de arrastre + ghost. */
+/* FASE D (A2): columna del sub-editor (contenedor de las tarjetas de hijo). El DnD del inspector se
+   removio (mover entre columnas = selector "Columna" o arrastrar en el canvas); esto queda estructural. */
 .ed-childcol {
   min-height: 44px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   border-radius: var(--ed-radius);
-  transition: background-color 140ms ease-out, box-shadow 140ms ease-out;
 }
-/* #5: dropzone de columna VACIA mas grande + clara (icono + texto). */
+/* Hint de columna VACIA (sin connotacion de arrastrar; el boton "+ Agregar bloque" va debajo). */
 .ed-childcol:empty::before {
-  content: '⠿  Soltá un bloque acá';
+  content: 'Columna vacía';
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 68px;
+  min-height: 56px;
   border: 1.5px dashed var(--ed-color-border);
   border-radius: var(--ed-radius);
   color: #94a3b8;
   font-size: 0.82rem;
 }
-/* #1: resalte de la COLUMNA destino mientras el cursor esta encima (via onMove). */
-.ed-childcol--over {
-  background: color-mix(in oklab, #14b8a6 9%, transparent);
-  box-shadow: inset 0 0 0 2px color-mix(in oklab, #14b8a6 55%, transparent);
-}
-.ed-childcol--over:empty::before {
-  border: 1.5px solid #14b8a6;
-  color: #0f766e;
-  background: color-mix(in oklab, #14b8a6 12%, transparent);
-}
-
-/* #6: grip con HOVER (cursor grab/grabbing ya estaba). */
-.ed-child-handle {
-  cursor: grab;
-  user-select: none;
-  color: #94a3b8;
-  padding: 2px 6px;
-  font-size: 1rem;
-  line-height: 1;
-  border-radius: 4px;
-  transition: color 140ms ease-out, background-color 140ms ease-out;
-}
-.ed-child-handle:hover { color: #475569; background: color-mix(in oklab, #2563eb 10%, transparent); }
-.ed-child-handle:active { cursor: grabbing; }
-
-/* #1: el ghost (hueco de caida) como BARRA DE INSERCION azul (no solo opacity) -> se ve donde cae. */
-.ed-childcard--ghost {
-  opacity: 1;
-  background: color-mix(in oklab, #2563eb 8%, transparent);
-  border: 1px dashed color-mix(in oklab, #2563eb 40%, transparent);
-  border-top: 2px solid #2563eb;
-  border-radius: var(--ed-radius);
-  box-shadow: none;
-}
-.ed-childcard--ghost > * { visibility: hidden; }
-/* #4: clon de arrastre SOLIDO (forceFallback) -> sombra + borde azul (SIN transform: Sortable lo usa
-   para posicionar el clon). El origen queda dim (chosen). */
-.ed-childcard--drag {
-  opacity: 1 !important;
-  background: #ffffff;
-  border: 1.5px solid #2563eb;
-  border-radius: var(--ed-radius);
-  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.28);
-  cursor: grabbing;
-}
-.ed-childcard--chosen { opacity: 0.55; }
 .ed-list-item__head {
   display: flex;
   align-items: center;
