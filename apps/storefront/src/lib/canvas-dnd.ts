@@ -27,6 +27,7 @@ const STYLE_ID = 'ed-canvas-dnd-css';
 const DND_CSS = `
 [data-ed-grip]{position:absolute;top:6px;right:6px;z-index:30;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:8px;background:color-mix(in oklab,#2563eb 88%,transparent);color:#fff;font-size:18px;line-height:1;cursor:grab;opacity:0;transition:opacity 140ms ease-out,background-color 140ms ease-out;box-shadow:0 2px 8px rgba(0,0,0,.28)}
 [data-section-id]:hover>[data-ed-grip],[data-ed-grip]:focus-visible{opacity:1}
+@media (hover:none){[data-ed-grip]{opacity:1}}
 [data-ed-grip]:hover{background:#2563eb}
 [data-ed-grip]:active{cursor:grabbing}
 .ed-canvas-ghost{position:relative}
