@@ -72,3 +72,28 @@ test('move: childId desconocido -> no-op', () => {
   ES.moveChildToColumn(parent, 'sec_zzzzzz', 1, 0);
   assert.equal(ES.findContenedor(parent).props.bloques.map(b => b.id + ':' + (b.columna || 0)).join(','), before);
 });
+
+// ── Leak fix: las instancias Sortable previas se destruyen en cada rebuild (no se acumulan) ──
+test('leak fix: tras N rebuilds del inspector, solo las instancias actuales viven (las previas destruidas)', () => {
+  const win = bootWindow(['editor-controls.js', 'section-defs.js', 'editor-state.js', 'editor-inspector.js']);
+  const ES = win.TiendaIA.editorState;
+  ES.init(null, 'tienda-test');
+  const parent = ES.addSection('contenedor');
+  ES.updateSectionProps(parent, { columnas: 2 });   // 2 columnas -> 2 colBox -> 2 Sortable por render
+  ES.select(parent);
+
+  // Mock de Sortable: registra instancias + flag de destroy.
+  const created = [];
+  win.Sortable = function (el) { this.el = el; this.destroyed = false; created.push(this); };
+  win.Sortable.prototype.destroy = function () { this.destroyed = true; };
+
+  const container = win.document.createElement('div');
+  win.TiendaIA.editorInspector.render(container, {});   // 1er render -> 2 instancias
+  const N = 5;
+  for (let i = 0; i < N; i++) win.TiendaIA.editorInspector.rebuild();
+
+  const alive = created.filter((s) => !s.destroyed);
+  assert.equal(alive.length, 2, 'solo las 2 instancias del render actual quedan vivas');
+  assert.ok(created.length >= 2 * (N + 1) - 2, 'se crearon instancias nuevas en cada rebuild (no se reusan)');
+  assert.equal(created.length - alive.length, created.filter((s) => s.destroyed).length, 'el resto esta destruido');
+});
