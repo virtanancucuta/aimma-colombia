@@ -218,7 +218,7 @@
         break;
       case 'select':
         wrap.appendChild(C.select(campo.label, selectCurrent(p, campo), optList(campo.opts.options),
-          v => setProp(target, campo.key, campo.empty_to_undefined ? (v || undefined) : v, campo)));
+          v => { setProp(target, campo.key, campo.empty_to_undefined ? (v || undefined) : v, campo); if (campo.rebuild_on_change) rebuild(); }));
         break;
       case 'switch':
         wrap.appendChild(C.switch(campo.label, p[campo.key] !== false,
@@ -387,11 +387,74 @@
   //   Slides 1-3 (↑↓✕ + agregar) -> imagenes 1-3 (image-picker + alt + link + overlay colapsable) (↑↓✕ +
   //   agregar). Edicion de campos = debounced (sin rebuild); cambios estructurales = rebuild. Reusa los
   //   controles del toolkit (image-picker, color, select) + las ops de editor-state (find/add/remove/reorder).
+  // ── Refinamientos franja: hint de formato (#2) + aviso por imagen (#3) ──
+  // Ratio objetivo de CADA celda = ancho_celda / alto_banda. ancho = 1440/Nimgs (el full-bleed se reparte
+  // entre las imagenes del slide); alto = cap del preset. Depende de altura Y cantidad -> recalcula en cada
+  // rebuild (la altura dispara rebuild via rebuild_on_change; add/remove imagen ya rebuildea).
+  const FRANJA_CAPS = { corto: 300, medio: 460, alto: 680 };
+  // adaptarse -> 'natural' SOLO si es hero (1 slide / 1 imagen); si no cae a 'medio' (igual que el render C-3b).
+  function franjaEffAltura(altura, nSlides, nImgs) {
+    if (altura === 'adaptarse') return (nSlides === 1 && nImgs === 1) ? 'natural' : 'medio';
+    return altura || 'medio';
+  }
+  function franjaTargetRatio(effAltura, nImgs) {
+    if (effAltura === 'natural') return null;
+    return (1440 / nImgs) / (FRANJA_CAPS[effAltura] || 460);
+  }
+  const FRANJA_RATIOS = [
+    { r: 5.0, l: '5:1', o: 'panoramica' }, { r: 3.0, l: '3:1', o: 'panoramica' },
+    { r: 2.0, l: '2:1', o: 'apaisada' }, { r: 1.78, l: '16:9', o: 'apaisada' },
+    { r: 1.5, l: '3:2', o: 'apaisada' }, { r: 1.33, l: '4:3', o: 'apaisada' },
+    { r: 1.0, l: '1:1', o: 'cuadrada' }, { r: 0.75, l: '3:4', o: 'vertical' },
+    { r: 0.67, l: '2:3', o: 'vertical' }, { r: 0.56, l: '9:16', o: 'vertical' },
+  ];
+  function franjaRatioLabel(ratio) {
+    let best = FRANJA_RATIOS[0], bestD = Infinity;
+    for (const x of FRANJA_RATIOS) { const d = Math.abs(Math.log(ratio / x.r)); if (d < bestD) { bestD = d; best = x; } }
+    return best;
+  }
+  function franjaIdealPx(effAltura, nImgs) {
+    const round10 = (n) => Math.round(n / 10) * 10;
+    return { w: round10((1440 / nImgs) * 1.5), h: round10((FRANJA_CAPS[effAltura] || 460) * 1.5) };
+  }
+  function franjaHintText(altura, nSlides, nImgs) {
+    const eff = franjaEffAltura(altura, nSlides, nImgs);
+    if (eff === 'natural') return 'Se adapta a la imagen (sin recorte) — ideal para fotos horizontales.';
+    const r = franjaTargetRatio(eff, nImgs), lab = franjaRatioLabel(r), px = franjaIdealPx(eff, nImgs);
+    return 'Cada imagen se ve en ~' + lab.l + ' (' + lab.o + ') · ideal subir ~' + px.w + '×' + px.h + 'px';
+  }
+  // Umbral de aviso (#3): desajuste de ratio 1.5x = la imagen pierde ~1/3 por cover (recorte notorio).
+  const FRANJA_WARN_THRESHOLD = 1.5;
+  function franjaWarnText(natW, natH, targetRatio) {
+    const real = natW / natH;
+    const mismatch = Math.max(real / targetRatio, targetRatio / real);
+    if (mismatch <= FRANJA_WARN_THRESHOLD) return null;
+    const objLabel = franjaRatioLabel(targetRatio).l;
+    const masVertical = real < targetRatio;
+    return 'Esta imagen (' + natW + '×' + natH + ') es ' + (masVertical ? 'mucho mas vertical' : 'mucho mas apaisada') +
+      ' que el espacio (~' + objLabel + '); se va a recortar fuerte. Usa el punto focal, cambia la altura a "Adaptarse", o subi ' +
+      (masVertical ? 'una mas apaisada' : 'una mas vertical o cuadrada') + '.';
+  }
+  // Carga la imagen REAL (client-side, naturalWidth/Height; NO se guarda) y pinta/limpia el aviso.
+  function franjaAttachWarning(warnEl, imgUrl, targetRatio, suppress) {
+    warnEl.hidden = true; warnEl.textContent = '';
+    if (suppress || !targetRatio || !imgUrl) return;
+    const probe = new window.Image();
+    probe.onload = () => {
+      if (!probe.naturalWidth || !probe.naturalHeight) return;
+      const txt = franjaWarnText(probe.naturalWidth, probe.naturalHeight, targetRatio);
+      if (txt) { warnEl.textContent = txt; warnEl.hidden = false; } else { warnEl.hidden = true; }
+    };
+    probe.src = imgUrl;
+  }
+
   function renderFranjaSlides(wrap, target, campo, C) {
     const ES = window.TiendaIA.editorState;
     const secId = target.id;
     const s = ES.findFranja(secId);
     const slides = (s && s.props.slides) || [];
+    const altura = (s && s.props && s.props.altura) || 'medio';
+    const nSlides = slides.length;
 
     wrap.appendChild(C.el('h5', { class: 'ed-inspector__subhead' }, 'Slides e imagenes'));
 
@@ -403,6 +466,11 @@
         onRemove: slides.length > 1 ? () => { ES.removeSlide(secId, si); rebuild(); } : null,
       });
       const imgs = Array.isArray(slide.imagenes) ? slide.imagenes : [];
+      // #2 hint de formato (por slide): ratio objetivo por celda segun altura + cantidad de imagenes.
+      slideCard.body.appendChild(C.el('p', { class: 'ed-franja-hint' }, franjaHintText(altura, nSlides, imgs.length)));
+      const effAltura = franjaEffAltura(altura, nSlides, imgs.length);
+      const slideTargetRatio = franjaTargetRatio(effAltura, imgs.length);
+      const warnSuppress = (effAltura === 'natural');   // adaptarse-hero: no recorta -> sin aviso
       imgs.forEach((img, ii) => {
         const imgCard = listItemCard(C, 'Imagen ' + (ii + 1), {
           idx: ii, total: imgs.length,
@@ -410,8 +478,14 @@
           onDown: () => { ES.reorderImagen(secId, si, ii, +1); rebuild(); },
           onRemove: imgs.length > 1 ? () => { ES.removeImagen(secId, si, ii); rebuild(); } : null,
         });
+        // #3 aviso por imagen: al cambiar la imagen, recalcula contra el ratio objetivo del slide (sin
+        // rebuild -> no pierde scroll). El alto/cantidad SI rebuildean (recomputan slideTargetRatio).
+        const warnEl = C.el('p', { class: 'ed-franja-warn', hidden: true });
         imgCard.body.appendChild(C.imagePicker('Imagen', img.url || '',
-          v => ES.updateImagenFranja(secId, si, ii, { url: v }), { tiendaId: target.tiendaId }));
+          v => { ES.updateImagenFranja(secId, si, ii, { url: v }); franjaAttachWarning(warnEl, v, slideTargetRatio, warnSuppress); },
+          { tiendaId: target.tiendaId }));
+        imgCard.body.appendChild(warnEl);
+        franjaAttachWarning(warnEl, img.url, slideTargetRatio, warnSuppress);
         imgCard.body.appendChild(C.textInput('Texto alternativo (alt)', img.alt || '',
           v => ES.updateImagenFranja(secId, si, ii, { alt: v || undefined }), { maxLength: 160 }));
         imgCard.body.appendChild(C.urlInput('Link al hacer clic (opcional)', img.link || '',

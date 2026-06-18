@@ -434,12 +434,16 @@
       catalog: { group: 'avanzado', icon: '▭', desc: 'Banda full-bleed de imagenes (1-3 por slide), con slider si hay varias.' },
       context: null, render_strategy: 'unified',
       ancho_default: 'completo', padding_default: 'sm',
+      // Orden tipo Shopify/Dawn: primero el MARCO de la seccion (altura/separacion/slider), despues el
+      // CONTENIDO (slides e imagenes), y la apariencia base la pone el framework al final.
+      // altura: rebuild_on_change -> al cambiarla, el inspector se reconstruye y el hint de formato (#2)
+      // recalcula el ratio objetivo por celda.
       campos: [
-        { key: 'slides', control: 'franja-slides', label: 'Slides e imagenes' },
-        { key: 'altura', control: 'select', label: 'Altura de la banda', default: 'medio', opts: { options: 'FRANJA_ALTURA' } },
+        { key: 'altura', control: 'select', label: 'Altura de la banda', default: 'medio', opts: { options: 'FRANJA_ALTURA' }, rebuild_on_change: true },
         { key: 'gap', control: 'select', label: 'Separacion entre imagenes', default: 'min', opts: { options: 'FRANJA_GAP' } },
         { key: 'autorotar', control: 'switch', label: 'Auto-rotar el slider', default: false },
         { key: 'intervalo_seg', control: 'slider', label: 'Intervalo del auto-rotar (segundos)', default: 5, opts: { min: 3, max: 15, step: 1 } },
+        { key: 'slides', control: 'franja-slides', label: 'Slides e imagenes' },
       ],
     },
   };

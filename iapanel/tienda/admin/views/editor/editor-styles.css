@@ -349,6 +349,30 @@
   line-height: 1.5;
 }
 
+/* Franja · hint de formato (#2): guia del ratio objetivo por celda. Muted, no intrusivo. */
+.ed-franja-hint {
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ed-color-text-muted);
+  background: var(--ed-color-bg);
+  border-radius: var(--ed-radius);
+}
+
+/* Franja · aviso por imagen (#3): la imagen real desencaja del espacio. Ambar = advertencia (NO error). */
+.ed-franja-warn {
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: var(--ed-radius);
+}
+.ed-franja-warn[hidden] { display: none; }
+
 /* ── Sub-editor de lista (botones / galeria / campos) ── */
 .ed-list-item {
   border: 1px solid var(--ed-color-border);
