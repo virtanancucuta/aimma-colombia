@@ -244,6 +244,8 @@
           <p class="panel-card-desc">Mira cómo va tu negocio hoy: ventas, gastos y utilidad en tiempo real.</p>
         </article>
 
+        <!-- MIGRACION PASO 1 (2026-06-18): Contenido IA se movio a Tienda IA > Fotos IA.
+             Card retirado del panel (reversible: descomentar para revertir).
         <article class="panel-card" id="cardContenidoIA">
           <span class="badge-pro-locked" id="badgeContenidoIA">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -263,6 +265,7 @@
           <h2 class="panel-card-title">CONTENIDO IA</h2>
           <p class="panel-card-desc">Crea fotos, avatares y posts con IA en segundos.</p>
         </article>
+        -->
 
         <article class="panel-card" id="cardTiendaIA" onclick="window.location.href='/iapanel/tienda/admin/'" style="cursor:pointer">
           <span class="badge-pro-locked" id="badgeTiendaIA">
@@ -528,7 +531,8 @@
       }
 
       configurarDashboard();
-      configurarContenidoIA();
+      // MIGRACION PASO 1: Contenido IA movido a Tienda IA. (reversible: descomentar)
+      // configurarContenidoIA();
       configurarBanner();
       configurarSubscriptionBar();
 
