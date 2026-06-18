@@ -47,3 +47,11 @@ test('PreviewChrome: ancla el recuadro al hijo [data-fullbleed] si existe (condi
   // el rect que posiciona el recuadro sale de (fb || el), no solo del wrapper.
   expect(html).toMatch(/\(fb\s*\|\|\s*el\)\.getBoundingClientRect\(\)/);
 });
+
+// #4: el chip (bar de etiqueta+iconos) se clampea dentro del canvas visible para no pegarse al borde
+// en una banda full-bleed (left:0). El recuadro queda en la banda; solo el bar se inseta.
+test('PreviewChrome: el chip (#4) clampea su left dentro del canvas (>=12px, sin desbordar)', async () => {
+  const html = await render();
+  expect(html).toMatch(/bar\.style\.left\s*=/);
+  expect(html).toMatch(/clientWidth/);
+});

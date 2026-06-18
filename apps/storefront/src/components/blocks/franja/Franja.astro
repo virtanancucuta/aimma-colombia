@@ -158,6 +158,16 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
   .franja--h-medio { --franja-h: clamp(220px, 32vw, 460px); }
   .franja--h-alto  { --franja-h: clamp(340px, 48vw, 680px); }
 
+  /* Celda base. flex:0 0 auto = MOBILE (column): el height explicito del cell (var --franja-h) manda
+     en el eje vertical (en columna flex:1 1 0 pondria flex-basis:0 en el ALTO y colapsaria el cell).
+     ORDEN CRITICO: esta regla va ANTES del @media >=640 para que su `.franja__cell { flex:1 1 0 }`
+     (mismo selector + especificidad) GANE por orden de fuente en desktop y reparta el ANCHO. Si va
+     despues, lo pisa y los cells no llenan la banda (regresion: 2 imgs dejaban blanco). */
+  .franja__cell {
+    position: relative; flex: 0 0 auto; min-width: 0;
+    display: block; overflow: hidden; text-decoration: none;
+  }
+
   /* C-4 · MOBILE-FIRST (apilado): el alto del preset va POR CELDA -> cada imagen al alto del preset
      y el slide crece (no se aplastan 2-3 imagenes apiladas). Alerta C-3a x C-4. */
   .franja--h-corto .franja__cell,
@@ -189,13 +199,6 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
   .franja--gap-min   .franja__slide { gap: 4px; }
   .franja--gap-small .franja__slide { gap: 12px; }
 
-  .franja__cell {
-    /* MOBILE (column): flex:0 0 auto -> el height explicito del cell (var --franja-h) manda en el eje
-       vertical. NO flex:1 1 0 aqui: en columna eso pone flex-basis:0 en el alto y colapsa el cell a 0.
-       En desktop (row) el flex:1 1 0 reparte ANCHO (abajo, @media). */
-    position: relative; flex: 0 0 auto; min-width: 0;
-    display: block; overflow: hidden; text-decoration: none;
-  }
   .franja__img { width: 100%; height: 100%; object-fit: cover; object-position: var(--foco, 50% 50%); display: block; }
 
   /* ── overlay (recuadro 3x3, scrim+texto, solo con texto) ── */

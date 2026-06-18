@@ -92,6 +92,17 @@ describe('Franja.astro · F-2 render estatico', () => {
     expect(FRANJA_SRC).toMatch(/@media\s*\(min-width:\s*640px\)[\s\S]*flex-direction:\s*row/);
   });
 
+  // GUARD (regresion C-4): la celda base (.franja__cell { flex:0 0 auto }) DEBE ir ANTES del @media>=640
+  // (donde el cell pasa a flex:1 1 0). Misma especificidad -> gana el orden de fuente; si la base va
+  // despues, pisa el flex de desktop y los cells no reparten el ancho (2 imgs dejaban blanco).
+  test('C-4 GUARD orden: .franja__cell base precede al @media >=640 (si no, pisa el flex:1 1 0 desktop)', () => {
+    const cellIdx = FRANJA_SRC.indexOf('.franja__cell {');
+    const mqIdx = FRANJA_SRC.indexOf('@media (min-width: 640px)');
+    expect(cellIdx).toBeGreaterThan(-1);
+    expect(mqIdx).toBeGreaterThan(-1);
+    expect(cellIdx).toBeLessThan(mqIdx);
+  });
+
   test('3 imagenes: 3 celdas lado a lado', async () => {
     const html = await render({ slides: [{ imagenes: [IMG(), IMG(), IMG()] }], gap: 'none' });
     expect((html.match(/franja__cell/g) || []).length).toBe(3);

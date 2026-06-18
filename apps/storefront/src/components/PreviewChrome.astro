@@ -92,6 +92,13 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
       root.style.left = (r.left + (window.scrollX || window.pageXOffset || 0)) + 'px';
       root.style.width = r.width + 'px';
       root.style.height = r.height + 'px';
+      // Chip (#4): el bar va en left:0 del root -> en banda full-bleed (r.left=0) la etiqueta toca el
+      // borde del canvas. Clampamos SOLO el bar a [12px, ancho_canvas - 12 - barW] en viewport (el
+      // recuadro sigue en la banda). Display-only, no toca estado/patches/autosave.
+      var vw = document.documentElement.clientWidth || window.innerWidth || 0;
+      var barW = bar.offsetWidth || 0;
+      var clampedVpLeft = Math.min(Math.max(r.left, 12), Math.max(12, vw - 12 - barW));
+      bar.style.left = (clampedVpLeft - r.left) + 'px';
       // gris de limite (cosmetico; el guard real es el no-op del admin fuera de rango).
       var nodes = document.querySelectorAll('[data-section-id]');
       var idx = -1;
