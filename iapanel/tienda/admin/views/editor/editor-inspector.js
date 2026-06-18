@@ -416,6 +416,10 @@
           v => ES.updateImagenFranja(secId, si, ii, { alt: v || undefined }), { maxLength: 160 }));
         imgCard.body.appendChild(C.urlInput('Link al hacer clic (opcional)', img.link || '',
           v => ES.updateImagenFranja(secId, si, ii, { link: v || undefined }), { placeholder: 'https://...' }));
+        // C-5: punto focal por imagen -> object-position. Mismo vocabulario 3x3 que la posicion del
+        // texto. Aplica solo cuando la franja recorta (presets o adaptarse-vertical que topa el cap).
+        imgCard.body.appendChild(C.select('Punto focal (que parte se ve si se recorta)', img.foco || 'centro', optList('FRANJA_POSICION'),
+          v => ES.updateImagenFranja(secId, si, ii, { foco: v })));
         // Overlay colapsable. El velo+texto SOLO se rinde si hay texto (sin texto = imagen limpia).
         const ov = img.overlay || {};
         const ovCtrls = [
