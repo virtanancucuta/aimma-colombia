@@ -20,7 +20,7 @@ const render = async (props: any, slug = 'industrial_clean') =>
 describe('Franja.astro · F-2 render estatico', () => {
   test('1 imagen sin overlay/link: 1 celda div, sin overlay, banda + gap', async () => {
     const html = await render({ slides: [{ imagenes: [IMG()] }], gap: 'min' });
-    expect(html).toContain('class="franja franja--gap-min"');
+    expect(html).toContain('class="franja franja--gap-min franja--h-medio"');  // default altura=medio
     expect(html).toContain('franja__slide');
     expect((html.match(/franja__cell/g) || []).length).toBe(1);
     expect(html).toContain('<img');
@@ -39,6 +39,30 @@ describe('Franja.astro · F-2 render estatico', () => {
     const base = FRANJA_SRC.match(/\.franja__slide\s*\{[^}]*\}/);
     expect(base, 'no se encontro la regla base .franja__slide').toBeTruthy();
     expect(base![0]).toMatch(/width:\s*100%/);
+  });
+
+  // ── C-3a: altura (presets) + foco (object-position) ──
+  test('C-3a altura: clase franja--h-<modo>; default medio; adaptarse->medio (fallback, C-3b lo refina)', async () => {
+    expect(await render({ slides: [{ imagenes: [IMG()] }] })).toContain('franja--h-medio');               // default
+    expect(await render({ slides: [{ imagenes: [IMG()] }], altura: 'corto' })).toContain('franja--h-corto');
+    expect(await render({ slides: [{ imagenes: [IMG()] }], altura: 'alto' })).toContain('franja--h-alto');
+    // adaptarse SIN ser hero igual cae a medio; el hero->natural llega en C-3b.
+    expect(await render({ slides: [{ imagenes: [IMG()] }], altura: 'adaptarse' })).toContain('franja--h-medio');
+  });
+
+  test('C-3a foco: object-position por imagen via var --foco (default centro 50% 50%)', async () => {
+    expect(await render({ slides: [{ imagenes: [IMG()] }] })).toContain('--foco:50% 50%');                 // default centro
+    const dr = await render({ slides: [{ imagenes: [{ url: 'https://cdn.x/a.jpg', foco: 'abajo-derecha' }] }] });
+    expect(dr).toContain('--foco:100% 100%');
+    const ai = await render({ slides: [{ imagenes: [{ url: 'https://cdn.x/a.jpg', foco: 'arriba-izquierda' }] }] });
+    expect(ai).toContain('--foco:0% 0%');
+  });
+
+  test('C-3a GUARD source: 3 clases de altura con sus clamp + object-position via var(--foco)', () => {
+    expect(FRANJA_SRC).toMatch(/\.franja--h-corto\s+\.franja__slide\s*\{[^}]*clamp\(160px/);
+    expect(FRANJA_SRC).toMatch(/\.franja--h-medio\s+\.franja__slide\s*\{[^}]*clamp\(220px/);
+    expect(FRANJA_SRC).toMatch(/\.franja--h-alto\s+\.franja__slide\s*\{[^}]*clamp\(340px/);
+    expect(FRANJA_SRC).toMatch(/object-position:\s*var\(--foco/);
   });
 
   test('3 imagenes: 3 celdas lado a lado', async () => {
