@@ -20,12 +20,14 @@
   // flujo de productos). Para reactivarlos: vaciar el Set. NO se borra el codigo.
   const PARKED_QUICK = new Set(['quitar_fondo', 'mejorar_luz', 'fondo_lifestyle']);
   function applyMigrationUI() {
+    // OJO: b.hidden NO basta -> .quick-chip tiene `display:flex` en estudio.css, que pisa el [hidden]
+    // del UA. Se necesita style.display='none' (inline, gana por especificidad).
     document.querySelectorAll('.quick-chip').forEach(function (b) {
-      if (PARKED_QUICK.has(b.dataset.quick)) b.hidden = true;
+      if (PARKED_QUICK.has(b.dataset.quick)) b.style.display = 'none';
     });
     if (EMBED_TIENDA) {
       const h = document.querySelector('.estudio-header');
-      if (h) h.hidden = true;
+      if (h) h.style.display = 'none';
     }
   }
   function notifyParentBalance() {
@@ -447,8 +449,8 @@
 
   function showEditor() {
     dom.stateLoading.hidden = true;
+    applyMigrationUI();                 // ANTES de revelar -> parquea sin flash (chips ocultos antes de verse)
     dom.stateEditor.hidden = false;
-    applyMigrationUI();
     dom.app.setAttribute('aria-busy', 'false');
   }
 
