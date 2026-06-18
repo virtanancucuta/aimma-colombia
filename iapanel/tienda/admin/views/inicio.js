@@ -1,4 +1,4 @@
-/* AIMMA · Tienda IA · views/inicio.js · v3 · 2026-05-30 · Vista Inicio */
+/* AIMMA · Tienda IA · views/inicio.js · v4 · 2026-05-30 · Vista Inicio */
 /* v3 (2026-05-30 fix Jorge): KPI "Categorias" contaba padres + hijos
    (ej. 2 padres + 4 hijas = 6). Ahora filtra parent_id IS NULL para mostrar
    solo nivel 1, consistente con el esquema arbol 2 niveles del DESIGN.
@@ -158,15 +158,19 @@
       'pausada':   '<span class="ta-pill ta-pill--warn">Pausada</span>',
       'borrador':  '<span class="ta-pill ta-pill--info">En borrador</span>',
     })[tienda.estado] || '';
+    const chip = (T.tokenChip && typeof T.tokenChip.html === 'function') ? T.tokenChip.html() : '';
 
     return '' +
-      '<header style="margin-bottom: 24px;">' +
-        '<h1 class="ta-section-title">Bienvenido, ' + nombre + ' ' + estadoLabel + '</h1>' +
-        '<p class="ta-section-sub">' +
-          'Este es el panel de control del <strong>modulo Tienda IA</strong>. ' +
-          'Aqui veras como va tu catalogo y tus pedidos. ' +
-          'Tu slug es <code style="background:var(--ta-surface-2);color:var(--ta-text);padding:2px 6px;border-radius:4px;border:1px solid var(--ta-border);">' + slug + '.tienda.aimma.com.co</code>' +
-        '</p>' +
+      '<header style="margin-bottom: 24px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">' +
+        '<div>' +
+          '<h1 class="ta-section-title">Bienvenido, ' + nombre + ' ' + estadoLabel + '</h1>' +
+          '<p class="ta-section-sub">' +
+            'Este es el panel de control del <strong>modulo Tienda IA</strong>. ' +
+            'Aqui veras como va tu catalogo y tus pedidos. ' +
+            'Tu slug es <code style="background:var(--ta-surface-2);color:var(--ta-text);padding:2px 6px;border-radius:4px;border:1px solid var(--ta-border);">' + slug + '.tienda.aimma.com.co</code>' +
+          '</p>' +
+        '</div>' +
+        chip +
       '</header>';
   }
 
