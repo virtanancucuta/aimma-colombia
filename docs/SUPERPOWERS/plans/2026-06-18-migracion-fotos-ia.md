@@ -217,11 +217,36 @@ git commit -m "feat(estudio): modo embed=tienda + parqueo global de 3 chips + no
     setTimeout(function () { whenReady(cb, attempts + 1); }, 50);
   }
 
-  function renderFotosIA() {
+  // Gate de ENTITLEMENT (capa 1): tiene_acceso_pro en el route handler, aparte del 402 de tokens de
+  // la EF (capa 2). Replica el gate original de Contenido IA (que vivia en el card del panel).
+  // entitlement != saldo: un no-PRO con tokens no deberia entrar; un PRO con 0 tokens SI entra (ve
+  // "0 tokens · Recargar"). Cacheado en T.state.acceso. Fail-closed: si el RPC falla -> no-PRO (no leak).
+  async function ensureAcceso() {
     var T = window.TiendaIA;
-    // Enforce-en-route (defensivo): sin tienda no se monta (ya garantizado por el gate del admin).
+    if (T.state.acceso) return T.state.acceso;
+    try {
+      var res = await T.supabase().rpc('tiene_acceso_pro', { p_user_id: T.state.profile.id });
+      T.state.acceso = (res && res.data) || { pro: false };
+    } catch (e) { T.state.acceso = { pro: false }; }
+    return T.state.acceso;
+  }
+
+  async function renderFotosIA() {
+    var T = window.TiendaIA;
+    // Defensivo: sin tienda no se monta (ya garantizado por el gate has-tienda del admin).
     if (!T.state || !T.state.tienda) {
       T.dom.mainView.innerHTML = '<div class="ta-card"><p class="ta-section-sub">Esta seccion requiere una tienda activa.</p></div>';
+      return;
+    }
+    // ENFORCE el gate PRO en el route (no solo ocultar el link): un no-PRO que escribe #/fotos-ia
+    // a mano NO entra. Esto es entitlement, distinto del 402 de tokens.
+    var acceso = await ensureAcceso();
+    if (!acceso.pro) {
+      T.dom.mainView.innerHTML = '<div class="ta-card"><div class="ta-empty">' +
+        '<h2 class="ta-empty__title">Fotos IA es parte del Plan PRO</h2>' +
+        '<p class="ta-empty__text">Esta herramienta requiere Plan PRO. Activalo para generar fotos con IA.</p>' +
+        '<a href="/upgrade-pro.html" class="ta-btn ta-btn--primary" style="margin-top:12px;display:inline-block;">Ver planes</a>' +
+        '</div></div>';
       return;
     }
     var chip = (T.tokenChip && typeof T.tokenChip.html === 'function') ? T.tokenChip.html() : '';
@@ -261,11 +286,18 @@ git commit -m "feat(estudio): modo embed=tienda + parqueo global de 3 chips + no
 
   whenReady(function () {
     window.TiendaIA.registerView('fotos-ia', renderFotosIA);
+    // Cosmetico (el enforcement REAL es el route handler de arriba): ocultar el link del sidebar a no-PRO.
+    ensureAcceso().then(function (acceso) {
+      if (!acceso.pro) {
+        var link = document.querySelector('.ta-nav-link[data-route="fotos-ia"]');
+        if (link) link.hidden = true;
+      }
+    });
   });
 })();
 ```
 
-`window.TiendaIA` expone (verificado en `admin.js:393-400`): `state`, `supabase`, `dom`, `escapeHtml`, `registerCleanup`, `registerView`. La view agrega su consumo de `tokenChip` (Task 1).
+`window.TiendaIA` expone (verificado en `admin.js:393-400`): `state`, `supabase`, `dom`, `escapeHtml`, `registerCleanup`, `registerView`. La view agrega su consumo de `tokenChip` (Task 1). El RPC `tiene_acceso_pro({ p_user_id })` es el mismo que usa el panel (`iapanel/index.html:345`) y devuelve `{ pro: boolean, razon, ... }`.
 
 - [ ] **Step 2: Estilos de la view**
 
@@ -422,9 +454,12 @@ En Tienda IA → pestaña Fotos IA: subir una imagen → elegir "Fondo estudio" 
 
 Misma pestaña: subir imagen → escribir una instrucción en el textarea → Generar → resultado. Confirmar (a)/(b)/(c) igual que Step 1.
 
-- [ ] **Step 3: Check #1 — gate (server-side)**
+- [ ] **Step 3: Check #1 — gate de entitlement (capa 1, route) + tokens (capa 2, EF)**
 
-Verificar que `studio-enqueue` rechaza con 402 a un usuario 0-token (o confirmar el camino: la herramienta muestra "0 tokens · Recargar" y Generar da error de saldo). La pestaña Fotos IA NO monta el iframe si `state.tienda` falta (defensivo).
+Las DOS capas, no una:
+- **Entitlement (route):** un usuario **no-PRO** que escribe `#/fotos-ia` a mano NO entra — `renderFotosIA` llama `tiene_acceso_pro`, ve `pro:false` y muestra "Fotos IA es parte del Plan PRO" (NO monta el iframe). Verificar con un user no-PRO (o forzando `T.state.acceso = { pro:false }` en consola y navegando a `#/fotos-ia`). El link del sidebar tampoco se le muestra. **Esto es distinto del 402** — es derecho a la feature, no saldo.
+- **Tokens (EF):** un PRO con 0 tokens SÍ entra (ve "0 tokens · Recargar"), y al Generar la EF responde **402 `saldo_insuficiente`**. Verificar el 402.
+- Defensivo: `renderFotosIA` tampoco monta el iframe si falta `state.tienda`.
 
 - [ ] **Step 4: Check #2 — chip nativo sincroniza**
 

@@ -48,10 +48,10 @@ Mismo patrón que el canvas del editor (que también es un iframe del storefront
 - **EF `studio-enqueue` (verify_jwt=true) gatea server-side por: logueado + cuenta no cancelada + TOKENS (`reservar_tokens` → 402 `saldo_insuficiente` si no alcanza) + rate-limit. NO hay chequeo de plan/PRO aparte** — el "derecho a generar" ES tener tokens. La entitlement es el balance de tokens (no-habilitado / nuevo = 0 tokens = no genera).
 - Tienda IA admin gatea por **tener tienda** (`tiendas` row, si no → state-noaccess) + cuenta no cancelada. Invariante de negocio (confirmado por Jorge): las tiendas se aprovisionan solo a PRO → **estar en Tienda IA ⟹ PRO**.
 
-**Modelo de gate de Fotos IA (resultante) — enforzado, no cosmético:**
-- **Acceso a la pestaña** = estar dentro del admin de Tienda IA = tener tienda (⟹ PRO). El admin YA enforza esto (sin tienda → state-noaccess; no se llega a `#/fotos-ia` sin cargar el admin gateado). No se agrega un `tiene_acceso_pro` redundante por-pestaña (siempre pasaría dado el invariante). El enforcement NO es cosmético: es el gate has-tienda del admin + el gate de tokens de la EF, no "esconder el link".
-- **Enforce-en-route (defensivo):** `renderFotosIA` valida `state.tienda` antes de montar el iframe (ya garantizado por el admin; queda como punto de enforcement explícito, no hide). El route `#/fotos-ia` escrito a mano por alguien sin tienda no llega (el admin ya lo frenó en state-noaccess).
-- **Generación** = tokens, server-side en la EF (sólido, verificado). Usuario nuevo en Tienda IA = 0 tokens → la herramienta muestra "0 tokens · Recargar".
+**Modelo de gate de Fotos IA — DEFENSA EN 2 CAPAS (decisión de Jorge):** el entitlement (derecho a la feature) y el saldo (tokens) son gates DISTINTOS; no se conflacionan. El 402 de la EF NO reemplaza el gate de plan.
+- **Capa 1 — Entitlement en el route (replica el gate original del card):** `renderFotosIA` llama `tiene_acceso_pro({ p_user_id })` y **refusa al no-PRO** (muestra "Fotos IA es parte del Plan PRO", NO monta el iframe). Es ENFORCE en el route, no solo ocultar el link: un no-PRO que escribe `#/fotos-ia` a mano NO entra. Cacheado en `state.acceso`, **fail-closed** (RPC falla → no-PRO). El link del sidebar también se oculta a no-PRO (cosmético; el enforcement real es el route). NO se confía en el invariante tienda⟹PRO — el gate es explícito.
+- **Capa 2 — Tokens en la EF (server-side):** la generación la gatea `studio-enqueue` por tokens (`reservar_tokens` → 402 `saldo_insuficiente`). Un PRO con 0 tokens SÍ entra (ve "0 tokens · Recargar"); al Generar, 402.
+- **Defensivo:** `renderFotosIA` tampoco monta sin `state.tienda` (garantizado por el gate has-tienda del admin).
 
 **Página standalone `/iapanel/estudio/`:** al retirar el card pierde su único gate client-side y queda alcanzable por URL. **Decisión: DIFERIR el chequeo en carga al endurecimiento.** Justificación: el gate real de generación vive en la EF (tokens → 402), así que la standalone queda visible-pero-inerte para 0-token (no fuga generación gratis). Si en el futuro se quiere bloquear la carga misma, es un chequeo barato (`tiene_acceso_pro`/tokens al cargar).
 
@@ -93,7 +93,7 @@ Migración no destructiva: el card se comenta (no se borra), las herramientas pa
 ## 11. Testing / Gate antes de mergear
 
 E2E REAL de **LAS DOS** herramientas (no asumir ninguna), cada una: subir imagen → correr → ver resultado → **token descontado** (verificado en `profiles.token_balance`) → guardado en bucket `studio-outputs`. Más los 3 checks:
-1. Gate (server-side, el real): `studio-enqueue` rechaza con 402 `saldo_insuficiente` a quien no tiene tokens (verificar con un usuario 0-token). La pestaña Fotos IA es accesible a usuarios de Tienda IA (⟹ PRO) y muestra "0 tokens · Recargar" si no tiene saldo; `renderFotosIA` no monta el iframe sin `state.tienda`.
+1. Gate en 2 capas: **(a) entitlement** — un no-PRO que escribe `#/fotos-ia` a mano NO entra (`renderFotosIA` chequea `tiene_acceso_pro`, muestra "es parte del Plan PRO", no monta el iframe; link de sidebar oculto). **(b) tokens** — un PRO con 0 tokens entra, ve "0 tokens · Recargar", y al Generar la EF da 402. Verificar AMBOS (no solo el 402). Defensivo: `renderFotosIA` no monta sin `state.tienda`.
 2. Chip nativo: el saldo nativo baja tras una generación (no solo el de adentro).
 3. Iframe autenticado: carga sin pedir re-login.
 Además: nav sin entradas/rutas muertas; suites/guards del editor verdes (no se rompió nada de Tienda IA).
@@ -110,5 +110,5 @@ Fidelidad de fondo estudio (recorte + composición), módulo "Restaurante IA", b
 
 - Enfoque: (A) nativo enmarcado con iframe interno (gateado).
 - Nombre de pestaña: **"Fotos IA"**.
-- Gate de Fotos IA: SIN sub-gate `tiene_acceso_pro` redundante por-pestaña (Tienda IA ⟹ PRO). Enforzado por has-tienda (admin) + tokens (EF). `renderFotosIA` defensivo (exige `state.tienda`).
+- Gate de Fotos IA: **2 capas** — entitlement `tiene_acceso_pro` ENFORZADO en el route handler (refusa al no-PRO, no solo oculta el link; fail-closed) + tokens (402) en la EF. No se confía en el invariante tienda⟹PRO; el gate es explícito. `renderFotosIA` también exige `state.tienda` (defensivo).
 - Página standalone `/iapanel/estudio/`: gate en carga **diferido** al endurecimiento (la EF ya gatea generación por tokens server-side).
