@@ -25,10 +25,13 @@ const gap = p.gap ?? 'min';
 const isSlider = slides.length > 1;
 const intervalo = p.intervalo_seg ?? 5;
 
-// C-3a · Altura (nivel seccion). corto/medio/alto = presets fijos via clamp (recorte + foco).
-// 'adaptarse' -> medio aqui (C-3b agrega el modo natural-hero). Clase franja--h-<modo>.
+// Altura (nivel seccion). corto/medio/alto = presets fijos via clamp (recorte + foco).
+// C-3b · 'adaptarse' (B1+): ratio real SOLO en hero (1 slide / 1 imagen) -> modo 'natural'.
+// Multi (mas de 1 slide o imagen) -> fallback a 'medio' (sin w/h en schema; evita salto de alto
+// en el slider y filas desalineadas). Clase franja--h-<modo>.
 const altura = p.altura ?? 'medio';
-const alturaMode = altura === 'adaptarse' ? 'medio' : altura;
+const isHero = slides.length === 1 && slides[0].imagenes.length === 1;
+const alturaMode = altura === 'adaptarse' ? (isHero ? 'natural' : 'medio') : altura;
 
 // C-3a · Punto focal por imagen -> object-position (que parte se ve cuando la imagen se recorta).
 // Mismo vocabulario 3x3 que overlay.posicion. Se emite como var --foco; el CSS la consume en cover.
@@ -153,6 +156,12 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
   .franja--h-corto .franja__slide { height: clamp(160px, 22vw, 300px); }
   .franja--h-medio .franja__slide { height: clamp(220px, 32vw, 460px); }
   .franja--h-alto  .franja__slide { height: clamp(340px, 48vw, 680px); }
+
+  /* C-3b · 'adaptarse' en hero (1 slide/1 imagen): ratio real, cero recorte (el 99% de moda). B1+:
+     height:auto manda con horizontales; max-height:90vh evita la banda gigante con verticales -> ahi
+     el object-fit:cover + object-position:var(--foco) del base recortan al foco (sin letterbox). */
+  .franja--h-natural .franja__slide { height: auto; }
+  .franja--h-natural .franja__img { height: auto; max-height: 90vh; }
 
   /* gap ENTRE imagenes de un slide */
   .franja--gap-none  .franja__slide { gap: 0; }

@@ -42,12 +42,10 @@ describe('Franja.astro · F-2 render estatico', () => {
   });
 
   // ── C-3a: altura (presets) + foco (object-position) ──
-  test('C-3a altura: clase franja--h-<modo>; default medio; adaptarse->medio (fallback, C-3b lo refina)', async () => {
+  test('C-3a altura: clase franja--h-<modo> por preset; default medio', async () => {
     expect(await render({ slides: [{ imagenes: [IMG()] }] })).toContain('franja--h-medio');               // default
     expect(await render({ slides: [{ imagenes: [IMG()] }], altura: 'corto' })).toContain('franja--h-corto');
     expect(await render({ slides: [{ imagenes: [IMG()] }], altura: 'alto' })).toContain('franja--h-alto');
-    // adaptarse SIN ser hero igual cae a medio; el hero->natural llega en C-3b.
-    expect(await render({ slides: [{ imagenes: [IMG()] }], altura: 'adaptarse' })).toContain('franja--h-medio');
   });
 
   test('C-3a foco: object-position por imagen via var --foco (default centro 50% 50%)', async () => {
@@ -63,6 +61,25 @@ describe('Franja.astro · F-2 render estatico', () => {
     expect(FRANJA_SRC).toMatch(/\.franja--h-medio\s+\.franja__slide\s*\{[^}]*clamp\(220px/);
     expect(FRANJA_SRC).toMatch(/\.franja--h-alto\s+\.franja__slide\s*\{[^}]*clamp\(340px/);
     expect(FRANJA_SRC).toMatch(/object-position:\s*var\(--foco/);
+  });
+
+  // ── C-3b: adaptarse (B1+) ──
+  test('C-3b adaptarse HERO (1 slide/1 imagen) -> franja--h-natural (ratio real)', async () => {
+    expect(await render({ slides: [{ imagenes: [IMG()] }], altura: 'adaptarse' })).toContain('franja--h-natural');
+  });
+
+  test('C-3b adaptarse NO-hero -> fallback franja--h-medio (sin salto de alto)', async () => {
+    // multi-imagen en 1 slide
+    expect(await render({ slides: [{ imagenes: [IMG(), IMG()] }], altura: 'adaptarse' })).toContain('franja--h-medio');
+    // multi-slide (slider)
+    const two = await render({ slides: [{ imagenes: [IMG()] }, { imagenes: [IMG()] }], altura: 'adaptarse' });
+    expect(two).toContain('franja--h-medio');
+    expect(two).not.toContain('franja--h-natural');
+  });
+
+  test('C-3b GUARD source: modo natural = height:auto + max-height:90vh (B1+ cap anti banda-gigante)', () => {
+    expect(FRANJA_SRC).toMatch(/\.franja--h-natural\s+\.franja__slide\s*\{[^}]*height:\s*auto/);
+    expect(FRANJA_SRC).toMatch(/\.franja--h-natural\s+\.franja__img\s*\{[^}]*max-height:\s*90vh/);
   });
 
   test('3 imagenes: 3 celdas lado a lado', async () => {
