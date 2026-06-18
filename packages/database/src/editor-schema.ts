@@ -405,7 +405,7 @@ const FranjaImagen = z.object({
   overlay: FranjaOverlay.optional(),
   link: z.string().regex(FRANJA_LINK_RE, 'link debe ser https, mailto o tel').optional(),
   // PASO C #4: punto focal del recorte -> object-position. Mismo vocabulario 3x3 que overlay.posicion.
-  // Activo cuando la imagen se recorta (presets corto/medio/alto, o adaptarse-vertical que topa 90vh);
+  // Activo cuando la imagen se recorta (presets corto/medio/alto, o adaptarse-vertical que topa 80vh);
   // inerte cuando no hay recorte (adaptarse-horizontal). Default 'centro' (50% 50%).
   foco: z.enum(POSICION_3X3).default('centro'),
 });

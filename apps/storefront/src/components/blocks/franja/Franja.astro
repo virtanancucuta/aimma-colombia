@@ -178,11 +178,11 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
   }
 
   /* C-3b · 'adaptarse' en hero (1 slide/1 imagen): ratio real, cero recorte (el 99% de moda). B1+:
-     height:auto manda con horizontales; max-height:90vh evita la banda gigante con verticales -> ahi
+     height:auto manda con horizontales; max-height:80vh evita la banda gigante con verticales -> ahi
      el object-fit:cover + object-position:var(--foco) del base recortan al foco (sin letterbox).
      Hero = 1 celda -> column/row da igual. */
   .franja--h-natural .franja__slide { height: auto; }
-  .franja--h-natural .franja__img { height: auto; max-height: 90vh; }
+  .franja--h-natural .franja__img { height: auto; max-height: 80vh; }
 
   /* gap ENTRE imagenes de un slide */
   .franja--gap-none  .franja__slide { gap: 0; }

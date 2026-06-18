@@ -77,9 +77,9 @@ describe('Franja.astro · F-2 render estatico', () => {
     expect(two).not.toContain('franja--h-natural');
   });
 
-  test('C-3b GUARD source: modo natural = height:auto + max-height:90vh (B1+ cap anti banda-gigante)', () => {
+  test('C-3b GUARD source: modo natural = height:auto + max-height:80vh (B1+ cap anti banda-gigante)', () => {
     expect(FRANJA_SRC).toMatch(/\.franja--h-natural\s+\.franja__slide\s*\{[^}]*height:\s*auto/);
-    expect(FRANJA_SRC).toMatch(/\.franja--h-natural\s+\.franja__img\s*\{[^}]*max-height:\s*90vh/);
+    expect(FRANJA_SRC).toMatch(/\.franja--h-natural\s+\.franja__img\s*\{[^}]*max-height:\s*80vh/);
   });
 
   // ── C-4: apilar en mobile ──
