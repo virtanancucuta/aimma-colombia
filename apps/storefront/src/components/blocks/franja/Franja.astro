@@ -168,6 +168,7 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
      celdas flex:1 lo llenan (height:auto). */
   @media (min-width: 640px) {
     .franja__slide { flex-direction: row; }
+    .franja__cell { flex: 1 1 0; }   /* row: reparte el ANCHO; el alto viene del slide (stretch) */
     .franja--h-corto .franja__slide,
     .franja--h-medio .franja__slide,
     .franja--h-alto  .franja__slide { height: var(--franja-h); }
@@ -189,7 +190,10 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
   .franja--gap-small .franja__slide { gap: 12px; }
 
   .franja__cell {
-    position: relative; flex: 1 1 0; min-width: 0;
+    /* MOBILE (column): flex:0 0 auto -> el height explicito del cell (var --franja-h) manda en el eje
+       vertical. NO flex:1 1 0 aqui: en columna eso pone flex-basis:0 en el alto y colapsa el cell a 0.
+       En desktop (row) el flex:1 1 0 reparte ANCHO (abajo, @media). */
+    position: relative; flex: 0 0 auto; min-width: 0;
     display: block; overflow: hidden; text-decoration: none;
   }
   .franja__img { width: 100%; height: 100%; object-fit: cover; object-position: var(--foco, 50% 50%); display: block; }
