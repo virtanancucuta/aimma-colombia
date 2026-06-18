@@ -12,6 +12,27 @@
   const RECARGAS_URL = 'recargas.html';
   const BUCKET_IN = 'studio-inputs';
   const BUCKET_OUT = 'studio-outputs';
+
+  // === Migracion PASO 1: embed dentro de Tienda IA + parqueo de herramientas ===
+  const EMBED_TIENDA = new URLSearchParams(location.search).get('embed') === 'tienda';
+  const TIENDA_ORIGIN = 'https://aimma.com.co';
+  // Parqueo GLOBAL y reversible: estos 3 chips se ocultan en TODOS lados (standalone + embed +
+  // flujo de productos). Para reactivarlos: vaciar el Set. NO se borra el codigo.
+  const PARKED_QUICK = new Set(['quitar_fondo', 'mejorar_luz', 'fondo_lifestyle']);
+  function applyMigrationUI() {
+    document.querySelectorAll('.quick-chip').forEach(function (b) {
+      if (PARKED_QUICK.has(b.dataset.quick)) b.hidden = true;
+    });
+    if (EMBED_TIENDA) {
+      const h = document.querySelector('.estudio-header');
+      if (h) h.hidden = true;
+    }
+  }
+  function notifyParentBalance() {
+    if (!EMBED_TIENDA) return;
+    try { window.parent.postMessage({ type: 'fotos-ia:balance' }, TIENDA_ORIGIN); } catch (_) {}
+  }
+
   const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
   const POLL_INTERVAL_MS = 3000;
@@ -427,6 +448,7 @@
   function showEditor() {
     dom.stateLoading.hidden = true;
     dom.stateEditor.hidden = false;
+    applyMigrationUI();
     dom.app.setAttribute('aria-busy', 'false');
   }
 
@@ -448,6 +470,7 @@
         state.tokenBalance = data.token_balance;
       }
       renderBalance();
+      notifyParentBalance();
     } catch (err) {
       console.warn('[balance] fetch failed', err);
     }
