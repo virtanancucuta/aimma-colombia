@@ -1328,3 +1328,8 @@ code {
 .ta-token-chip__val { font-weight: 700; }
 .ta-token-chip__recargar { margin-left: 6px; font-size: 12px; color: var(--ta-primary, #006d8b); text-decoration: none; }
 .ta-token-chip__recargar:hover, .ta-token-chip__recargar:focus-visible { text-decoration: underline; }
+
+/* Pestana Fotos IA — migracion PASO 1 */
+.ta-fotos-ia-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.ta-fotos-ia-frame { border: 1px solid var(--ta-border); border-radius: var(--ta-radius, 8px); overflow: hidden; background: var(--ta-surface, #fff); }
+.ta-fotos-ia-iframe { display: block; width: 100%; height: calc(100vh - 180px); min-height: 600px; border: 0; }
