@@ -1317,3 +1317,14 @@ code {
   .ta-main { padding: 18px 16px; }
   .ta-brand__small { display: none; }
 }
+
+/* Chip de tokens (Inicio + Fotos IA) — migracion PASO 1 */
+.ta-token-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--ta-surface-2); border: 1px solid var(--ta-border);
+  font-size: 13px; color: var(--ta-text); white-space: nowrap;
+}
+.ta-token-chip__val { font-weight: 700; }
+.ta-token-chip__recargar { margin-left: 6px; font-size: 12px; color: var(--ta-primary, #006d8b); text-decoration: none; }
+.ta-token-chip__recargar:hover, .ta-token-chip__recargar:focus-visible { text-decoration: underline; }
