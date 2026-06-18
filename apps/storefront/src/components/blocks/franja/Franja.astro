@@ -148,18 +148,38 @@ const trackAttrs = isSlider ? { role: 'region', 'aria-label': 'Carrusel de image
 
   .franja__track { display: flex; }
   /* width:100% es CRITICO fuera del slider: sin el, el slide queda content-width y con 1 imagen chica
-     la banda colapsa al ancho de la imagen (bug #1). Con 100% el slide siempre llena el track. */
-  .franja__slide { display: flex; width: 100%; }
+     la banda colapsa al ancho de la imagen (bug #1). Con 100% el slide siempre llena el track.
+     flex-direction:column = MOBILE-FIRST (apila, C-4); >=640 vuelve a fila (abajo). */
+  .franja__slide { display: flex; width: 100%; flex-direction: column; }
 
-  /* C-3a · Altura de la banda (nivel seccion). El alto vive en el slide (fila desktop). Presets clamp
-     monotonicos: corto < medio < alto en todo breakpoint. medio = el alto historico (retrocompat). */
-  .franja--h-corto .franja__slide { height: clamp(160px, 22vw, 300px); }
-  .franja--h-medio .franja__slide { height: clamp(220px, 32vw, 460px); }
-  .franja--h-alto  .franja__slide { height: clamp(340px, 48vw, 680px); }
+  /* C-3a · Altura del preset como variable (DRY: un solo lugar por preset). Clamp monotonico:
+     corto < medio < alto en todo breakpoint. medio = el alto historico (retrocompat). */
+  .franja--h-corto { --franja-h: clamp(160px, 22vw, 300px); }
+  .franja--h-medio { --franja-h: clamp(220px, 32vw, 460px); }
+  .franja--h-alto  { --franja-h: clamp(340px, 48vw, 680px); }
+
+  /* C-4 · MOBILE-FIRST (apilado): el alto del preset va POR CELDA -> cada imagen al alto del preset
+     y el slide crece (no se aplastan 2-3 imagenes apiladas). Alerta C-3a x C-4. */
+  .franja--h-corto .franja__cell,
+  .franja--h-medio .franja__cell,
+  .franja--h-alto  .franja__cell { height: var(--franja-h); }
+
+  /* DESKTOP (>=640, breakpoint sm del storefront): fila lado a lado; el alto vuelve al slide y las
+     celdas flex:1 lo llenan (height:auto). */
+  @media (min-width: 640px) {
+    .franja__slide { flex-direction: row; }
+    .franja--h-corto .franja__slide,
+    .franja--h-medio .franja__slide,
+    .franja--h-alto  .franja__slide { height: var(--franja-h); }
+    .franja--h-corto .franja__cell,
+    .franja--h-medio .franja__cell,
+    .franja--h-alto  .franja__cell { height: auto; }
+  }
 
   /* C-3b · 'adaptarse' en hero (1 slide/1 imagen): ratio real, cero recorte (el 99% de moda). B1+:
      height:auto manda con horizontales; max-height:90vh evita la banda gigante con verticales -> ahi
-     el object-fit:cover + object-position:var(--foco) del base recortan al foco (sin letterbox). */
+     el object-fit:cover + object-position:var(--foco) del base recortan al foco (sin letterbox).
+     Hero = 1 celda -> column/row da igual. */
   .franja--h-natural .franja__slide { height: auto; }
   .franja--h-natural .franja__img { height: auto; max-height: 90vh; }
 

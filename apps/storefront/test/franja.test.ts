@@ -56,10 +56,10 @@ describe('Franja.astro · F-2 render estatico', () => {
     expect(ai).toContain('--foco:0% 0%');
   });
 
-  test('C-3a GUARD source: 3 clases de altura con sus clamp + object-position via var(--foco)', () => {
-    expect(FRANJA_SRC).toMatch(/\.franja--h-corto\s+\.franja__slide\s*\{[^}]*clamp\(160px/);
-    expect(FRANJA_SRC).toMatch(/\.franja--h-medio\s+\.franja__slide\s*\{[^}]*clamp\(220px/);
-    expect(FRANJA_SRC).toMatch(/\.franja--h-alto\s+\.franja__slide\s*\{[^}]*clamp\(340px/);
+  test('C-3a GUARD source: clamp por preset (var --franja-h) + object-position via var(--foco)', () => {
+    expect(FRANJA_SRC).toMatch(/\.franja--h-corto\s*\{[^}]*clamp\(160px/);
+    expect(FRANJA_SRC).toMatch(/\.franja--h-medio\s*\{[^}]*clamp\(220px/);
+    expect(FRANJA_SRC).toMatch(/\.franja--h-alto\s*\{[^}]*clamp\(340px/);
     expect(FRANJA_SRC).toMatch(/object-position:\s*var\(--foco/);
   });
 
@@ -80,6 +80,16 @@ describe('Franja.astro · F-2 render estatico', () => {
   test('C-3b GUARD source: modo natural = height:auto + max-height:90vh (B1+ cap anti banda-gigante)', () => {
     expect(FRANJA_SRC).toMatch(/\.franja--h-natural\s+\.franja__slide\s*\{[^}]*height:\s*auto/);
     expect(FRANJA_SRC).toMatch(/\.franja--h-natural\s+\.franja__img\s*\{[^}]*max-height:\s*90vh/);
+  });
+
+  // ── C-4: apilar en mobile ──
+  test('C-4 GUARD source: mobile-first (slide column + alto POR CELDA) y fila/alto-en-slide >=640', () => {
+    // mobile-first: el slide base es columna (apila)
+    expect(FRANJA_SRC).toMatch(/\.franja__slide\s*\{[^}]*flex-direction:\s*column/);
+    // alto del preset POR CELDA en mobile (no aplastar 2-3 imagenes apiladas) — alerta C-3a x C-4
+    expect(FRANJA_SRC).toMatch(/\.franja--h-medio\s+\.franja__cell[^{]*\{[^}]*var\(--franja-h\)/);
+    // desktop: media query del breakpoint sm con fila
+    expect(FRANJA_SRC).toMatch(/@media\s*\(min-width:\s*640px\)[\s\S]*flex-direction:\s*row/);
   });
 
   test('3 imagenes: 3 celdas lado a lado', async () => {
