@@ -41,16 +41,19 @@ Mismo patrón que el canvas del editor (que también es un iframe del storefront
 
 `estudio.js` (+ `index.html` de estudio) gana un modo **`embed=tienda`** (lee `?embed=tienda` del query): oculta su header/footer propio (Tienda IA ya aporta chrome).
 
-## 4. Must-verify #1 — Preservar el gate de plan (PRO)
+## 4. Must-verify #1 — Gate de plan (PRO): realidad verificada + enforcement
 
-**Hallazgo (verificado):** el gate de Contenido IA era SOLO el card del panel (`acceso.pro`, RPC `tiene_acceso_pro`). `estudio.js` solo hace `requireAuth()` (logueado), NO chequea plan; el único límite de uso es tokens server-side. Tienda IA gatea por algo DISTINTO (tener tienda + `plan_tienda`). → Un usuario con tienda pero sin `acceso.pro` accedería a Fotos IA si no replicamos el gate.
+**Hallazgo (verificado en código + EF):**
+- Contenido IA "gateaba" SOLO por el card del panel (`acceso.pro`). `estudio.js` solo hace `requireAuth()` (logueado), NO chequea plan.
+- **EF `studio-enqueue` (verify_jwt=true) gatea server-side por: logueado + cuenta no cancelada + TOKENS (`reservar_tokens` → 402 `saldo_insuficiente` si no alcanza) + rate-limit. NO hay chequeo de plan/PRO aparte** — el "derecho a generar" ES tener tokens. La entitlement es el balance de tokens (no-habilitado / nuevo = 0 tokens = no genera).
+- Tienda IA admin gatea por **tener tienda** (`tiendas` row, si no → state-noaccess) + cuenta no cancelada. Invariante de negocio (confirmado por Jorge): las tiendas se aprovisionan solo a PRO → **estar en Tienda IA ⟹ PRO**.
 
-**Solución:** la pestaña Fotos IA chequea `tiene_acceso_pro(user).pro` (mismo gate que el card). 
-- Si `pro === true` → la pestaña aparece y funciona.
-- Si `pro !== true` → **la pestaña NO se muestra** (decisión: oculta, no locked-upsell; alinea con "nav sin entradas muertas"; flip de 1 línea a locked si se quiere el funnel después). El route `#/fotos-ia` tampoco renderiza la herramienta para no-PRO (guard en la view, no solo ocultar el link).
-- Los tokens siguen gateando el USO server-side; este es el gate de ACCESO a la feature, que se mantiene idéntico al original.
+**Modelo de gate de Fotos IA (resultante) — enforzado, no cosmético:**
+- **Acceso a la pestaña** = estar dentro del admin de Tienda IA = tener tienda (⟹ PRO). El admin YA enforza esto (sin tienda → state-noaccess; no se llega a `#/fotos-ia` sin cargar el admin gateado). No se agrega un `tiene_acceso_pro` redundante por-pestaña (siempre pasaría dado el invariante). El enforcement NO es cosmético: es el gate has-tienda del admin + el gate de tokens de la EF, no "esconder el link".
+- **Enforce-en-route (defensivo):** `renderFotosIA` valida `state.tienda` antes de montar el iframe (ya garantizado por el admin; queda como punto de enforcement explícito, no hide). El route `#/fotos-ia` escrito a mano por alguien sin tienda no llega (el admin ya lo frenó en state-noaccess).
+- **Generación** = tokens, server-side en la EF (sólido, verificado). Usuario nuevo en Tienda IA = 0 tokens → la herramienta muestra "0 tokens · Recargar".
 
-`admin.js` hoy no llama `tiene_acceso_pro` → se agrega esa consulta (1 RPC) en el init o en la view, cacheada en `state`.
+**Página standalone `/iapanel/estudio/`:** al retirar el card pierde su único gate client-side y queda alcanzable por URL. **Decisión: DIFERIR el chequeo en carga al endurecimiento.** Justificación: el gate real de generación vive en la EF (tokens → 402), así que la standalone queda visible-pero-inerte para 0-token (no fuga generación gratis). Si en el futuro se quiere bloquear la carga misma, es un chequeo barato (`tiene_acceso_pro`/tokens al cargar).
 
 ## 5. Must-verify #2 — Chip de tokens nativo sincroniza post-generación
 
@@ -90,7 +93,7 @@ Migración no destructiva: el card se comenta (no se borra), las herramientas pa
 ## 11. Testing / Gate antes de mergear
 
 E2E REAL de **LAS DOS** herramientas (no asumir ninguna), cada una: subir imagen → correr → ver resultado → **token descontado** (verificado en `profiles.token_balance`) → guardado en bucket `studio-outputs`. Más los 3 checks:
-1. Gate PRO: un usuario sin `acceso.pro` NO ve/accede la pestaña Fotos IA; uno con PRO sí.
+1. Gate (server-side, el real): `studio-enqueue` rechaza con 402 `saldo_insuficiente` a quien no tiene tokens (verificar con un usuario 0-token). La pestaña Fotos IA es accesible a usuarios de Tienda IA (⟹ PRO) y muestra "0 tokens · Recargar" si no tiene saldo; `renderFotosIA` no monta el iframe sin `state.tienda`.
 2. Chip nativo: el saldo nativo baja tras una generación (no solo el de adentro).
 3. Iframe autenticado: carga sin pedir re-login.
 Además: nav sin entradas/rutas muertas; suites/guards del editor verdes (no se rompió nada de Tienda IA).
@@ -107,4 +110,5 @@ Fidelidad de fondo estudio (recorte + composición), módulo "Restaurante IA", b
 
 - Enfoque: (A) nativo enmarcado con iframe interno (gateado).
 - Nombre de pestaña: **"Fotos IA"**.
-- Pestaña para no-PRO: **oculta** (no locked-upsell).
+- Gate de Fotos IA: SIN sub-gate `tiene_acceso_pro` redundante por-pestaña (Tienda IA ⟹ PRO). Enforzado por has-tienda (admin) + tokens (EF). `renderFotosIA` defensivo (exige `state.tienda`).
+- Página standalone `/iapanel/estudio/`: gate en carga **diferido** al endurecimiento (la EF ya gatea generación por tokens server-side).
