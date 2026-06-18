@@ -15,16 +15,22 @@
   }
 
   // Gate de ENTITLEMENT (capa 1): tiene_acceso_pro en el route handler, aparte del 402 de tokens de
-  // la EF (capa 2). Replica el gate original de Contenido IA. Cacheado en T.state.acceso.
-  // Fail-closed: si el RPC falla -> no-PRO (no leak).
+  // la EF (capa 2). Replica el gate original de Contenido IA. Fail-closed: si el RPC falla -> no-PRO.
+  // IMPORTANTE: solo cachea en T.state.acceso un resultado REAL del RPC. Si el profile aun no esta
+  // cargado (admin.js lo trae async tras requireAuth) NO se cachea {pro:false} -> evita envenenar el
+  // gate (bug: el link-hide del startup corria antes del profile y dejaba a un PRO afuera).
   async function ensureAcceso() {
     var T = window.TiendaIA;
     if (T.state.acceso) return T.state.acceso;
+    for (var i = 0; i < 100 && (!T.state.profile || !T.state.profile.id); i++) {
+      await new Promise(function (r) { setTimeout(r, 50); });
+    }
+    if (!T.state.profile || !T.state.profile.id) return { pro: false };
     try {
       var res = await T.supabase().rpc('tiene_acceso_pro', { p_user_id: T.state.profile.id });
-      T.state.acceso = (res && res.data) || { pro: false };
-    } catch (e) { T.state.acceso = { pro: false }; }
-    return T.state.acceso;
+      if (res && res.data && typeof res.data.pro === 'boolean') { T.state.acceso = res.data; return res.data; }
+    } catch (e) { /* no cachear el error -> reintentable */ }
+    return { pro: false };
   }
 
   async function renderFotosIA() {
