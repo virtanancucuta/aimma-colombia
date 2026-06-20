@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict FZvzljggNWcNRBl1EX1zWY1xJdgQb31TMknhcaTgrIkjyuJleBWfgv0DMna8bUL
+-- \restrict ...  -- omitido: meta-comando de psql (pg_dump 17), NO es SQL; rompe el runner de migraciones de Supabase
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10
@@ -6170,5 +6170,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES 
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FZvzljggNWcNRBl1EX1zWY1xJdgQb31TMknhcaTgrIkjyuJleBWfgv0DMna8bUL
+-- \unrestrict ...  -- omitido: meta-comando de psql (pg_dump 17), NO es SQL
 
