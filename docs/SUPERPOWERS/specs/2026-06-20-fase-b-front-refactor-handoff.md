@@ -62,6 +62,15 @@ Como es all-or-nothing, tras el refactor corré un grep en `productos.js` y conf
 - `grep -nE "from\('productos'\)\.update" ...` → solo el de campos del producto, y el patch **sin `costo`**.
 - Si queda cualquier otro write directo a stock/costo, es un path que se te escapó al all-or-nothing — arreglalo antes de cerrar. Este check es gratis y caza el agujero sin esperar al E2E.
 
+### §2ter — CROSS-CHECK DE FORMA DE LAS LLAMADAS (obligatorio, antes de terminar — NO necesita branch ni navegador)
+Como NO vas a ejecutar las llamadas en vivo (saltás el §3), las `.rpc()` recién se probarían en el E2E manual de Jorge — un bug de forma (nombre de parámetro, shape del jsonb, tipo del array) recién aparecería ahí, en el paso caro. La red es estática: **revisá cada `.rpc()` que escribiste contra las firmas del §1, una por una, confirmando que pasa EXACTAMENTE los parámetros documentados con el shape correcto.** Checklist:
+- `crear_producto_con_stock`: keys del objeto = `p_producto` y `p_variantes` (esos nombres exactos). `p_producto` = el objeto `payload` (con `costo`, sin `slug`). `p_variantes` = **array** `[{color,talla,sku,stock,precio_override}]`, ≥1 elemento (default = 1 con color/talla null). NO mandes el array como string.
+- `editar_variantes_producto`: keys = `p_producto_id` (uuid string), `p_variantes` (array `[{id?,color,talla,sku,stock,precio_override}]`), `p_eliminar` (**array de uuid strings**, `[]` si nada — NO null si tu cliente lo serializa raro), `p_costo_entrada` (number o null).
+- Confirmá que NO inventaste otra firma (ej. parámetros posicionales, otros nombres, otro orden de keys). Supabase `.rpc(nombre, { ...named })` usa named params — el nombre tiene que calzar exacto con la firma SQL.
+- Confirmá que usás el retorno bien: `crear_producto_con_stock` devuelve la **fila del producto** (jsonb) → `data.id`, `data.referencia`, etc. `editar_variantes_producto` devuelve void → no esperes `data`.
+
+Si no probás las llamadas en vivo, las verificás en frío contra el contrato. Este cross-check + el grep §2bis son las dos verificaciones estáticas que cierran el refactor sin browser.
+
 ### Manejo de errores
 - Las RPCs lanzan `raise exception` con mensajes claros (ej. `no autorizado`, `No se puede eliminar variantes con reservas activas`, `Stock insuficiente...`, `No se puede dejar el stock (X) por debajo de lo reservado (Y)`). En `.rpc()`, el error viene en `{ error }` con `error.message`. Mostralos con `T.toast(error.message, 'error')`. Conservá los códigos existentes que tengan sentido (ej. `23505` SKU duplicado puede venir adentro del mensaje).
 
