@@ -614,8 +614,8 @@
           '</div>' +
           '<div class="ta-field">' +
             '<label class="ta-field__label" for="f-costo">Costo (COP)</label>' +
-            '<input id="f-costo" name="costo" class="ta-input" type="number" min="0" step="1" value="' + (p?.costo || '') + '">' +
-            '<span class="ta-field__hint">Privado, no se muestra al comprador.</span>' +
+            '<input id="f-costo" name="costo" class="ta-input" type="number" min="0" step="1" value="' + (p?.costo || '') + '"' + (esEdicion ? ' disabled' : '') + '>' +
+            '<span class="ta-field__hint">' + (esEdicion ? 'El costo se actualiza con las compras (próximamente).' : 'Privado, no se muestra al comprador.') + '</span>' +
           '</div>' +
           '<div class="ta-field">' +
             '<label class="ta-field__label" for="f-precio-promo">Precio promo (COP)</label>' +
@@ -1748,58 +1748,30 @@
     }
 
     try {
-      // INSERTS (sin id)
-      const nuevas = actuales.filter(v => !v.id).map(v => ({
-        producto_id: producto.id,
-        color: v.color, talla: v.talla,
-        sku: v.sku, stock: v.stock,
-        precio_override: v.precio_override,
-      }));
-      if (nuevas.length > 0) {
-        const r = await sb.from('producto_variantes').insert(nuevas);
-        if (r.error) {
-          if (r.error.code === '23505') {
-            T.toast('Algun SKU ya existe en otro producto. Cambia la referencia base del producto y vuelve a intentar.', 'error');
-          } else {
-            T.toast('Error al crear variantes: ' + r.error.message, 'error');
-          }
-          restoreVariantesBtn(btn);
-          return;
+      // §2.4 Fase B: una sola RPC rutea altas/ediciones/bajas por el kardex.
+      // Altas (sin id) -> entrada; ediciones (con id) -> delta>0 entrada / delta<0
+      // ajuste; bajas -> p_eliminar (guard de reservas en la RPC, ademas del front).
+      // p_costo_entrada=null -> la RPC usa el promedio actual del producto.
+      const variantesArr = actuales.map(v => {
+        const o = { color: v.color, talla: v.talla, sku: v.sku, stock: v.stock, precio_override: v.precio_override };
+        if (v.id) o.id = v.id;
+        return o;
+      });
+      const eliminarIds = eliminadas.map(e => e.id);
+      const r = await sb.rpc('editar_variantes_producto', {
+        p_producto_id: producto.id,
+        p_variantes: variantesArr,
+        p_eliminar: eliminarIds,
+        p_costo_entrada: null,
+      });
+      if (r.error) {
+        if (r.error.code === '23505') {
+          T.toast('Algun SKU ya existe en otro producto. Cambia la referencia base del producto y vuelve a intentar.', 'error');
+        } else {
+          T.toast(r.error.message || 'No pudimos guardar las variantes.', 'error');
         }
-      }
-
-      // UPDATES (con id)
-      const existentes = actuales.filter(v => v.id);
-      for (const v of existentes) {
-        const patch = { color: v.color, talla: v.talla, stock: v.stock, precio_override: v.precio_override };
-        const r = await sb.from('producto_variantes').update(patch).eq('id', v.id);
-        if (r.error) {
-          // v4 BUG #3 fix: capturar check_violation (23514) que dispara cuando
-          // el nuevo stock es < reservado. Mensaje claro al usuario.
-          if (r.error.code === '23514') {
-            // Buscar la variante original para mostrar el reservado actual
-            const orig = variantesState.original.find(o => o.id === v.id);
-            const reservado = orig?.reservado ?? '?';
-            T.toast('SKU "' + v.sku + '": el stock no puede ser menor al reservado (' + reservado + ' en pedidos pendientes)', 'error');
-          } else if (r.error.code === '23505') {
-            T.toast('Conflicto de SKU "' + v.sku + '". Cambia la referencia base del producto.', 'error');
-          } else {
-            T.toast('Error al actualizar variante "' + v.sku + '": ' + r.error.message, 'error');
-          }
-          restoreVariantesBtn(btn);
-          return;
-        }
-      }
-
-      // DELETES
-      if (eliminadas.length > 0) {
-        const ids = eliminadas.map(e => e.id);
-        const r = await sb.from('producto_variantes').delete().in('id', ids);
-        if (r.error) {
-          T.toast('Error al eliminar variantes: ' + r.error.message, 'error');
-          restoreVariantesBtn(btn);
-          return;
-        }
+        restoreVariantesBtn(btn);
+        return;
       }
 
       // Recargar desde BD para refrescar ids y reservado
@@ -1947,147 +1919,134 @@
 
     try {
       let result;
-      if (formState.producto) {
-        // Update - no tocar tienda_id ni created_at
-        const { tienda_id, ...patch } = payload;
-        result = await sb.from('productos').update(patch).eq('id', formState.producto.id).eq('tienda_id', tienda.id).select().maybeSingle();
-      } else {
-        result = await sb.from('productos').insert(payload).select().maybeSingle();
-      }
-
-      if (result.error) {
-        console.error('[prod-form] save error', result.error);
-        // v2 BUG #5 fix: usar error.code de Postgres en vez de substring del mensaje
-        let msg = result.error.message || 'No pudimos guardar el producto';
-        if (result.error.code === '23505') {
-          msg = 'Ya tienes un producto con esa referencia. Cambia el SKU.';
-        }
-        T.toast(msg, 'error');
-        restoreBtn(btnGuardar);
-        return;
-      }
-
-      // v2 BUG #3 fix: UPDATE silencioso. Si data es null sin error en un update,
-      // significa que RLS bloqueo la fila o el id no existe.
-      if (formState.producto && result.data === null) {
-        T.toast('No se pudo actualizar. Verifica que el producto sigue existiendo.', 'error');
-        restoreBtn(btnGuardar);
-        return;
-      }
-
-      // v6: si CREAR y hay variantes definidas, insertar variantes en bulk.
-      // v13: soporta solo variante 1 O solo variante 2 (sin matriz combinatoria).
-      const esCreacion = !formState.producto;
       let variantesWarning = null;
-      if (esCreacion && result.data && variantesState.activo &&
-          (variantesState.colores.length > 0 || variantesState.tallas.length > 0)) {
-        const productoCreado = result.data;
-        const variantesAInsertar = [];
+      const esCreacion = !formState.producto;
+
+      if (esCreacion) {
+        // §2.1 Fase B: la creacion entera (producto + variantes + saldo_inicial en
+        // el kardex) va por UNA RPC. Construimos el array de variantes ANTES: matriz
+        // / 1-dim si hay variantes activas, o 1 variante "default" (color/talla null)
+        // con el stock simple si el producto no maneja variantes. >=1 siempre.
+        const variantesArr = [];
         const colores = variantesState.colores;
         const tallas = variantesState.tallas;
-        if (colores.length > 0 && tallas.length > 0) {
-          // matriz combinatoria
-          for (const color of colores) for (const talla of tallas) {
-            const celda = getMatrizCelda(color, talla);
-            const stock = celda?.stock;
-            if (stock == null) continue;
-            variantesAInsertar.push({
-              producto_id: productoCreado.id,
-              color, talla, sku: generarSku(productoCreado.referencia, color, talla), stock,
-            });
-          }
-        } else if (colores.length > 0) {
-          // solo variante 1 (talla=null)
-          for (const color of colores) {
-            const celda = getMatrizCelda(color, '');
-            const stock = celda?.stock;
-            if (stock == null) continue;
-            variantesAInsertar.push({
-              producto_id: productoCreado.id,
-              color, talla: null, sku: generarSku(productoCreado.referencia, color, ''), stock,
-            });
-          }
-        } else {
-          // solo variante 2 (color=null)
-          for (const talla of tallas) {
-            const celda = getMatrizCelda('', talla);
-            const stock = celda?.stock;
-            if (stock == null) continue;
-            variantesAInsertar.push({
-              producto_id: productoCreado.id,
-              color: null, talla, sku: generarSku(productoCreado.referencia, '', talla), stock,
-            });
-          }
-        }
-        if (variantesAInsertar.length > 0) {
-          const vRes = await sb.from('producto_variantes').insert(variantesAInsertar);
-          if (vRes.error) {
-            console.error('[prod-form] variantes insert error', vRes.error);
-            if (vRes.error.code === '23505') {
-              variantesWarning = 'Producto creado, pero algun SKU de variante ya existe. Edita el producto para revisar.';
-            } else {
-              variantesWarning = 'Producto creado, pero las variantes tuvieron error: ' + (vRes.error.message || 'desconocido') + '. Edita el producto para reintentar.';
+        if (variantesState.activo && (colores.length > 0 || tallas.length > 0)) {
+          if (colores.length > 0 && tallas.length > 0) {
+            // matriz combinatoria
+            for (const color of colores) for (const talla of tallas) {
+              const celda = getMatrizCelda(color, talla);
+              const stock = celda?.stock;
+              if (stock == null) continue;
+              variantesArr.push({ color, talla, sku: generarSku(payload.referencia, color, talla), stock, precio_override: celda?.precio_override || null });
             }
-          }
-        }
-      }
-
-      // v13/v14: si edicion + variantes activadas + existia defaultVariant SIN reservas
-      // (las CON reservas ya abortaron arriba con BUG #3 fix), eliminarla.
-      if (!esCreacion && variantesState.activo && variantesState.defaultVariant) {
-        const dv = variantesState.defaultVariant;
-        const delRes = await sb.from('producto_variantes').delete().eq('id', dv.id);
-        if (delRes.error) {
-          console.warn('[prod-form] no se pudo eliminar default variant:', delRes.error);
-        } else {
-          variantesState.defaultVariant = null;
-        }
-      }
-
-      // v12 (fix bug Jorge): producto SIN variantes -> crear/actualizar default variant.
-      // Patron Shopify: cada producto siempre tiene >=1 variante en BD. Si no hay
-      // colores/tallas, la variante "default" almacena el stock simple del producto.
-      if (result.data && !variantesState.activo) {
-        const productoFinal = result.data;
-        const stockSimple = variantesState.stockSimple != null ? Math.max(0, parseInt(variantesState.stockSimple, 10) || 0) : 0;
-        const skuSimple = generarSku(productoFinal.referencia, '', '') || productoFinal.referencia;
-
-        if (esCreacion) {
-          // Crear nueva default variant
-          const vRes = await sb.from('producto_variantes').insert({
-            producto_id: productoFinal.id,
-            color: null, talla: null,
-            sku: skuSimple,
-            stock: stockSimple,
-          });
-          if (vRes.error && vRes.error.code !== '23505') {
-            console.error('[prod-form] default variant insert error', vRes.error);
-            variantesWarning = 'Producto creado, pero no se pudo guardar el stock: ' + (vRes.error.message || '');
-          }
-        } else if (variantesState.defaultVariant) {
-          // Update existing default variant
-          const vRes = await sb.from('producto_variantes')
-            .update({ stock: stockSimple })
-            .eq('id', variantesState.defaultVariant.id);
-          if (vRes.error) {
-            console.error('[prod-form] default variant update error', vRes.error);
-            if (vRes.error.code === '23514') {
-              variantesWarning = 'No pudimos actualizar el stock: hay ' + (variantesState.defaultVariant.reservado || 0) + ' unidades reservadas en pedidos pendientes.';
-            } else {
-              variantesWarning = 'No pudimos actualizar el stock.';
+          } else if (colores.length > 0) {
+            // solo variante 1 (talla=null)
+            for (const color of colores) {
+              const celda = getMatrizCelda(color, '');
+              const stock = celda?.stock;
+              if (stock == null) continue;
+              variantesArr.push({ color, talla: null, sku: generarSku(payload.referencia, color, ''), stock, precio_override: celda?.precio_override || null });
+            }
+          } else {
+            // solo variante 2 (color=null)
+            for (const talla of tallas) {
+              const celda = getMatrizCelda('', talla);
+              const stock = celda?.stock;
+              if (stock == null) continue;
+              variantesArr.push({ color: null, talla, sku: generarSku(payload.referencia, '', talla), stock, precio_override: celda?.precio_override || null });
             }
           }
         } else {
-          // Edicion, no habia default variant - crear una ahora
-          const vRes = await sb.from('producto_variantes').insert({
-            producto_id: productoFinal.id,
-            color: null, talla: null,
-            sku: skuSimple,
-            stock: stockSimple,
+          // producto SIN variantes: 1 variante default con el stock simple.
+          const stockSimple = variantesState.stockSimple != null ? Math.max(0, parseInt(variantesState.stockSimple, 10) || 0) : 0;
+          const skuSimple = generarSku(payload.referencia, '', '') || payload.referencia;
+          variantesArr.push({ color: null, talla: null, sku: skuSimple, stock: stockSimple, precio_override: null });
+        }
+
+        result = await sb.rpc('crear_producto_con_stock', { p_producto: payload, p_variantes: variantesArr });
+        if (result.error) {
+          console.error('[prod-form] save error', result.error);
+          let msg = result.error.message || 'No pudimos guardar el producto';
+          if (result.error.code === '23505' || /referencia/i.test(msg)) {
+            msg = 'Ya tienes un producto con esa referencia. Cambia el SKU.';
+          }
+          T.toast(msg, 'error');
+          restoreBtn(btnGuardar);
+          return;
+        }
+      } else {
+        // EDICION: los campos del producto por UPDATE directo, SIN costo (§2.2: el
+        // costo es proyeccion del kardex/Compras, no se edita en el form). El stock
+        // y las variantes van por las RPCs (kardex).
+        const { tienda_id, costo, ...patch } = payload;
+        result = await sb.from('productos').update(patch).eq('id', formState.producto.id).eq('tienda_id', tienda.id).select().maybeSingle();
+        if (result.error) {
+          console.error('[prod-form] save error', result.error);
+          // v2 BUG #5 fix: usar error.code de Postgres en vez de substring del mensaje
+          let msg = result.error.message || 'No pudimos guardar el producto';
+          if (result.error.code === '23505') {
+            msg = 'Ya tienes un producto con esa referencia. Cambia el SKU.';
+          }
+          T.toast(msg, 'error');
+          restoreBtn(btnGuardar);
+          return;
+        }
+        // v2 BUG #3 fix: UPDATE silencioso. data null sin error = RLS bloqueo / id inexistente.
+        if (result.data === null) {
+          T.toast('No se pudo actualizar. Verifica que el producto sigue existiendo.', 'error');
+          restoreBtn(btnGuardar);
+          return;
+        }
+
+        // §2.5: transicion default->variantes. La default variant se borra via
+        // p_eliminar de la RPC (nada de delete directo huerfano). Las variantes
+        // reales se guardan aparte con "Guardar variantes" (guardarVariantes).
+        if (variantesState.activo && variantesState.defaultVariant) {
+          const dv = variantesState.defaultVariant;
+          const delRes = await sb.rpc('editar_variantes_producto', {
+            p_producto_id: formState.producto.id,
+            p_variantes: [],
+            p_eliminar: [dv.id],
+            p_costo_entrada: null,
           });
-          if (vRes.error && vRes.error.code !== '23505') {
-            console.error('[prod-form] default variant insert (edit) error', vRes.error);
-            variantesWarning = 'No pudimos guardar el stock: ' + (vRes.error.message || '');
+          if (delRes.error) {
+            console.warn('[prod-form] no se pudo eliminar default variant:', delRes.error);
+            variantesWarning = 'No pudimos quitar el stock simple anterior: ' + (delRes.error.message || '');
+          } else {
+            variantesState.defaultVariant = null;
+          }
+        }
+
+        // §2.3: producto SIN variantes -> crear/actualizar la default variant. El
+        // stock va por kardex (delta) via editar_variantes_producto.
+        if (!variantesState.activo) {
+          const stockSimple = variantesState.stockSimple != null ? Math.max(0, parseInt(variantesState.stockSimple, 10) || 0) : 0;
+          if (variantesState.defaultVariant) {
+            // Update existing default variant (stock por delta del kardex)
+            const dv = variantesState.defaultVariant;
+            const vRes = await sb.rpc('editar_variantes_producto', {
+              p_producto_id: formState.producto.id,
+              p_variantes: [{ id: dv.id, color: null, talla: null, sku: dv.sku, stock: stockSimple, precio_override: dv.precio_override || null }],
+              p_eliminar: [],
+              p_costo_entrada: null,
+            });
+            if (vRes.error) {
+              console.error('[prod-form] default variant update error', vRes.error);
+              variantesWarning = 'No pudimos actualizar el stock: ' + (vRes.error.message || '');
+            }
+          } else {
+            // Edicion, no habia default variant - alta de una ahora.
+            const skuSimple = generarSku(result.data.referencia, '', '') || result.data.referencia;
+            const vRes = await sb.rpc('editar_variantes_producto', {
+              p_producto_id: formState.producto.id,
+              p_variantes: [{ color: null, talla: null, sku: skuSimple, stock: stockSimple, precio_override: null }],
+              p_eliminar: [],
+              p_costo_entrada: null,
+            });
+            if (vRes.error) {
+              console.error('[prod-form] default variant insert (edit) error', vRes.error);
+              variantesWarning = 'No pudimos guardar el stock: ' + (vRes.error.message || '');
+            }
           }
         }
       }
