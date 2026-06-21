@@ -614,8 +614,8 @@
           '</div>' +
           '<div class="ta-field">' +
             '<label class="ta-field__label" for="f-costo">Costo (COP)</label>' +
-            '<input id="f-costo" name="costo" class="ta-input" type="number" min="0" step="1" value="' + (p?.costo || '') + '"' + (esEdicion ? ' disabled' : '') + '>' +
-            '<span class="ta-field__hint">' + (esEdicion ? 'El costo se actualiza con las compras (próximamente).' : 'Privado, no se muestra al comprador.') + '</span>' +
+            '<input id="f-costo" name="costo" class="ta-input" type="number" min="0" step="1" value="' + (p?.costo || '') + '">' +
+            '<span class="ta-field__hint">' + (esEdicion ? 'Privado. Es tu costo promedio actual; puedes ajustarlo.' : 'Privado, no se muestra al comprador.') + '</span>' +
           '</div>' +
           '<div class="ta-field">' +
             '<label class="ta-field__label" for="f-precio-promo">Precio promo (COP)</label>' +
@@ -2047,6 +2047,19 @@
               console.error('[prod-form] default variant insert (edit) error', vRes.error);
               variantesWarning = 'No pudimos guardar el stock: ' + (vRes.error.message || '');
             }
+          }
+        }
+
+        // Costo editable en edicion (decision Jorge): post-REVOKE el UPDATE directo
+        // de productos.costo esta bloqueado, asi que el costo manual entra por RPC
+        // owner-facing. Solo si cambio respecto al valor cargado (no pisar el promedio
+        // recien recalculado por una entrada de stock si el usuario no toco el costo).
+        const costoViejo = formState.producto.costo != null ? Number(formState.producto.costo) : null;
+        if (costo !== costoViejo) {
+          const cRes = await sb.rpc('actualizar_costo_producto', { p_producto_id: formState.producto.id, p_costo: costo });
+          if (cRes.error) {
+            console.error('[prod-form] costo update error', cRes.error);
+            variantesWarning = 'No pudimos actualizar el costo: ' + (cRes.error.message || '');
           }
         }
       }
