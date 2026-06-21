@@ -444,6 +444,7 @@ a:hover { text-decoration: underline; }
 .ta-pill--warn  { background: rgba(255,170,60,.16); color: var(--ta-warn);    border: 1px solid rgba(255,170,60,.35); }
 .ta-pill--info  { background: rgba(77,142,255,.16); color: var(--ta-accent);  border: 1px solid rgba(77,142,255,.35); }
 .ta-pill--danger{ background: rgba(255,93,108,.16); color: var(--ta-danger);  border: 1px solid rgba(255,93,108,.35); }
+.ta-inv-pill--mut{ background: rgba(115,115,115,.14); color: var(--ta-text-mut); border: 1px solid rgba(115,115,115,.30); }
 
 /* ============================ Acciones recomendadas ============================ */
 .ta-acciones-list {
