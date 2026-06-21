@@ -284,7 +284,7 @@ begin
   with mov as (
     select im.id, im.fecha, im.tipo, im.cantidad, im.costo_unitario, im.costo_saldo,
            im.variante_id, im.nota, im.pedido_id, im.created_at,
-           sum(im.cantidad) over (partition by im.variante_id order by im.created_at rows unbounded preceding) as saldo_acum
+           sum(im.cantidad) over (partition by im.variante_id order by im.created_at, im.id rows unbounded preceding) as saldo_acum
     from public.inventario_movimientos im
     where im.tienda_id = p_tienda_id
       and (p_producto_id is null or im.producto_id = p_producto_id)
@@ -300,9 +300,9 @@ begin
     m.nota, m.pedido_id
   from mov m
   left join public.producto_variantes pv on pv.id = m.variante_id
-  where (p_desde is null or m.created_at::date >= p_desde)
-    and (p_hasta is null or m.created_at::date <= p_hasta)
-  order by m.created_at asc
+  where (p_desde is null or m.fecha::date >= p_desde)
+    and (p_hasta is null or m.fecha::date <= p_hasta)
+  order by m.created_at asc, m.id asc
   limit coalesce(p_limit, 200) offset coalesce(p_offset, 0);
 end;
 $function$;
@@ -341,6 +341,8 @@ git commit -m "feat(inventario): RPCs de lectura inventario_resumen + inventario
 **Files:** ninguno (verificación SQL vía MCP; sin cambios de archivos salvo que un assert revele un bug → volver a Task 2/3).
 
 **Interfaces:** Consume las RPCs de Task 2/3 y la config de Task 1.
+
+**Ajustes del gate (Jorge 2026-06-21):** (i) **assert de fan-out** — un producto con ≥2 variantes y ≥2 movimientos; confirmar `stock_total` y `unidades_vendidas` = cálculo directo (no multiplicado). (ii) **ejercitar las 5 clases** con data construida: `quiebre`, `sin_ventas`, `ruptura`, `sobrestock`, `normal`, MÁS el guard (producto recién creado con `dias_efectivos<7`, con stock y ventas, DEBE quedar `normal` con `datos_insuficientes=true`). (iii) **la venta sembrada debe provenir del trigger del lifecycle** al cerrar el pedido (NO insertada a mano) — ese es el punto de ejercitar ventas→kardex.
 
 - [ ] **Step 1: Sembrar una venta REAL por el camino normal** — en transacción con rollback (no persiste), impersonando al dueño de la tienda de test (`tienda 69915581-c0d1-4961-ab76-80dacde9169a`, owner `4bd6d4eb-65df-4225-8dde-1883d00bb32e`). Crear un producto con stock vía `crear_producto_con_stock`, reservar (`reservar_stock_variante`), crear pedido + items, y transicionar a `cerrado` para disparar `pedido_stock_lifecycle` → movimiento `venta` en el kardex. Capturar los IDs. *(El detalle exacto del seed se redacta en ejecución según el contrato real de pedidos/pedido_items; el objetivo: ≥1 `venta` real en el kardex para ejercitar ventas→kardex.)*
 
