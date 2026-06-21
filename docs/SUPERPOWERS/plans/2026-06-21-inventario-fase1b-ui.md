@@ -82,7 +82,16 @@ alter table public.tiendas add constraint chk_inv_umbrales
          and inv_periodo_default_dias between 1 and 60);
 ```
 
-- [ ] **Step 4: Aplicar a test** — MCP `apply_migration` para cada una; alinear versión:
+- [ ] **Step 3.5: PRE-CHECK — confirmar que ninguna tienda viola el invariante** (un `ADD CONSTRAINT` aborta si una fila ya lo viola). Antes de aplicar el CHECK:
+```sql
+select count(*) as tiendas_violan from public.tiendas
+where not (inv_umbral_ruptura_dias >= 1
+           and inv_umbral_sobrestock_dias > inv_umbral_ruptura_dias
+           and inv_periodo_default_dias between 1 and 60);
+```
+Expected: `tiendas_violan = 0` (15/90/30 lo cumplen). Si > 0, NO aplicar el CHECK; corregir esas filas primero y reportar.
+
+- [ ] **Step 4: Aplicar a test** — MCP `apply_migration` para cada una (CHECK solo si Step 3.5 dio 0); alinear versión:
 ```sql
 update supabase_migrations.schema_migrations set version='20260621180000' where name='inv_variantes_rpc' and version<>'20260621180000';
 update supabase_migrations.schema_migrations set version='20260621180100' where name='inv_umbrales_check' and version<>'20260621180100';
@@ -265,7 +274,14 @@ if (!(ruptura>=1)) return T.toast('Ruptura debe ser ≥ 1','error');
 if (!(sobre>ruptura)) return T.toast('Sobrestock debe ser mayor que ruptura','error');
 if (!(periodo>=1 && periodo<=60)) return T.toast('Período entre 1 y 60','error');
 const { error } = await sb.from('tiendas').update({ inv_umbral_ruptura_dias:ruptura, inv_umbral_sobrestock_dias:sobre, inv_periodo_default_dias:periodo }).eq('id', T.state.tienda.id);
-if (error){ T.toast('No pudimos guardar: '+error.message,'error'); return; }
+if (error){
+  // Si la validación de cliente se saltara, el CHECK chk_inv_umbrales (BD) rechaza
+  // → mensaje amable, no error crudo.
+  const msg = (error.code === '23514' || /chk_inv_umbrales/.test(error.message||''))
+    ? 'Revisa los umbrales: sobrestock debe ser mayor que ruptura, ruptura ≥ 1 y período entre 1 y 60.'
+    : 'No pudimos guardar: ' + error.message;
+  T.toast(msg, 'error'); return;
+}
 Object.assign(T.state.tienda, { inv_umbral_ruptura_dias:ruptura, inv_umbral_sobrestock_dias:sobre, inv_periodo_default_dias:periodo });
 T.toast('Umbrales actualizados','success');
 // re-fetch del tab activo -> reclasificación en vivo
