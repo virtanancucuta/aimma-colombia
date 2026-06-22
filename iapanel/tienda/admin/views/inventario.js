@@ -93,9 +93,7 @@
       '<header style="display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
         '<div style="max-width:520px;">' +
           '<h1 class="ta-section-title">Inventario</h1>' +
-          '<p class="ta-section-sub">Cobertura = para cuántos días te alcanza el stock, según tu ritmo de venta. ' +
-            '<span title="Pocos días → reponé. Muchos días → tenés capital parado en mercadería. Colores: rojo = urgente (quiebre / ruptura &lt;' + rup + ' días), ámbar = sobrestock (&gt;' + sob + ' días), gris = sin ventas, verde = sano." style="cursor:help;color:var(--ta-accent);text-decoration:underline dotted;font-weight:500;">¿cómo leerla?</span>' +
-          '</p>' +
+          '<p class="ta-section-sub">Cobertura = para cuántos días te alcanza el stock, según tu ritmo de venta.</p>' +
         '</div>' +
         '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">' +
           '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">' +
@@ -104,7 +102,7 @@
             '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>' +
             '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
           '</div>' +
-          '<span style="font-size:11px;color:#5a5a5a;max-width:320px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' +
+          '<span style="font-size:12px;color:var(--ta-text-soft);max-width:340px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' +
         '</div>' +
       '</header>' +
 
@@ -129,6 +127,7 @@
       const n = parseInt(b.getAttribute('data-per'), 10);
       if (invState.periodo === n) return;
       invState.periodo = n; invState.page.offset = 0; invState.general = null;
+      invState.drillCache = {}; invState.drillOpen = {}; // la cobertura por variante depende del período
       renderInventario();
     }));
     view.querySelectorAll('.inv-tab').forEach(b => b.addEventListener('click', () => {
@@ -278,18 +277,25 @@
   function filaDrill(productoId) {
     const T = window.TiendaIA;
     const vs = invState.drillCache[productoId];
-    if (!vs) return '<div class="ta-inv-drill">' + miniLoading() + '</div>';
-    if (!vs.length) return '<div class="ta-inv-drill" style="color:var(--ta-text-mut);font-size:12px;">Sin variantes.</div>';
-    const filas = vs.map(v => {
+    if (!vs) return vrowMsg('Cargando variantes…');
+    if (!vs.length) return vrowMsg('Sin variantes.');
+    // Cada variante = fila ALINEADA a la grilla del padre: stock bajo STOCK,
+    // cobertura (semaforo por variante) bajo COBERTURA. reservado/disp como sub-linea.
+    return vs.map(v => {
       const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
-      return '<div class="ta-inv-drill__v">' +
-        '<div class="ta-inv-dcell ta-inv-dcell--var"><span class="ta-inv-dcell__label">Variante</span><b>' + T.escapeHtml(etiqueta) + '</b> <code>' + T.escapeHtml(v.sku || '') + '</code></div>' +
-        '<div class="ta-inv-dcell num"><span class="ta-inv-dcell__label">Stock</span>' + Number(v.stock) + '</div>' +
-        '<div class="ta-inv-dcell num"><span class="ta-inv-dcell__label">Reservado</span>' + Number(v.reservado) + '</div>' +
-        '<div class="ta-inv-dcell num"><span class="ta-inv-dcell__label">Disp.</span>' + Number(v.disponible) + '</div>' +
+      return '<div class="ta-inv-vrow">' +
+        '<span class="ta-inv-vmark" aria-hidden="true"></span>' +
+        '<span class="ta-inv-vswatch" aria-hidden="true"></span>' +
+        '<div class="ta-inv-vref"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code>' +
+          '<span class="ta-inv-vsub">reservado ' + Number(v.reservado) + ' · disp. ' + Number(v.disponible) + '</span></div>' +
+        '<div class="ta-inv-vcell num"><span class="ta-inv-vlabel">Stock</span>' + Number(v.stock) + '</div>' +
+        '<div class="ta-inv-vcell"><span class="ta-inv-vlabel">Cobertura</span>' + diasInvCelda(v) + '</div>' +
       '</div>';
     }).join('');
-    return '<div class="ta-inv-drill">' + filas + '</div>';
+  }
+  function vrowMsg(txt) {
+    return '<div class="ta-inv-vrow ta-inv-vrow--msg"><span class="ta-inv-vmark"></span><span class="ta-inv-vswatch"></span>' +
+      '<div class="ta-inv-vref" style="color:var(--ta-text-mut);font-size:12px;">' + window.TiendaIA.escapeHtml(txt) + '</div></div>';
   }
 
   function wireGeneral(cont) {
@@ -307,7 +313,7 @@
     invState.drillOpen[productoId] = true;
     if (!invState.drillCache[productoId]) {
       renderGeneral(cont); // muestra mini-loading
-      const { data, error } = await sb.rpc('inventario_variantes', { p_tienda_id: T.state.tienda.id, p_producto_id: productoId });
+      const { data, error } = await sb.rpc('inventario_variantes', { p_tienda_id: T.state.tienda.id, p_producto_id: productoId, p_periodo: invState.periodo });
       if (error) { T.toast('No pudimos cargar las variantes: ' + error.message, 'error'); invState.drillOpen[productoId] = false; renderGeneral(cont); return; }
       invState.drillCache[productoId] = data || [];
     }
@@ -330,7 +336,6 @@
   function loadingCard() {
     return '<div class="ta-card" style="padding:40px 16px;text-align:center;color:var(--ta-text-mut);">Cargando inventario…</div>';
   }
-  function miniLoading() { return '<span style="font-size:12px;color:var(--ta-text-mut);padding:8px 16px;display:inline-block;">Cargando variantes…</span>'; }
   function errorCard(msg) {
     return '<div class="ta-card"><div class="ta-empty" style="padding:32px 16px;">' +
       '<h2 class="ta-empty__title">No pudimos cargar el inventario</h2>' +

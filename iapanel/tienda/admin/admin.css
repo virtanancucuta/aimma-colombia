@@ -463,14 +463,14 @@ a:hover { text-decoration: underline; }
    Los cells viven planos en el grid del item en desktop (wrappers display:contents) y se
    reagrupan en zonas (metricas / secundario) en mobile via grid-areas. */
 .ta-inv-list { display:flex; flex-direction:column; }
-.ta-inv-list__head, .ta-inv-item {
+.ta-inv-list__head, .ta-inv-item, .ta-inv-vrow {
   display:grid;
   grid-template-columns: 26px 46px minmax(140px,2fr) 60px 156px 104px 90px 98px 112px;
   align-items:center; gap:0 12px;
 }
 .ta-inv-list__head {
-  padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em;
-  color:var(--ta-text-mut); border-bottom:1px solid var(--ta-border);
+  padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em; font-weight:600;
+  color:var(--ta-text-soft); border-bottom:1px solid var(--ta-border);
 }
 .ta-inv-item { padding:10px 12px; border-bottom:1px solid var(--ta-border); cursor:pointer; transition:background .15s ease; }
 .ta-inv-item:hover { background:var(--ta-bg-soft); }
@@ -493,13 +493,17 @@ a:hover { text-decoration: underline; }
 .ta-inv-cell--sec { font-size:12px; color:var(--ta-text-soft); }
 .ta-inv-cell__label { display:none; }
 .ta-inv-note { display:block; font-size:10px; color:var(--ta-text-mut); margin-top:2px; }
-.ta-inv-drill { background:var(--ta-bg-soft); border-bottom:1px solid var(--ta-border); padding:8px 12px 12px 48px; }
-.ta-inv-drill__v { display:grid; grid-template-columns: minmax(120px,1.6fr) 1fr 1fr 1fr; gap:4px 14px; align-items:baseline; font-size:12px; padding:6px 0; border-bottom:1px dashed var(--ta-border); }
-.ta-inv-drill__v:last-child { border-bottom:none; }
-.ta-inv-drill__v b { font-weight:600; }
-.ta-inv-drill__v code { color:var(--ta-text-mut); font-size:11px; }
-.ta-inv-dcell.num { text-align:right; font-variant-numeric:tabular-nums; }
-.ta-inv-dcell__label { display:none; }
+/* Drill-down: filas de variante ALINEADAS a la grilla del padre (mismas columnas):
+   stock bajo STOCK, cobertura (semaforo por variante) bajo COBERTURA. Tinte suave. */
+.ta-inv-vrow { padding:7px 12px; background:var(--ta-bg-soft); border-bottom:1px solid var(--ta-border); align-items:center; }
+.ta-inv-vmark { color:var(--ta-text-mut); }
+.ta-inv-vref { min-width:0; }
+.ta-inv-vref strong { font-size:12px; font-weight:600; }
+.ta-inv-vref code { color:var(--ta-text-mut); font-size:11px; }
+.ta-inv-vsub { display:block; font-size:11px; color:var(--ta-text-mut); }
+.ta-inv-vcell { font-size:12px; min-width:0; }
+.ta-inv-vcell.num { text-align:right; font-variant-numeric:tabular-nums; }
+.ta-inv-vlabel { display:none; }
 
 @media (max-width: 760px) {
   .ta-inv-list__head { display:none; }
@@ -518,15 +522,13 @@ a:hover { text-decoration: underline; }
   .ta-inv-cell { font-size:15px; font-weight:600; text-align:left !important; }
   .ta-inv-cell--sec { font-size:12px; font-weight:400; color:var(--ta-text-soft); }
   .ta-inv-cell__label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); margin-bottom:2px; }
-  .ta-inv-drill { padding:10px 6px 6px; }
-  /* variantes del drill: bloques apilados con labels, separados por hairline
-     (NO tarjeta dentro de tarjeta — evita nested cards) */
-  .ta-inv-drill__v { grid-template-columns:1fr 1fr; gap:6px 12px; padding:10px 0; margin-bottom:0;
-    border-bottom:1px solid var(--ta-border); }
-  .ta-inv-drill__v:last-child { border-bottom:none; }
-  .ta-inv-dcell { text-align:left !important; font-size:14px; font-weight:600; }
-  .ta-inv-dcell--var { grid-column:1 / -1; font-weight:400; }
-  .ta-inv-dcell__label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); margin-bottom:1px; }
+  /* variantes del drill en mobile: flex con labels (variante full, stock + cobertura
+     en linea), tinte suave, SIN tarjeta-dentro-de-tarjeta (separadas por hairline) */
+  .ta-inv-vrow { display:flex; flex-wrap:wrap; gap:6px 22px; padding:12px; border-bottom:1px solid var(--ta-border); }
+  .ta-inv-vmark, .ta-inv-vswatch { display:none; }
+  .ta-inv-vref { flex:1 1 100%; }
+  .ta-inv-vcell { text-align:left !important; font-size:14px; font-weight:600; }
+  .ta-inv-vlabel { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); margin-bottom:1px; }
 }
 
 /* ============================ Acciones recomendadas ============================ */
