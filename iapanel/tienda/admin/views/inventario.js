@@ -26,6 +26,7 @@
       periodo: def,
       filtros: { proveedor_id: '', categoria_id: '', buscar: '' },
       orden: 'referencia',
+      totales: null,
       tab: 'general',
       page: { limit: 25, offset: 0 },
       general: null,            // { rows, total }
@@ -135,7 +136,7 @@
     view.querySelectorAll('.inv-per').forEach(b => b.addEventListener('click', () => {
       const n = parseInt(b.getAttribute('data-per'), 10);
       if (invState.periodo === n) return;
-      invState.periodo = n; invState.page.offset = 0; invState.general = null;
+      invState.periodo = n; invState.page.offset = 0; invState.general = null; invState.totales = null;
       invState.drillCache = {}; invState.drillOpen = {}; // la cobertura por variante depende del período
       renderInventario();
     }));
@@ -157,15 +158,15 @@
       clearTimeout(invState.buscarTimer);
       invState.buscarTimer = setTimeout(() => {
         invState.filtros.buscar = buscar.value.trim();
-        invState.page.offset = 0; invState.general = null; renderInventario();
+        invState.page.offset = 0; invState.general = null; invState.totales = null; renderInventario();
       }, 300);
     });
     const prov = view.querySelector('#inv-proveedor');
-    if (prov) prov.addEventListener('change', () => { invState.filtros.proveedor_id = prov.value; invState.page.offset = 0; invState.general = null; renderInventario(); });
+    if (prov) prov.addEventListener('change', () => { invState.filtros.proveedor_id = prov.value; invState.page.offset = 0; invState.general = null; invState.totales = null; renderInventario(); });
     const cat = view.querySelector('#inv-categoria');
-    if (cat) cat.addEventListener('change', () => { invState.filtros.categoria_id = cat.value; invState.page.offset = 0; invState.general = null; renderInventario(); });
+    if (cat) cat.addEventListener('change', () => { invState.filtros.categoria_id = cat.value; invState.page.offset = 0; invState.general = null; invState.totales = null; renderInventario(); });
     const limpiar = view.querySelector('#inv-limpiar');
-    if (limpiar) limpiar.addEventListener('click', () => { invState.filtros = { proveedor_id: '', categoria_id: '', buscar: '' }; invState.page.offset = 0; invState.general = null; renderInventario(); });
+    if (limpiar) limpiar.addEventListener('click', () => { invState.filtros = { proveedor_id: '', categoria_id: '', buscar: '' }; invState.page.offset = 0; invState.general = null; invState.totales = null; renderInventario(); });
   }
 
   function renderActiveTab() {
@@ -202,6 +203,46 @@
     } catch (e) { cont.innerHTML = errorCard(e.message || String(e)); }
   }
 
+  // KPIs agregados (recalculan con el filtro). Cacheados en invState.totales; se
+  // invalidan al cambiar período/filtros (NO en paginación/orden -> no refetch).
+  async function fetchTotales() {
+    const T = window.TiendaIA, sb = T.supabase();
+    if (invState.totales) return invState.totales;
+    const { data, error } = await sb.rpc('inventario_totales', {
+      p_tienda_id: T.state.tienda.id, p_periodo: invState.periodo,
+      p_proveedor_id: invState.filtros.proveedor_id || null,
+      p_categoria_id: invState.filtros.categoria_id || null,
+      p_buscar: invState.filtros.buscar || null,
+    });
+    if (error) return null;
+    invState.totales = (data && data[0]) || null;
+    return invState.totales;
+  }
+  function pintarKpis(t) {
+    const host = window.TiendaIA.dom.mainView.querySelector('#inv-kpis');
+    if (!host) return;
+    if (!t) { host.innerHTML = ''; return; }
+    host.innerHTML =
+      '<div class="ta-inv-kpis">' +
+        '<div class="ta-inv-kpi"><span class="ta-inv-kpi__val">' + fmtNum(t.total_unidades) + '</span><span class="ta-inv-kpi__lbl">unidades</span></div>' +
+        '<div class="ta-inv-kpi"><span class="ta-inv-kpi__val">' + fmtCOP(Number(t.valor_inventario || 0)) + '</span><span class="ta-inv-kpi__lbl">en inventario</span></div>' +
+        '<div class="ta-inv-kpi"><span class="ta-inv-kpi__val">' + cobTextoGeneral(t) + '</span><span class="ta-inv-kpi__lbl">cobertura general</span></div>' +
+      '</div>' +
+      '<p class="ta-inv-kpis__note">(cobertura según tu costo · últimos ' + invState.periodo + ' días)</p>';
+  }
+  function pintarTotes() {
+    const host = window.TiendaIA.dom.mainView.querySelector('#inv-totes');
+    const t = invState.totales;
+    if (!host) return;
+    if (!t) { host.innerHTML = ''; return; }
+    host.innerHTML =
+      '<div class="ta-inv-totes">' +
+        '<span class="ta-inv-totes__lbl">TOTALES</span>' +
+        '<span class="ta-inv-totes__stock">' + fmtNum(t.total_unidades) + '</span>' +
+        '<span class="ta-inv-totes__valor">' + fmtCOP(Number(t.valor_inventario || 0)) + '</span>' +
+      '</div>';
+  }
+
   function renderGeneral(cont) {
     const T = window.TiendaIA;
     const { rows, total } = invState.general;
@@ -219,6 +260,7 @@
     const desde = invState.page.offset + 1;
     const hasta = invState.page.offset + rows.length;
     cont.innerHTML =
+      '<div id="inv-kpis"></div>' +
       '<div class="ta-card" style="padding:0;overflow:hidden;">' +
         '<div class="ta-inv-list">' +
           '<div class="ta-inv-list__head">' +
@@ -230,6 +272,7 @@
             '<span>Última venta</span>' +
             '<span>Proveedor</span>' +
           '</div>' + html +
+          '<div id="inv-totes"></div>' +
         '</div>' +
       '</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;flex-wrap:wrap;">' +
@@ -240,6 +283,7 @@
         '</div>' +
       '</div>';
     wireGeneral(cont);
+    fetchTotales().then(t => { pintarKpis(t); pintarTotes(); });
   }
 
   // cell helper: una celda del grid-list con su label (visible solo en mobile)
@@ -367,6 +411,12 @@
     try { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
     catch { return '$' + Math.round(n).toLocaleString('es-CO'); }
   }
+  function fmtNum(n) { return Number(n || 0).toLocaleString('es-CO'); }
+  function cobTextoGeneral(t) {
+    if (!t || Number(t.valor_inventario) === 0) return 'Sin inventario';
+    if (t.cobertura_general_dias == null) return 'Sin ventas';
+    return fmtNum(Math.round(Number(t.cobertura_general_dias))) + ' días';
+  }
   function fmtFecha(ts) {
     if (!ts) return '—';
     try { return new Date(ts).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: '2-digit' }); }
@@ -436,9 +486,35 @@
           aoa.push(['↳ ' + et, v.sku || '', numExcel(v.stock), numExcel(v.reservado), numExcel(v.disponible), '', '', cobTexto(v), v.clasificacion, '', '', '', '']);
         });
       });
+      // Hoja 1: Inventario (por unidades) — operativa, intacta.
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws['!cols'] = [{ wch: 16 }, { wch: 24 }, { wch: 8 }, { wch: 10 }, { wch: 11 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 18 }, { wch: 16 }, { wch: 16 }];
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+
+      // Hoja 2: Resumen por costo (financiera) — agregado DIO + dónde está el capital
+      // y de dónde sale el costo de venta. NO lleva cobertura por costo por referencia
+      // (= a la de unidades; el costo solo cambia el número al agregar SKUs distintos).
+      const { data: tot } = await sb.rpc('inventario_totales', {
+        p_tienda_id: T.state.tienda.id, p_periodo: invState.periodo,
+        p_proveedor_id: invState.filtros.proveedor_id || null,
+        p_categoria_id: invState.filtros.categoria_id || null, p_buscar: invState.filtros.buscar || null });
+      const tt = (tot && tot[0]) || null;
+      const totalValor = tt ? Number(tt.valor_inventario || 0) : 0;
+      const r = [];
+      r.push(['RESUMEN POR COSTO']);
+      r.push(['Unidades', 'Valor de inventario', 'Costo de venta (' + invState.periodo + ' días)', 'Cobertura general (según tu costo)']);
+      r.push([tt ? numExcel(tt.total_unidades) : '', tt ? numExcel(tt.valor_inventario) : '', tt ? numExcel(tt.costo_venta_periodo) : '', tt ? cobTextoGeneral(tt) : '']);
+      r.push([]);
+      r.push(['Referencia', 'Nombre', 'Unidades vendidas', 'Costo de venta', 'Valor de inventario', '% del capital']);
+      prods.forEach(p => {
+        const cogs = Math.round(Number(p.unidades_vendidas || 0) * Number(p.costo_unitario || 0));
+        const pct = totalValor > 0 ? Number(((Number(p.valor_inventario || 0) / totalValor) * 100).toFixed(1)) : 0;
+        r.push([p.referencia, p.nombre || '', numExcel(p.unidades_vendidas), cogs, numExcel(p.valor_inventario), pct]);
+      });
+      const ws2 = XLSX.utils.aoa_to_sheet(r);
+      ws2['!cols'] = [{ wch: 18 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 13 }];
+      XLSX.utils.book_append_sheet(wb, ws2, 'Resumen por costo');
+
       const fecha = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, 'Inventario_' + (T.state.tienda.slug || 'tienda') + '_' + fecha + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
