@@ -28,6 +28,7 @@
       orden: 'referencia',
       totales: null,
       ajustesOpen: false,
+      accion: null,             // { rows, ver }
       tab: 'general',
       page: { limit: 25, offset: 0 },
       general: null,            // { rows, total }
@@ -109,7 +110,7 @@
             '<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' +
             btn(30) + btn(60) + chip +
             '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>' +
-            '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' +
+            (invState.tab === 'general' ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
             '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
           '</div>' +
           '<span style="font-size:12px;color:var(--ta-text-soft);max-width:340px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' +
@@ -121,7 +122,7 @@
           '<input id="inv-buscar" class="ta-input" type="text" placeholder="Buscar por referencia o nombre..." value="' + T.escapeHtml(invState.filtros.buscar) + '" style="flex:1;min-width:220px;">' +
           '<select id="inv-proveedor" class="ta-select" style="max-width:220px;">' + provOpts + '</select>' +
           '<select id="inv-categoria" class="ta-select" style="max-width:220px;">' + catOpts + '</select>' +
-          '<select id="inv-orden" class="ta-select" style="max-width:230px;">' + ordenOpts + '</select>' +
+          (invState.tab === 'general' ? '<select id="inv-orden" class="ta-select" style="max-width:230px;">' + ordenOpts + '</select>' : '') +
           (invState.filtros.buscar || invState.filtros.proveedor_id || invState.filtros.categoria_id
             ? '<button id="inv-limpiar" class="ta-btn" style="white-space:nowrap;">Limpiar</button>' : '') +
         '</div>' +
@@ -235,6 +236,7 @@
     const cont = window.TiendaIA.dom.mainView.querySelector('#inv-content');
     if (!cont) return;
     if (invState.tab === 'general') { fetchAndRenderGeneral(cont); return; }
+    if (invState.tab === 'accion') { fetchAndRenderAccion(cont); return; }
     cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:32px 16px;">' +
       '<h2 class="ta-empty__title">En construcción</h2>' +
       '<p class="ta-empty__text">Esta vista llega en la próxima entrega.</p></div></div>';
@@ -305,6 +307,121 @@
       '</div>';
   }
 
+  // ============================================================
+  // SOBRESTOCK & RUPTURA (tab 'accion') — segmented Ver + sugerencia de compra
+  // ============================================================
+  async function fetchAndRenderAccion(cont) {
+    const T = window.TiendaIA, sb = T.supabase();
+    cont.innerHTML = loadingCard();
+    try {
+      const { data, error } = await sb.rpc('inventario_resumen', {
+        p_tienda_id: T.state.tienda.id, p_periodo: invState.periodo, p_orden: 'dias_asc',
+        p_clasificacion: ['quiebre', 'ruptura', 'sobrestock'],
+        p_proveedor_id: invState.filtros.proveedor_id || null,
+        p_categoria_id: invState.filtros.categoria_id || null,
+        p_buscar: invState.filtros.buscar || null, p_limit: null, p_offset: 0,
+      });
+      if (error) { cont.innerHTML = errorCard(error.message); return; }
+      const ver = (invState.accion && invState.accion.ver) || 'ruptura';
+      invState.accion = { rows: data || [], ver };
+      renderAccion(cont);
+    } catch (e) { cont.innerHTML = errorCard(e.message || String(e)); }
+  }
+
+  function umbrOptimo() { return Number((window.TiendaIA.state.tienda || {}).inv_umbral_optimo_dias || 30); }
+  function umbrSobrestock() { return Number((window.TiendaIA.state.tienda || {}).inv_umbral_sobrestock_dias || 60); }
+  // cantidad sugerida hacia el óptimo. -1e-9: absorbe residuo de coma flotante
+  // (cuando óptimo==días_efectivos, óptimo×venta_diaria da p.ej. 14.0000000002 y ceil
+  // empujaría 9→10). Verificado en Task 1 (QAINV-P1) + bordes (faltante real 1 → 1).
+  function sugCompraTxt(velocidad, datos_insuf, stock, costo) {
+    if (datos_insuf) return 'Pocos datos, usá tu criterio';
+    if (!velocidad || Number(velocidad) === 0) return 'Sin histórico de venta, definí vos cuánto pedir';
+    const opt = umbrOptimo();
+    const cant = Math.max(0, Math.ceil(opt * Number(velocidad) - Number(stock) - 1e-9));
+    if (cant === 0) return 'Ya tenés para tu meta de ' + opt + ' días';
+    return 'Para tu meta de ' + opt + ' días: comprá ~' + cant + ' ≈ ' + fmtCOP(cant * Number(costo || 0));
+  }
+  function capitalAmarrado(velocidad, stock, costo) {
+    const sob = umbrSobrestock();
+    const demas = Math.max(0, Math.round(Number(stock) - sob * Number(velocidad || 0)));
+    return { unidades: demas, capital: demas * Number(costo || 0) };
+  }
+  function filaSugerencia(r, ver) {
+    if (ver === 'sobrestock') {
+      const c = capitalAmarrado(r.venta_diaria, r.stock_total, r.costo_unitario);
+      if (c.unidades <= 0) return '';
+      return '<div class="ta-inv-sug ta-inv-sug--liq">Te sobran ~' + c.unidades + ' ≈ ' + fmtCOP(c.capital) + ' parados</div>';
+    }
+    return '<div class="ta-inv-sug ta-inv-sug--rep">' + window.TiendaIA.escapeHtml(sugCompraTxt(r.venta_diaria, r.datos_insuficientes, r.stock_total, r.costo_unitario)) + '</div>';
+  }
+  function drillHtml(productoId) {
+    return (invState.tab === 'accion') ? filaDrillAccion(productoId) : filaDrill(productoId);
+  }
+  function filaDrillAccion(productoId) {
+    const T = window.TiendaIA;
+    const vs = invState.drillCache[productoId];
+    if (!vs) return vrowMsg('Cargando variantes…');
+    if (!vs.length) return vrowMsg('Sin variantes.');
+    const padre = ((invState.accion && invState.accion.rows) || []).find(x => x.producto_id === productoId) || {};
+    const costo = padre.costo_unitario;
+    const ver = (invState.accion && invState.accion.ver) || 'ruptura';
+    return vs.map(v => {
+      const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      let sug;
+      if (ver === 'sobrestock') { const c = capitalAmarrado(v.venta_diaria, v.stock, costo); sug = c.unidades > 0 ? ('sobran ~' + c.unidades + ' ≈ ' + fmtCOP(c.capital)) : 'en su nivel'; }
+      else { sug = sugCompraTxt(v.venta_diaria, v.datos_insuficientes, v.stock, costo); }
+      return '<div class="ta-inv-vrow ta-inv-vrow--sug">' +
+        '<span class="ta-inv-vmark" aria-hidden="true"></span><span class="ta-inv-vswatch" aria-hidden="true"></span>' +
+        '<div class="ta-inv-vref"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code>' +
+          '<span class="ta-inv-vsub">stock ' + Number(v.stock) + ' · ' + T.escapeHtml(sug) + '</span></div>' +
+        '<div class="ta-inv-vcell num"><span class="ta-inv-vlabel">Stock</span>' + Number(v.stock) + '</div>' +
+        '<div class="ta-inv-vcell"><span class="ta-inv-vlabel">Cobertura</span>' + diasInvCelda(v) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function renderAccion(cont) {
+    const T = window.TiendaIA;
+    const ver = invState.accion.ver, rows = invState.accion.rows;
+    const cls = ver === 'ruptura' ? 'ruptura' : ver === 'sobrestock' ? 'sobrestock' : 'quiebre';
+    const lista = rows.filter(r => r.clasificacion === cls);
+    if (ver === 'sobrestock') lista.sort((a, b) => Number(b.valor_inventario || 0) - Number(a.valor_inventario || 0));
+    else lista.sort((a, b) => Number(a.dias_inventario || 0) - Number(b.dias_inventario || 0));
+    const nR = rows.filter(r => r.clasificacion === 'ruptura').length;
+    const nS = rows.filter(r => r.clasificacion === 'sobrestock').length;
+    const nA = rows.filter(r => r.clasificacion === 'quiebre').length;
+    const seg = (id, label, n) => '<button type="button" class="ta-btn inv-ver' + (ver === id ? ' ta-btn--primary' : '') + '" data-ver="' + id + '">' + label + ' (' + n + ')</button>';
+    let body;
+    if (!lista.length) {
+      const vacio = ver === 'sobrestock' ? 'Sin exceso de inventario.' : ver === 'ruptura' ? 'Nada en ruptura. Tu stock está al día.' : 'Nada agotado.';
+      body = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">' + vacio + '</p></div></div>';
+    } else {
+      let filas = '';
+      lista.forEach(r => {
+        filas += filaGeneral(r) + filaSugerencia(r, ver);
+        if (invState.drillOpen[r.producto_id]) filas += drillHtml(r.producto_id);
+      });
+      body = '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-list">' +
+        '<div class="ta-inv-list__head"><span></span><span></span><span>Referencia</span>' +
+        '<span style="text-align:right;">Stock</span><span>Cobertura</span><span style="text-align:right;">Valor</span>' +
+        '<span style="text-align:right;">Costo</span><span>Última venta</span><span>Proveedor</span></div>' + filas +
+        '</div></div>';
+    }
+    let extra = '';
+    if (ver === 'sobrestock' && lista.length) {
+      const cap = lista.reduce((s, r) => s + capitalAmarrado(r.venta_diaria, r.stock_total, r.costo_unitario).capital, 0);
+      extra = '<p class="ta-inv-secc__sub">' + fmtCOP(cap) + ' en capital parado en esta lista.</p>';
+    } else if (ver !== 'sobrestock' && lista.length) {
+      extra = '<p class="ta-inv-secc__sub">Sugerencia hacia tu óptimo de ' + umbrOptimo() + ' días. No genera la orden: es para que vos decidas.</p>';
+    }
+    cont.innerHTML =
+      '<div class="ta-inv-ver">' + seg('ruptura', 'Ruptura', nR) + seg('sobrestock', 'Sobrestock', nS) + seg('agotado', 'Agotado', nA) + '</div>' +
+      extra + body;
+    cont.querySelectorAll('.inv-ver').forEach(b => b.addEventListener('click', () => {
+      invState.accion.ver = b.getAttribute('data-ver'); renderAccion(cont);
+    }));
+    wireGeneral(cont);
+  }
+
   function renderGeneral(cont) {
     const T = window.TiendaIA;
     const { rows, total } = invState.general;
@@ -317,7 +434,7 @@
     let html = '';
     rows.forEach(r => {
       html += filaGeneral(r);
-      if (invState.drillOpen[r.producto_id]) html += filaDrill(r.producto_id);
+      if (invState.drillOpen[r.producto_id]) html += drillHtml(r.producto_id);
     });
     const desde = invState.page.offset + 1;
     const hasta = invState.page.offset + rows.length;
@@ -452,7 +569,7 @@
       invState.drillCache[productoId] = data || [];
     }
     removeDrillRows(item);                 // quita el "Cargando…" si estaba
-    insertDrillRows(item, filaDrill(productoId));
+    insertDrillRows(item, drillHtml(productoId));
   }
   function removeDrillRows(item) {
     let n = item.nextElementSibling;
