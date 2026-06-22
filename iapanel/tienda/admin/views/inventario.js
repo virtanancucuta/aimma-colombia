@@ -367,11 +367,26 @@
   function numExcel(n) { return (n == null) ? '' : Number(n); }
   function fechaExcel(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return ''; } }
 
+  // SheetJS UMD lazy desde jsdelivr (mismo CDN que supabase/dompurify del admin). window.XLSX.
+  let _xlsxPromise = null;
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (_xlsxPromise) return _xlsxPromise;
+    _xlsxPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('Excel no cargó'));
+      s.onerror = () => { _xlsxPromise = null; reject(new Error('No se pudo cargar el generador de Excel')); };
+      document.head.appendChild(s);
+    });
+    return _xlsxPromise;
+  }
+
   async function exportarExcel(btn) {
     const T = window.TiendaIA, sb = T.supabase();
     const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
     try {
-      const XLSX = await import('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.mjs');
+      const XLSX = await loadXLSX();
       const { data: prods, error } = await sb.rpc('inventario_resumen', {
         p_tienda_id: T.state.tienda.id, p_periodo: invState.periodo, p_orden: invState.orden, p_clasificacion: null,
         p_proveedor_id: invState.filtros.proveedor_id || null, p_categoria_id: invState.filtros.categoria_id || null,
