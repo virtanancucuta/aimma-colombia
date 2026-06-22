@@ -46,9 +46,9 @@
     if (!invState.loadedCatalogos) await cargarCatalogos();
     T.dom.mainView.innerHTML = renderShell();
     wireShell();
-    // PARTE B: GENERAL aprovecha el ancho desktop (sube el cap de .ta-main). Solo el tab general;
-    // cleanupCurrentView() la quita al salir de Inventario para no filtrar el ancho a otras vistas.
-    T.dom.mainView.classList.toggle('ta-main--inv-wide', invState.tab === 'general');
+    // PARTE B: todo Inventario aprovecha el ancho desktop (sube el cap de .ta-main). Cada tab tiene
+    // su grilla ancha (GENERAL 9 cols / acción 3 cols). cleanupCurrentView() la quita al salir.
+    T.dom.mainView.classList.add('ta-main--inv-wide');
     renderActiveTab();
   }
 

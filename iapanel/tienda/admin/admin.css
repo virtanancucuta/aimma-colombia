@@ -521,11 +521,18 @@ a:hover { text-decoration: underline; }
    NO cambia el set de columnas; el look <=1400 queda igual. Solo desktop, solo GENERAL. */
 .ta-main--inv-wide { max-width: 1760px; }
 @media (min-width: 1500px) {
+  /* GENERAL (9 columnas) — excluye las filas de la vista de acción (3 cols) */
   .ta-main--inv-wide .ta-inv-list__head,
-  .ta-main--inv-wide .ta-inv-item,
-  .ta-main--inv-wide .ta-inv-vrow,
+  .ta-main--inv-wide .ta-inv-item:not(.ta-inv-item--accion),
+  .ta-main--inv-wide .ta-inv-vrow:not(.ta-inv-vrow--accion),
   .ta-main--inv-wide .ta-inv-totes {
     grid-template-columns: 26px 46px minmax(180px,1.8fr) 80px minmax(160px,1.2fr) minmax(120px,1fr) minmax(100px,0.9fr) minmax(120px,1fr) minmax(140px,1.2fr);
+  }
+  /* SOBRESTOCK & RUPTURA (vista de acción, 3 cols) — reparte el ancho: Referencia · Cobertura · Acción */
+  .ta-main--inv-wide .ta-inv-ahead,
+  .ta-main--inv-wide .ta-inv-item.ta-inv-item--accion,
+  .ta-main--inv-wide .ta-inv-vrow.ta-inv-vrow--accion {
+    grid-template-columns: 26px minmax(240px,2.2fr) minmax(150px,1fr) minmax(260px,1.6fr);
   }
 }
 .ta-inv-list__head {
