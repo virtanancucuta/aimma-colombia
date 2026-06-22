@@ -473,6 +473,17 @@ a:hover { text-decoration: underline; }
 .ta-inv-totes__lbl { grid-column:1 / 4; font-size:12px; letter-spacing:.03em; color:var(--ta-text-soft); }
 .ta-inv-totes__stock { grid-column:4; text-align:right; font-variant-numeric:tabular-nums; }
 .ta-inv-totes__valor { grid-column:6; text-align:right; font-variant-numeric:tabular-nums; }
+/* Panel de Ajustes (3 umbrales) */
+.ta-inv-aj { padding:16px; }
+.ta-inv-aj__title { font-size:16px; font-weight:700; margin:0 0 4px; color:var(--ta-text); }
+.ta-inv-aj__intro { font-size:13px; color:var(--ta-text-soft); margin:0 0 14px; }
+.ta-inv-aj__row { display:grid; grid-template-columns:190px 110px 1fr; gap:8px 14px; align-items:center; margin-bottom:12px; }
+.ta-inv-aj__lbl { font-size:14px; font-weight:600; color:var(--ta-text); }
+.ta-inv-aj__inp { max-width:110px; }
+.ta-inv-aj__help { font-size:13px; color:var(--ta-text-soft); line-height:1.4; }
+.ta-inv-aj__error { color:#b3210a; font-size:13px; font-weight:600; margin:4px 0 10px; }
+.ta-inv-aj__actions { display:flex; gap:8px; justify-content:flex-end; }
+@media (max-width:760px){ .ta-inv-aj__row{ grid-template-columns:1fr; gap:3px; } .ta-inv-aj__inp{ max-width:140px; } }
 .ta-inv-list { display:flex; flex-direction:column; }
 .ta-inv-list__head, .ta-inv-item, .ta-inv-vrow {
   display:grid;

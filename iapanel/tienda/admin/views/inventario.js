@@ -27,6 +27,7 @@
       filtros: { proveedor_id: '', categoria_id: '', buscar: '' },
       orden: 'referencia',
       totales: null,
+      ajustesOpen: false,
       tab: 'general',
       page: { limit: 25, offset: 0 },
       general: null,            // { rows, total }
@@ -126,9 +127,66 @@
         '</div>' +
       '</div>' +
 
+      panelAjustesHtml() +
+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">' + tabBar + '</div>' +
 
       '<div id="inv-content"></div>';
+  }
+
+  // Panel inline de Ajustes (3 umbrales). Se muestra cuando invState.ajustesOpen.
+  function panelAjustesHtml() {
+    if (!invState.ajustesOpen) return '';
+    const t = window.TiendaIA.state.tienda || {};
+    const campo = (id, label, help, val) =>
+      '<div class="ta-inv-aj__row">' +
+        '<label class="ta-inv-aj__lbl" for="' + id + '">' + label + '</label>' +
+        '<input id="' + id + '" class="ta-input ta-inv-aj__inp" type="number" min="1" step="1" value="' + val + '">' +
+        '<span class="ta-inv-aj__help">' + help + '</span>' +
+      '</div>';
+    return '<div class="ta-card ta-inv-aj" style="margin-bottom:16px;">' +
+      '<h2 class="ta-inv-aj__title">Ajustes de inventario</h2>' +
+      '<p class="ta-inv-aj__intro">Estos 3 números definen tus alarmas y la sugerencia de compra. Van en orden: ruptura &lt; óptimo &lt; sobrestock.</p>' +
+      campo('aj-ruptura', 'Ruptura (días)', 'Avisame cuando a un producto le queden menos de estos días de stock.', (t.inv_umbral_ruptura_dias || 15)) +
+      campo('aj-optimo', 'Inventario óptimo (días)', 'Cuántos días de stock querés tener como meta. Lo usamos para sugerirte cuánto comprar.', (t.inv_umbral_optimo_dias || 30)) +
+      campo('aj-sobrestock', 'Sobrestock (días)', 'Avisame cuando un producto tenga más de estos días de stock (capital parado).', (t.inv_umbral_sobrestock_dias || 60)) +
+      '<p id="aj-error" class="ta-inv-aj__error" hidden></p>' +
+      '<div class="ta-inv-aj__actions">' +
+        '<button type="button" id="aj-cancel" class="ta-btn">Cancelar</button>' +
+        '<button type="button" id="aj-save" class="ta-btn ta-btn--primary">Guardar</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  async function guardarAjustes(btn) {
+    const T = window.TiendaIA, sb = T.supabase(), view = T.dom.mainView;
+    const err = view.querySelector('#aj-error');
+    const showErr = (m) => { if (err) { err.textContent = m; err.hidden = false; } };
+    const r = parseInt(view.querySelector('#aj-ruptura').value, 10);
+    const o = parseInt(view.querySelector('#aj-optimo').value, 10);
+    const s = parseInt(view.querySelector('#aj-sobrestock').value, 10);
+    if (![r, o, s].every(n => Number.isInteger(n) && n >= 1)) return showErr('Poné números enteros de 1 día o más.');
+    if (!(r < o && o < s)) return showErr('Tienen que ir en orden: ruptura < óptimo < sobrestock.');
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Guardando…';
+    try {
+      const { error } = await sb.from('tiendas')
+        .update({ inv_umbral_ruptura_dias: r, inv_umbral_optimo_dias: o, inv_umbral_sobrestock_dias: s })
+        .eq('id', T.state.tienda.id);
+      if (error) {
+        showErr(error.code === '23514' ? 'Revisá los números: ruptura < óptimo < sobrestock.' : ('No se pudo guardar: ' + error.message));
+        btn.disabled = false; btn.textContent = old; return;
+      }
+      T.state.tienda.inv_umbral_ruptura_dias = r;
+      T.state.tienda.inv_umbral_optimo_dias = o;
+      T.state.tienda.inv_umbral_sobrestock_dias = s;
+      invState.ajustesOpen = false;
+      invState.general = null; invState.totales = null; invState.accion = null;
+      T.toast('Ajustes guardados.', 'success');
+      renderInventario();
+    } catch (e) {
+      showErr('No se pudo guardar: ' + (e.message || e));
+      btn.disabled = false; btn.textContent = old;
+    }
   }
 
   function wireShell() {
@@ -147,7 +205,11 @@
       renderInventario();
     }));
     const ajustes = view.querySelector('#inv-ajustes');
-    if (ajustes) ajustes.addEventListener('click', () => T.toast('Ajustes de inventario — disponible en breve.', 'info'));
+    if (ajustes) ajustes.addEventListener('click', () => { invState.ajustesOpen = !invState.ajustesOpen; renderInventario(); });
+    const ajCancel = view.querySelector('#aj-cancel');
+    if (ajCancel) ajCancel.addEventListener('click', () => { invState.ajustesOpen = false; renderInventario(); });
+    const ajSave = view.querySelector('#aj-save');
+    if (ajSave) ajSave.addEventListener('click', () => guardarAjustes(ajSave));
     const ex = view.querySelector('#inv-export');
     if (ex) ex.addEventListener('click', () => exportarExcel(ex));
     const orden = view.querySelector('#inv-orden');
