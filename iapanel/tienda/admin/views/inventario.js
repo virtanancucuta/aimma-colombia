@@ -71,6 +71,8 @@
   function renderShell() {
     const T = window.TiendaIA;
     const per = invState.periodo;
+    const rup = (T.state.tienda && T.state.tienda.inv_umbral_ruptura_dias) || 15;
+    const sob = (T.state.tienda && T.state.tienda.inv_umbral_sobrestock_dias) || 90;
     const chip = (per === 30 || per === 60)
       ? ''
       : '<span class="ta-pill ta-pill--ok" style="margin-left:0;">' + per + ' días</span>';
@@ -91,7 +93,7 @@
       '<header style="display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
         '<div>' +
           '<h1 class="ta-section-title">Inventario</h1>' +
-          '<p class="ta-section-sub">Stock, valor, velocidad y cobertura de tu catálogo. Los umbrales de ruptura y sobrestock se ajustan en el engranaje.</p>' +
+          '<p class="ta-section-sub">Stock, valor, velocidad y cobertura de tu catálogo. Umbrales: ruptura &lt;' + rup + ' días, sobrestock &gt;' + sob + ' días (configurables próximamente).</p>' +
         '</div>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
           '<span style="color:var(--ta-text-mut);font-size:13px;">Período:</span>' +
@@ -191,26 +193,26 @@
         '<p class="ta-empty__text">No hay productos con esos filtros.</p></div></div>';
       return;
     }
-    let tbody = '';
+    let html = '';
     rows.forEach(r => {
-      tbody += filaGeneral(r);
-      if (invState.drillOpen[r.producto_id]) tbody += filaDrill(r.producto_id);
+      html += filaGeneral(r);
+      if (invState.drillOpen[r.producto_id]) html += filaDrill(r.producto_id);
     });
     const desde = invState.page.offset + 1;
     const hasta = invState.page.offset + rows.length;
     cont.innerHTML =
       '<div class="ta-card" style="padding:0;overflow:hidden;">' +
-        '<div class="ta-table-wrap"><table class="ta-table">' +
-          '<thead><tr>' +
-            '<th style="width:52px;"></th>' +
-            '<th>Referencia</th>' +
-            '<th style="text-align:right;">Stock</th>' +
-            '<th style="text-align:right;">Costo</th>' +
-            '<th style="text-align:right;">Valor</th>' +
-            '<th>Días inv.</th>' +
-            '<th>Última venta</th>' +
-            '<th>Proveedor</th>' +
-          '</tr></thead><tbody>' + tbody + '</tbody></table></div>' +
+        '<div class="ta-inv-list">' +
+          '<div class="ta-inv-list__head">' +
+            '<span></span><span></span><span>Referencia</span>' +
+            '<span style="text-align:right;">Stock</span>' +
+            '<span>Días inv.</span>' +
+            '<span style="text-align:right;">Valor</span>' +
+            '<span style="text-align:right;">Costo</span>' +
+            '<span>Última venta</span>' +
+            '<span>Proveedor</span>' +
+          '</div>' + html +
+        '</div>' +
       '</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;flex-wrap:wrap;">' +
         '<span style="color:var(--ta-text-mut);font-size:13px;">' + total + ' producto(s) · mostrando ' + desde + '–' + hasta + '</span>' +
@@ -222,58 +224,65 @@
     wireGeneral(cont);
   }
 
+  // cell helper: una celda del grid-list con su label (visible solo en mobile)
+  function cell(cls, label, val) {
+    return '<div class="ta-inv-cell ' + cls + '"><span class="ta-inv-cell__label">' + label + '</span>' + val + '</div>';
+  }
+
   function filaGeneral(r) {
     const T = window.TiendaIA;
-    const foto = r.foto_principal_url
-      ? '<img src="' + T.escapeHtml(r.foto_principal_url) + '" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--ta-border);">'
-      : '<div class="ta-inv-thumb--empty" style="width:40px;height:40px;border-radius:6px;background:var(--ta-bg-soft);display:flex;align-items:center;justify-content:center;color:var(--ta-text-mut);font-size:16px;">📦</div>';
     const abierto = !!invState.drillOpen[r.producto_id];
-    const costo = r.costo_unitario != null ? fmtCOP(Number(r.costo_unitario)) : '<span style="color:var(--ta-text-mut);">—</span>';
-    return '<tr class="inv-row" data-prod="' + T.escapeHtml(r.producto_id) + '" style="cursor:pointer;">' +
-      '<td>' + foto + '</td>' +
-      '<td><strong>' + T.escapeHtml(r.referencia) + '</strong>' +
-        '<br><span style="font-size:12px;color:var(--ta-text-soft);">' + T.escapeHtml(r.nombre || '') + '</span>' +
-        (abierto ? ' <span style="color:var(--ta-accent);font-size:11px;">▾ variantes</span>' : '') + '</td>' +
-      '<td style="text-align:right;">' + Number(r.stock_total) + '</td>' +
-      '<td style="text-align:right;color:var(--ta-text-soft);">' + costo + '</td>' +
-      '<td style="text-align:right;">' + fmtCOP(Number(r.valor_inventario || 0)) + '</td>' +
-      '<td>' + diasInvCelda(r) + '</td>' +
-      '<td style="font-size:12px;color:var(--ta-text-soft);">' + fmtFecha(r.fecha_ultima_venta) + '</td>' +
-      '<td style="font-size:12px;color:var(--ta-text-soft);">' + (r.proveedor_nombre ? T.escapeHtml(r.proveedor_nombre) : '—') + '</td>' +
-    '</tr>';
+    const foto = r.foto_principal_url
+      ? '<img class="ta-inv-thumb" src="' + T.escapeHtml(r.foto_principal_url) + '" alt="">'
+      : '<div class="ta-inv-thumb ta-inv-thumb--empty">📦</div>';
+    const costo = r.costo_unitario != null ? fmtCOP(Number(r.costo_unitario)) : '—';
+    return '<div class="ta-inv-item" data-prod="' + T.escapeHtml(r.producto_id) + '" data-open="' + (abierto ? '1' : '0') + '">' +
+      '<span class="ta-inv-chevron" aria-hidden="true">▸</span>' +
+      foto +
+      '<div class="ta-inv-ref"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span></div>' +
+      '<div class="ta-inv-metrics">' +
+        cell('num ta-inv-cell--stock', 'Stock', String(Number(r.stock_total))) +
+        cell('ta-inv-cell--dias', 'Días inv.', diasInvCelda(r)) +
+        cell('num ta-inv-cell--valor', 'Valor', fmtCOP(Number(r.valor_inventario || 0))) +
+      '</div>' +
+      '<div class="ta-inv-sec">' +
+        cell('num ta-inv-cell--sec ta-inv-cell--costo', 'Costo', costo) +
+        cell('ta-inv-cell--sec ta-inv-cell--ultima', 'Última venta', fmtFecha(r.fecha_ultima_venta)) +
+        cell('ta-inv-cell--sec ta-inv-cell--prov', 'Proveedor', (r.proveedor_nombre ? T.escapeHtml(r.proveedor_nombre) : '—')) +
+      '</div>' +
+    '</div>';
   }
 
   function diasInvCelda(r) {
-    // 0 -> "Agotado"; null -> "—"; numero -> badge segun clasificacion
+    // 0 -> "Agotado"; null -> "Sin consumo"; numero -> badge segun clasificacion
     let texto, cls = badgeClasif(r.clasificacion);
     if (r.dias_inventario === 0 || r.dias_inventario === '0') texto = 'Agotado';
     else if (r.dias_inventario == null) texto = 'Sin consumo';
     else texto = Math.round(Number(r.dias_inventario)) + ' días';
-    const nota = r.datos_insuficientes ? '<br><span style="font-size:10px;color:var(--ta-text-mut);">pocos días de data</span>' : '';
-    if (!cls) return texto + nota;
-    return '<span class="' + cls + '" style="margin-left:0;">' + texto + '</span>' + nota;
+    const badge = cls ? '<span class="' + cls + '" style="margin-left:0;">' + texto + '</span>' : '<span>' + texto + '</span>';
+    const nota = r.datos_insuficientes ? '<span class="ta-inv-note">pocos días de data</span>' : '';
+    return badge + nota;
   }
 
   function filaDrill(productoId) {
     const T = window.TiendaIA;
     const vs = invState.drillCache[productoId];
-    if (!vs) return '<tr class="inv-drillrow"><td colspan="8" style="background:var(--ta-bg-soft);">' + miniLoading() + '</td></tr>';
-    if (!vs.length) return '<tr class="inv-drillrow"><td colspan="8" style="background:var(--ta-bg-soft);color:var(--ta-text-mut);font-size:12px;padding:10px 16px;">Sin variantes.</td></tr>';
+    if (!vs) return '<div class="ta-inv-drill">' + miniLoading() + '</div>';
+    if (!vs.length) return '<div class="ta-inv-drill" style="color:var(--ta-text-mut);font-size:12px;">Sin variantes.</div>';
     const filas = vs.map(v => {
       const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
-      return '<tr>' +
-        '<td style="font-size:12px;">' + T.escapeHtml(etiqueta) + ' <code style="color:var(--ta-text-mut);font-size:11px;">' + T.escapeHtml(v.sku || '') + '</code></td>' +
-        '<td style="text-align:right;font-size:12px;">stock ' + Number(v.stock) + '</td>' +
-        '<td style="text-align:right;font-size:12px;color:var(--ta-text-mut);">reservado ' + Number(v.reservado) + '</td>' +
-        '<td style="text-align:right;font-size:12px;"><strong>disp. ' + Number(v.disponible) + '</strong></td>' +
-        '</tr>';
+      return '<div class="ta-inv-drill__v">' +
+        '<b>' + T.escapeHtml(etiqueta) + '</b> <code>' + T.escapeHtml(v.sku || '') + '</code>' +
+        '<span>Stock ' + Number(v.stock) + '</span>' +
+        '<span style="color:var(--ta-text-mut);">Reservado ' + Number(v.reservado) + '</span>' +
+        '<span><b>Disp. ' + Number(v.disponible) + '</b></span>' +
+      '</div>';
     }).join('');
-    return '<tr class="inv-drillrow"><td colspan="8" style="background:var(--ta-bg-soft);padding:8px 16px;">' +
-      '<table style="width:100%;border-collapse:collapse;">' + filas + '</table></td></tr>';
+    return '<div class="ta-inv-drill">' + filas + '</div>';
   }
 
   function wireGeneral(cont) {
-    cont.querySelectorAll('.inv-row').forEach(tr => tr.addEventListener('click', () => toggleDrill(tr.getAttribute('data-prod'))));
+    cont.querySelectorAll('.ta-inv-item').forEach(it => it.addEventListener('click', () => toggleDrill(it.getAttribute('data-prod'))));
     const prev = cont.querySelector('#inv-prev');
     const next = cont.querySelector('#inv-next');
     if (prev) prev.addEventListener('click', () => { if (invState.page.offset <= 0) return; invState.page.offset -= invState.page.limit; invState.general = null; renderActiveTab(); });

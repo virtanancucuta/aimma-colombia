@@ -441,10 +441,70 @@ a:hover { text-decoration: underline; }
   vertical-align: middle;
 }
 .ta-pill--ok    { background: rgba(46,204,113,.16); color: var(--ta-success); border: 1px solid rgba(46,204,113,.35); }
-.ta-pill--warn  { background: rgba(255,170,60,.16); color: var(--ta-warn);    border: 1px solid rgba(255,170,60,.35); }
+.ta-pill--warn  { background: rgba(255,170,60,.16); color: #8a5a00;            border: 1px solid rgba(255,170,60,.35); }
 .ta-pill--info  { background: rgba(77,142,255,.16); color: var(--ta-accent);  border: 1px solid rgba(77,142,255,.35); }
-.ta-pill--danger{ background: rgba(255,93,108,.16); color: var(--ta-danger);  border: 1px solid rgba(255,93,108,.35); }
-.ta-inv-pill--mut{ background: rgba(115,115,115,.14); color: var(--ta-text-mut); border: 1px solid rgba(115,115,115,.30); }
+.ta-pill--danger{ background: rgba(255,93,108,.16); color: #b3210a;            border: 1px solid rgba(255,93,108,.35); }
+.ta-inv-pill--mut{ background: rgba(115,115,115,.14); color: #595959;          border: 1px solid rgba(115,115,115,.30); }
+
+/* ============================ Inventario — lista responsive (PATRON COMPARTIDO 4 tabs) ============================ */
+/* Desktop: grid denso tipo tabla. Mobile (<=760px, = breakpoint del drawer): tarjetas apiladas.
+   Los cells viven planos en el grid del item en desktop (wrappers display:contents) y se
+   reagrupan en zonas (metricas / secundario) en mobile via grid-areas. */
+.ta-inv-list { display:flex; flex-direction:column; }
+.ta-inv-list__head, .ta-inv-item {
+  display:grid;
+  grid-template-columns: 26px 48px minmax(150px,2.2fr) 70px 120px 110px 96px 104px 120px;
+  align-items:center; gap:0 10px;
+}
+.ta-inv-list__head {
+  padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em;
+  color:var(--ta-text-mut); border-bottom:1px solid var(--ta-border);
+}
+.ta-inv-item { padding:10px 12px; border-bottom:1px solid var(--ta-border); cursor:pointer; transition:background .15s ease; }
+.ta-inv-item:hover { background:var(--ta-bg-soft); }
+.ta-inv-item:last-of-type { border-bottom:none; }
+.ta-inv-metrics, .ta-inv-sec { display:contents; }
+.ta-inv-chevron {
+  width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center;
+  border:none; background:transparent; color:var(--ta-text-mut); cursor:pointer; font-size:13px;
+  transition:transform .15s ease, color .15s ease;
+}
+.ta-inv-item:hover .ta-inv-chevron { color:var(--ta-accent); }
+.ta-inv-item[data-open="1"] .ta-inv-chevron { transform:rotate(90deg); color:var(--ta-accent); }
+.ta-inv-thumb { width:40px; height:40px; border-radius:6px; object-fit:cover; border:1px solid var(--ta-border); }
+.ta-inv-thumb--empty { display:flex; align-items:center; justify-content:center; background:var(--ta-bg-soft); color:var(--ta-text-mut); font-size:16px; }
+.ta-inv-ref strong { display:block; font-size:13px; line-height:1.25; }
+.ta-inv-ref span { font-size:12px; color:var(--ta-text-soft); }
+.ta-inv-cell { font-size:13px; min-width:0; }
+.ta-inv-cell.num { text-align:right; font-variant-numeric:tabular-nums; }
+.ta-inv-cell--sec { font-size:12px; color:var(--ta-text-soft); }
+.ta-inv-cell__label { display:none; }
+.ta-inv-note { display:block; font-size:10px; color:var(--ta-text-mut); margin-top:2px; }
+.ta-inv-drill { background:var(--ta-bg-soft); border-bottom:1px solid var(--ta-border); padding:8px 12px 12px 48px; }
+.ta-inv-drill__v { display:flex; gap:14px; flex-wrap:wrap; align-items:baseline; font-size:12px; padding:5px 0; border-bottom:1px dashed var(--ta-border); }
+.ta-inv-drill__v:last-child { border-bottom:none; }
+.ta-inv-drill__v b { font-weight:600; }
+.ta-inv-drill__v code { color:var(--ta-text-mut); font-size:11px; }
+
+@media (max-width: 760px) {
+  .ta-inv-list__head { display:none; }
+  .ta-inv-item {
+    grid-template-columns: 48px 1fr 26px;
+    grid-template-areas: "thumb ref chev" "metrics metrics metrics" "sec sec sec";
+    gap:8px 10px; padding:12px; margin-bottom:10px;
+    border:1px solid var(--ta-border); border-radius:12px; background:var(--ta-surface);
+  }
+  .ta-inv-item:last-of-type { border-bottom:1px solid var(--ta-border); }
+  .ta-inv-thumb, .ta-inv-thumb--empty { grid-area:thumb; width:48px; height:48px; }
+  .ta-inv-ref { grid-area:ref; align-self:center; }
+  .ta-inv-chevron { grid-area:chev; justify-self:end; align-self:start; }
+  .ta-inv-metrics { grid-area:metrics; display:flex; gap:18px; flex-wrap:wrap; padding-top:4px; border-top:1px solid var(--ta-border); }
+  .ta-inv-sec { grid-area:sec; display:flex; gap:18px; flex-wrap:wrap; }
+  .ta-inv-cell { font-size:15px; font-weight:600; text-align:left !important; }
+  .ta-inv-cell--sec { font-size:12px; font-weight:400; color:var(--ta-text-soft); }
+  .ta-inv-cell__label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); margin-bottom:2px; }
+  .ta-inv-drill { padding:10px 6px 6px; }
+}
 
 /* ============================ Acciones recomendadas ============================ */
 .ta-acciones-list {
