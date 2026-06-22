@@ -484,14 +484,30 @@ a:hover { text-decoration: underline; }
 .ta-inv-aj__error { color:#b3210a; font-size:13px; font-weight:600; margin:4px 0 10px; }
 .ta-inv-aj__actions { display:flex; gap:8px; justify-content:flex-end; }
 @media (max-width:760px){ .ta-inv-aj__row{ grid-template-columns:1fr; gap:3px; } .ta-inv-aj__inp{ max-width:140px; } }
-/* Tab Sobrestock & Ruptura: segmented Ver + sugerencia/capital (sub-fila bajo la referencia) */
+/* Tab Sobrestock & Ruptura: VISTA DE ACCIÓN compacta de 3 columnas (Referencia · Cobertura · Acción).
+   NO reusa la grilla de 7 columnas de GENERAL. La columna Acción es la protagonista (derecha). */
 .ta-inv-ver { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
 .ta-inv-secc__sub { margin:0 2px 12px; font-size:13px; color:var(--ta-text-soft); }
-.ta-inv-sug { padding:8px 12px 10px 84px; font-size:13px; font-weight:600; border-bottom:1px solid var(--ta-border); background:var(--ta-bg-soft); }
-.ta-inv-sug--rep { color:#0f5132; }
-.ta-inv-sug--liq { color:#8a5a00; }
-.ta-inv-vrow--sug .ta-inv-vsub { color:var(--ta-text-soft); }
-@media (max-width:760px){ .ta-inv-sug { padding:8px 12px; } }
+.ta-inv-ahead, .ta-inv-item.ta-inv-item--accion, .ta-inv-vrow.ta-inv-vrow--accion {
+  grid-template-columns: 26px minmax(150px,2.2fr) 116px minmax(180px,1.5fr);
+}
+.ta-inv-ahead { display:grid; align-items:center; gap:0 12px; padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em; font-weight:600; color:var(--ta-text-soft); border-bottom:1px solid var(--ta-border); }
+.ta-inv-aref { display:flex; align-items:center; gap:10px; min-width:0; }
+.ta-inv-aref--v { gap:6px; padding-left:34px; }
+.ta-inv-athumb { width:40px; height:40px; border-radius:6px; object-fit:cover; border:1px solid var(--ta-border); flex:none; }
+.ta-inv-athumb--empty { display:flex; align-items:center; justify-content:center; background:var(--ta-bg-soft); color:var(--ta-text-mut); font-size:16px; }
+.ta-inv-aref__txt { min-width:0; }
+.ta-inv-aref__txt strong { display:block; font-size:13px; line-height:1.25; overflow-wrap:anywhere; }
+.ta-inv-aref__txt span { display:block; font-size:12px; color:var(--ta-text-soft); overflow-wrap:anywhere; }
+.ta-inv-aref strong { font-size:13px; } .ta-inv-aref code { color:var(--ta-text-mut); font-size:11px; }
+.ta-inv-acob { font-size:13px; min-width:0; }
+.ta-inv-aaccion { text-align:right; min-width:0; }
+.ta-inv-act { font-size:13px; font-weight:600; white-space:nowrap; }
+.ta-inv-act b { font-size:18px; font-weight:800; }
+.ta-inv-act__cop { font-weight:600; }
+.ta-inv-act--rep { color:#0f5132; }
+.ta-inv-act--liq { color:#8a5a00; }
+.ta-inv-act--mut { color:var(--ta-text-soft); font-weight:500; }
 .ta-inv-list { display:flex; flex-direction:column; }
 .ta-inv-list__head, .ta-inv-item, .ta-inv-vrow {
   display:grid;
@@ -536,7 +552,25 @@ a:hover { text-decoration: underline; }
 .ta-inv-vlabel { display:none; }
 
 @media (max-width: 760px) {
-  .ta-inv-list__head { display:none; }
+  .ta-inv-list__head, .ta-inv-ahead { display:none; }
+  /* Vista de acción S&R: tarjeta (referencia arriba; cobertura + acción destacada abajo) */
+  .ta-inv-item.ta-inv-item--accion {
+    grid-template-columns: 1fr auto; grid-template-areas: "ref chev" "cob accion";
+    gap:8px 12px; padding:12px; margin-bottom:10px; align-items:center;
+    border:1px solid var(--ta-border); border-radius:12px; background:var(--ta-surface);
+  }
+  .ta-inv-item--accion .ta-inv-chevron { grid-area:chev; justify-self:end; align-self:start; }
+  .ta-inv-item--accion .ta-inv-aref { grid-area:ref; }
+  .ta-inv-item--accion .ta-inv-acob { grid-area:cob; }
+  .ta-inv-item--accion .ta-inv-aaccion { grid-area:accion; text-align:right; }
+  .ta-inv-vrow.ta-inv-vrow--accion {
+    grid-template-columns: 1fr auto; grid-template-areas: "ref ref" "cob accion";
+    gap:6px 12px; padding:10px 12px; border-bottom:1px solid var(--ta-border); background:var(--ta-bg-soft);
+  }
+  .ta-inv-vrow--accion .ta-inv-vmark { display:none; }
+  .ta-inv-vrow--accion .ta-inv-aref { grid-area:ref; padding-left:0; }
+  .ta-inv-vrow--accion .ta-inv-acob { grid-area:cob; }
+  .ta-inv-vrow--accion .ta-inv-aaccion { grid-area:accion; text-align:right; }
   .ta-inv-kpis { gap:10px 22px; }
   .ta-inv-totes { display:flex; flex-wrap:wrap; gap:6px 18px; }
   .ta-inv-totes__lbl { flex:1 1 100%; }

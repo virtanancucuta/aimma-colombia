@@ -330,57 +330,78 @@
 
   function umbrOptimo() { return Number((window.TiendaIA.state.tienda || {}).inv_umbral_optimo_dias || 30); }
   function umbrSobrestock() { return Number((window.TiendaIA.state.tienda || {}).inv_umbral_sobrestock_dias || 60); }
-  // cantidad sugerida hacia el óptimo. -1e-9: absorbe residuo de coma flotante
-  // (cuando óptimo==días_efectivos, óptimo×venta_diaria da p.ej. 14.0000000002 y ceil
-  // empujaría 9→10). Verificado en Task 1 (QAINV-P1) + bordes (faltante real 1 → 1).
-  function sugCompraTxt(velocidad, datos_insuf, stock, costo) {
-    if (datos_insuf) return 'Pocos datos, usá tu criterio';
-    if (!velocidad || Number(velocidad) === 0) return 'Sin histórico de venta, definí vos cuánto pedir';
-    const opt = umbrOptimo();
-    const cant = Math.max(0, Math.ceil(opt * Number(velocidad) - Number(stock) - 1e-9));
-    if (cant === 0) return 'Ya tenés para tu meta de ' + opt + ' días';
-    return 'Para tu meta de ' + opt + ' días: comprá ~' + cant + ' ≈ ' + fmtCOP(cant * Number(costo || 0));
-  }
   function capitalAmarrado(velocidad, stock, costo) {
     const sob = umbrSobrestock();
     const demas = Math.max(0, Math.round(Number(stock) - sob * Number(velocidad || 0)));
     return { unidades: demas, capital: demas * Number(costo || 0) };
   }
-  function filaSugerencia(r, ver) {
-    if (ver === 'sobrestock') {
-      const c = capitalAmarrado(r.venta_diaria, r.stock_total, r.costo_unitario);
-      if (c.unidades <= 0) return '';
-      return '<div class="ta-inv-sug ta-inv-sug--liq">Te sobran ~' + c.unidades + ' ≈ ' + fmtCOP(c.capital) + ' parados</div>';
-    }
-    return '<div class="ta-inv-sug ta-inv-sug--rep">' + window.TiendaIA.escapeHtml(sugCompraTxt(r.venta_diaria, r.datos_insuficientes, r.stock_total, r.costo_unitario)) + '</div>';
+  // cantidad a comprar hacia el óptimo. -1e-9 absorbe residuo flotante (óptimo==días_ef:
+  // óptimo×venta_diaria=14.0000000002 -> ceil empujaría 9->10). Verificado Task 1 + bordes.
+  function sugCompra(velocidad, datos_insuf, stock, costo) {
+    if (datos_insuf) return { estado: 'insuf' };
+    if (!velocidad || Number(velocidad) === 0) return { estado: 'sinhist' };
+    const opt = umbrOptimo();
+    const cant = Math.max(0, Math.ceil(opt * Number(velocidad) - Number(stock) - 1e-9));
+    if (cant === 0) return { estado: 'enmeta' };
+    return { estado: 'comprar', cant, costo: cant * Number(costo || 0) };
+  }
+  // Columna ACCIÓN integrada. Signos en POSITIVO, SIN "~" (se leía como menos). Unidades destacadas.
+  function accionCompraHtml(s) {
+    if (s.estado === 'insuf' || s.estado === 'sinhist') return '<span class="ta-inv-act ta-inv-act--mut">Definí vos cuánto pedir</span>';
+    if (s.estado === 'enmeta') return '<span class="ta-inv-act ta-inv-act--mut">Ya en tu meta</span>';
+    return '<span class="ta-inv-act ta-inv-act--rep">Comprá <b>' + s.cant + '</b> <span class="ta-inv-act__cop">≈ ' + fmtCOP(s.costo) + '</span></span>';
+  }
+  function accionSobraHtml(velocidad, stock, costo) {
+    const c = capitalAmarrado(velocidad, stock, costo);
+    if (c.unidades <= 0) return '<span class="ta-inv-act ta-inv-act--mut">En su nivel</span>';
+    return '<span class="ta-inv-act ta-inv-act--liq">Sobran <b>' + c.unidades + '</b> <span class="ta-inv-act__cop">≈ ' + fmtCOP(c.capital) + ' parados</span></span>';
+  }
+  function accionHtml(r, ver) {
+    return ver === 'sobrestock'
+      ? accionSobraHtml(r.venta_diaria, r.stock_total, r.costo_unitario)
+      : accionCompraHtml(sugCompra(r.venta_diaria, r.datos_insuficientes, r.stock_total, r.costo_unitario));
+  }
+  // Fila compacta de acción (3 columnas: Referencia · Cobertura · Acción). NO reusa la grilla de GENERAL.
+  function filaAccion(r, ver) {
+    const T = window.TiendaIA;
+    const abierto = !!invState.drillOpen[r.producto_id];
+    const foto = r.foto_principal_url
+      ? '<img class="ta-inv-athumb" src="' + T.escapeHtml(r.foto_principal_url) + '" alt="">'
+      : '<div class="ta-inv-athumb ta-inv-athumb--empty">📦</div>';
+    return '<div class="ta-inv-item ta-inv-item--accion" data-prod="' + T.escapeHtml(r.producto_id) + '" data-open="' + (abierto ? '1' : '0') + '">' +
+      '<span class="ta-inv-chevron" aria-hidden="true">▸</span>' +
+      '<div class="ta-inv-aref">' + foto + '<div class="ta-inv-aref__txt"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span></div></div>' +
+      '<div class="ta-inv-acob"><span class="ta-inv-cell__label">Cobertura</span>' + diasInvCelda(r) + '</div>' +
+      '<div class="ta-inv-aaccion"><span class="ta-inv-cell__label">Acción</span>' + accionHtml(r, ver) + '</div>' +
+    '</div>';
   }
   function drillHtml(productoId) {
     return (invState.tab === 'accion') ? filaDrillAccion(productoId) : filaDrill(productoId);
   }
+  // Drill por variante, alineado a las MISMAS 3 columnas de la vista de acción.
   function filaDrillAccion(productoId) {
     const T = window.TiendaIA;
     const vs = invState.drillCache[productoId];
-    if (!vs) return vrowMsg('Cargando variantes…');
-    if (!vs.length) return vrowMsg('Sin variantes.');
+    const msg = (t) => '<div class="ta-inv-vrow ta-inv-vrow--accion ta-inv-vrow--msg"><span></span><div class="ta-inv-aref" style="color:var(--ta-text-mut);font-size:12px;">' + t + '</div></div>';
+    if (!vs) return msg('Cargando variantes…');
+    if (!vs.length) return msg('Sin variantes.');
     const padre = ((invState.accion && invState.accion.rows) || []).find(x => x.producto_id === productoId) || {};
     const costo = padre.costo_unitario;
     const ver = (invState.accion && invState.accion.ver) || 'ruptura';
     return vs.map(v => {
       const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
-      let sug;
-      if (ver === 'sobrestock') { const c = capitalAmarrado(v.venta_diaria, v.stock, costo); sug = c.unidades > 0 ? ('sobran ~' + c.unidades + ' ≈ ' + fmtCOP(c.capital)) : 'en su nivel'; }
-      else { sug = sugCompraTxt(v.venta_diaria, v.datos_insuficientes, v.stock, costo); }
-      return '<div class="ta-inv-vrow ta-inv-vrow--sug">' +
-        '<span class="ta-inv-vmark" aria-hidden="true"></span><span class="ta-inv-vswatch" aria-hidden="true"></span>' +
-        '<div class="ta-inv-vref"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code>' +
-          '<span class="ta-inv-vsub">stock ' + Number(v.stock) + ' · ' + T.escapeHtml(sug) + '</span></div>' +
-        '<div class="ta-inv-vcell num"><span class="ta-inv-vlabel">Stock</span>' + Number(v.stock) + '</div>' +
-        '<div class="ta-inv-vcell"><span class="ta-inv-vlabel">Cobertura</span>' + diasInvCelda(v) + '</div>' +
+      const acc = ver === 'sobrestock'
+        ? accionSobraHtml(v.venta_diaria, v.stock, costo)
+        : accionCompraHtml(sugCompra(v.venta_diaria, v.datos_insuficientes, v.stock, costo));
+      return '<div class="ta-inv-vrow ta-inv-vrow--accion">' +
+        '<span class="ta-inv-vmark" aria-hidden="true"></span>' +
+        '<div class="ta-inv-aref ta-inv-aref--v"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code></div>' +
+        '<div class="ta-inv-acob"><span class="ta-inv-cell__label">Cobertura</span>' + diasInvCelda(v) + '</div>' +
+        '<div class="ta-inv-aaccion"><span class="ta-inv-cell__label">Acción</span>' + acc + '</div>' +
       '</div>';
     }).join('');
   }
   function renderAccion(cont) {
-    const T = window.TiendaIA;
     const ver = invState.accion.ver, rows = invState.accion.rows;
     const cls = ver === 'ruptura' ? 'ruptura' : ver === 'sobrestock' ? 'sobrestock' : 'quiebre';
     const lista = rows.filter(r => r.clasificacion === cls);
@@ -397,14 +418,13 @@
     } else {
       let filas = '';
       lista.forEach(r => {
-        filas += filaGeneral(r) + filaSugerencia(r, ver);
+        filas += filaAccion(r, ver);
         if (invState.drillOpen[r.producto_id]) filas += drillHtml(r.producto_id);
       });
-      body = '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-list">' +
-        '<div class="ta-inv-list__head"><span></span><span></span><span>Referencia</span>' +
-        '<span style="text-align:right;">Stock</span><span>Cobertura</span><span style="text-align:right;">Valor</span>' +
-        '<span style="text-align:right;">Costo</span><span>Última venta</span><span>Proveedor</span></div>' + filas +
-        '</div></div>';
+      const accionHead = ver === 'sobrestock' ? 'Capital parado' : 'Acción';
+      body = '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-list ta-inv-list--accion">' +
+        '<div class="ta-inv-ahead"><span></span><span>Referencia</span><span>Cobertura</span><span style="text-align:right;">' + accionHead + '</span></div>' +
+        filas + '</div></div>';
     }
     let extra = '';
     if (ver === 'sobrestock' && lista.length) {
