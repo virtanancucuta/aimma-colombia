@@ -75,7 +75,7 @@
     const sob = (T.state.tienda && T.state.tienda.inv_umbral_sobrestock_dias) || 90;
     const chip = (per === 30 || per === 60)
       ? ''
-      : '<span class="ta-pill ta-pill--ok" style="margin-left:0;">' + per + ' días</span>';
+      : '<span class="ta-btn ta-btn--primary" style="padding:6px 14px;">' + per + '</span>';
     const btn = (n) => '<button type="button" class="ta-btn inv-per' + (per === n ? ' ta-btn--primary' : '') + '" data-per="' + n + '" style="padding:6px 14px;">' + n + '</button>';
 
     const provOpts = '<option value="">Todos los proveedores</option>' +
@@ -95,10 +95,12 @@
           '<h1 class="ta-section-title">Inventario</h1>' +
           '<p class="ta-section-sub">Stock, valor, velocidad y cobertura de tu catálogo. Umbrales: ruptura &lt;' + rup + ' días, sobrestock &gt;' + sob + ' días (configurables próximamente).</p>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;">' +
-          '<span style="color:var(--ta-text-mut);font-size:13px;">Período:</span>' +
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+          '<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' +
           btn(30) + btn(60) + chip +
-          '<button type="button" id="inv-ajustes" class="ta-btn" title="Ajustes de inventario" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
+          '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>' +
+          '<span title="Define la ventana de ventas con la que se calculan la velocidad de venta y los días de inventario (cobertura). Más días = promedio más estable." style="cursor:help;color:var(--ta-text-mut);font-size:12px;font-style:italic;border:1px solid var(--ta-border);border-radius:999px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">i</span>' +
+          '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
         '</div>' +
       '</header>' +
 
