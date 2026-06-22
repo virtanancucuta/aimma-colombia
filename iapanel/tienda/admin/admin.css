@@ -446,6 +446,18 @@ a:hover { text-decoration: underline; }
 .ta-pill--danger{ background: rgba(255,93,108,.16); color: #b3210a;            border: 1px solid rgba(255,93,108,.35); }
 .ta-inv-pill--mut{ background: rgba(115,115,115,.14); color: #595959;          border: 1px solid rgba(115,115,115,.30); }
 
+/* Pills de COBERTURA del inventario (semaforo COMPARTIDO 4 tabs) — sin uppercase, WCAG AA.
+   Siempre hay pill (nunca texto plano): un sano normal tambien lleva el suyo, y
+   datos_insuficientes lleva uno tentativo (borde punteado) distinto del sano y del rojo. */
+.ta-inv-pill { display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px;
+  font-size:12px; font-weight:600; line-height:1.5; white-space:nowrap; text-transform:none;
+  font-variant-numeric:tabular-nums; border:1px solid transparent; }
+.ta-inv-pill--rojo { background:rgba(255,93,108,.16); color:#b3210a; border-color:rgba(255,93,108,.35); }  /* quiebre / ruptura */
+.ta-inv-pill--ambar{ background:rgba(255,170,60,.16); color:#8a5a00; border-color:rgba(255,170,60,.38); }  /* sobrestock */
+.ta-inv-pill--gris { background:rgba(115,115,115,.14); color:#595959; border-color:rgba(115,115,115,.32); } /* sin ventas */
+.ta-inv-pill--ok   { background:rgba(5,150,105,.12);  color:#047857; border-color:rgba(5,150,105,.30); }   /* normal sano */
+.ta-inv-pill--tent { background:rgba(71,85,105,.10);  color:#475569; border:1px dashed rgba(71,85,105,.45); font-weight:500; } /* datos insuficientes */
+
 /* ============================ Inventario — lista responsive (PATRON COMPARTIDO 4 tabs) ============================ */
 /* Desktop: grid denso tipo tabla. Mobile (<=760px, = breakpoint del drawer): tarjetas apiladas.
    Los cells viven planos en el grid del item en desktop (wrappers display:contents) y se
@@ -453,8 +465,8 @@ a:hover { text-decoration: underline; }
 .ta-inv-list { display:flex; flex-direction:column; }
 .ta-inv-list__head, .ta-inv-item {
   display:grid;
-  grid-template-columns: 26px 48px minmax(150px,2.2fr) 70px 120px 110px 96px 104px 120px;
-  align-items:center; gap:0 10px;
+  grid-template-columns: 26px 46px minmax(140px,2fr) 60px 156px 104px 90px 98px 112px;
+  align-items:center; gap:0 12px;
 }
 .ta-inv-list__head {
   padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em;
@@ -473,18 +485,21 @@ a:hover { text-decoration: underline; }
 .ta-inv-item[data-open="1"] .ta-inv-chevron { transform:rotate(90deg); color:var(--ta-accent); }
 .ta-inv-thumb { width:40px; height:40px; border-radius:6px; object-fit:cover; border:1px solid var(--ta-border); }
 .ta-inv-thumb--empty { display:flex; align-items:center; justify-content:center; background:var(--ta-bg-soft); color:var(--ta-text-mut); font-size:16px; }
-.ta-inv-ref strong { display:block; font-size:13px; line-height:1.25; }
-.ta-inv-ref span { font-size:12px; color:var(--ta-text-soft); }
+.ta-inv-ref { min-width:0; }
+.ta-inv-ref strong { display:block; font-size:13px; line-height:1.25; overflow-wrap:anywhere; }
+.ta-inv-ref span { display:block; font-size:12px; color:var(--ta-text-soft); overflow-wrap:anywhere; }
 .ta-inv-cell { font-size:13px; min-width:0; }
 .ta-inv-cell.num { text-align:right; font-variant-numeric:tabular-nums; }
 .ta-inv-cell--sec { font-size:12px; color:var(--ta-text-soft); }
 .ta-inv-cell__label { display:none; }
 .ta-inv-note { display:block; font-size:10px; color:var(--ta-text-mut); margin-top:2px; }
 .ta-inv-drill { background:var(--ta-bg-soft); border-bottom:1px solid var(--ta-border); padding:8px 12px 12px 48px; }
-.ta-inv-drill__v { display:flex; gap:14px; flex-wrap:wrap; align-items:baseline; font-size:12px; padding:5px 0; border-bottom:1px dashed var(--ta-border); }
+.ta-inv-drill__v { display:grid; grid-template-columns: minmax(120px,1.6fr) 1fr 1fr 1fr; gap:4px 14px; align-items:baseline; font-size:12px; padding:6px 0; border-bottom:1px dashed var(--ta-border); }
 .ta-inv-drill__v:last-child { border-bottom:none; }
 .ta-inv-drill__v b { font-weight:600; }
 .ta-inv-drill__v code { color:var(--ta-text-mut); font-size:11px; }
+.ta-inv-dcell.num { text-align:right; font-variant-numeric:tabular-nums; }
+.ta-inv-dcell__label { display:none; }
 
 @media (max-width: 760px) {
   .ta-inv-list__head { display:none; }
@@ -504,6 +519,14 @@ a:hover { text-decoration: underline; }
   .ta-inv-cell--sec { font-size:12px; font-weight:400; color:var(--ta-text-soft); }
   .ta-inv-cell__label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); margin-bottom:2px; }
   .ta-inv-drill { padding:10px 6px 6px; }
+  /* variantes del drill: bloques apilados con labels, separados por hairline
+     (NO tarjeta dentro de tarjeta — evita nested cards) */
+  .ta-inv-drill__v { grid-template-columns:1fr 1fr; gap:6px 12px; padding:10px 0; margin-bottom:0;
+    border-bottom:1px solid var(--ta-border); }
+  .ta-inv-drill__v:last-child { border-bottom:none; }
+  .ta-inv-dcell { text-align:left !important; font-size:14px; font-weight:600; }
+  .ta-inv-dcell--var { grid-column:1 / -1; font-weight:400; }
+  .ta-inv-dcell__label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); margin-bottom:1px; }
 }
 
 /* ============================ Acciones recomendadas ============================ */
