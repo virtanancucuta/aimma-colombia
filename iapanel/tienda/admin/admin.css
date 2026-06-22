@@ -462,6 +462,17 @@ a:hover { text-decoration: underline; }
 /* Desktop: grid denso tipo tabla. Mobile (<=760px, = breakpoint del drawer): tarjetas apiladas.
    Los cells viven planos en el grid del item en desktop (wrappers display:contents) y se
    reagrupan en zonas (metricas / secundario) en mobile via grid-areas. */
+/* Barra de KPIs (arriba): cifras inline, AA, sin gradiente ni tarjetas-cliché. */
+.ta-inv-kpis { display:flex; flex-wrap:wrap; gap:8px 28px; align-items:baseline; padding:12px 14px; margin:0 0 4px; background:var(--ta-bg-soft); border:1px solid var(--ta-border); border-radius:12px; }
+.ta-inv-kpi { display:flex; flex-direction:column; gap:2px; }
+.ta-inv-kpi__val { font-size:19px; font-weight:700; color:var(--ta-text); font-variant-numeric:tabular-nums; line-height:1.1; }
+.ta-inv-kpi__lbl { font-size:12px; color:var(--ta-text-soft); }
+.ta-inv-kpis__note { margin:4px 2px 12px; font-size:12px; color:var(--ta-text-soft); }
+/* Fila de totales (abajo): solo numérica, alineada a la grilla del padre. */
+.ta-inv-totes { display:grid; grid-template-columns: 26px 46px minmax(140px,2fr) 60px 156px 104px 90px 98px 112px; gap:0 12px; align-items:center; padding:10px 12px; border-top:2px solid var(--ta-border); font-weight:700; background:var(--ta-bg-soft); }
+.ta-inv-totes__lbl { grid-column:1 / 4; font-size:12px; letter-spacing:.03em; color:var(--ta-text-soft); }
+.ta-inv-totes__stock { grid-column:4; text-align:right; font-variant-numeric:tabular-nums; }
+.ta-inv-totes__valor { grid-column:6; text-align:right; font-variant-numeric:tabular-nums; }
 .ta-inv-list { display:flex; flex-direction:column; }
 .ta-inv-list__head, .ta-inv-item, .ta-inv-vrow {
   display:grid;
@@ -507,6 +518,11 @@ a:hover { text-decoration: underline; }
 
 @media (max-width: 760px) {
   .ta-inv-list__head { display:none; }
+  .ta-inv-kpis { gap:10px 22px; }
+  .ta-inv-totes { display:flex; flex-wrap:wrap; gap:6px 18px; }
+  .ta-inv-totes__lbl { flex:1 1 100%; }
+  .ta-inv-totes__stock::before { content:"Unidades: "; font-weight:400; color:var(--ta-text-soft); }
+  .ta-inv-totes__valor::before { content:"Valor: "; font-weight:400; color:var(--ta-text-soft); }
   .ta-inv-item {
     grid-template-columns: 48px 1fr 26px;
     grid-template-areas: "thumb ref chev" "metrics metrics metrics" "sec sec sec";
