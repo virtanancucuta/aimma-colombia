@@ -26,7 +26,7 @@ Supabase `aimma` (ref `rsmxklkxqsaptchcjszd`) = test. Deploy: merge a main + Jor
 - **OC2 — quiebre/agotado SIN histórico (stock 0 y venta_diaria 0):** no se puede sugerir cantidad → "Sin histórico de venta — definí vos cuánto pedir." (igual trato que datos_insuficientes).
 - **OC3 — costo por variante:** `inventario_variantes` no trae costo (es product-level); la sugerencia por variante usa `costo_unitario` del producto padre (de la fila `inventario_resumen`, vía `invState.accion.rows`).
 - **OC4 — VER (segmented):** Ruptura (default) · Sobrestock · Agotado. Una sola llamada `inventario_resumen` con `p_clasificacion=['quiebre','ruptura','sobrestock']`, sin paginar; se filtra en cliente por el botón activo (Agotado=quiebre, Ruptura=ruptura, Sobrestock=sobrestock).
-- **OC5 — redondeo:** cantidad a comprar = `max(0, ceil(optimo × venta_diaria − stock))`; unidades de más (sobrestock) = `max(0, round(stock − sobrestock × venta_diaria))`. velocidad = `venta_diaria` (la RPC ya la normaliza por `dias_efectivos = LEAST(período, edad)`), así que no recalculo edad en cliente.
+- **OC5 — redondeo:** cantidad a comprar = `max(0, ceil(optimo × venta_diaria − stock − 1e-9))`; unidades de más (sobrestock) = `max(0, round(stock − sobrestock × venta_diaria))`. velocidad = `venta_diaria` (la RPC ya la normaliza por `dias_efectivos = LEAST(período, edad)`), así que no recalculo edad en cliente. **El `−1e-9` se agregó tras el cross-check de Task 1** (QAINV-P1: sin epsilon, `30×(14/30)=14.0000000002` → ceil daba 10/$120.000 en vez de 9/$108.000).
 
 ---
 
@@ -57,7 +57,7 @@ Supabase `aimma` (ref `rsmxklkxqsaptchcjszd`) = test. Deploy: merge a main + Jor
 
 ### 2.2 Sugerencia de compra (Ruptura y Agotado — solo MOSTRAR)
 Por referencia (sub-fila `filaSugerencia`) Y por variante (en el drill `filaDrillAccion`):
-- `cantidad = max(0, Math.ceil(optimo × venta_diaria − stock))`.
+- `cantidad = max(0, Math.ceil(optimo × venta_diaria − stock − 1e-9))` (epsilon obligatorio, ver OC5).
 - `costo = cantidad × costo_unitario(padre)`.
 - Texto: **"Comprá ~{cantidad} ≈ {fmtCOP(costo)}"** (subtítulo discreto: "para llegar a tu óptimo de {optimo} días").
 - Si `datos_insuficientes` → "Pocos datos, usá tu criterio". Si `venta_diaria==0` (sin histórico) → "Sin histórico de venta — definí vos cuánto pedir".

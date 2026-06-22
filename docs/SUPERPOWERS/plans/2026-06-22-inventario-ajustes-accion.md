@@ -11,7 +11,7 @@
 ## Global Constraints
 - Branch `feat/inv-1b-ajustes-accion`; merge a main + Jorge Implementa; deploy-to-prod OFF. **Dos checkpoints**: Parte 1 (OK visual) → Parte 2 (OK visual).
 - Umbrales: ruptura<óptimo<sobrestock, ruptura≥1, período∈[1,60]. Defaults recomendados nuevos: ruptura 15 / óptimo 30 / sobrestock 60. **NO pisar valores existentes** (las 3 tiendas siguen 15/90; óptimo=30 por el default de columna).
-- Sugerencia compra = `max(0, ceil(óptimo × venta_diaria − stock))`; costo = cantidad × `costo_unitario` (padre). Sobra = `max(0, round(stock − sobrestock × venta_diaria))`; capital = sobra × costo. velocidad = `venta_diaria` (ya normalizada por edad en la RPC).
+- Sugerencia compra = `max(0, ceil(óptimo × venta_diaria − stock − 1e-9))`; costo = cantidad × `costo_unitario` (padre). Sobra = `max(0, round(stock − sobrestock × venta_diaria))`; capital = sobra × costo. velocidad = `venta_diaria` (ya normalizada por edad en la RPC). **El `−1e-9` es OBLIGATORIO**: sin él, cuando óptimo==días_efectivos, `óptimo×venta_diaria` da p.ej. 14.0000000002 (residuo de coma flotante) y `ceil` empuja 9→10 (verificado en Task 1 con QAINV-P1: naive=10/$120.000 vs correcto=9/$108.000). El epsilon (1e-9 ≫ residuo ~1e-15, ≪ cualquier fracción real) absorbe el residuo sin afectar fracciones genuinas. round() (sobra) no lo necesita.
 - datos_insuficientes → "Pocos datos, usá tu criterio". venta_diaria=0 → "Sin histórico de venta, definí vos cuánto pedir". NO se genera orden (Fase 2). Copy criollo accionable. Contraste AA. /ui-ux-pro-max + /impeccable.
 
 ---
@@ -261,7 +261,7 @@ git commit -m "feat(inventario): routing tab accion + ocultar orden/Excel fuera 
     if (datos_insuf) return 'Pocos datos, usá tu criterio';
     if (!velocidad || Number(velocidad) === 0) return 'Sin histórico de venta, definí vos cuánto pedir';
     const opt = umbrOptimo();
-    const cant = Math.max(0, Math.ceil(opt * Number(velocidad) - Number(stock)));
+    const cant = Math.max(0, Math.ceil(opt * Number(velocidad) - Number(stock) - 1e-9)); // -1e-9: absorbe residuo flotante (ver Task 1)
     if (cant === 0) return 'Ya tenés para tu meta de ' + opt + ' días';
     const cop = fmtCOP(cant * Number(costo || 0));
     return 'Para tu meta de ' + opt + ' días: comprá ~' + cant + ' ≈ ' + cop;
