@@ -514,6 +514,20 @@ a:hover { text-decoration: underline; }
   grid-template-columns: 26px 46px minmax(140px,2fr) 60px 156px 104px 90px 98px 112px;
   align-items:center; gap:0 12px;
 }
+/* PARTE B — GENERAL aprovecha el ancho en desktop. Scopeado al tab general via
+   .ta-main--inv-wide (toggle en renderInventario; cleanupCurrentView lo quita al salir).
+   Sube el cap global de .ta-main (1400) y, en pantallas anchas (>=1500), reparte el ancho
+   extra entre las columnas (en vez de que Referencia se lo coma toda y deje hueco).
+   NO cambia el set de columnas; el look <=1400 queda igual. Solo desktop, solo GENERAL. */
+.ta-main--inv-wide { max-width: 1760px; }
+@media (min-width: 1500px) {
+  .ta-main--inv-wide .ta-inv-list__head,
+  .ta-main--inv-wide .ta-inv-item,
+  .ta-main--inv-wide .ta-inv-vrow,
+  .ta-main--inv-wide .ta-inv-totes {
+    grid-template-columns: 26px 46px minmax(180px,1.8fr) 80px minmax(160px,1.2fr) minmax(120px,1fr) minmax(100px,0.9fr) minmax(120px,1fr) minmax(140px,1.2fr);
+  }
+}
 .ta-inv-list__head {
   padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em; font-weight:600;
   color:var(--ta-text-soft); border-bottom:1px solid var(--ta-border);

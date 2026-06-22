@@ -237,6 +237,8 @@
     }
     // v4: reset nav guards al cambiar de view (la nueva view registra los suyos)
     state.viewNavGuards = [];
+    // Inventario GENERAL ensancha .ta-main (.ta-main--inv-wide); quitarlo al salir para no filtrar el ancho.
+    if (dom.mainView) dom.mainView.classList.remove('ta-main--inv-wide');
   }
 
   function registerCleanup(fn) {
