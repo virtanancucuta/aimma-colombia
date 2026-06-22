@@ -91,16 +91,20 @@
 
     return '' +
       '<header style="display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
-        '<div>' +
+        '<div style="max-width:520px;">' +
           '<h1 class="ta-section-title">Inventario</h1>' +
-          '<p class="ta-section-sub">Stock, valor, velocidad y cobertura de tu catálogo. Umbrales: ruptura &lt;' + rup + ' días, sobrestock &gt;' + sob + ' días (configurables próximamente).</p>' +
+          '<p class="ta-section-sub">Cobertura = para cuántos días te alcanza el stock, según tu ritmo de venta. ' +
+            '<span title="Pocos días → reponé. Muchos días → tenés capital parado en mercadería. Colores: rojo = urgente (quiebre / ruptura &lt;' + rup + ' días), ámbar = sobrestock (&gt;' + sob + ' días), gris = sin ventas, verde = sano." style="cursor:help;color:var(--ta-accent);text-decoration:underline dotted;font-weight:500;">¿cómo leerla?</span>' +
+          '</p>' +
         '</div>' +
-        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
-          '<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' +
-          btn(30) + btn(60) + chip +
-          '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>' +
-          '<span title="Define la ventana de ventas con la que se calculan la velocidad de venta y los días de inventario (cobertura). Más días = promedio más estable." style="cursor:help;color:var(--ta-text-mut);font-size:12px;font-style:italic;border:1px solid var(--ta-border);border-radius:999px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">i</span>' +
-          '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
+        '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">' +
+          '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">' +
+            '<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' +
+            btn(30) + btn(60) + chip +
+            '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>' +
+            '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
+          '</div>' +
+          '<span style="font-size:11px;color:#5a5a5a;max-width:320px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' +
         '</div>' +
       '</header>' +
 
@@ -208,7 +212,7 @@
           '<div class="ta-inv-list__head">' +
             '<span></span><span></span><span>Referencia</span>' +
             '<span style="text-align:right;">Stock</span>' +
-            '<span>Días inv.</span>' +
+            '<span>Cobertura</span>' +
             '<span style="text-align:right;">Valor</span>' +
             '<span style="text-align:right;">Costo</span>' +
             '<span>Última venta</span>' +
@@ -244,7 +248,7 @@
       '<div class="ta-inv-ref"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span></div>' +
       '<div class="ta-inv-metrics">' +
         cell('num ta-inv-cell--stock', 'Stock', String(Number(r.stock_total))) +
-        cell('ta-inv-cell--dias', 'Días inv.', diasInvCelda(r)) +
+        cell('ta-inv-cell--dias', 'Cobertura', diasInvCelda(r)) +
         cell('num ta-inv-cell--valor', 'Valor', fmtCOP(Number(r.valor_inventario || 0))) +
       '</div>' +
       '<div class="ta-inv-sec">' +
@@ -256,14 +260,19 @@
   }
 
   function diasInvCelda(r) {
-    // 0 -> "Agotado"; null -> "Sin consumo"; numero -> badge segun clasificacion
-    let texto, cls = badgeClasif(r.clasificacion);
-    if (r.dias_inventario === 0 || r.dias_inventario === '0') texto = 'Agotado';
-    else if (r.dias_inventario == null) texto = 'Sin consumo';
-    else texto = Math.round(Number(r.dias_inventario)) + ' días';
-    const badge = cls ? '<span class="' + cls + '" style="margin-left:0;">' + texto + '</span>' : '<span>' + texto + '</span>';
-    const nota = r.datos_insuficientes ? '<span class="ta-inv-note">pocos días de data</span>' : '';
-    return badge + nota;
+    // SIEMPRE un pill (nunca texto plano). Singular "1 día". datos_insuficientes -> pill tentativo
+    // (borde punteado), distinto del sano (verde) y del rojo. "Sin ventas"/"Agotado" capitalizado.
+    const pill = (cls, txt) => '<span class="ta-inv-pill ' + cls + '">' + txt + '</span>';
+    if (r.clasificacion === 'quiebre' || r.dias_inventario === 0 || r.dias_inventario === '0')
+      return pill('ta-inv-pill--rojo', 'Agotado');
+    if (r.clasificacion === 'sin_ventas' || r.dias_inventario == null)
+      return pill('ta-inv-pill--gris', 'Sin ventas');
+    const d = Math.round(Number(r.dias_inventario));
+    const txt = d + (d === 1 ? ' día' : ' días');
+    if (r.datos_insuficientes) return pill('ta-inv-pill--tent', '≈' + txt + ' · pocos datos');
+    if (r.clasificacion === 'ruptura') return pill('ta-inv-pill--rojo', txt);
+    if (r.clasificacion === 'sobrestock') return pill('ta-inv-pill--ambar', txt);
+    return pill('ta-inv-pill--ok', txt); // normal sano
   }
 
   function filaDrill(productoId) {
@@ -274,10 +283,10 @@
     const filas = vs.map(v => {
       const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
       return '<div class="ta-inv-drill__v">' +
-        '<b>' + T.escapeHtml(etiqueta) + '</b> <code>' + T.escapeHtml(v.sku || '') + '</code>' +
-        '<span>Stock ' + Number(v.stock) + '</span>' +
-        '<span style="color:var(--ta-text-mut);">Reservado ' + Number(v.reservado) + '</span>' +
-        '<span><b>Disp. ' + Number(v.disponible) + '</b></span>' +
+        '<div class="ta-inv-dcell ta-inv-dcell--var"><span class="ta-inv-dcell__label">Variante</span><b>' + T.escapeHtml(etiqueta) + '</b> <code>' + T.escapeHtml(v.sku || '') + '</code></div>' +
+        '<div class="ta-inv-dcell num"><span class="ta-inv-dcell__label">Stock</span>' + Number(v.stock) + '</div>' +
+        '<div class="ta-inv-dcell num"><span class="ta-inv-dcell__label">Reservado</span>' + Number(v.reservado) + '</div>' +
+        '<div class="ta-inv-dcell num"><span class="ta-inv-dcell__label">Disp.</span>' + Number(v.disponible) + '</div>' +
       '</div>';
     }).join('');
     return '<div class="ta-inv-drill">' + filas + '</div>';
@@ -308,12 +317,6 @@
   // ============================================================
   // Utils
   // ============================================================
-  function badgeClasif(clasif) {
-    if (clasif === 'quiebre' || clasif === 'ruptura') return 'ta-pill ta-pill--danger';
-    if (clasif === 'sobrestock') return 'ta-pill ta-pill--warn';
-    if (clasif === 'sin_ventas') return 'ta-pill ta-inv-pill--mut';
-    return '';
-  }
   function fmtCOP(n) {
     if (!n && n !== 0) return '$0';
     try { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
