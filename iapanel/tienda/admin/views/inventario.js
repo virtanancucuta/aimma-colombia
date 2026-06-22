@@ -312,26 +312,52 @@
   }
 
   function wireGeneral(cont) {
-    cont.querySelectorAll('.ta-inv-item').forEach(it => it.addEventListener('click', () => toggleDrill(it.getAttribute('data-prod'))));
+    cont.querySelectorAll('.ta-inv-item').forEach(it => it.addEventListener('click', () => {
+      // si el usuario esta seleccionando texto de una celda, no togglear (dejar copiar)
+      if (window.getSelection && String(window.getSelection()).length > 0) return;
+      toggleDrill(it.getAttribute('data-prod'));
+    }));
     const prev = cont.querySelector('#inv-prev');
     const next = cont.querySelector('#inv-next');
     if (prev) prev.addEventListener('click', () => { if (invState.page.offset <= 0) return; invState.page.offset -= invState.page.limit; invState.general = null; renderActiveTab(); });
     if (next) next.addEventListener('click', () => { invState.page.offset += invState.page.limit; invState.general = null; renderActiveTab(); });
   }
 
+  // Drill QUIRURGICO: inserta/quita las filas de variante en su lugar, SIN re-renderizar
+  // toda la tabla (evita el salto de scroll y la perdida de seleccion al hacer clic).
   async function toggleDrill(productoId) {
     const T = window.TiendaIA, sb = T.supabase();
     const cont = T.dom.mainView.querySelector('#inv-content');
-    if (invState.drillOpen[productoId]) { invState.drillOpen[productoId] = false; renderGeneral(cont); return; }
+    if (!cont) return;
+    const item = cont.querySelector('.ta-inv-item[data-prod="' + cssEsc(productoId) + '"]');
+    if (!item) return;
+    if (item.getAttribute('data-open') === '1') {
+      invState.drillOpen[productoId] = false;
+      item.setAttribute('data-open', '0');
+      removeDrillRows(item);
+      return;
+    }
     invState.drillOpen[productoId] = true;
+    item.setAttribute('data-open', '1');
     if (!invState.drillCache[productoId]) {
-      renderGeneral(cont); // muestra mini-loading
+      insertDrillRows(item, vrowMsg('Cargando variantes…'));
       const { data, error } = await sb.rpc('inventario_variantes', { p_tienda_id: T.state.tienda.id, p_producto_ids: [productoId], p_periodo: invState.periodo });
-      if (error) { T.toast('No pudimos cargar las variantes: ' + error.message, 'error'); invState.drillOpen[productoId] = false; renderGeneral(cont); return; }
+      if (error) { T.toast('No pudimos cargar las variantes: ' + error.message, 'error'); invState.drillOpen[productoId] = false; item.setAttribute('data-open', '0'); removeDrillRows(item); return; }
       invState.drillCache[productoId] = data || [];
     }
-    renderGeneral(cont);
+    removeDrillRows(item);                 // quita el "Cargando…" si estaba
+    insertDrillRows(item, filaDrill(productoId));
   }
+  function removeDrillRows(item) {
+    let n = item.nextElementSibling;
+    while (n && n.classList && n.classList.contains('ta-inv-vrow')) { const x = n; n = n.nextElementSibling; x.remove(); }
+  }
+  function insertDrillRows(item, html) {
+    const tpl = document.createElement('template'); tpl.innerHTML = html;
+    let ref = item;
+    Array.from(tpl.content.children).forEach(node => { ref.after(node); ref = node; });
+  }
+  function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/"/g, '\\"'); }
 
   // ============================================================
   // Utils
@@ -398,18 +424,20 @@
       const { data: vars, error: e2 } = await sb.rpc('inventario_variantes', { p_tienda_id: T.state.tienda.id, p_producto_ids: ids, p_periodo: invState.periodo });
       if (e2) throw e2;
       const byProd = {}; (vars || []).forEach(v => { (byProd[v.producto_id] = byProd[v.producto_id] || []).push(v); });
-      const aoa = [['Categoría', 'Subcategoría', 'Referencia', 'Nombre', 'Stock', 'Reservado', 'Disponible', 'Costo', 'Valor', 'Cobertura', 'Clasificación', 'Última venta', 'Proveedor']];
+      // Columnas: Referencia primero; Categoría/Subcategoría al FINAL (atributos de la
+      // fila, no encabezado de agrupación) para que NO se lea agrupado por categoría.
+      const aoa = [['Referencia', 'Nombre', 'Stock', 'Reservado', 'Disponible', 'Costo', 'Valor', 'Cobertura', 'Clasificación', 'Última venta', 'Proveedor', 'Categoría', 'Subcategoría']];
       prods.forEach(p => {
         const c = resolverCat(p.categoria_id);
-        aoa.push([c.cat, c.sub, p.referencia, p.nombre || '', numExcel(p.stock_total), numExcel(p.reservado_total), numExcel(p.stock_disponible),
-          numExcel(p.costo_unitario), numExcel(p.valor_inventario), cobTexto(p), p.clasificacion, fechaExcel(p.fecha_ultima_venta), p.proveedor_nombre || '']);
+        aoa.push([p.referencia, p.nombre || '', numExcel(p.stock_total), numExcel(p.reservado_total), numExcel(p.stock_disponible),
+          numExcel(p.costo_unitario), numExcel(p.valor_inventario), cobTexto(p), p.clasificacion, fechaExcel(p.fecha_ultima_venta), p.proveedor_nombre || '', c.cat, c.sub]);
         (byProd[p.producto_id] || []).forEach(v => {
           const et = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '');
-          aoa.push(['', '', '↳ ' + et, v.sku || '', numExcel(v.stock), numExcel(v.reservado), numExcel(v.disponible), '', '', cobTexto(v), v.clasificacion, '', '']);
+          aoa.push(['↳ ' + et, v.sku || '', numExcel(v.stock), numExcel(v.reservado), numExcel(v.disponible), '', '', cobTexto(v), v.clasificacion, '', '', '', '']);
         });
       });
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 24 }, { wch: 8 }, { wch: 10 }, { wch: 11 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 18 }];
+      ws['!cols'] = [{ wch: 16 }, { wch: 24 }, { wch: 8 }, { wch: 10 }, { wch: 11 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 18 }, { wch: 16 }, { wch: 16 }];
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
       const fecha = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, 'Inventario_' + (T.state.tienda.slug || 'tienda') + '_' + fecha + '.xlsx');
