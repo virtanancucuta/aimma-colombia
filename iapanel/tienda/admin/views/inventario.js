@@ -225,7 +225,7 @@
     host.innerHTML =
       '<div class="ta-inv-kpis">' +
         '<div class="ta-inv-kpi"><span class="ta-inv-kpi__val">' + fmtNum(t.total_unidades) + '</span><span class="ta-inv-kpi__lbl">unidades</span></div>' +
-        '<div class="ta-inv-kpi"><span class="ta-inv-kpi__val">' + fmtCOP(Number(t.valor_inventario || 0)) + '</span><span class="ta-inv-kpi__lbl">en inventario</span></div>' +
+        '<div class="ta-inv-kpi"><span class="ta-inv-kpi__val">' + fmtCOP(Number(t.valor_inventario || 0)) + '</span><span class="ta-inv-kpi__lbl">Costo Inventario</span></div>' +
         '<div class="ta-inv-kpi"><span class="ta-inv-kpi__val">' + cobTextoGeneral(t) + '</span><span class="ta-inv-kpi__lbl">cobertura general</span></div>' +
       '</div>' +
       '<p class="ta-inv-kpis__note">(cobertura según tu costo · últimos ' + invState.periodo + ' días)</p>';
