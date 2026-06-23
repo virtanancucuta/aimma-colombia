@@ -402,13 +402,17 @@
         ? accionSobraHtml(v.venta_diaria, v.stock, costo)
         : accionCompraHtml(sugCompra(v.venta_diaria, v.datos_insuficientes, v.stock, costo));
       return '<div class="ta-inv-vrow ta-inv-vrow--accion">' +
-        '<span class="ta-inv-vmark" aria-hidden="true"></span>' +
-        '<div class="ta-inv-aref ta-inv-aref--v"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code></div>' +
-        '<div class="ta-inv-acob"><span class="ta-inv-cell__label">Cobertura</span>' + diasInvCelda(v) + '</div>' +
-        '<div class="ta-inv-aaccion"><span class="ta-inv-cell__label">Acción</span>' + acc + '</div>' +
+        '<div class="ta-inv-vamref"><strong>' + T.escapeHtml(etiqueta) + '</strong> <span class="ta-inv-vamstk">stock ' + Number(v.stock) + ' · disp. ' + Number(v.disponible) + '</span></div>' +
+        '<div class="ta-inv-aaccion">' + acc + '</div>' +
       '</div>';
     }).join('');
   }
+  // Resumen del tab con jerarquía de encabezado: importe grande + label, nota explicativa chica/AA debajo.
+  function resumenHtml(val, lbl, note) {
+    return '<div class="ta-inv-resumen"><div class="ta-inv-resumen__val">' + val + ' <span class="ta-inv-resumen__lbl">' + lbl + '</span></div>' +
+      (note ? '<p class="ta-inv-resumen__note">' + note + '</p>' : '') + '</div>';
+  }
+
   function renderAccion(cont) {
     const ver = invState.accion.ver, rows = invState.accion.rows;
     const cls = ver === 'ruptura' ? 'ruptura' : ver === 'sobrestock' ? 'sobrestock' : 'quiebre';
@@ -437,9 +441,10 @@
     let extra = '';
     if (ver === 'sobrestock' && lista.length) {
       const cap = lista.reduce((s, r) => s + capitalAmarrado(r.venta_diaria, r.stock_total, r.costo_unitario).capital, 0);
-      extra = '<p class="ta-inv-secc__sub">' + fmtCOP(cap) + ' en capital parado en esta lista.</p>';
+      extra = resumenHtml(fmtCOP(cap), 'en capital parado', 'En esta lista — considerá liquidar o promocionar para liberarlo.');
     } else if (ver !== 'sobrestock' && lista.length) {
-      extra = '<p class="ta-inv-secc__sub">Sugerencia hacia tu óptimo de ' + umbrOptimo() + ' días. No genera la orden: es para que vos decidas.</p>';
+      const totalCompra = lista.reduce((s, r) => { const c = sugCompra(r.venta_diaria, r.datos_insuficientes, r.stock_total, r.costo_unitario); return s + (c.estado === 'comprar' ? c.costo : 0); }, 0);
+      extra = resumenHtml(fmtCOP(totalCompra), 'para reponer a tu óptimo de ' + umbrOptimo() + ' días', 'Es una sugerencia, no genera la orden — vos decidís cuánto pedir.');
     }
     cont.innerHTML =
       '<div class="ta-inv-ver">' + seg('ruptura', 'Ruptura', nR) + seg('sobrestock', 'Sobrestock', nS) + seg('agotado', 'Agotado', nA) + '</div>' +
@@ -520,9 +525,8 @@
         '<div class="ta-inv-svhead"><span></span><span>Referencia</span><span>Última venta</span><span>Último ingreso</span><span style="text-align:right;">Capital parado</span></div>' +
         filas + '</div></div>';
     }
-    cont.innerHTML = ventana +
-      '<p class="ta-inv-secc__sub">' + fmtCOP(cap) + ' en ' + rows.length + ' producto(s) · sin rotación en los últimos ' + per + ' días.</p>' +
-      body;
+    const resumen = rows.length ? resumenHtml(fmtCOP(cap), 'en capital sin rotación', rows.length + ' producto(s) · sin venta en los últimos ' + per + ' días.') : '';
+    cont.innerHTML = ventana + resumen + body;
     cont.querySelectorAll('.inv-svper').forEach(b => b.addEventListener('click', () => {
       const n = parseInt(b.getAttribute('data-per'), 10);
       if (invState.sinventasPeriodo === n) return;

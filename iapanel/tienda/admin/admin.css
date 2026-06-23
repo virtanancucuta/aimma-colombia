@@ -488,9 +488,18 @@ a:hover { text-decoration: underline; }
    NO reusa la grilla de 7 columnas de GENERAL. La columna Acción es la protagonista (derecha). */
 .ta-inv-ver { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
 .ta-inv-secc__sub { margin:0 2px 12px; font-size:13px; color:var(--ta-text-soft); }
-.ta-inv-ahead, .ta-inv-item.ta-inv-item--accion, .ta-inv-vrow.ta-inv-vrow--accion {
+.ta-inv-ahead, .ta-inv-item.ta-inv-item--accion {
   grid-template-columns: 26px minmax(150px,2.2fr) 116px minmax(180px,1.5fr);
 }
+/* Drill de S&R: una línea legible por variante (etiqueta · stock · disp → acción), flex. */
+.ta-inv-vrow.ta-inv-vrow--accion {
+  display:flex; align-items:center; justify-content:space-between; gap:6px 16px; flex-wrap:wrap;
+  padding:8px 12px 8px 40px;
+}
+.ta-inv-vamref { min-width:0; flex:1 1 auto; font-size:13px; }
+.ta-inv-vamref strong { font-weight:600; }
+.ta-inv-vamstk { color:var(--ta-text-soft); font-size:12px; white-space:nowrap; }
+.ta-inv-vrow--accion .ta-inv-aaccion { flex:0 0 auto; }
 .ta-inv-ahead { display:grid; align-items:center; gap:0 12px; padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em; font-weight:600; color:var(--ta-text-soft); border-bottom:1px solid var(--ta-border); }
 .ta-inv-aref { display:flex; align-items:center; gap:10px; min-width:0; }
 .ta-inv-aref--v { gap:6px; padding-left:34px; }
@@ -508,6 +517,11 @@ a:hover { text-decoration: underline; }
 .ta-inv-act--rep { color:#0f5132; }
 .ta-inv-act--liq { color:#8a5a00; }
 .ta-inv-act--mut { color:var(--ta-text-soft); font-weight:500; }
+/* Resumen del tab con jerarquía de encabezado: importe grande + label; nota chica (AA) debajo. */
+.ta-inv-resumen { margin:0 2px 14px; }
+.ta-inv-resumen__val { font-size:22px; font-weight:700; color:var(--ta-text); line-height:1.15; font-variant-numeric:tabular-nums; }
+.ta-inv-resumen__lbl { font-size:14px; font-weight:500; color:#333; }
+.ta-inv-resumen__note { margin:3px 0 0; font-size:13px; color:var(--ta-text-soft); }
 /* Tab Sin Ventas: vista compacta (Referencia · Última venta · Último ingreso · Capital parado) */
 .ta-inv-svwin { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
 .ta-inv-svhead, .ta-inv-item.ta-inv-item--sv, .ta-inv-vrow.ta-inv-vrow--sv {
@@ -556,8 +570,7 @@ a:hover { text-decoration: underline; }
   }
   /* SOBRESTOCK & RUPTURA (vista de acción, 3 cols) — reparte el ancho: Referencia · Cobertura · Acción */
   .ta-main--inv-wide .ta-inv-ahead,
-  .ta-main--inv-wide .ta-inv-item.ta-inv-item--accion,
-  .ta-main--inv-wide .ta-inv-vrow.ta-inv-vrow--accion {
+  .ta-main--inv-wide .ta-inv-item.ta-inv-item--accion {
     grid-template-columns: 26px minmax(240px,2.2fr) minmax(150px,1fr) minmax(260px,1.6fr);
   }
 }
@@ -610,14 +623,7 @@ a:hover { text-decoration: underline; }
   .ta-inv-item--accion .ta-inv-aref { grid-area:ref; }
   .ta-inv-item--accion .ta-inv-acob { grid-area:cob; }
   .ta-inv-item--accion .ta-inv-aaccion { grid-area:accion; text-align:right; }
-  .ta-inv-vrow.ta-inv-vrow--accion {
-    grid-template-columns: 1fr auto; grid-template-areas: "ref ref" "cob accion";
-    gap:6px 12px; padding:10px 12px; border-bottom:1px solid var(--ta-border); background:var(--ta-bg-soft);
-  }
-  .ta-inv-vrow--accion .ta-inv-vmark { display:none; }
-  .ta-inv-vrow--accion .ta-inv-aref { grid-area:ref; padding-left:0; }
-  .ta-inv-vrow--accion .ta-inv-acob { grid-area:cob; }
-  .ta-inv-vrow--accion .ta-inv-aaccion { grid-area:accion; text-align:right; }
+  .ta-inv-vrow.ta-inv-vrow--accion { padding-left:14px; }
   .ta-inv-kpis { gap:10px 22px; }
   .ta-inv-totes { display:flex; flex-wrap:wrap; gap:6px 18px; }
   .ta-inv-totes__lbl { flex:1 1 100%; }
