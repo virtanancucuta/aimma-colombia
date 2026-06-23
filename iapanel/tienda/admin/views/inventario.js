@@ -116,7 +116,7 @@
             ((invState.tab === 'general' || invState.tab === 'accion')
               ? ('<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' + btn(30) + btn(60) + chip + '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>')
               : '') +
-            (invState.tab === 'general' ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
+            ((invState.tab === 'general' || invState.tab === 'accion' || invState.tab === 'sinventas') ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
             '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
           '</div>' +
           ((invState.tab === 'general' || invState.tab === 'accion') ? '<span style="font-size:12px;color:var(--ta-text-soft);max-width:340px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' : '') +
@@ -221,7 +221,11 @@
     const ajSave = view.querySelector('#aj-save');
     if (ajSave) ajSave.addEventListener('click', () => guardarAjustes(ajSave));
     const ex = view.querySelector('#inv-export');
-    if (ex) ex.addEventListener('click', () => exportarExcel(ex));
+    if (ex) ex.addEventListener('click', () => {
+      if (invState.tab === 'accion') exportarExcelAccion(ex);
+      else if (invState.tab === 'sinventas') exportarExcelSinVentas(ex);
+      else exportarExcel(ex);
+    });
     const orden = view.querySelector('#inv-orden');
     if (orden) orden.addEventListener('change', () => { invState.orden = orden.value; invState.page.offset = 0; invState.general = null; renderInventario(); });
 
@@ -645,6 +649,7 @@
       '<label class="ta-inv-kxdate">Desde <input type="date" id="kx-desde" class="ta-input" value="' + (p.desde || '') + '"></label>' +
       '<label class="ta-inv-kxdate">Hasta <input type="date" id="kx-hasta" class="ta-input" value="' + (p.hasta || '') + '"></label>' +
       ((p.desde || p.hasta) ? '<button type="button" id="kx-limpiar" class="ta-btn">Limpiar fechas</button>' : '') +
+      ((p._loaded && p.rows.length) ? '<button type="button" id="kx-export" class="ta-btn">⬇ Exportar Excel</button>' : '') +
     '</div>';
     let body;
     if (!p._loaded) {
@@ -678,6 +683,7 @@
     if (dH) dH.addEventListener('change', (e) => { p.hasta = e.target.value; reload(); });
     if (lim) lim.addEventListener('click', () => { p.desde = ''; p.hasta = ''; reload(); });
     if (mas) mas.addEventListener('click', () => { p.shown += 200; renderKardexPanel(cont); });
+    const exK = cont.querySelector('#kx-export'); if (exK) exK.addEventListener('click', () => exportarExcelKardex(exK));
     if (!p._loaded) { p._loaded = true; loadKardexPanelRows().then(() => renderKardexPanel(cont)).catch(e => { cont.innerHTML = head + controls + errorCard(e.message || String(e)); }); }
   }
 
@@ -895,6 +901,18 @@
     });
     return _xlsxPromise;
   }
+  // Helper de descarga: arma el workbook desde hojas=[{nombre, aoa, cols}] y descarga.
+  function xlsxDescargar(XLSX, hojas, filename) {
+    const wb = XLSX.utils.book_new();
+    hojas.forEach(h => {
+      const ws = XLSX.utils.aoa_to_sheet(h.aoa);
+      if (h.cols) ws['!cols'] = h.cols;
+      XLSX.utils.book_append_sheet(wb, ws, h.nombre);
+    });
+    XLSX.writeFile(wb, filename);
+  }
+  function hoyExcel() { return new Date().toISOString().slice(0, 10); }
+  function slugTienda() { return (window.TiendaIA.state.tienda || {}).slug || 'tienda'; }
 
   async function exportarExcel(btn) {
     const T = window.TiendaIA, sb = T.supabase();
@@ -955,6 +973,92 @@
 
       const fecha = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, 'Inventario_' + (T.state.tienda.slug || 'tienda') + '_' + fecha + '.xlsx');
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  }
+
+  // Exportar Excel — Sobrestock & Ruptura (refleja el Ver activo + filtros del shell)
+  async function exportarExcelAccion(btn) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      const ver = invState.accion.ver;
+      const cls = ver === 'ruptura' ? 'ruptura' : ver === 'sobrestock' ? 'sobrestock' : 'quiebre';
+      const lista = (invState.accion.rows || []).filter(r => r.clasificacion === cls);
+      if (!lista.length) { T.toast('No hay productos para exportar en esta vista.', 'info'); return; }
+      if (ver === 'sobrestock') lista.sort((a, b) => Number(b.valor_inventario || 0) - Number(a.valor_inventario || 0));
+      else lista.sort((a, b) => Number(a.dias_inventario || 0) - Number(b.dias_inventario || 0));
+      const { data: vars } = await sb.rpc('inventario_variantes', { p_tienda_id: T.state.tienda.id, p_producto_ids: lista.map(r => r.producto_id), p_periodo: invState.periodo });
+      const byProd = {}; (vars || []).forEach(v => { (byProd[v.producto_id] = byProd[v.producto_id] || []).push(v); });
+      const esSob = ver === 'sobrestock';
+      const head = esSob
+        ? ['Referencia', 'Nombre', 'Proveedor', 'Stock', 'Cobertura', 'Sobran (uds)', 'Capital parado']
+        : ['Referencia', 'Nombre', 'Proveedor', 'Stock', 'Cobertura', 'Comprar (uds)', 'Costo reposición'];
+      const aoa = [head];
+      lista.forEach(r => {
+        const etq = (v) => '↳ ' + ([v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || ''));
+        if (esSob) {
+          const c = capitalAmarrado(r.venta_diaria, r.stock_total, r.costo_unitario);
+          aoa.push([r.referencia, r.nombre || '', r.proveedor_nombre || '', numExcel(r.stock_total), cobTexto(r), c.unidades, numExcel(c.capital)]);
+          (byProd[r.producto_id] || []).forEach(v => { const cv = capitalAmarrado(v.venta_diaria, v.stock, r.costo_unitario); aoa.push([etq(v), v.sku || '', '', numExcel(v.stock), cobTexto(v), cv.unidades, numExcel(cv.capital)]); });
+        } else {
+          const s = sugCompra(r.venta_diaria, r.datos_insuficientes, r.stock_total, r.costo_unitario);
+          aoa.push([r.referencia, r.nombre || '', r.proveedor_nombre || '', numExcel(r.stock_total), cobTexto(r), (s.estado === 'comprar' ? s.cant : 0), (s.estado === 'comprar' ? numExcel(s.costo) : 0)]);
+          (byProd[r.producto_id] || []).forEach(v => { const sv = sugCompra(v.venta_diaria, v.datos_insuficientes, v.stock, r.costo_unitario); aoa.push([etq(v), v.sku || '', '', numExcel(v.stock), cobTexto(v), (sv.estado === 'comprar' ? sv.cant : 0), (sv.estado === 'comprar' ? numExcel(sv.costo) : 0)]); });
+        }
+      });
+      const total = lista.reduce((s, r) => esSob ? s + capitalAmarrado(r.venta_diaria, r.stock_total, r.costo_unitario).capital : s + (sugCompra(r.venta_diaria, r.datos_insuficientes, r.stock_total, r.costo_unitario).costo || 0), 0);
+      aoa.push([]); aoa.push([esSob ? 'TOTAL capital parado' : 'TOTAL a reponer', '', '', '', '', '', numExcel(total)]);
+      const nombreHoja = esSob ? 'Sobrestock' : (ver === 'quiebre' ? 'Agotado' : 'Ruptura');
+      xlsxDescargar(XLSX, [{ nombre: nombreHoja, aoa, cols: [{ wch: 16 }, { wch: 24 }, { wch: 18 }, { wch: 8 }, { wch: 14 }, { wch: 12 }, { wch: 16 }] }],
+        'Inventario_' + nombreHoja + '_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  }
+
+  // Exportar Excel — Sin Ventas (ventana activa + filtros)
+  async function exportarExcelSinVentas(btn) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      const lista = invState.sinventas.rows || [];
+      if (!lista.length) { T.toast('No hay productos para exportar.', 'info'); return; }
+      const { data: vars } = await sb.rpc('inventario_variantes', { p_tienda_id: T.state.tienda.id, p_producto_ids: lista.map(r => r.producto_id), p_periodo: invState.sinventasPeriodo });
+      const byProd = {}; (vars || []).forEach(v => { (byProd[v.producto_id] = byProd[v.producto_id] || []).push(v); });
+      const aoa = [['Referencia', 'Nombre', 'Proveedor', 'Stock', 'Última venta', 'Último ingreso', 'Capital parado']];
+      lista.forEach(r => {
+        aoa.push([r.referencia, r.nombre || '', r.proveedor_nombre || '', numExcel(r.stock_total),
+          (r.fecha_ultima_venta ? haceTxt(r.fecha_ultima_venta) : 'Nunca vendido'), haceTxt(r.fecha_ultimo_ingreso), numExcel(r.valor_inventario)]);
+        (byProd[r.producto_id] || []).forEach(v => {
+          aoa.push(['↳ ' + ([v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '')), v.sku || '', '', numExcel(v.stock), '', '', numExcel(Number(v.stock) * Number(r.costo_unitario || 0))]);
+        });
+      });
+      const total = lista.reduce((s, r) => s + Number(r.valor_inventario || 0), 0);
+      aoa.push([]); aoa.push(['TOTAL capital sin rotación', '', '', '', '', '', numExcel(total)]);
+      xlsxDescargar(XLSX, [{ nombre: 'Sin ventas', aoa, cols: [{ wch: 16 }, { wch: 24 }, { wch: 18 }, { wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 16 }] }],
+        'Inventario_SinVentas_' + invState.sinventasPeriodo + 'd_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  }
+
+  // Exportar Excel — Kardex (panel de UNA variante, con su rango de fechas)
+  async function exportarExcelKardex(btn) {
+    const T = window.TiendaIA, p = invState.kardex.panel;
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      if (!p || !p.rows || !p.rows.length) { T.toast('No hay movimientos para exportar.', 'info'); return; }
+      const aoa = [
+        ['Kardex', p.ref + ' · ' + p.vlabel],
+        ['Rango', (p.desde || 'inicio') + ' a ' + (p.hasta || 'hoy')],
+        [],
+        ['Fecha', 'Movimiento', 'Entrada', 'Salida', 'Saldo', 'Costo unit.'],
+      ];
+      p.rows.forEach(m => aoa.push([fechaExcel(m.fecha), tipoLabel(m), numExcel(m.entrada), numExcel(m.salida), numExcel(m.saldo_acumulado), (m.costo_unitario != null ? numExcel(m.costo_unitario) : '')]));
+      xlsxDescargar(XLSX, [{ nombre: 'Kardex', aoa, cols: [{ wch: 14 }, { wch: 16 }, { wch: 9 }, { wch: 9 }, { wch: 10 }, { wch: 12 }] }],
+        'Kardex_' + (p.ref || 'ref').replace(/[^\w-]/g, '') + '_' + (p.vlabel || '').replace(/[^\w-]/g, '') + '_' + hoyExcel() + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
     finally { btn.disabled = false; btn.textContent = old; }
   }
