@@ -533,6 +533,37 @@ a:hover { text-decoration: underline; }
 .ta-inv-svcap b { font-size:15px; font-weight:700; color:var(--ta-text); }
 .ta-inv-sv-prov { display:block; font-size:11px; color:var(--ta-text-mut); }
 .ta-inv-sv-stk { font-size:12px; color:var(--ta-text-soft); white-space:nowrap; }
+/* Tab Kardex: picker de referencia + tabla de movimientos (clase propia .ta-inv-kxrow,
+   NO .ta-inv-item -> el grid ancho de GENERAL no la pisa). */
+.ta-inv-kxlist { display:flex; flex-direction:column; }
+.ta-inv-kxpick { display:flex; flex-direction:column; gap:1px; text-align:left; width:100%; padding:10px 12px; border:none; background:transparent; border-bottom:1px solid var(--ta-border); cursor:pointer; }
+.ta-inv-kxpick:last-child { border-bottom:none; }
+.ta-inv-kxpick:hover { background:var(--ta-bg-soft); }
+.ta-inv-kxpick strong { font-size:14px; } .ta-inv-kxpick span { font-size:12px; color:var(--ta-text-soft); }
+.ta-inv-kxhead { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 12px; }
+.ta-inv-kxtitle { font-size:18px; font-weight:700; margin:0; color:var(--ta-text); }
+.ta-inv-kxtitle span { font-weight:400; color:var(--ta-text-soft); font-size:15px; }
+.ta-inv-kxctrls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 14px; }
+.ta-inv-kxdate { font-size:13px; color:var(--ta-text-soft); display:inline-flex; gap:6px; align-items:center; }
+.ta-inv-kxtable { display:flex; flex-direction:column; }
+.ta-inv-kxhrow, .ta-inv-kxrow { display:grid; gap:0 12px; align-items:center; }
+.ta-inv-kxrow--saldo { grid-template-columns:110px minmax(110px,1fr) 80px 80px 90px minmax(110px,1fr); }
+.ta-inv-kxrow--var { grid-template-columns:110px minmax(110px,1fr) 80px 80px minmax(120px,1.2fr) minmax(110px,1fr); }
+.ta-inv-kxhrow { padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em; font-weight:600; color:var(--ta-text-soft); border-bottom:1px solid var(--ta-border); }
+.ta-inv-kxrow { padding:9px 12px; border-bottom:1px solid var(--ta-border); font-size:13px; }
+.ta-inv-kxrow:last-child { border-bottom:none; }
+.ta-inv-kxcell { min-width:0; } .ta-inv-kxcell.num { text-align:right; font-variant-numeric:tabular-nums; }
+.ta-inv-kxin { color:#0f5132; font-weight:600; } .ta-inv-kxout { color:#8a5a00; font-weight:600; }
+@media (min-width:1500px) {
+  .ta-main--inv-wide .ta-inv-kxhrow.ta-inv-kxrow--saldo, .ta-main--inv-wide .ta-inv-kxrow--saldo { grid-template-columns:130px minmax(160px,1.4fr) 100px 100px 120px minmax(160px,1.2fr); }
+  .ta-main--inv-wide .ta-inv-kxhrow.ta-inv-kxrow--var, .ta-main--inv-wide .ta-inv-kxrow--var { grid-template-columns:130px minmax(160px,1.4fr) 100px 100px minmax(180px,1.4fr) minmax(160px,1.2fr); }
+}
+@media (max-width:760px) {
+  .ta-inv-kxhrow { display:none; }
+  .ta-inv-kxrow { grid-template-columns:1fr 1fr !important; gap:6px 12px; padding:12px; }
+  .ta-inv-kxrow .ta-inv-cell__label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; color:var(--ta-text-mut); }
+  .ta-inv-kxrow .ta-inv-kxcell.num { text-align:left; }
+}
 @media (min-width:1500px) {
   .ta-main--inv-wide .ta-inv-svhead, .ta-main--inv-wide .ta-inv-item.ta-inv-item--sv, .ta-main--inv-wide .ta-inv-vrow.ta-inv-vrow--sv {
     grid-template-columns: 26px minmax(220px,2.2fr) minmax(150px,1fr) minmax(150px,1fr) minmax(170px,1.1fr);
