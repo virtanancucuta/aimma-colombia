@@ -88,7 +88,9 @@ begin
       (-1 * coalesce(sum(im.cantidad) filter (where im.tipo in ('venta','devolucion') and im.created_at >= now() - make_interval(days => v_periodo)),0))::bigint as unidades_vendidas,
       max(im.fecha) filter (where im.tipo = 'venta') as fecha_ultima_venta,
       min(im.fecha) filter (where im.tipo in ('entrada','saldo_inicial')) as fecha_primera_entrada,
-      max(im.fecha) filter (where im.tipo in ('entrada','saldo_inicial','ajuste')) as fecha_ultimo_ingreso
+      -- "ultimo ingreso" = ultimo movimiento que SUMA stock. ajuste tiene signo (verificado:
+      -- existe ajuste=-4); un ajuste a la baja NO es ingreso -> filtrar por cantidad > 0.
+      max(im.fecha) filter (where im.tipo in ('entrada','saldo_inicial') or (im.tipo='ajuste' and im.cantidad > 0)) as fecha_ultimo_ingreso
     from public.inventario_movimientos im where im.producto_id in (select id from base) group by im.producto_id
   ),
   metrics as (
@@ -208,7 +210,7 @@ git commit -m "feat(inventario): cap periodo 60->120 + columna fecha_ultimo_ingr
     const foto = r.foto_principal_url ? '<img class="ta-inv-athumb" src="' + T.escapeHtml(r.foto_principal_url) + '" alt="">' : '<div class="ta-inv-athumb ta-inv-athumb--empty">📦</div>';
     return '<div class="ta-inv-item ta-inv-item--sv" data-prod="' + T.escapeHtml(r.producto_id) + '" data-open="' + (abierto ? '1' : '0') + '">' +
       '<span class="ta-inv-chevron" aria-hidden="true">▸</span>' +
-      '<div class="ta-inv-aref">' + foto + '<div class="ta-inv-aref__txt"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span></div></div>' +
+      '<div class="ta-inv-aref">' + foto + '<div class="ta-inv-aref__txt"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span>' + (r.proveedor_nombre ? '<span class="ta-inv-sv-prov">Proveedor: ' + T.escapeHtml(r.proveedor_nombre) + '</span>' : '') + '</div></div>' +
       '<div class="ta-inv-svcell"><span class="ta-inv-cell__label">Última venta</span>' + (r.fecha_ultima_venta ? haceTxt(r.fecha_ultima_venta) : 'Nunca vendido') + '</div>' +
       '<div class="ta-inv-svcell"><span class="ta-inv-cell__label">Último ingreso</span>' + haceTxt(r.fecha_ultimo_ingreso) + '</div>' +
       '<div class="ta-inv-svcap"><span class="ta-inv-cell__label">Capital parado</span><b>' + fmtCOP(Number(r.valor_inventario || 0)) + '</b></div>' +
@@ -249,7 +251,7 @@ git commit -m "feat(inventario): cap periodo 60->120 + columna fecha_ultimo_ingr
         filas + '</div></div>';
     }
     cont.innerHTML = ventana +
-      '<p class="ta-inv-secc__sub">' + fmtCOP(cap) + ' parados en ' + rows.length + ' producto(s) sin rotación · ventana de ' + per + ' días.</p>' +
+      '<p class="ta-inv-secc__sub">' + fmtCOP(cap) + ' en ' + rows.length + ' producto(s) · sin rotación en los últimos ' + per + ' días.</p>' +
       body;
     cont.querySelectorAll('.inv-svper').forEach(b => b.addEventListener('click', () => {
       const n = parseInt(b.getAttribute('data-per'), 10);
@@ -293,6 +295,7 @@ git commit -m "feat(inventario): tab Sin Ventas (capital muerto) — ventana 30/
 .ta-inv-svcell { font-size:13px; color:var(--ta-text-soft); min-width:0; }
 .ta-inv-svcap { text-align:right; font-size:13px; min-width:0; }
 .ta-inv-svcap b { font-size:15px; font-weight:700; color:var(--ta-text); }
+.ta-inv-sv-prov { display:block; font-size:11px; color:var(--ta-text-mut); }
 @media (min-width:1500px) {
   .ta-main--inv-wide .ta-inv-svhead, .ta-main--inv-wide .ta-inv-item.ta-inv-item--sv, .ta-main--inv-wide .ta-inv-vrow.ta-inv-vrow--sv {
     grid-template-columns: 26px minmax(220px,2.2fr) minmax(150px,1fr) minmax(150px,1fr) minmax(170px,1.1fr);

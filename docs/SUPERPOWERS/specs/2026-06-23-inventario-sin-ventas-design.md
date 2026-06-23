@@ -15,6 +15,13 @@ Supabase `aimma` (ref `rsmxklkxqsaptchcjszd`) = test. Deploy: merge a main + Jor
 - **25 productos `sin_ventas`** en el seed (incl. QAINV-M1, 009, 002 = nunca vendidos) → buen set de prueba.
 - `inventario_resumen` ya recibe `p_proveedor_id`, `p_categoria_id` (subcategorías por `parent_id`), `p_buscar`, `p_clasificacion` → **los filtros del shell sirven sin cambio**.
 
+## 2bis. RESUELTO (Jorge, 2026-06-23)
+- **Cap → 120** (no 90): headroom para un futuro 120 días sin re-tocar BD.
+- **"Último ingreso" = solo movimientos que SUMAN stock:** `entrada` + `saldo_inicial` + `ajuste con cantidad > 0`. **Verificado empíricamente:** el kardex guarda `cantidad` con signo y EXISTE un `ajuste = −4` (corrección a la baja) → un ajuste negativo NO es ingreso, se excluye (si no, el dato miente en correcciones a la baja).
+- **Proveedor = opción (b):** subtítulo "Proveedor: X" bajo la referencia (no columna propia) → mantiene la vista limpia de 4 columnas; para escanear/agrupar por proveedor está el filtro del shell.
+- **Total con la ventana en el texto:** "$X en N producto(s) · sin rotación en los últimos [30/45/60/90] días" (se actualiza con el selector).
+- Task 1 (BD) con verificación contra data real ANTES de la UI; gate de Jorge con los números (cap 120 deja pasar 90; fecha_ultimo_ingreso correcta con el filtro de signo).
+
 ## 2. Decisiones (Jorge + propuestas para tu review)
 - **(D1) Ventana de venta editable SOLO en este tab:** selector **30 (default) · 45 · 60 · 90**. (El toggle global 30/60 se oculta en este tab; Sin Ventas usa su propia ventana `invState.sinventasPeriodo`.)
 - **(D2) Columna nueva "Última fecha de ingreso"** = último restock/modificación (entrada/saldo_inicial/ajuste). Mostrar relativo "hace N días" (o "—" si no hay).
