@@ -501,11 +501,14 @@
     if (!vs.length) return msg('Sin variantes.');
     return vs.map(v => {
       const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      // 5 celdas alineadas a la fila padre: Ref(+stock) · Última venta(—) · Último ingreso(—) · Capital.
+      // En este tab la variante nunca tuvo venta -> "—" (NO stock bajo Última venta). Capital = stock×costo.
       return '<div class="ta-inv-vrow ta-inv-vrow--sv">' +
         '<span class="ta-inv-vmark" aria-hidden="true"></span>' +
-        '<div class="ta-inv-aref ta-inv-aref--v"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code></div>' +
-        '<div class="ta-inv-svcell num"><span class="ta-inv-cell__label">Stock</span>' + Number(v.stock) + '</div>' +
-        '<div class="ta-inv-svcap"><span class="ta-inv-cell__label">Capital</span>' + fmtCOP(Number(v.stock) * Number(costo || 0)) + '</div>' +
+        '<div class="ta-inv-aref ta-inv-aref--v"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code><span class="ta-inv-sv-stk"> · stock ' + Number(v.stock) + '</span></div>' +
+        '<div class="ta-inv-svcell ta-inv-svcell--uv"><span class="ta-inv-cell__label">Última venta</span>—</div>' +
+        '<div class="ta-inv-svcell ta-inv-svcell--ui"><span class="ta-inv-cell__label">Último ingreso</span>—</div>' +
+        '<div class="ta-inv-svcap"><span class="ta-inv-cell__label">Capital parado</span>' + fmtCOP(Number(v.stock) * Number(costo || 0)) + '</div>' +
       '</div>';
     }).join('');
   }
