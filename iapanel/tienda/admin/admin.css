@@ -533,13 +533,18 @@ a:hover { text-decoration: underline; }
 .ta-inv-svcap b { font-size:15px; font-weight:700; color:var(--ta-text); }
 .ta-inv-sv-prov { display:block; font-size:11px; color:var(--ta-text-mut); }
 .ta-inv-sv-stk { font-size:12px; color:var(--ta-text-soft); white-space:nowrap; }
-/* Tab Kardex: picker de referencia + tabla de movimientos (clase propia .ta-inv-kxrow,
-   NO .ta-inv-item -> el grid ancho de GENERAL no la pisa). */
-.ta-inv-kxlist { display:flex; flex-direction:column; }
-.ta-inv-kxpick { display:flex; flex-direction:column; gap:1px; text-align:left; width:100%; padding:10px 12px; border:none; background:transparent; border-bottom:1px solid var(--ta-border); cursor:pointer; }
-.ta-inv-kxpick:last-child { border-bottom:none; }
-.ta-inv-kxpick:hover { background:var(--ta-bg-soft); }
-.ta-inv-kxpick strong { font-size:14px; } .ta-inv-kxpick span { font-size:12px; color:var(--ta-text-soft); }
+/* Tab Kardex: DROP PROGRESIVO. Nivel 1 = filas de referencia FLEX (el grid ancho de GENERAL
+   ignora grid-template-columns en flex) + drop por variante. Nivel 2 = tabla del historial
+   (clase propia .ta-inv-kxrow, no .ta-inv-item -> el grid de GENERAL no la pisa). */
+.ta-inv-item.ta-inv-item--kx { display:flex; align-items:center; gap:10px; }
+.ta-inv-kxrefname { min-width:0; }
+.ta-inv-kxrefname strong { display:block; font-size:14px; line-height:1.25; overflow-wrap:anywhere; }
+.ta-inv-kxrefname span { display:block; font-size:12px; color:var(--ta-text-soft); overflow-wrap:anywhere; }
+.ta-inv-vrow.ta-inv-vrow--kx { display:flex; align-items:center; justify-content:space-between; gap:8px 14px; flex-wrap:wrap; padding:8px 12px 8px 40px; }
+.ta-inv-kxvref { min-width:0; flex:1 1 auto; font-size:13px; }
+.ta-inv-kxvref strong { font-weight:600; }
+.ta-inv-kxvmeta { color:var(--ta-text-soft); font-size:12px; }
+.ta-inv-kxver { flex:0 0 auto; padding:5px 12px; font-size:12px; }
 .ta-inv-kxhead { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 12px; }
 .ta-inv-kxtitle { font-size:18px; font-weight:700; margin:0; color:var(--ta-text); }
 .ta-inv-kxtitle span { font-weight:400; color:var(--ta-text-soft); font-size:15px; }
