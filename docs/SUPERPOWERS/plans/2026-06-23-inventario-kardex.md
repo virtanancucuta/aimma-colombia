@@ -8,6 +8,11 @@
 
 **Tech Stack:** JS vanilla TiendaIA, tokens `--ta-*`, RPCs existentes.
 
+## RESUELTO (Jorge, 2026-06-23) — 3 confirmaciones que ajustan el build
+- **(R1) Orden de la tabla = más reciente ARRIBA, saldo correcto.** La RPC computa el saldo cronológico (viejo→nuevo) y devuelve asc (oldest-first) con `saldo_acumulado` correcto por fila. Para mostrar newest-first **se trae el kardex COMPLETO en páginas (loop offset hasta agotar) y se INVIERTE en cliente** (`rows.reverse()`), NO se usa "Ver más" oldest-first (daría el extremo equivocado al truncar). Así la fila de arriba es la más nueva y su `saldo_acumulado` == stock actual de esa variante. Kardex largos se acotan con el rango de fechas. `loadKardexRows`/"Ver más" del borrador se reemplazan por `loadKardexAll()` (loop páginas de 500, cap 20 págs/10k con nota) + reverse.
+- **(R2) Filtro por fecha (no created_at).** Desde/Hasta → `p_desde/p_hasta` de `inventario_kardex` (filtra por `fecha`); el saldo corre sobre TODO el historial antes de filtrar → cada fila muestra su acumulado real (no se reinicia en el "Desde"). Verificar en Task 4 con un rango real.
+- **(R3) Copy del ajuste con signo:** `tipoLabel(m)` recibe la fila; para `ajuste` devuelve "Ajuste (+)" si `cantidad>0`, "Ajuste (−)" si `<0` (audiencia no contable).
+
 ## Global Constraints
 - Branch `feat/inv-1b-kardex`; merge a main + Implementa; deploy-to-prod OFF.
 - SIN RPC nueva. Saldo solo cuando se filtra 1 variante (PASO 0: con "Todas" el saldo salta entre variantes). Default variante: 1→esa, varias→"Todas". Rango fechas default = todo. Paginación 200 + "Ver más". Tipos en humano. En kardex se ocultan período/Ordenar/Excel. Ancho desktop con `.ta-main--inv-wide` (excluir kardex del grid de GENERAL). Audit de columnas antes de avisar. /ui-ux-pro-max + /impeccable.
