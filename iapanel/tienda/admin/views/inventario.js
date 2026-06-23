@@ -29,6 +29,8 @@
       totales: null,
       ajustesOpen: false,
       accion: null,             // { rows, ver }
+      sinventas: null,          // { rows }
+      sinventasPeriodo: 30,     // ventana propia del tab (30/45/60/90)
       tab: 'general',
       page: { limit: 25, offset: 0 },
       general: null,            // { rows, total }
@@ -110,13 +112,13 @@
         '</div>' +
         '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">' +
           '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">' +
-            '<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' +
-            btn(30) + btn(60) + chip +
-            '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>' +
+            (invState.tab !== 'sinventas'
+              ? ('<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' + btn(30) + btn(60) + chip + '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>')
+              : '') +
             (invState.tab === 'general' ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
             '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
           '</div>' +
-          '<span style="font-size:12px;color:var(--ta-text-soft);max-width:340px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' +
+          (invState.tab !== 'sinventas' ? '<span style="font-size:12px;color:var(--ta-text-soft);max-width:340px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' : '') +
         '</div>' +
       '</header>' +
 
@@ -240,6 +242,7 @@
     if (!cont) return;
     if (invState.tab === 'general') { fetchAndRenderGeneral(cont); return; }
     if (invState.tab === 'accion') { fetchAndRenderAccion(cont); return; }
+    if (invState.tab === 'sinventas') { fetchAndRenderSinVentas(cont); return; }
     cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:32px 16px;">' +
       '<h2 class="ta-empty__title">En construcción</h2>' +
       '<p class="ta-empty__text">Esta vista llega en la próxima entrega.</p></div></div>';
@@ -379,7 +382,9 @@
     '</div>';
   }
   function drillHtml(productoId) {
-    return (invState.tab === 'accion') ? filaDrillAccion(productoId) : filaDrill(productoId);
+    if (invState.tab === 'accion') return filaDrillAccion(productoId);
+    if (invState.tab === 'sinventas') return filaDrillSinVentas(productoId);
+    return filaDrill(productoId);
   }
   // Drill por variante, alineado a las MISMAS 3 columnas de la vista de acción.
   function filaDrillAccion(productoId) {
@@ -441,6 +446,88 @@
       extra + body;
     cont.querySelectorAll('.inv-ver').forEach(b => b.addEventListener('click', () => {
       invState.accion.ver = b.getAttribute('data-ver'); renderAccion(cont);
+    }));
+    wireGeneral(cont);
+  }
+
+  // ============================================================
+  // SIN VENTAS (tab 'sinventas') — capital muerto; ventana propia 30/45/60/90
+  // ============================================================
+  function haceTxt(fecha) {
+    if (!fecha) return '—';
+    const d = Math.max(0, Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000));
+    return d === 0 ? 'hoy' : 'hace ' + d + (d === 1 ? ' día' : ' días');
+  }
+  async function fetchAndRenderSinVentas(cont) {
+    const T = window.TiendaIA, sb = T.supabase();
+    cont.innerHTML = loadingCard();
+    try {
+      const { data, error } = await sb.rpc('inventario_resumen', {
+        p_tienda_id: T.state.tienda.id, p_periodo: invState.sinventasPeriodo, p_orden: 'valor',
+        p_clasificacion: ['sin_ventas'],
+        p_proveedor_id: invState.filtros.proveedor_id || null,
+        p_categoria_id: invState.filtros.categoria_id || null,
+        p_buscar: invState.filtros.buscar || null, p_limit: null, p_offset: 0,
+      });
+      if (error) { cont.innerHTML = errorCard(error.message); return; }
+      invState.sinventas = { rows: data || [] };
+      renderSinVentas(cont);
+    } catch (e) { cont.innerHTML = errorCard(e.message || String(e)); }
+  }
+  function filaSinVentas(r) {
+    const T = window.TiendaIA;
+    const abierto = !!invState.drillOpen[r.producto_id];
+    const foto = r.foto_principal_url ? '<img class="ta-inv-athumb" src="' + T.escapeHtml(r.foto_principal_url) + '" alt="">' : '<div class="ta-inv-athumb ta-inv-athumb--empty">📦</div>';
+    return '<div class="ta-inv-item ta-inv-item--sv" data-prod="' + T.escapeHtml(r.producto_id) + '" data-open="' + (abierto ? '1' : '0') + '">' +
+      '<span class="ta-inv-chevron" aria-hidden="true">▸</span>' +
+      '<div class="ta-inv-aref">' + foto + '<div class="ta-inv-aref__txt"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span>' + (r.proveedor_nombre ? '<span class="ta-inv-sv-prov">Proveedor: ' + T.escapeHtml(r.proveedor_nombre) + '</span>' : '') + '</div></div>' +
+      '<div class="ta-inv-svcell ta-inv-svcell--uv"><span class="ta-inv-cell__label">Última venta</span>' + (r.fecha_ultima_venta ? haceTxt(r.fecha_ultima_venta) : 'Nunca vendido') + '</div>' +
+      '<div class="ta-inv-svcell ta-inv-svcell--ui"><span class="ta-inv-cell__label">Último ingreso</span>' + haceTxt(r.fecha_ultimo_ingreso) + '</div>' +
+      '<div class="ta-inv-svcap"><span class="ta-inv-cell__label">Capital parado</span><b>' + fmtCOP(Number(r.valor_inventario || 0)) + '</b></div>' +
+    '</div>';
+  }
+  function filaDrillSinVentas(productoId) {
+    const T = window.TiendaIA;
+    const vs = invState.drillCache[productoId];
+    const padre = ((invState.sinventas && invState.sinventas.rows) || []).find(x => x.producto_id === productoId) || {};
+    const costo = padre.costo_unitario;
+    const msg = (t) => '<div class="ta-inv-vrow ta-inv-vrow--sv ta-inv-vrow--msg"><span></span><div class="ta-inv-aref" style="color:var(--ta-text-mut);font-size:12px;">' + t + '</div></div>';
+    if (!vs) return msg('Cargando variantes…');
+    if (!vs.length) return msg('Sin variantes.');
+    return vs.map(v => {
+      const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      return '<div class="ta-inv-vrow ta-inv-vrow--sv">' +
+        '<span class="ta-inv-vmark" aria-hidden="true"></span>' +
+        '<div class="ta-inv-aref ta-inv-aref--v"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code></div>' +
+        '<div class="ta-inv-svcell num"><span class="ta-inv-cell__label">Stock</span>' + Number(v.stock) + '</div>' +
+        '<div class="ta-inv-svcap"><span class="ta-inv-cell__label">Capital</span>' + fmtCOP(Number(v.stock) * Number(costo || 0)) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function renderSinVentas(cont) {
+    const rows = invState.sinventas.rows;
+    const cap = rows.reduce((s, r) => s + Number(r.valor_inventario || 0), 0);
+    const per = invState.sinventasPeriodo;
+    const seg = (n) => '<button type="button" class="ta-btn inv-svper' + (per === n ? ' ta-btn--primary' : '') + '" data-per="' + n + '">' + n + '</button>';
+    const ventana = '<div class="ta-inv-svwin"><span style="color:var(--ta-text-soft);font-size:13px;">Ventana de venta:</span>' + seg(30) + seg(45) + seg(60) + seg(90) + '<span style="color:var(--ta-text-soft);font-size:13px;">días</span></div>';
+    let body;
+    if (!rows.length) {
+      body = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">Todo tu stock está rotando. Sin capital muerto en esta ventana.</p></div></div>';
+    } else {
+      let filas = '';
+      rows.forEach(r => { filas += filaSinVentas(r); if (invState.drillOpen[r.producto_id]) filas += drillHtml(r.producto_id); });
+      body = '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-list ta-inv-list--sv">' +
+        '<div class="ta-inv-svhead"><span></span><span>Referencia</span><span>Última venta</span><span>Último ingreso</span><span style="text-align:right;">Capital parado</span></div>' +
+        filas + '</div></div>';
+    }
+    cont.innerHTML = ventana +
+      '<p class="ta-inv-secc__sub">' + fmtCOP(cap) + ' en ' + rows.length + ' producto(s) · sin rotación en los últimos ' + per + ' días.</p>' +
+      body;
+    cont.querySelectorAll('.inv-svper').forEach(b => b.addEventListener('click', () => {
+      const n = parseInt(b.getAttribute('data-per'), 10);
+      if (invState.sinventasPeriodo === n) return;
+      invState.sinventasPeriodo = n; invState.sinventas = null; invState.drillCache = {}; invState.drillOpen = {};
+      fetchAndRenderSinVentas(cont);
     }));
     wireGeneral(cont);
   }

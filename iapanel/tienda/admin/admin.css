@@ -508,6 +508,32 @@ a:hover { text-decoration: underline; }
 .ta-inv-act--rep { color:#0f5132; }
 .ta-inv-act--liq { color:#8a5a00; }
 .ta-inv-act--mut { color:var(--ta-text-soft); font-weight:500; }
+/* Tab Sin Ventas: vista compacta (Referencia · Última venta · Último ingreso · Capital parado) */
+.ta-inv-svwin { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+.ta-inv-svhead, .ta-inv-item.ta-inv-item--sv, .ta-inv-vrow.ta-inv-vrow--sv {
+  grid-template-columns: 26px minmax(160px,2fr) minmax(120px,1fr) minmax(120px,1fr) minmax(130px,1fr);
+}
+.ta-inv-svhead { display:grid; align-items:center; gap:0 12px; padding:0 12px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.03em; font-weight:600; color:var(--ta-text-soft); border-bottom:1px solid var(--ta-border); }
+.ta-inv-svcell { font-size:13px; color:var(--ta-text-soft); min-width:0; }
+.ta-inv-svcap { text-align:right; font-size:13px; min-width:0; }
+.ta-inv-svcap b { font-size:15px; font-weight:700; color:var(--ta-text); }
+.ta-inv-sv-prov { display:block; font-size:11px; color:var(--ta-text-mut); }
+@media (min-width:1500px) {
+  .ta-main--inv-wide .ta-inv-svhead, .ta-main--inv-wide .ta-inv-item.ta-inv-item--sv, .ta-main--inv-wide .ta-inv-vrow.ta-inv-vrow--sv {
+    grid-template-columns: 26px minmax(220px,2.2fr) minmax(150px,1fr) minmax(150px,1fr) minmax(170px,1.1fr);
+  }
+}
+@media (max-width:760px) {
+  .ta-inv-svhead { display:none; }
+  .ta-inv-item.ta-inv-item--sv { grid-template-columns:1fr auto; grid-template-areas:"ref chev" "uv cap" "ui cap"; gap:6px 12px; padding:12px; margin-bottom:10px; border:1px solid var(--ta-border); border-radius:12px; background:var(--ta-surface); align-items:center; }
+  .ta-inv-item--sv .ta-inv-chevron { grid-area:chev; justify-self:end; align-self:start; }
+  .ta-inv-item--sv .ta-inv-aref { grid-area:ref; }
+  .ta-inv-item--sv .ta-inv-svcell--uv { grid-area:uv; }
+  .ta-inv-item--sv .ta-inv-svcell--ui { grid-area:ui; }
+  .ta-inv-item--sv .ta-inv-svcap { grid-area:cap; align-self:center; }
+  .ta-inv-vrow.ta-inv-vrow--sv { grid-template-columns:1fr auto; grid-template-areas:"ref ref" "stk cap"; gap:6px 12px; padding:10px 12px; background:var(--ta-bg-soft); border-bottom:1px solid var(--ta-border); }
+  .ta-inv-vrow--sv .ta-inv-vmark { display:none; }
+}
 .ta-inv-list { display:flex; flex-direction:column; }
 .ta-inv-list__head, .ta-inv-item, .ta-inv-vrow {
   display:grid;
