@@ -547,10 +547,10 @@ a:hover { text-decoration: underline; }
    NO cambia el set de columnas; el look <=1400 queda igual. Solo desktop, solo GENERAL. */
 .ta-main--inv-wide { max-width: 1760px; }
 @media (min-width: 1500px) {
-  /* GENERAL (9 columnas) — excluye las filas de la vista de acción (3 cols) */
+  /* GENERAL (9 columnas) — excluye las filas de vistas con grilla propia (acción 3 cols / sin ventas 5 cols) */
   .ta-main--inv-wide .ta-inv-list__head,
-  .ta-main--inv-wide .ta-inv-item:not(.ta-inv-item--accion),
-  .ta-main--inv-wide .ta-inv-vrow:not(.ta-inv-vrow--accion),
+  .ta-main--inv-wide .ta-inv-item:not(.ta-inv-item--accion):not(.ta-inv-item--sv),
+  .ta-main--inv-wide .ta-inv-vrow:not(.ta-inv-vrow--accion):not(.ta-inv-vrow--sv),
   .ta-main--inv-wide .ta-inv-totes {
     grid-template-columns: 26px 46px minmax(180px,1.8fr) 80px minmax(160px,1.2fr) minmax(120px,1fr) minmax(100px,0.9fr) minmax(120px,1fr) minmax(140px,1.2fr);
   }
