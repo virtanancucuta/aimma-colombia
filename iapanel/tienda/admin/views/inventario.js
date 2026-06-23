@@ -116,7 +116,7 @@
             ((invState.tab === 'general' || invState.tab === 'accion')
               ? ('<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' + btn(30) + btn(60) + chip + '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>')
               : '') +
-            ((invState.tab === 'general' || invState.tab === 'accion' || invState.tab === 'sinventas') ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
+            ((invState.tab === 'general' || invState.tab === 'accion' || invState.tab === 'sinventas' || (invState.tab === 'kardex' && !(invState.kardex && invState.kardex.panel))) ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
             '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
           '</div>' +
           ((invState.tab === 'general' || invState.tab === 'accion') ? '<span style="font-size:12px;color:var(--ta-text-soft);max-width:340px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' : '') +
@@ -224,6 +224,7 @@
     if (ex) ex.addEventListener('click', () => {
       if (invState.tab === 'accion') exportarExcelAccion(ex);
       else if (invState.tab === 'sinventas') exportarExcelSinVentas(ex);
+      else if (invState.tab === 'kardex') exportarExcelKardexLista(ex);
       else exportarExcel(ex);
     });
     const orden = view.querySelector('#inv-orden');
@@ -1059,6 +1060,29 @@
       p.rows.forEach(m => aoa.push([fechaExcel(m.fecha), tipoLabel(m), numExcel(m.entrada), numExcel(m.salida), numExcel(m.saldo_acumulado), (m.costo_unitario != null ? numExcel(m.costo_unitario) : '')]));
       xlsxDescargar(XLSX, [{ nombre: 'Kardex', aoa, cols: [{ wch: 14 }, { wch: 16 }, { wch: 9 }, { wch: 9 }, { wch: 10 }, { wch: 12 }] }],
         'Kardex_' + (p.ref || 'ref').replace(/[^\w-]/g, '') + '_' + (p.vlabel || '').replace(/[^\w-]/g, '') + '_' + hoyExcel() + '.xlsx');
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  }
+
+  // Exportar Excel — Kardex Nivel 1 (lista de referencias + variantes, solo el último ingreso)
+  async function exportarExcelKardexLista(btn) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      const lista = (invState.kardex && invState.kardex.refs) || [];
+      if (!lista.length) { T.toast('No hay referencias para exportar.', 'info'); return; }
+      const { data: vars } = await sb.rpc('inventario_variantes', { p_tienda_id: T.state.tienda.id, p_producto_ids: lista.map(r => r.producto_id), p_periodo: invState.periodo });
+      const byProd = {}; (vars || []).forEach(v => { (byProd[v.producto_id] = byProd[v.producto_id] || []).push(v); });
+      const aoa = [['Referencia', 'Nombre', 'Proveedor', 'Variante', 'Stock', 'Disponible', 'Último ingreso']];
+      lista.forEach(r => {
+        aoa.push([r.referencia, r.nombre || '', r.proveedor_nombre || '', '', numExcel(r.stock_total), numExcel(r.stock_disponible), fechaExcel(r.fecha_ultimo_ingreso)]);
+        (byProd[r.producto_id] || []).forEach(v => {
+          aoa.push(['', '', '', ([v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '')), numExcel(v.stock), numExcel(v.disponible), '']);
+        });
+      });
+      xlsxDescargar(XLSX, [{ nombre: 'Últimos ingresos', aoa, cols: [{ wch: 16 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 8 }, { wch: 11 }, { wch: 14 }] }],
+        'Kardex_ultimo_ingreso_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
     finally { btn.disabled = false; btn.textContent = old; }
   }
