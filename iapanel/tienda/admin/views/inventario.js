@@ -76,6 +76,8 @@
     { id: 'accion', label: 'Sobrestock & Ruptura' },
     { id: 'sinventas', label: 'Sin ventas' },
     { id: 'kardex', label: 'Kardex' },
+    { id: 'proveedor', label: 'Por proveedor' },
+    { id: 'categoria', label: 'Por categoría' },
   ];
 
   function renderShell() {
@@ -116,15 +118,15 @@
             ((invState.tab === 'general' || invState.tab === 'accion')
               ? ('<span style="color:var(--ta-text-soft);font-size:13px;">Ventas de los últimos</span>' + btn(30) + btn(60) + chip + '<span style="color:var(--ta-text-soft);font-size:13px;">días</span>')
               : '') +
-            ((invState.tab === 'general' || invState.tab === 'accion' || invState.tab === 'sinventas' || (invState.tab === 'kardex' && !(invState.kardex && invState.kardex.panel))) ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
+            ((invState.tab === 'general' || invState.tab === 'accion' || invState.tab === 'sinventas' || invState.tab === 'proveedor' || invState.tab === 'categoria' || (invState.tab === 'kardex' && !(invState.kardex && invState.kardex.panel))) ? '<button type="button" id="inv-export" class="ta-btn" style="padding:6px 12px;">⬇ Exportar Excel</button>' : '') +
             '<button type="button" id="inv-ajustes" class="ta-btn" title="Editar los umbrales de ruptura y sobrestock de tu tienda (próximamente)" style="padding:6px 12px;">⚙︎ Ajustes</button>' +
           '</div>' +
           ((invState.tab === 'general' || invState.tab === 'accion') ? '<span style="font-size:12px;color:var(--ta-text-soft);max-width:340px;text-align:right;line-height:1.4;">Elegí sobre cuántos días de ventas calcular tu ritmo. Eso define tu cobertura.</span>' : '') +
         '</div>' +
       '</header>' +
 
-      // En Kardex Nivel 2 (panel de una variante) los filtros no aplican -> se ocultan. En la lista (Nivel 1) sí.
-      ((invState.tab === 'kardex' && invState.kardex && invState.kardex.panel) ? '' : (
+      // Las vistas agregadas (proveedor/categoría) y el panel Kardex Nivel 2 no usan los filtros por producto -> se ocultan.
+      ((invState.tab === 'proveedor' || invState.tab === 'categoria' || (invState.tab === 'kardex' && invState.kardex && invState.kardex.panel)) ? '' : (
         '<div class="ta-card" style="padding:14px 16px;margin-bottom:16px;">' +
           '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">' +
             '<input id="inv-buscar" class="ta-input" type="text" placeholder="Buscar por referencia o nombre..." value="' + T.escapeHtml(invState.filtros.buscar) + '" style="flex:1;min-width:220px;">' +
@@ -225,6 +227,7 @@
       if (invState.tab === 'accion') exportarExcelAccion(ex);
       else if (invState.tab === 'sinventas') exportarExcelSinVentas(ex);
       else if (invState.tab === 'kardex') exportarExcelKardexLista(ex);
+      else if (invState.tab === 'proveedor' || invState.tab === 'categoria') exportarExcelGrupo(ex, invState.tab);
       else exportarExcel(ex);
     });
     const orden = view.querySelector('#inv-orden');
@@ -253,6 +256,8 @@
     if (invState.tab === 'accion') { fetchAndRenderAccion(cont); return; }
     if (invState.tab === 'sinventas') { fetchAndRenderSinVentas(cont); return; }
     if (invState.tab === 'kardex') { fetchAndRenderKardex(cont); return; }
+    if (invState.tab === 'proveedor') { fetchAndRenderGrupo(cont, 'proveedor'); return; }
+    if (invState.tab === 'categoria') { fetchAndRenderGrupo(cont, 'categoria'); return; }
     cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:32px 16px;">' +
       '<h2 class="ta-empty__title">En construcción</h2>' +
       '<p class="ta-empty__text">Esta vista llega en la próxima entrega.</p></div></div>';
@@ -755,6 +760,123 @@
     const tf = cont.querySelector('#kx-tipo'); if (tf) tf.addEventListener('change', (e) => { p.tipoFiltro = e.target.value; p.shown = 200; renderKardexPanel(cont); });
     const exK = cont.querySelector('#kx-export'); if (exK) exK.addEventListener('click', () => exportarExcelKardex(exK));
     if (!p._loaded) { p._loaded = true; loadKardexPanelRows().then(() => renderKardexPanel(cont)).catch(e => { cont.innerHTML = head + controls + errorCard(e.message || String(e)); }); }
+  }
+
+  // ============================================================
+  // VISTAS AGREGADAS C — Por proveedor / Por categoría (lectura). RPCs inventario_por_proveedor /
+  // inventario_por_categoria (rollup). Fila clickeable -> drill a referencias del grupo (reúsa
+  // inventario_resumen, que ya hace padre-incluye-hijas). Categoría muestra el desglose de
+  // subcategorías. Clase propia .ta-inv-grp* (no .ta-inv-item -> no la pisa el grid de GENERAL).
+  // ============================================================
+  async function fetchAndRenderGrupo(cont, modo) {
+    const T = window.TiendaIA, sb = T.supabase();
+    cont.innerHTML = loadingCard();
+    try {
+      const rpc = modo === 'proveedor' ? 'inventario_por_proveedor' : 'inventario_por_categoria';
+      const args = modo === 'proveedor' ? { p_tienda_id: T.state.tienda.id } : { p_tienda_id: T.state.tienda.id, p_parent_id: null };
+      const { data, error } = await sb.rpc(rpc, args);
+      if (error) { cont.innerHTML = errorCard(error.message); return; }
+      // conserva el estado de drill si seguimos en el mismo modo
+      const prev = (invState.grupo && invState.grupo.modo === modo) ? invState.grupo : null;
+      invState.grupo = { modo: modo, rows: data || [], drillOpen: prev ? prev.drillOpen : {}, drillCache: prev ? prev.drillCache : {} };
+      renderGrupo(cont);
+    } catch (e) { cont.innerHTML = errorCard(e.message || String(e)); }
+  }
+  function renderGrupo(cont) {
+    const T = window.TiendaIA, g = invState.grupo, modo = g.modo;
+    if (!g.rows.length) {
+      cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">No hay datos para mostrar.</p></div></div>';
+      return;
+    }
+    const total = g.rows.reduce((s, r) => s + Number(r.costo_total || 0), 0);
+    const totalU = g.rows.reduce((s, r) => s + Number(r.cantidad || 0), 0);
+    const totalR = g.rows.reduce((s, r) => s + Number(r.num_referencias || 0), 0);
+    const maxC = Math.max.apply(null, g.rows.map(r => Number(r.costo_total || 0)).concat([1]));
+    const head = '<div class="ta-inv-grphead"><span>' + (modo === 'proveedor' ? 'Proveedor' : 'Categoría') + '</span>' +
+      '<span style="text-align:right;">Refs</span><span style="text-align:right;">Unidades</span><span style="text-align:right;">Costo</span><span>% del inventario (costo)</span></div>';
+    let filas = '';
+    g.rows.forEach(r => {
+      filas += filaGrupo(r, maxC, modo);
+      const key = r.grupo_id || '__null';
+      if (g.drillOpen[key]) filas += drillGrupoHtml(r, modo);
+    });
+    const totalRow = '<div class="ta-inv-grptot"><span>TOTAL</span><span style="text-align:right;">' + totalR + '</span><span style="text-align:right;">' + fmtNum(totalU) + '</span><span style="text-align:right;">' + fmtCOP(total) + '</span><span></span></div>';
+    cont.innerHTML = '<p class="ta-inv-resumen__note" style="margin:0 2px 12px;">' + (modo === 'categoria' ? 'El costo de cada categoría incluye sus subcategorías (sin contar doble). ' : '') + 'Tocá un grupo para ver sus referencias.</p>' +
+      '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-grp">' + head + filas + totalRow + '</div></div>';
+    cont.querySelectorAll('.ta-inv-grprow[data-gid]').forEach(row => row.addEventListener('click', () => toggleGrupo(row.getAttribute('data-gid'), cont)));
+  }
+  function filaGrupo(r, maxC, modo) {
+    const T = window.TiendaIA, g = invState.grupo;
+    const key = r.grupo_id || '__null';
+    const drillable = !r.es_sin_grupo;
+    const abierto = !!g.drillOpen[key];
+    const pct = Number(r.pct || 0);
+    const barW = Math.max(2, Math.round(Number(r.costo_total || 0) / maxC * 100));
+    return '<div class="ta-inv-grprow' + (drillable ? '' : ' ta-inv-grprow--nodrill') + '"' + (drillable ? (' data-gid="' + T.escapeHtml(key) + '" data-open="' + (abierto ? '1' : '0') + '" role="button" tabindex="0"') : '') + '>' +
+      '<div class="ta-inv-grpname"><span class="ta-inv-chevron" aria-hidden="true"' + (drillable ? '' : ' style="visibility:hidden;"') + '>▸</span><strong>' + T.escapeHtml(r.grupo_nombre) + '</strong></div>' +
+      '<div class="ta-inv-grpcell num"><span class="ta-inv-cell__label">Refs</span>' + Number(r.num_referencias) + '</div>' +
+      '<div class="ta-inv-grpcell num"><span class="ta-inv-cell__label">Unidades</span>' + fmtNum(r.cantidad) + '</div>' +
+      '<div class="ta-inv-grpcell num"><span class="ta-inv-cell__label">Costo</span>' + fmtCOP(Number(r.costo_total)) + '</div>' +
+      '<div class="ta-inv-grppct"><span class="ta-inv-cell__label">% del inventario</span><span class="ta-inv-grpbar"><span class="ta-inv-grpbar__fill" style="width:' + barW + '%;"></span></span><span class="ta-inv-grppct__n">' + pct + '%</span></div>' +
+    '</div>';
+  }
+  async function toggleGrupo(gid, cont) {
+    const g = invState.grupo;
+    const open = !g.drillOpen[gid];
+    g.drillOpen[gid] = open;
+    if (open && !g.drillCache[gid]) {
+      renderGrupo(cont); // muestra "Cargando…" en ese grupo
+      try { await loadGrupoDrill(gid); } catch (e) { window.TiendaIA.toast('No se pudo cargar el detalle: ' + (e.message || e), 'error'); }
+    }
+    renderGrupo(cont);
+  }
+  async function loadGrupoDrill(gid) {
+    const T = window.TiendaIA, sb = T.supabase(), g = invState.grupo;
+    const cache = {};
+    if (g.modo === 'proveedor') {
+      const { data } = await sb.rpc('inventario_resumen', { p_tienda_id: T.state.tienda.id, p_periodo: invState.periodo, p_orden: 'valor', p_clasificacion: null, p_proveedor_id: gid, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 });
+      cache.refs = data || [];
+    } else {
+      const subsR = await sb.rpc('inventario_por_categoria', { p_tienda_id: T.state.tienda.id, p_parent_id: gid });
+      const refsR = await sb.rpc('inventario_resumen', { p_tienda_id: T.state.tienda.id, p_periodo: invState.periodo, p_orden: 'valor', p_clasificacion: null, p_proveedor_id: null, p_categoria_id: gid, p_buscar: null, p_limit: null, p_offset: 0 });
+      cache.subs = subsR.data || []; cache.refs = refsR.data || [];
+    }
+    g.drillCache[gid] = cache;
+  }
+  function drillGrupoHtml(r, modo) {
+    const T = window.TiendaIA, g = invState.grupo, gid = r.grupo_id;
+    const c = g.drillCache[gid];
+    if (!c) return '<div class="ta-inv-grpdrill"><div class="ta-inv-grpdrill__msg">Cargando…</div></div>';
+    let html = '<div class="ta-inv-grpdrill">';
+    if (modo === 'categoria' && c.subs && c.subs.length > 1) {
+      html += '<div class="ta-inv-grpsubs">' + c.subs.map(s => '<span class="ta-inv-grpsub"><b>' + T.escapeHtml(s.grupo_nombre) + '</b> ' + fmtCOP(Number(s.costo_total)) + ' · ' + Number(s.num_referencias) + ' refs</span>').join('') + '</div>';
+    }
+    if (!c.refs.length) {
+      html += '<div class="ta-inv-grpdrill__msg">Sin referencias.</div>';
+    } else {
+      html += '<div class="ta-inv-grprefs">' + c.refs.map(ref => '<div class="ta-inv-grpref"><span class="ta-inv-grpref__n"><strong>' + T.escapeHtml(ref.referencia) + '</strong>' + (ref.nombre ? ' <span>' + T.escapeHtml(ref.nombre) + '</span>' : '') + '</span><span class="ta-inv-grpref__m">' + fmtNum(ref.stock_total) + ' uds · ' + fmtCOP(Number(ref.valor_inventario)) + '</span></div>').join('') + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+  async function exportarExcelGrupo(btn, modo) {
+    const T = window.TiendaIA;
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      const g = invState.grupo;
+      if (!g || g.modo !== modo || !g.rows.length) { T.toast('No hay datos para exportar.', 'info'); return; }
+      const enc = modo === 'proveedor' ? 'Proveedor' : 'Categoría';
+      const aoa = [[enc, 'Referencias', 'Unidades', 'Costo', '% del inventario']];
+      g.rows.forEach(r => aoa.push([r.grupo_nombre, numExcel(r.num_referencias), numExcel(r.cantidad), numExcel(r.costo_total), numExcel(r.pct)]));
+      const total = g.rows.reduce((s, r) => s + Number(r.costo_total || 0), 0);
+      const totalU = g.rows.reduce((s, r) => s + Number(r.cantidad || 0), 0);
+      const totalR = g.rows.reduce((s, r) => s + Number(r.num_referencias || 0), 0);
+      aoa.push([]); aoa.push(['TOTAL', numExcel(totalR), numExcel(totalU), numExcel(total), '']);
+      xlsxDescargar(XLSX, [{ nombre: enc, aoa, cols: [{ wch: 24 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 14 }] }],
+        'Inventario_Por' + enc.replace('í', 'i') + '_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
   }
 
   function renderGeneral(cont) {
