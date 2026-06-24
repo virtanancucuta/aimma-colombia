@@ -595,6 +595,7 @@
     return '<div class="ta-inv-item ta-inv-item--kx" data-prod="' + T.escapeHtml(r.producto_id) + '" data-open="' + (abierto ? '1' : '0') + '">' +
       '<span class="ta-inv-chevron" aria-hidden="true">▸</span>' +
       '<div class="ta-inv-kxrefname"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span></div>' +
+      '<button type="button" class="ta-btn ta-inv-kxver" data-prod="' + T.escapeHtml(r.producto_id) + '" data-var="" data-ref="' + T.escapeHtml(r.referencia) + '" data-vlabel="Todas las variantes">Ver movimientos</button>' +
     '</div>';
   }
   function filaDrillKardex(productoId) {
@@ -622,7 +623,7 @@
   }
   // --- Nivel 2: panel del historial de UNA variante ---
   function enterKardexPanel(productoId, varianteId, ref, vlabel) {
-    invState.kardex.panel = { productoId, varianteId, ref, vlabel, desde: '', hasta: '', rows: [], shown: 200, fin: true, _loaded: false };
+    invState.kardex.panel = { productoId, varianteId, ref, vlabel, desde: '', hasta: '', tipoFiltro: 'todos', rows: [], shown: 200, fin: true, _loaded: false };
     renderInventario(); // oculta el card de filtros + enruta a renderKardexPanel (que dispara la carga)
   }
   async function loadKardexPanelRows() {
@@ -630,7 +631,7 @@
     let all = [], offset = 0; const page = 500; let guard = 0;
     while (guard < 20) {
       const { data, error } = await sb.rpc('inventario_kardex', {
-        p_tienda_id: T.state.tienda.id, p_producto_id: p.productoId, p_variante_id: p.varianteId,
+        p_tienda_id: T.state.tienda.id, p_producto_id: p.productoId, p_variante_id: p.varianteId || null,
         p_desde: p.desde || null, p_hasta: p.hasta || null, p_limit: page, p_offset: offset,
       });
       if (error) throw error;
@@ -650,29 +651,37 @@
       '<label class="ta-inv-kxdate">Desde <input type="date" id="kx-desde" class="ta-input" value="' + (p.desde || '') + '"></label>' +
       '<label class="ta-inv-kxdate">Hasta <input type="date" id="kx-hasta" class="ta-input" value="' + (p.hasta || '') + '"></label>' +
       ((p.desde || p.hasta) ? '<button type="button" id="kx-limpiar" class="ta-btn">Limpiar fechas</button>' : '') +
+      '<select id="kx-tipo" class="ta-select" style="max-width:160px;">' +
+        ['todos:Todos', 'entradas:Entradas', 'salidas:Salidas'].map(function (o) { var a = o.split(':'); return '<option value="' + a[0] + '"' + (p.tipoFiltro === a[0] ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') +
+      '</select>' +
       ((p._loaded && p.rows.length) ? '<button type="button" id="kx-export" class="ta-btn">⬇ Exportar Excel</button>' : '') +
     '</div>';
+    const todas = !p.varianteId; // A2: todas las variantes -> columna Variante, SIN saldo (el saldo salta entre variantes)
+    const filtradas = (p.rows || []).filter(function (m) { return p.tipoFiltro === 'entradas' ? m.entrada > 0 : p.tipoFiltro === 'salidas' ? m.salida > 0 : true; }); // B
     let body;
     if (!p._loaded) {
       body = loadingCard();
-    } else if (!p.rows.length) {
-      body = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">Sin movimientos para esta variante en ese rango.</p></div></div>';
+    } else if (!filtradas.length) {
+      body = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">Sin movimientos' + (p.tipoFiltro !== 'todos' ? ' de ese tipo' : '') + ' para ' + (todas ? 'esta referencia' : 'esta variante') + ' en ese rango.</p></div></div>';
     } else {
-      const visibles = p.rows.slice(0, p.shown);
-      const filas = visibles.map(m => {
+      const visibles = filtradas.slice(0, p.shown);
+      const filas = visibles.map(function (m) {
         const ent = m.entrada > 0 ? '<span class="ta-inv-kxin">+' + m.entrada + '</span>' : '—';
         const sal = m.salida > 0 ? '<span class="ta-inv-kxout">-' + m.salida + '</span>' : '—';
-        return '<div class="ta-inv-kxrow ta-inv-kxrow--saldo">' +
+        return '<div class="ta-inv-kxrow ' + (todas ? 'ta-inv-kxrow--var' : 'ta-inv-kxrow--saldo') + '">' +
           '<div class="ta-inv-kxcell"><span class="ta-inv-cell__label">Fecha</span>' + fmtFecha(m.fecha) + '</div>' +
           '<div class="ta-inv-kxcell"><span class="ta-inv-cell__label">Movimiento</span>' + tipoLabel(m) + '</div>' +
           '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Entrada</span>' + ent + '</div>' +
           '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Salida</span>' + sal + '</div>' +
-          '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Saldo</span>' + Number(m.saldo_acumulado) + '</div>' +
+          (todas
+            ? '<div class="ta-inv-kxcell"><span class="ta-inv-cell__label">Variante</span>' + T.escapeHtml([m.color, m.talla].filter(Boolean).join(' · ') || (m.sku || '—')) + '</div>'
+            : '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Saldo</span>' + Number(m.saldo_acumulado) + '</div>') +
           '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Costo unit.</span>' + (m.costo_unitario != null ? fmtCOP(Number(m.costo_unitario)) : '—') + '</div>' +
         '</div>';
       }).join('');
-      const headRow = '<div class="ta-inv-kxhrow ta-inv-kxrow--saldo"><span>Fecha</span><span>Movimiento</span><span style="text-align:right;">Entrada</span><span style="text-align:right;">Salida</span><span style="text-align:right;">Saldo</span><span style="text-align:right;">Costo unit.</span></div>';
-      const masBtn = (p.shown < p.rows.length) ? '<div style="text-align:center;margin-top:12px;"><button type="button" id="kx-mas" class="ta-btn">Ver más movimientos</button></div>' : '';
+      const headRow = '<div class="ta-inv-kxhrow ' + (todas ? 'ta-inv-kxrow--var' : 'ta-inv-kxrow--saldo') + '"><span>Fecha</span><span>Movimiento</span><span style="text-align:right;">Entrada</span><span style="text-align:right;">Salida</span>' +
+        (todas ? '<span>Variante</span>' : '<span style="text-align:right;">Saldo</span>') + '<span style="text-align:right;">Costo unit.</span></div>';
+      const masBtn = (p.shown < filtradas.length) ? '<div style="text-align:center;margin-top:12px;"><button type="button" id="kx-mas" class="ta-btn">Ver más movimientos</button></div>' : '';
       body = '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-kxtable">' + headRow + filas + '</div></div>' + masBtn +
         (p.fin ? '' : '<p class="ta-inv-resumen__note" style="margin:10px 2px 0;">Historial muy largo: mostrando los primeros 10.000 movimientos. Refiná por fecha.</p>');
     }
@@ -684,6 +693,7 @@
     if (dH) dH.addEventListener('change', (e) => { p.hasta = e.target.value; reload(); });
     if (lim) lim.addEventListener('click', () => { p.desde = ''; p.hasta = ''; reload(); });
     if (mas) mas.addEventListener('click', () => { p.shown += 200; renderKardexPanel(cont); });
+    const tf = cont.querySelector('#kx-tipo'); if (tf) tf.addEventListener('change', (e) => { p.tipoFiltro = e.target.value; p.shown = 200; renderKardexPanel(cont); });
     const exK = cont.querySelector('#kx-export'); if (exK) exK.addEventListener('click', () => exportarExcelKardex(exK));
     if (!p._loaded) { p._loaded = true; loadKardexPanelRows().then(() => renderKardexPanel(cont)).catch(e => { cont.innerHTML = head + controls + errorCard(e.message || String(e)); }); }
   }
@@ -801,7 +811,9 @@
   }
 
   function wireGeneral(cont) {
-    cont.querySelectorAll('.ta-inv-item').forEach(it => it.addEventListener('click', () => {
+    cont.querySelectorAll('.ta-inv-item').forEach(it => it.addEventListener('click', (e) => {
+      // un botón dentro de la fila (ej. "Ver movimientos" del Kardex) no debe togglear el drop
+      if (e.target.closest && e.target.closest('button')) return;
       // si el usuario esta seleccionando texto de una celda, no togglear (dejar copiar)
       if (window.getSelection && String(window.getSelection()).length > 0) return;
       toggleDrill(it.getAttribute('data-prod'));
@@ -1051,13 +1063,19 @@
     try {
       const XLSX = await loadXLSX();
       if (!p || !p.rows || !p.rows.length) { T.toast('No hay movimientos para exportar.', 'info'); return; }
+      const todas = !p.varianteId; // todas -> columna Variante; una -> Saldo
+      const filtradas = p.rows.filter(function (m) { return p.tipoFiltro === 'entradas' ? m.entrada > 0 : p.tipoFiltro === 'salidas' ? m.salida > 0 : true; });
+      if (!filtradas.length) { T.toast('No hay movimientos de ese tipo para exportar.', 'info'); return; }
       const aoa = [
         ['Kardex', p.ref + ' · ' + p.vlabel],
         ['Rango', (p.desde || 'inicio') + ' a ' + (p.hasta || 'hoy')],
+        ['Tipo', p.tipoFiltro === 'entradas' ? 'Entradas' : p.tipoFiltro === 'salidas' ? 'Salidas' : 'Todos'],
         [],
-        ['Fecha', 'Movimiento', 'Entrada', 'Salida', 'Saldo', 'Costo unit.'],
+        ['Fecha', 'Movimiento', 'Entrada', 'Salida', (todas ? 'Variante' : 'Saldo'), 'Costo unit.'],
       ];
-      p.rows.forEach(m => aoa.push([fechaExcel(m.fecha), tipoLabel(m), numExcel(m.entrada), numExcel(m.salida), numExcel(m.saldo_acumulado), (m.costo_unitario != null ? numExcel(m.costo_unitario) : '')]));
+      filtradas.forEach(m => aoa.push([fechaExcel(m.fecha), tipoLabel(m), numExcel(m.entrada), numExcel(m.salida),
+        (todas ? ([m.color, m.talla].filter(Boolean).join(' · ') || (m.sku || '')) : numExcel(m.saldo_acumulado)),
+        (m.costo_unitario != null ? numExcel(m.costo_unitario) : '')]));
       xlsxDescargar(XLSX, [{ nombre: 'Kardex', aoa, cols: [{ wch: 14 }, { wch: 16 }, { wch: 9 }, { wch: 9 }, { wch: 10 }, { wch: 12 }] }],
         'Kardex_' + (p.ref || 'ref').replace(/[^\w-]/g, '') + '_' + (p.vlabel || '').replace(/[^\w-]/g, '') + '_' + hoyExcel() + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
