@@ -59,12 +59,23 @@ describe('Productos · segunda foto al hover', () => {
     expect(tag).toContain('motion-reduce:transition-none'); // respeta prefers-reduced-motion
   });
 
-  test('IC: la segunda imagen usa object-cover full-bleed (sin p-4) como la primaria', async () => {
+  test('IC: la segunda imagen usa object-contain p-4 (caja cuadrada -> foto entera, sin recorte)', async () => {
     const html = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
     const tag = imgTag(html, 'hover.jpg');
-    expect(tag).toContain('object-cover');
-    expect(tag).not.toContain('object-contain');
-    expect(tag).not.toContain('p-4');
+    expect(tag).toContain('object-contain');
+    expect(tag).toContain('p-4');
+    expect(tag).not.toContain('object-cover');
+  });
+
+  test('IC: la principal se desvanece al hover SOLO si hay 2a foto', async () => {
+    // Con 2a foto: la principal hace fade-out (group-hover:opacity-0) para que el crossfade
+    // sea limpio aunque las dos fotos difieran de proporcion (no asoma la principal).
+    const conHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
+    expect(imgTag(conHover, 'main.jpg')).toContain('group-hover:opacity-0');
+    // Sin 2a foto: la principal NO se desvanece (un producto de una sola foto no desaparece al hover).
+    const noGal = [{ ...HOVER_ROW[0], fotos_galeria: [] }];
+    const sinHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), noGal);
+    expect(imgTag(sinHover, 'main.jpg')).not.toContain('group-hover:opacity-0');
   });
 
   test('producto SIN galeria -> sin segunda imagen aunque el toggle este ON', async () => {

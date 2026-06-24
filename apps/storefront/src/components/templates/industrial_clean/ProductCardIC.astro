@@ -22,6 +22,9 @@ interface Props {
 }
 
 const { producto, hoverSegundaFoto = false } = Astro.props;
+// Fase A: hay 2a foto que mostrar al hover. Gatea el fade-out de la principal (un producto de
+// una sola foto NO debe desvanecerse al pasar el mouse).
+const mostrarHover = hoverSegundaFoto && !!producto.foto_hover;
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -64,7 +67,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
           width={400}
           height={400}
           loading="lazy"
-          class="h-full w-full object-cover"
+          class={`h-full w-full object-contain p-4${mostrarHover ? ' transition-opacity duration-300 group-hover:opacity-0 group-focus-within:opacity-0 motion-reduce:transition-none' : ''}`}
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -83,16 +86,17 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
         </div>
       )}
 
-      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). object-cover full-bleed
-          como FB/MA/EM: llena el marco y tapa la principal sola (sin opacity en la principal). */}
-      {hoverSegundaFoto && producto.foto_hover && (
+      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). object-contain p-4: caja
+          cuadrada de IC + fotos verticales -> contain muestra la foto ENTERA sin recortar. La
+          principal hace fade-out (gateado por mostrarHover) para un crossfade limpio sin asomo. */}
+      {mostrarHover && (
         <OptimizedImage
           src={producto.foto_hover}
           alt=""
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+          class="absolute inset-0 h-full w-full object-contain p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
         />
       )}
     </div>
