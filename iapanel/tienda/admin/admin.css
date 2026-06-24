@@ -561,6 +561,7 @@ a:hover { text-decoration: underline; }
 .ta-inv-kxcell--var { padding-left:4px; padding-right:10px; } /* FIX 1: aire alrededor de Variante */
 .ta-inv-kxtipo { display:inline-flex; flex-direction:column; gap:2px; } /* FIX 3: mini-label sobre el dropdown de tipo */
 .ta-inv-kxtipo__lbl { font-size:11px; color:var(--ta-text-soft); }
+.ta-inv-kxlf { margin:0 2px 12px; } /* FIX 4: barra de filtro de la lista Nivel 1 */
 .ta-inv-kxin { color:#0f5132; font-weight:600; } .ta-inv-kxout { color:#8a5a00; font-weight:600; }
 @media (min-width:1500px) {
   .ta-main--inv-wide .ta-inv-kxhrow.ta-inv-kxrow--saldo, .ta-main--inv-wide .ta-inv-kxrow--saldo { grid-template-columns:130px minmax(160px,1.4fr) 100px 100px 120px minmax(160px,1.2fr); }

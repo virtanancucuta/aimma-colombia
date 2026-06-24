@@ -561,7 +561,7 @@
     return base;
   }
   function fetchAndRenderKardex(cont) {
-    if (!invState.kardex) invState.kardex = { refs: [], panel: null };
+    if (!invState.kardex) invState.kardex = { refs: [], panel: null, listaFiltro: 'todos' };
     if (invState.kardex.panel) { renderKardexPanel(cont); return; }
     renderKardexList(cont);
   }
@@ -577,14 +577,29 @@
       });
       if (error) { cont.innerHTML = errorCard(error.message); return; }
       invState.kardex.refs = data || [];
+      // FIX 4: filtro Nivel 1 por tipo de movimiento (cliente, sobre tuvo_entrada/tuvo_salida de la RPC). "alguna vez".
+      const lf = invState.kardex.listaFiltro || 'todos';
+      const refs = invState.kardex.refs.filter(function (r) { return lf === 'entradas' ? r.tuvo_entrada : lf === 'salidas' ? r.tuvo_salida : true; });
+      const barra = '<div class="ta-inv-kxlf"><label class="ta-inv-kxtipo"><span class="ta-inv-kxtipo__lbl">Filtrar por tipo de movimiento</span>' +
+        '<select id="kx-lista-filtro" class="ta-select" style="max-width:200px;">' +
+          [['todos', 'Todos'], ['entradas', 'Con entradas'], ['salidas', 'Con salidas']].map(function (o) { return '<option value="' + o[0] + '"' + (lf === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+        '</select></label></div>';
       if (!invState.kardex.refs.length) {
         cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">No hay referencias con esos filtros.</p></div></div>';
         return;
       }
-      let html = '';
-      invState.kardex.refs.forEach(r => { html += filaKxRef(r); if (invState.drillOpen[r.producto_id]) html += drillHtml(r.producto_id); });
+      let listaHtml;
+      if (!refs.length) {
+        listaHtml = '<div class="ta-empty" style="padding:24px 16px;"><p class="ta-empty__text">Ninguna referencia ' + (lf === 'entradas' ? 'con entradas' : 'con salidas') + '.</p></div>';
+      } else {
+        let html = '';
+        refs.forEach(r => { html += filaKxRef(r); if (invState.drillOpen[r.producto_id]) html += drillHtml(r.producto_id); });
+        listaHtml = '<div class="ta-inv-list ta-inv-list--kx">' + html + '</div>';
+      }
       cont.innerHTML = '<p class="ta-inv-resumen__note" style="margin:0 2px 12px;">Tocá una referencia para ver sus variantes y entrar a su historial.</p>' +
-        '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-list ta-inv-list--kx">' + html + '</div></div>';
+        barra +
+        '<div class="ta-card" style="padding:0;overflow:hidden;">' + listaHtml + '</div>';
+      const lfSel = cont.querySelector('#kx-lista-filtro'); if (lfSel) lfSel.addEventListener('change', function (e) { invState.kardex.listaFiltro = e.target.value; renderKardexList(cont); });
       wireGeneral(cont); // wirea el clic de la fila -> toggleDrill (mismo gesto que los otros tabs)
       if (!cont._kxDelegated) { cont._kxDelegated = true; cont.addEventListener('click', kardexVerDelegate); } // botones "Ver movimientos" (insertados por el drill)
     } catch (e) { cont.innerHTML = errorCard(e.message || String(e)); }
