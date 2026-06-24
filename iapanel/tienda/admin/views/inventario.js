@@ -651,9 +651,11 @@
       '<label class="ta-inv-kxdate">Desde <input type="date" id="kx-desde" class="ta-input" value="' + (p.desde || '') + '"></label>' +
       '<label class="ta-inv-kxdate">Hasta <input type="date" id="kx-hasta" class="ta-input" value="' + (p.hasta || '') + '"></label>' +
       ((p.desde || p.hasta) ? '<button type="button" id="kx-limpiar" class="ta-btn">Limpiar fechas</button>' : '') +
-      '<select id="kx-tipo" class="ta-select" style="max-width:160px;">' +
-        ['todos:Todos', 'entradas:Entradas', 'salidas:Salidas'].map(function (o) { var a = o.split(':'); return '<option value="' + a[0] + '"' + (p.tipoFiltro === a[0] ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') +
-      '</select>' +
+      '<label class="ta-inv-kxtipo"><span class="ta-inv-kxtipo__lbl">Filtrar por tipo de movimiento</span>' +
+        '<select id="kx-tipo" class="ta-select" style="max-width:180px;">' +
+          ['todos:Todos', 'entradas:Entradas', 'salidas:Salidas'].map(function (o) { var a = o.split(':'); return '<option value="' + a[0] + '"' + (p.tipoFiltro === a[0] ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') +
+        '</select>' +
+      '</label>' +
       ((p._loaded && p.rows.length) ? '<button type="button" id="kx-export" class="ta-btn">⬇ Exportar Excel</button>' : '') +
     '</div>';
     const todas = !p.varianteId; // A2: todas las variantes -> columna Variante, SIN saldo (el saldo salta entre variantes)
@@ -664,23 +666,36 @@
     } else if (!filtradas.length) {
       body = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">Sin movimientos' + (p.tipoFiltro !== 'todos' ? ' de ese tipo' : '') + ' para ' + (todas ? 'esta referencia' : 'esta variante') + ' en ese rango.</p></div></div>';
     } else {
+      // FIX 2: columnas condicionales al filtro (Entradas oculta Salida; Salidas oculta Entrada).
+      // Grilla inline para no multiplicar clases CSS por combinación (todas/una × filtro).
+      const showEnt = p.tipoFiltro !== 'salidas';
+      const showSal = p.tipoFiltro !== 'entradas';
+      const gridCols = ['110px', 'minmax(120px,1fr)']
+        .concat(showEnt ? ['78px'] : [])
+        .concat(showSal ? ['78px'] : [])
+        .concat([todas ? 'minmax(150px,1.4fr)' : '96px']) // FIX 1: Variante con más aire
+        .concat(['minmax(120px,1fr)']).join(' ');
+      const gstyle = 'grid-template-columns:' + gridCols + ';';
       const visibles = filtradas.slice(0, p.shown);
       const filas = visibles.map(function (m) {
         const ent = m.entrada > 0 ? '<span class="ta-inv-kxin">+' + m.entrada + '</span>' : '—';
         const sal = m.salida > 0 ? '<span class="ta-inv-kxout">-' + m.salida + '</span>' : '—';
-        return '<div class="ta-inv-kxrow ' + (todas ? 'ta-inv-kxrow--var' : 'ta-inv-kxrow--saldo') + '">' +
+        return '<div class="ta-inv-kxrow" style="' + gstyle + '">' +
           '<div class="ta-inv-kxcell"><span class="ta-inv-cell__label">Fecha</span>' + fmtFecha(m.fecha) + '</div>' +
           '<div class="ta-inv-kxcell"><span class="ta-inv-cell__label">Movimiento</span>' + tipoLabel(m) + '</div>' +
-          '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Entrada</span>' + ent + '</div>' +
-          '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Salida</span>' + sal + '</div>' +
+          (showEnt ? '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Entrada</span>' + ent + '</div>' : '') +
+          (showSal ? '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Salida</span>' + sal + '</div>' : '') +
           (todas
-            ? '<div class="ta-inv-kxcell"><span class="ta-inv-cell__label">Variante</span>' + T.escapeHtml([m.color, m.talla].filter(Boolean).join(' · ') || (m.sku || '—')) + '</div>'
+            ? '<div class="ta-inv-kxcell ta-inv-kxcell--var"><span class="ta-inv-cell__label">Variante</span>' + T.escapeHtml([m.color, m.talla].filter(Boolean).join(' · ') || (m.sku || '—')) + '</div>'
             : '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Saldo</span>' + Number(m.saldo_acumulado) + '</div>') +
           '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Costo unit.</span>' + (m.costo_unitario != null ? fmtCOP(Number(m.costo_unitario)) : '—') + '</div>' +
         '</div>';
       }).join('');
-      const headRow = '<div class="ta-inv-kxhrow ' + (todas ? 'ta-inv-kxrow--var' : 'ta-inv-kxrow--saldo') + '"><span>Fecha</span><span>Movimiento</span><span style="text-align:right;">Entrada</span><span style="text-align:right;">Salida</span>' +
-        (todas ? '<span>Variante</span>' : '<span style="text-align:right;">Saldo</span>') + '<span style="text-align:right;">Costo unit.</span></div>';
+      const headRow = '<div class="ta-inv-kxhrow" style="' + gstyle + '"><span>Fecha</span><span>Movimiento</span>' +
+        (showEnt ? '<span style="text-align:right;">Entrada</span>' : '') +
+        (showSal ? '<span style="text-align:right;">Salida</span>' : '') +
+        (todas ? '<span>Variante</span>' : '<span style="text-align:right;">Saldo</span>') +
+        '<span style="text-align:right;">Costo unit.</span></div>';
       const masBtn = (p.shown < filtradas.length) ? '<div style="text-align:center;margin-top:12px;"><button type="button" id="kx-mas" class="ta-btn">Ver más movimientos</button></div>' : '';
       body = '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-inv-kxtable">' + headRow + filas + '</div></div>' + masBtn +
         (p.fin ? '' : '<p class="ta-inv-resumen__note" style="margin:10px 2px 0;">Historial muy largo: mostrando los primeros 10.000 movimientos. Refiná por fecha.</p>');
