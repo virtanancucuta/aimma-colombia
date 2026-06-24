@@ -560,6 +560,12 @@
     if (m.tipo === 'ajuste') return Number(m.cantidad) > 0 ? 'Ajuste (+)' : 'Ajuste (−)';
     return base;
   }
+  // Mini-texto de qué incluye cada opción del filtro de tipo (panel y lista).
+  function kardexTipoDesc(v) {
+    return v === 'abastecimiento' ? 'Movimientos de stock que hiciste vos: entradas, ajustes y devoluciones (sin ventas).'
+      : v === 'ventas' ? 'Solo las ventas (salidas por pedidos).'
+      : 'Todo el historial: abastecimiento y ventas.';
+  }
   function fetchAndRenderKardex(cont) {
     if (!invState.kardex) invState.kardex = { refs: [], panel: null, listaFiltro: 'todos' };
     if (invState.kardex.panel) { renderKardexPanel(cont); return; }
@@ -577,20 +583,38 @@
       });
       if (error) { cont.innerHTML = errorCard(error.message); return; }
       invState.kardex.refs = data || [];
-      // FIX 4: filtro Nivel 1 por tipo de movimiento (cliente, sobre tuvo_entrada/tuvo_salida de la RPC). "alguna vez".
+      // Fix de vista: filtro Nivel 1 por tipo (Entradas y ajustes / Ventas / Todos) + rango de fechas (cliente, sobre
+      // tuvo_abastecimiento/tuvo_venta + fecha_ultimo_ingreso/fecha_ultima_venta de la RPC). Fecha = del ÚLTIMO mov del tipo (aprox).
       const lf = invState.kardex.listaFiltro || 'todos';
-      const refs = invState.kardex.refs.filter(function (r) { return lf === 'entradas' ? r.tuvo_entrada : lf === 'salidas' ? r.tuvo_salida : true; });
-      const barra = '<div class="ta-inv-kxlf"><label class="ta-inv-kxtipo"><span class="ta-inv-kxtipo__lbl">Filtrar por tipo de movimiento</span>' +
-        '<select id="kx-lista-filtro" class="ta-select" style="max-width:200px;">' +
-          [['todos', 'Todos'], ['entradas', 'Con entradas'], ['salidas', 'Con salidas']].map(function (o) { return '<option value="' + o[0] + '"' + (lf === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
-        '</select></label></div>';
+      const ld = invState.kardex.listaDesde || '', lh = invState.kardex.listaHasta || '';
+      const refs = invState.kardex.refs.filter(function (r) {
+        const okTipo = lf === 'abastecimiento' ? r.tuvo_abastecimiento : lf === 'ventas' ? r.tuvo_venta : true;
+        if (!okTipo) return false;
+        if (!ld && !lh) return true;
+        const fAb = r.fecha_ultimo_ingreso ? String(r.fecha_ultimo_ingreso).slice(0, 10) : null;
+        const fVe = r.fecha_ultima_venta ? String(r.fecha_ultima_venta).slice(0, 10) : null;
+        const f = lf === 'abastecimiento' ? fAb : lf === 'ventas' ? fVe : [fAb, fVe].filter(Boolean).sort().pop();
+        if (!f) return false;
+        if (ld && f < ld) return false;
+        if (lh && f > lh) return false;
+        return true;
+      });
+      const barra = '<div class="ta-inv-kxlf">' +
+        '<label class="ta-inv-kxtipo"><span class="ta-inv-kxtipo__lbl">Filtrar por tipo de movimiento</span>' +
+          '<select id="kx-lista-filtro" class="ta-select" style="max-width:200px;">' +
+            [['abastecimiento', 'Entradas y ajustes'], ['ventas', 'Ventas'], ['todos', 'Todos']].map(function (o) { return '<option value="' + o[0] + '"' + (lf === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+          '</select><span class="ta-inv-kxtipo__desc">' + kardexTipoDesc(lf) + '</span></label>' +
+        '<label class="ta-inv-kxdate">Desde <input type="date" id="kx-lista-desde" class="ta-input" value="' + ld + '"></label>' +
+        '<label class="ta-inv-kxdate">Hasta <input type="date" id="kx-lista-hasta" class="ta-input" value="' + lh + '"></label>' +
+        ((ld || lh) ? '<button type="button" id="kx-lista-limpiar" class="ta-btn">Limpiar fechas</button>' : '') +
+      '</div>';
       if (!invState.kardex.refs.length) {
         cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:28px 16px;"><p class="ta-empty__text">No hay referencias con esos filtros.</p></div></div>';
         return;
       }
       let listaHtml;
       if (!refs.length) {
-        listaHtml = '<div class="ta-empty" style="padding:24px 16px;"><p class="ta-empty__text">Ninguna referencia ' + (lf === 'entradas' ? 'con entradas' : 'con salidas') + '.</p></div>';
+        listaHtml = '<div class="ta-empty" style="padding:24px 16px;"><p class="ta-empty__text">Ninguna referencia ' + (lf === 'abastecimiento' ? 'con entradas o ajustes' : lf === 'ventas' ? 'con ventas' : 'con movimientos') + ((ld || lh) ? ' en ese rango' : '') + '.</p></div>';
       } else {
         let html = '';
         refs.forEach(r => { html += filaKxRef(r); if (invState.drillOpen[r.producto_id]) html += drillHtml(r.producto_id); });
@@ -600,6 +624,9 @@
         barra +
         '<div class="ta-card" style="padding:0;overflow:hidden;">' + listaHtml + '</div>';
       const lfSel = cont.querySelector('#kx-lista-filtro'); if (lfSel) lfSel.addEventListener('change', function (e) { invState.kardex.listaFiltro = e.target.value; renderKardexList(cont); });
+      const ldI = cont.querySelector('#kx-lista-desde'); if (ldI) ldI.addEventListener('change', function (e) { invState.kardex.listaDesde = e.target.value; renderKardexList(cont); });
+      const lhI = cont.querySelector('#kx-lista-hasta'); if (lhI) lhI.addEventListener('change', function (e) { invState.kardex.listaHasta = e.target.value; renderKardexList(cont); });
+      const lLimp = cont.querySelector('#kx-lista-limpiar'); if (lLimp) lLimp.addEventListener('click', function () { invState.kardex.listaDesde = ''; invState.kardex.listaHasta = ''; renderKardexList(cont); });
       wireGeneral(cont); // wirea el clic de la fila -> toggleDrill (mismo gesto que los otros tabs)
       if (!cont._kxDelegated) { cont._kxDelegated = true; cont.addEventListener('click', kardexVerDelegate); } // botones "Ver movimientos" (insertados por el drill)
     } catch (e) { cont.innerHTML = errorCard(e.message || String(e)); }
@@ -638,7 +665,8 @@
   }
   // --- Nivel 2: panel del historial de UNA variante ---
   function enterKardexPanel(productoId, varianteId, ref, vlabel) {
-    invState.kardex.panel = { productoId, varianteId, ref, vlabel, desde: '', hasta: '', tipoFiltro: 'todos', rows: [], shown: 200, fin: true, _loaded: false };
+    const k = invState.kardex;
+    invState.kardex.panel = { productoId, varianteId, ref, vlabel, desde: k.listaDesde || '', hasta: k.listaHasta || '', tipoFiltro: 'todos', rows: [], shown: 200, fin: true, _loaded: false };
     renderInventario(); // oculta el card de filtros + enruta a renderKardexPanel (que dispara la carga)
   }
   async function loadKardexPanelRows() {
@@ -667,14 +695,15 @@
       '<label class="ta-inv-kxdate">Hasta <input type="date" id="kx-hasta" class="ta-input" value="' + (p.hasta || '') + '"></label>' +
       ((p.desde || p.hasta) ? '<button type="button" id="kx-limpiar" class="ta-btn">Limpiar fechas</button>' : '') +
       '<label class="ta-inv-kxtipo"><span class="ta-inv-kxtipo__lbl">Filtrar por tipo de movimiento</span>' +
-        '<select id="kx-tipo" class="ta-select" style="max-width:180px;">' +
-          ['todos:Todos', 'entradas:Entradas', 'salidas:Salidas'].map(function (o) { var a = o.split(':'); return '<option value="' + a[0] + '"' + (p.tipoFiltro === a[0] ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') +
-        '</select>' +
+        '<select id="kx-tipo" class="ta-select" style="max-width:200px;">' +
+          [['abastecimiento', 'Entradas y ajustes'], ['ventas', 'Ventas'], ['todos', 'Todos']].map(function (o) { return '<option value="' + o[0] + '"' + (p.tipoFiltro === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+        '</select><span class="ta-inv-kxtipo__desc">' + kardexTipoDesc(p.tipoFiltro) + '</span>' +
       '</label>' +
       ((p._loaded && p.rows.length) ? '<button type="button" id="kx-export" class="ta-btn">⬇ Exportar Excel</button>' : '') +
     '</div>';
     const todas = !p.varianteId; // A2: todas las variantes -> columna Variante, SIN saldo (el saldo salta entre variantes)
-    const filtradas = (p.rows || []).filter(function (m) { return p.tipoFiltro === 'entradas' ? m.entrada > 0 : p.tipoFiltro === 'salidas' ? m.salida > 0 : true; }); // B
+    // Fix de vista: abastecimiento = todo menos venta; ventas = solo venta; todos = todo.
+    const filtradas = (p.rows || []).filter(function (m) { return p.tipoFiltro === 'abastecimiento' ? m.tipo !== 'venta' : p.tipoFiltro === 'ventas' ? m.tipo === 'venta' : true; });
     let body;
     if (!p._loaded) {
       body = loadingCard();
@@ -683,8 +712,8 @@
     } else {
       // FIX 2: columnas condicionales al filtro (Entradas oculta Salida; Salidas oculta Entrada).
       // Grilla inline para no multiplicar clases CSS por combinación (todas/una × filtro).
-      const showEnt = p.tipoFiltro !== 'salidas';
-      const showSal = p.tipoFiltro !== 'entradas';
+      const showEnt = p.tipoFiltro !== 'ventas'; // ventas no tienen entrada
+      const showSal = true; // abastecimiento puede tener salida (ajuste−); ventas son salidas
       const gridCols = ['110px', 'minmax(120px,1fr)']
         .concat(showEnt ? ['78px'] : [])
         .concat(showSal ? ['78px'] : [])
@@ -1094,12 +1123,12 @@
       const XLSX = await loadXLSX();
       if (!p || !p.rows || !p.rows.length) { T.toast('No hay movimientos para exportar.', 'info'); return; }
       const todas = !p.varianteId; // todas -> columna Variante; una -> Saldo
-      const filtradas = p.rows.filter(function (m) { return p.tipoFiltro === 'entradas' ? m.entrada > 0 : p.tipoFiltro === 'salidas' ? m.salida > 0 : true; });
+      const filtradas = p.rows.filter(function (m) { return p.tipoFiltro === 'abastecimiento' ? m.tipo !== 'venta' : p.tipoFiltro === 'ventas' ? m.tipo === 'venta' : true; });
       if (!filtradas.length) { T.toast('No hay movimientos de ese tipo para exportar.', 'info'); return; }
       const aoa = [
         ['Kardex', p.ref + ' · ' + p.vlabel],
         ['Rango', (p.desde || 'inicio') + ' a ' + (p.hasta || 'hoy')],
-        ['Tipo', p.tipoFiltro === 'entradas' ? 'Entradas' : p.tipoFiltro === 'salidas' ? 'Salidas' : 'Todos'],
+        ['Tipo', p.tipoFiltro === 'abastecimiento' ? 'Entradas y ajustes' : p.tipoFiltro === 'ventas' ? 'Ventas' : 'Todos'],
         [],
         ['Fecha', 'Movimiento', 'Entrada', 'Salida', (todas ? 'Variante' : 'Saldo'), 'Costo unit.'],
       ];

@@ -559,9 +559,10 @@ a:hover { text-decoration: underline; }
 .ta-inv-kxrow:last-child { border-bottom:none; }
 .ta-inv-kxcell { min-width:0; } .ta-inv-kxcell.num { text-align:right; font-variant-numeric:tabular-nums; }
 .ta-inv-kxcell--var { padding-left:4px; padding-right:10px; } /* FIX 1: aire alrededor de Variante */
-.ta-inv-kxtipo { display:inline-flex; flex-direction:column; gap:2px; } /* FIX 3: mini-label sobre el dropdown de tipo */
+.ta-inv-kxtipo { display:inline-flex; flex-direction:column; gap:2px; } /* mini-label sobre el dropdown de tipo */
 .ta-inv-kxtipo__lbl { font-size:11px; color:var(--ta-text-soft); }
-.ta-inv-kxlf { margin:0 2px 12px; } /* FIX 4: barra de filtro de la lista Nivel 1 */
+.ta-inv-kxtipo__desc { font-size:11px; color:var(--ta-text-mut); max-width:280px; line-height:1.3; } /* mini-texto de qué incluye el filtro */
+.ta-inv-kxlf { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin:0 2px 12px; } /* barra de filtro de la lista Nivel 1 */
 .ta-inv-kxin { color:#0f5132; font-weight:600; } .ta-inv-kxout { color:#8a5a00; font-weight:600; }
 @media (min-width:1500px) {
   .ta-main--inv-wide .ta-inv-kxhrow.ta-inv-kxrow--saldo, .ta-main--inv-wide .ta-inv-kxrow--saldo { grid-template-columns:130px minmax(160px,1.4fr) 100px 100px 120px minmax(160px,1.2fr); }
