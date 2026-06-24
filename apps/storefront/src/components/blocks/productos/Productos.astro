@@ -22,6 +22,8 @@ const p = (section as Extract<Section, { tipo: 'productos' }>).props;
 const { tienda, supabase } = Astro.locals;
 const isPreview = Astro.locals?.isPreview;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
+// Fase A: toggle por tienda (default ON). Espeja como Header lee mostrar_buscador_header.
+const hoverSegundaFoto = (tienda as any).hover_segunda_foto !== false;
 
 // Esqueleto compartido: fetch con try/catch -> empty state, nunca 500.
 let productos: Awaited<ReturnType<typeof getProductosPorTienda>> = [];
@@ -99,17 +101,17 @@ if (plantilla === 'fashion_bold') {
       {productos.map((prod, i) => (
         plantilla === 'minimal_artesanal' ? (
           <div class={`ma-grid-item ${i % 6 === 1 || i % 6 === 4 ? 'lg:translate-y-12' : ''}`}>
-            <ProductCard producto={prod} />
+            <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} />
           </div>
         ) : plantilla === 'editorial_magazine' ? (
           <article class="em-grid-item">
             <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">
               Pieza {String(i + 1).padStart(2, '0')}
             </p>
-            <ProductCard producto={prod} />
+            <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} />
           </article>
         ) : (
-          <ProductCard producto={prod} />
+          <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} />
         )
       ))}
     </div>

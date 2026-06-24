@@ -63,9 +63,23 @@ export function makeProductosSection(props: {
   };
 }
 
-export function makeTienda(plantillaSlug: string): any {
-  return { id: 'tienda-uuid', plantilla: { slug: plantillaSlug } };
+export function makeTienda(
+  plantillaSlug: string,
+  opts: { hoverSegundaFoto?: boolean } = {}
+): any {
+  const t: any = { id: 'tienda-uuid', plantilla: { slug: plantillaSlug } };
+  // Fase A: solo escribimos el campo cuando el toggle es OFF (ausente -> default ON, igual que
+  // el buscador). Asi las tiendas sin hover quedan identicas a las de los snapshots historicos.
+  if (opts.hoverSegundaFoto === false) t.hover_segunda_foto = false;
+  return t;
 }
+
+// Fase A · fixture con galeria: h01 tiene segunda foto (ejerce el swap); h02 no (degrada limpio).
+// Separado de PRODUCTOS_FIXTURE para no alterar los snapshots historicos del fixture default.
+export const PRODUCTOS_HOVER_FIXTURE = [
+  { id: 'h01', nombre: 'Con Galeria', slug: 'con-galeria', referencia: 'HREF1', precio_venta: 120000, precio_promo: null, foto_principal_url: 'https://h/main1.jpg', fotos_galeria: ['https://h/main1.jpg', 'https://h/hover1.jpg'], estado: 'activo', producto_variantes: [{ stock: 5, reservado: 0 }] },
+  { id: 'h02', nombre: 'Sin Galeria', slug: 'sin-galeria', referencia: 'HREF2', precio_venta: 80000, precio_promo: null, foto_principal_url: 'https://h/main2.jpg', fotos_galeria: [], estado: 'activo', producto_variantes: [{ stock: 3, reservado: 0 }] },
+];
 
 // Section builder generico (tipo + props arbitrarias) para tipos sin fetch.
 export function makeSection(tipo: string, props: any): any {

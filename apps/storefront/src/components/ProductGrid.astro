@@ -15,6 +15,7 @@ interface Props {
     precio: number;
     precio_anterior?: number | null;
     foto_principal?: string | null;
+    foto_hover?: string | null;
     stock_disponible?: number | null;
     referencia?: string | null;
   }>;
@@ -24,11 +25,13 @@ interface Props {
 const { productos, emptyMessage } = Astro.props;
 const { tienda } = Astro.locals;
 const slug = tienda.plantilla?.slug;
+// Fase A: toggle por tienda (default ON). Espeja como Header lee mostrar_buscador_header.
+const hoverSegundaFoto = (tienda as any).hover_segunda_foto !== false;
 ---
 
-{slug === 'fashion_bold' && <ProductGridFB productos={productos} emptyMessage={emptyMessage} />}
-{slug === 'minimal_artesanal' && <ProductGridMA productos={productos} emptyMessage={emptyMessage} />}
-{slug === 'editorial_magazine' && <ProductGridEM productos={productos} emptyMessage={emptyMessage} />}
+{slug === 'fashion_bold' && <ProductGridFB productos={productos} emptyMessage={emptyMessage} hoverSegundaFoto={hoverSegundaFoto} />}
+{slug === 'minimal_artesanal' && <ProductGridMA productos={productos} emptyMessage={emptyMessage} hoverSegundaFoto={hoverSegundaFoto} />}
+{slug === 'editorial_magazine' && <ProductGridEM productos={productos} emptyMessage={emptyMessage} hoverSegundaFoto={hoverSegundaFoto} />}
 {(slug === 'industrial_clean' || !slug || !['fashion_bold', 'minimal_artesanal', 'editorial_magazine'].includes(slug)) && (
-  <ProductGridIC productos={productos} emptyMessage={emptyMessage} />
+  <ProductGridIC productos={productos} emptyMessage={emptyMessage} hoverSegundaFoto={hoverSegundaFoto} />
 )}

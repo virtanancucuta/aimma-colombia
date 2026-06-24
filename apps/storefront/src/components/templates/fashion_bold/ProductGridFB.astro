@@ -12,13 +12,15 @@ interface Props {
     precio: number;
     precio_anterior?: number | null;
     foto_principal?: string | null;
+    foto_hover?: string | null;
     stock_disponible?: number | null;
     referencia?: string | null;
   }>;
   emptyMessage?: string;
+  hoverSegundaFoto?: boolean;
 }
 
-const { productos, emptyMessage = 'Sin productos por ahora.' } = Astro.props;
+const { productos, emptyMessage = 'Sin productos por ahora.', hoverSegundaFoto = false } = Astro.props;
 ---
 
 {productos.length === 0 ? (
@@ -27,7 +29,7 @@ const { productos, emptyMessage = 'Sin productos por ahora.' } = Astro.props;
   </div>
 ) : (
   <div class="fb-grid grid grid-cols-2 lg:grid-cols-3 gap-x-1 gap-y-12 lg:gap-y-16">
-    {productos.map((p) => <ProductCard producto={p} />)}
+    {productos.map((p) => <ProductCard producto={p} hoverSegundaFoto={hoverSegundaFoto} />)}
   </div>
 )}
 

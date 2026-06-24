@@ -20,6 +20,7 @@ export type ProductoListItem = {
   precio: number;
   precio_anterior: number | null;
   foto_principal: string | null;
+  foto_hover: string | null;
   stock_disponible: number | null;
   slug: string;
   referencia: string | null;
@@ -32,6 +33,12 @@ function normalizarProducto(p: any): ProductoListItem {
         0
       )
     : null;
+  // foto_hover (Fase A): primer elemento de fotos_galeria distinto de la principal; si no hay, null.
+  // Guard Array.isArray: fotos_galeria puede llegar undefined (getProductoPorId no la selecciona)
+  // -> degrada a null sin reventar. NO asumir que siempre es string[].
+  const galeria: string[] = Array.isArray(p.fotos_galeria) ? p.fotos_galeria : [];
+  const fotoHover =
+    galeria.find((u) => typeof u === 'string' && u && u !== p.foto_principal_url) ?? null;
   return {
     id: p.id,
     nombre: p.nombre,
@@ -40,6 +47,7 @@ function normalizarProducto(p: any): ProductoListItem {
       ? Number(p.precio_venta)
       : null,
     foto_principal: p.foto_principal_url ?? null,
+    foto_hover: fotoHover,
     stock_disponible: stockSumarReservado,
     slug: p.slug || p.id,
     referencia: p.referencia ?? null,
@@ -69,7 +77,7 @@ export async function getProductosPorTienda(
   let q = supabase
     .from('productos')
     .select(
-      `id, nombre, slug, referencia, precio_venta, precio_promo, foto_principal_url, estado,
+      `id, nombre, slug, referencia, precio_venta, precio_promo, foto_principal_url, fotos_galeria, estado,
        producto_variantes(stock, reservado)`
     )
     .eq('tienda_id', tiendaId)
@@ -114,6 +122,7 @@ export async function buscarProductos(
     precio: Number(r.precio_promo ?? r.precio_venta ?? 0),
     precio_anterior: r.precio_promo && r.precio_promo < (r.precio_venta || 0) ? Number(r.precio_venta) : null,
     foto_principal: r.foto_principal_url ?? null,
+    foto_hover: null, // el buscador (RPC) no trae galeria -> sin hover; degrada limpio.
     stock_disponible: r.stock_disponible != null ? Number(r.stock_disponible) : null,
     slug: r.slug || r.id,
     referencia: r.referencia ?? null,

@@ -13,13 +13,15 @@ interface Props {
     precio: number;
     precio_anterior?: number | null;
     foto_principal?: string | null;
+    foto_hover?: string | null;
     stock_disponible?: number | null;
     referencia?: string | null;
   }>;
   emptyMessage?: string;
+  hoverSegundaFoto?: boolean;
 }
 
-const { productos, emptyMessage = 'Coleccion en preparacion.' } = Astro.props;
+const { productos, emptyMessage = 'Coleccion en preparacion.', hoverSegundaFoto = false } = Astro.props;
 ---
 
 {productos.length === 0 ? (
@@ -32,7 +34,7 @@ const { productos, emptyMessage = 'Coleccion en preparacion.' } = Astro.props;
   <div class="ma-grid grid grid-cols-2 lg:grid-cols-3 gap-x-8 lg:gap-x-16 gap-y-20 lg:gap-y-28">
     {productos.map((p, i) => (
       <div class={`ma-grid-item ${i % 6 === 1 || i % 6 === 4 ? 'lg:translate-y-12' : ''}`}>
-        <ProductCard producto={p} />
+        <ProductCard producto={p} hoverSegundaFoto={hoverSegundaFoto} />
       </div>
     ))}
   </div>

@@ -13,13 +13,15 @@ interface Props {
     precio: number;
     precio_anterior?: number | null;
     foto_principal?: string | null;
+    foto_hover?: string | null;
     stock_disponible?: number | null;
     referencia?: string | null;
   }>;
   emptyMessage?: string;
+  hoverSegundaFoto?: boolean;
 }
 
-const { productos, emptyMessage = 'Edicion en curaduria.' } = Astro.props;
+const { productos, emptyMessage = 'Edicion en curaduria.', hoverSegundaFoto = false } = Astro.props;
 ---
 
 {productos.length === 0 ? (
@@ -35,7 +37,7 @@ const { productos, emptyMessage = 'Edicion en curaduria.' } = Astro.props;
         <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">
           Pieza {String(i + 1).padStart(2, '0')}
         </p>
-        <ProductCard producto={p} />
+        <ProductCard producto={p} hoverSegundaFoto={hoverSegundaFoto} />
       </article>
     ))}
   </div>

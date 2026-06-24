@@ -192,6 +192,14 @@
             '<span class="ta-field__hint">Si lo apagas, el encabezado no muestra el buscador (la pagina /buscar sigue disponible).</span>' +
           '</div>' +
           '<div class="ta-field">' +
+            '<label class="ta-field__label" for="cfg-hover-segunda-foto">Segunda foto al pasar el mouse</label>' +
+            '<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">' +
+              '<input type="checkbox" id="cfg-hover-segunda-foto"' + (t.hover_segunda_foto === false ? '' : ' checked') + ' />' +
+              '<span>En el catalogo, al pasar el mouse sobre un producto se muestra su segunda foto</span>' +
+            '</label>' +
+            '<span class="ta-field__hint">Solo aplica a productos con una segunda foto en su galeria. Si lo apagas, siempre se ve la foto principal.</span>' +
+          '</div>' +
+          '<div class="ta-field">' +
             '<label class="ta-field__label" for="cfg-resenas-productos">Reseñas en los productos</label>' +
             '<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">' +
               '<input type="checkbox" id="cfg-resenas-productos"' + (t.mostrar_resenas_productos === false ? '' : ' checked') + ' />' +
@@ -480,6 +488,7 @@
     const idioma = view.querySelector('#cfg-idioma').value;
     const mostrarAgotados = view.querySelector('#cfg-agotados').value;
     const mostrarBuscadorHeader = view.querySelector('#cfg-buscador-header').checked;
+    const hoverSegundaFoto = view.querySelector('#cfg-hover-segunda-foto').checked;
     const mostrarResenasProductos = view.querySelector('#cfg-resenas-productos').checked;
     const plantillaId = view.querySelector('#cfg-plantilla').value;
     // v5: paletaId se lee del estado interno (no del DOM — el select fue retirado).
@@ -547,6 +556,7 @@
       idioma,
       mostrar_agotados: mostrarAgotados,
       mostrar_buscador_header: mostrarBuscadorHeader,
+      hover_segunda_foto: hoverSegundaFoto,
       mostrar_resenas_productos: mostrarResenasProductos,
       plantilla_id: plantillaId || null,
       paleta_id: paletaId || null,

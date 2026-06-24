@@ -14,12 +14,14 @@ interface Props {
     precio: number;
     precio_anterior?: number | null;
     foto_principal?: string | null;
+    foto_hover?: string | null;
     stock_disponible?: number | null;
     referencia?: string | null;
   };
+  hoverSegundaFoto?: boolean;
 }
 
-const { producto } = Astro.props;
+const { producto, hoverSegundaFoto = false } = Astro.props;
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -79,6 +81,18 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
             {producto.referencia ? `REF · ${producto.referencia}` : 'IMAGEN PENDIENTE'}
           </span>
         </div>
+      )}
+
+      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). Espeja object-contain p-4. */}
+      {hoverSegundaFoto && producto.foto_hover && (
+        <OptimizedImage
+          src={producto.foto_hover}
+          alt=""
+          width={400}
+          height={400}
+          loading="lazy"
+          class="absolute inset-0 h-full w-full object-contain p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+        />
       )}
     </div>
 
