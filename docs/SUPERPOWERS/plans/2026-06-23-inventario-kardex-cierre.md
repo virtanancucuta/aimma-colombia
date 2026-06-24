@@ -198,14 +198,18 @@ grant execute on function public.inventario_por_categoria(uuid, uuid) to authent
 - [ ] **Step 3: Verificar EJECUTANDO** (impersonando dueño): MAIN Σ `costo_total` == **8000000** (sin doble conteo); Σ `pct` ≈ 100; DRILL de QAINV Calzado: Σ filas == su `costo_total` del MAIN; un grupo vs cálculo directo; no-dueño → excepción; anon sin execute.
 
 ### Task 2.GATE-datos (Checkpoint duro ANTES de UI)
-- [ ] Reportar a Jorge las 3 cifras: Σ proveedor, Σ categoría (MAIN), total GENERAL — **las 3 == $8.000.000**. Si alguna difiere → doble conteo, PARAR y reportar. **OK de Jorge a los números antes de tocar UI.**
+- [ ] Reportar a Jorge las 3 cifras: Σ proveedor, Σ categoría (MAIN), total GENERAL — **las 3 == $8.000.000**. Si alguna difiere → doble conteo, PARAR y reportar.
+- [ ] **(refuerzo Jorge) Σ `pct` == 100%** en AMBAS vistas (proveedor y categoría MAIN), **incluyendo las filas "Sin proveedor"/"Sin categoría"**. Si no da 100, hay algo fuera del denominador aunque los $ cuadren por redondeo → reportar.
+- [ ] **OK de Jorge a los números antes de tocar UI.**
 
 ### Task 2.4: UI — 2 tabs (Por proveedor / Por categoría) + Excel
 
 - [ ] **Step 1: TABS** — agregar `{ id: 'proveedor', label: 'Por proveedor' }` y `{ id: 'categoria', label: 'Por categoría' }` al array `TABS`. En el shell, ocultar período/Ordenar (no aplican); el Exportar se muestra y despacha a los nuevos exports.
 - [ ] **Step 2: Routing** — en `renderActiveTab`: `if (tab==='proveedor') fetchAndRenderGrupo(cont,'proveedor'); if (tab==='categoria') fetchAndRenderGrupo(cont,'categoria');`
 - [ ] **Step 3: Render genérico de grupos** — `fetchAndRenderGrupo(cont, modo)`: llama `inventario_por_proveedor` o `inventario_por_categoria` (parent null), guarda en `invState.grupo`, renderiza tabla: grupo · # refs · cantidad · costo · **% con barra** (`.ta-inv-grp-bar` width=pct%). Fila clickeable → drill. Mobile = tarjetas. Fila TOTAL al pie ($8M).
-- [ ] **Step 4: Drill** — proveedor: click → `inventario_resumen(p_proveedor_id=grupo_id)` → lista de referencias (reúsa `filaGeneral` o una fila compacta). Categoría: click en padre → `inventario_por_categoria(p_parent_id=grupo_id)` (subcategorías) → click en subcategoría → `inventario_resumen(p_categoria_id=sub_id)`. "Sin proveedor"/"Sin categoría" → drill con el filtro correspondiente (productos sin grupo: requiere que `inventario_resumen` soporte el caso — si no, listar por el set; **verificar** en build).
+- [ ] **Step 4: Drill** — proveedor: click → `inventario_resumen(p_proveedor_id=grupo_id)` → lista de referencias. Categoría: click en padre → `inventario_por_categoria(p_parent_id=grupo_id)` (subcategorías) → click en subcategoría → `inventario_resumen(p_categoria_id=sub_id)`.
+  - **(refuerzo Jorge — confirmado en el SQL de `inventario_resumen`):** su filtro de categoría es `p.categoria_id = p_categoria_id OR p.categoria_id in (hijas de p_categoria_id)` → **padre-incluye-hijas, mismo criterio que el rollup**. Por eso el drill directo de un PADRE con `inventario_resumen(p_categoria_id=padre)` trae padre+hijas = cuadra exacto con el `#refs/costo` del agregado. (En la UI el drill del padre primero abre subcategorías; el "ver todas las referencias del padre" usa `inventario_resumen(p_categoria_id=padre)` que ya hace el rollup.)
+  - **"Sin proveedor"/"Sin categoría":** `inventario_resumen` NO tiene filtro "sin grupo" (con null trae TODO). Opciones (decidir en build, sin tocar `inventario_resumen` que es crítico): (a) fila "Sin X" NO drilleable (muestra solo el agregado) — MVP; (b) drill vía query/RPC dedicada de productos con `proveedor_id is null`/`categoria_id is null`. Default MVP = (a) con nota; confirmar con Jorge si quiere (b).
 - [ ] **Step 5: Excel** — `exportarExcelGrupo(btn, modo)`: hoja con grupo·#refs·cantidad·costo·% + fila TOTAL. Números como número. Reúsa `xlsxDescargar`.
 - [ ] **Step 6: CSS** `.ta-inv-grp*` (grilla propia, excluida del grid ancho de GENERAL vía flex o `:not()`). Bump css + js + index.
 - [ ] **Step 7: Verificar** `node --check`; **Commit + merge** a main.
