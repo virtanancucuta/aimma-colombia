@@ -59,11 +59,12 @@ describe('Productos · segunda foto al hover', () => {
     expect(tag).toContain('motion-reduce:transition-none'); // respeta prefers-reduced-motion
   });
 
-  test('IC: la segunda imagen espeja object-contain p-4 de la primaria', async () => {
+  test('IC: la segunda imagen usa object-cover full-bleed (sin p-4) como la primaria', async () => {
     const html = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
     const tag = imgTag(html, 'hover.jpg');
-    expect(tag).toContain('object-contain');
-    expect(tag).toContain('p-4');
+    expect(tag).toContain('object-cover');
+    expect(tag).not.toContain('object-contain');
+    expect(tag).not.toContain('p-4');
   });
 
   test('producto SIN galeria -> sin segunda imagen aunque el toggle este ON', async () => {

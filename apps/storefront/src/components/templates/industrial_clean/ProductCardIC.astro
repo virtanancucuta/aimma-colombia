@@ -64,7 +64,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
           width={400}
           height={400}
           loading="lazy"
-          class="h-full w-full object-contain p-4"
+          class="h-full w-full object-cover"
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -83,7 +83,8 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
         </div>
       )}
 
-      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). Espeja object-contain p-4. */}
+      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). object-cover full-bleed
+          como FB/MA/EM: llena el marco y tapa la principal sola (sin opacity en la principal). */}
       {hoverSegundaFoto && producto.foto_hover && (
         <OptimizedImage
           src={producto.foto_hover}
@@ -91,7 +92,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 h-full w-full object-contain p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+          class="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
         />
       )}
     </div>
