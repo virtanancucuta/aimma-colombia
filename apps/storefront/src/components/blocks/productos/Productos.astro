@@ -22,11 +22,9 @@ const p = (section as Extract<Section, { tipo: 'productos' }>).props;
 const { tienda, supabase } = Astro.locals;
 const isPreview = Astro.locals?.isPreview;
 const plantilla = tienda.plantilla?.slug ?? 'industrial_clean';
-// Fase 1a: control de imagen por seccion. Solo industrial_clean usa forma/fit hoy; FB/MA/EM los
-// ignoran (no los declaran en sus Props) y renderizan como siempre. hover: heredar usa el flag de
-// tienda; on/off lo overridean. Defaults via ?? (la seccion del editor puede no tenerlos aun).
-const forma = ((p as any).forma ?? '3/4') as '3/4' | '4/5' | '1/1' | '4/3';
-const fit = ((p as any).ajuste === 'contener' ? 'contain' : 'cover') as 'cover' | 'contain';
+// Rediseño 2026-06-25: el control de seccion es el TAMANO; la foto es 1:1 fija (la fija ProductCardIC).
+// hover: heredar usa el flag de tienda; on/off lo overridean.
+const tamano = ((p as any).tamano ?? 'mediano') as 'pequeno' | 'mediano' | 'grande';
 const hoverCfg = (p as any).hover ?? 'heredar';
 const hoverSegundaFoto = hoverCfg === 'off' ? false
   : hoverCfg === 'on' ? true
@@ -44,22 +42,18 @@ try {
   productos = [];
 }
 
-// cols por plantilla (Tailwind JIT: strings literales). IC/FB usan md+lg; MA/EM solo lg.
-function colsFor(plant: string, columnas: typeof p.columnas): string {
+// cols por plantilla y tamano (Tailwind JIT: strings literales). IC/FB usan md+lg; MA/EM solo lg.
+function colsForTamano(plant: string, t: 'pequeno' | 'mediano' | 'grande'): string {
   if (plant === 'minimal_artesanal' || plant === 'editorial_magazine') {
-    return columnas === 'auto' ? 'grid-cols-2 lg:grid-cols-3'
-      : columnas === 2 ? 'grid-cols-2'
-      : columnas === 3 ? 'grid-cols-2 lg:grid-cols-3'
-      : columnas === 4 ? 'grid-cols-2 lg:grid-cols-4'
+    return t === 'grande' ? 'grid-cols-2 lg:grid-cols-2'
+      : t === 'pequeno' ? 'grid-cols-2 lg:grid-cols-4'
       : 'grid-cols-2 lg:grid-cols-3';
   }
-  return columnas === 'auto' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-    : columnas === 2 ? 'grid-cols-2'
-    : columnas === 3 ? 'grid-cols-2 md:grid-cols-3'
-    : columnas === 4 ? 'grid-cols-2 md:grid-cols-4'
+  return t === 'grande' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-3'
+    : t === 'pequeno' ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5'
     : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
 }
-const colsClass = colsFor(plantilla, p.columnas);
+const colsClass = colsForTamano(plantilla, tamano);
 
 // ProductCard + clase del grid + data-field por plantilla.
 let ProductCard: typeof ProductCardIC;
@@ -81,7 +75,7 @@ if (plantilla === 'fashion_bold') {
   dataField = 'productos';
 } else {
   ProductCard = ProductCardIC;
-  gridClass = `grid gap-3 lg:gap-4 ${colsClass}${p.mostrar_precio ? '' : ' ic-productos--sin-precio'}`;
+  gridClass = `grid gap-3 lg:gap-4 lg:-mx-4 ${colsClass}${p.mostrar_precio ? '' : ' ic-productos--sin-precio'}`;
   dataField = 'productos';
 }
 ---
@@ -108,17 +102,17 @@ if (plantilla === 'fashion_bold') {
       {productos.map((prod, i) => (
         plantilla === 'minimal_artesanal' ? (
           <div class={`ma-grid-item ${i % 6 === 1 || i % 6 === 4 ? 'lg:translate-y-12' : ''}`}>
-            <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} {...({ forma, fit } as any)} />
+            <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} />
           </div>
         ) : plantilla === 'editorial_magazine' ? (
           <article class="em-grid-item">
             <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">
               Pieza {String(i + 1).padStart(2, '0')}
             </p>
-            <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} {...({ forma, fit } as any)} />
+            <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} />
           </article>
         ) : (
-          <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} {...({ forma, fit } as any)} />
+          <ProductCard producto={prod} hoverSegundaFoto={hoverSegundaFoto} />
         )
       ))}
     </div>

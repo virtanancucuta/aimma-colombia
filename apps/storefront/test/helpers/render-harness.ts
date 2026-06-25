@@ -44,10 +44,8 @@ export const PRODUCTOS_FIXTURE = [
 
 // ---- Section fixture builder ----
 export function makeProductosSection(props: {
-  columnas: 'auto' | 2 | 3 | 4;
+  tamano?: 'pequeno' | 'mediano' | 'grande';
   mostrar_precio: boolean;
-  forma?: '3/4' | '4/5' | '1/1' | '4/3';
-  ajuste?: 'rellenar' | 'contener';
   hover?: 'heredar' | 'on' | 'off';
 }): any {
   return {
@@ -60,11 +58,8 @@ export function makeProductosSection(props: {
       categoria_id: null,
       limite: 24,
       orden: 'recientes',
-      columnas: props.columnas,
+      tamano: props.tamano ?? 'mediano',
       mostrar_precio: props.mostrar_precio,
-      // Fase 1a: solo se incluyen si el test los pide (ausentes -> defaults del render).
-      ...(props.forma ? { forma: props.forma } : {}),
-      ...(props.ajuste ? { ajuste: props.ajuste } : {}),
       ...(props.hover ? { hover: props.hover } : {}),
     },
   };
@@ -177,13 +172,12 @@ export async function renderNormalized(
 }
 
 // ---- Matriz de combos del piloto (superficie de params del renderer) ----
-export const COMBOS: Array<{ label: string; columnas: 'auto' | 2 | 3 | 4; mostrar_precio: boolean; empty: boolean }> = [
-  { label: 'empty', columnas: 'auto', mostrar_precio: true, empty: true },
-  { label: 'auto-precio', columnas: 'auto', mostrar_precio: true, empty: false },
-  { label: 'col2-precio', columnas: 2, mostrar_precio: true, empty: false },
-  { label: 'col3-precio', columnas: 3, mostrar_precio: true, empty: false },
-  { label: 'col4-precio', columnas: 4, mostrar_precio: true, empty: false },
-  { label: 'auto-sinprecio', columnas: 'auto', mostrar_precio: false, empty: false },
+export const COMBOS: Array<{ label: string; tamano: 'pequeno' | 'mediano' | 'grande'; mostrar_precio: boolean; empty: boolean }> = [
+  { label: 'empty', tamano: 'mediano', mostrar_precio: true, empty: true },
+  { label: 'mediano-precio', tamano: 'mediano', mostrar_precio: true, empty: false },
+  { label: 'grande-precio', tamano: 'grande', mostrar_precio: true, empty: false },
+  { label: 'pequeno-precio', tamano: 'pequeno', mostrar_precio: true, empty: false },
+  { label: 'mediano-sinprecio', tamano: 'mediano', mostrar_precio: false, empty: false },
 ];
 
 // ---- F2: render por PROPS arbitrarias (shells de carrito/checkout no usan `section`) ----
