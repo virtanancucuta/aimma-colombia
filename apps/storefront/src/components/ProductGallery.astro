@@ -87,6 +87,7 @@ const nombre = pdp.producto?.nombre || '';
     var nextBtn = root.querySelector('[data-pgal-next]');
     var srcs = [];
     try { srcs = JSON.parse(root.getAttribute('data-pgal-srcs') || '[]'); } catch (e) { srcs = []; }
+    var galeriaSrcs = srcs.slice();
     var idx = 0, lastFocus = null;
 
     function setActiveThumb(src) {
@@ -118,7 +119,7 @@ const nombre = pdp.producto?.nombre || '';
     }
     function open() {
       var cur = main.getAttribute('src');
-      var list = srcs.slice();
+      var list = galeriaSrcs.slice();
       var i = list.indexOf(cur);
       if (i < 0) { list = [cur].concat(list); i = 0; } // foto de color no listada: mostrarla igual
       srcs = list; idx = i;
