@@ -23,7 +23,7 @@
     COLUMNAS: [{ v: 'auto', l: 'Automatico' }, { v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }, { v: 4, l: '4 columnas' }],
     TAMANO_PROD: [{ v: 'pequeno', l: 'Pequeno' }, { v: 'mediano', l: 'Mediano' }, { v: 'grande', l: 'Grande' }],
     HOVER: [{ v: 'heredar', l: 'Como la tienda' }, { v: 'on', l: 'Si, mostrar 2a foto' }, { v: 'off', l: 'No' }],
-    GALERIA_LAYOUT: [{ v: 'grid', l: 'Grilla uniforme' }, { v: 'carrusel', l: 'Carrusel horizontal' }, { v: 'mosaico', l: 'Mosaico' }],
+    GALERIA_LAYOUT: [{ v: 'grid', l: 'Grilla uniforme' }, { v: 'carrusel', l: 'Carrusel horizontal' }],
     GALERIA_GAP: [{ v: 'tight', l: 'Compacto' }, { v: 'normal', l: 'Normal' }, { v: 'loose', l: 'Aireado' }],
     // B-secciones Lote 1
     POSICION_IMAGEN: [{ v: 'izquierda', l: 'Imagen a la izquierda' }, { v: 'derecha', l: 'Imagen a la derecha' }],
@@ -175,6 +175,7 @@
       ancho_default: 'completo', padding_default: 'md',
       campos: [
         { key: 'layout', control: 'select', label: 'Disposicion', default: 'grid', opts: { options: 'GALERIA_LAYOUT' } },
+        { key: 'tamano', control: 'select', label: 'Tamano de las fotos', default: 'mediano', opts: { options: 'TAMANO_PROD' } },
         { key: 'gap', control: 'select', label: 'Espaciado', default: 'normal', opts: { options: 'GALERIA_GAP' } },
         { key: 'imagenes', control: 'list', min: 3, max: 12, item_label: 'Imagen', after_base: true,
           add_label: '+ Agregar imagen', add_default_fn: 'galeria_img',
