@@ -34,16 +34,16 @@ const sinStock = producto.stock_disponible === 0;
 
 <article class="group bg-[var(--ta-color-bg-base)]">
   <a href={`/p/${producto.slug}`} class="block" aria-label={producto.nombre}>
-    {/* Image aspect-[3/4] portrait fashion */}
-    <div class="relative aspect-[3/4] overflow-hidden bg-[var(--ta-color-bg-base)]">
+    {/* Image 1:1 cuadrada (estandar multi-rubro, patron B) */}
+    <div class="relative aspect-square overflow-hidden bg-[var(--ta-color-bg-base)]">
       {producto.foto_principal ? (
         <OptimizedImage
           src={producto.foto_principal}
           alt={producto.nombre}
           width={400}
-          height={533}
+          height={400}
           loading="lazy"
-          class="h-full w-full object-cover transition-opacity duration-300"
+          class="absolute inset-0 w-full aspect-square object-cover transition-opacity duration-300"
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -63,9 +63,9 @@ const sinStock = producto.stock_disponible === 0;
           src={producto.foto_hover}
           alt=""
           width={400}
-          height={533}
+          height={400}
           loading="lazy"
-          class="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+          class="absolute inset-0 w-full aspect-square object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
         />
       )}
 
