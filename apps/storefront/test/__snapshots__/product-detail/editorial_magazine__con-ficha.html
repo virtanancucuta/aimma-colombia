@@ -10,6 +10,7 @@
     var nextBtn = root.querySelector('[data-pgal-next]');
     var srcs = [];
     try { srcs = JSON.parse(root.getAttribute('data-pgal-srcs') || '[]'); } catch (e) { srcs = []; }
+    var galeriaSrcs = srcs.slice();
     var idx = 0, lastFocus = null;
 
     function setActiveThumb(src) {
@@ -41,7 +42,7 @@
     }
     function open() {
       var cur = main.getAttribute('src');
-      var list = srcs.slice();
+      var list = galeriaSrcs.slice();
       var i = list.indexOf(cur);
       if (i < 0) { list = [cur].concat(list); i = 0; } // foto de color no listada: mostrarla igual
       srcs = list; idx = i;
@@ -55,7 +56,10 @@
     function close() {
       lb.hidden = true;
       document.removeEventListener('keydown', onKey);
-      if (lastFocus && lastFocus.focus) lastFocus.focus();
+      // Devolver el foco a un control focusable: el boton de zoom (la principal <img> no es
+      // focusable, asi que lastFocus no la captura). Fallback al elemento previo.
+      var ret = root.querySelector('[data-pgal-open]') || lastFocus;
+      if (ret && ret.focus) ret.focus();
     }
     function go(d) { idx = (idx + d + srcs.length) % srcs.length; render(); }
     function onKey(e) {

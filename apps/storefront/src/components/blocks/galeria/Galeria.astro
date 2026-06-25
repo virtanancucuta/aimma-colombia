@@ -1,15 +1,7 @@
 ---
-// AIMMA Editor PRO-MAX · Galeria · UNIFICADO (Fase A.2) · SCHEMA v3
-// Un solo renderer para las 4 plantillas. Estructura compartida (SectionShell +
-// grid + map de imagenes). El diff por plantilla:
-//   (a) clase del grid + data-field (config en frontmatter)
-//   (b) editorial_magazine: "Pieza NN" eyebrow + wrapper .em-galeria-frame
-//   (c) los 4 <style> per-template, scopeados e inertes por prefijo
-// gap tight/normal/loose -> gap-2/4/8 (identico en las 4). layout carrusel/mosaico
-// colapsan a grid responsive v1 (los renderers viejos tampoco leen p.layout).
-// Salida BYTE-IDENTICA al renderer per-template viejo (validado por test/galeria.golden.test.ts).
-// Reemplaza Galeria{IndustrialClean,FashionBold,MinimalArtesanal,EditorialMagazine}.astro.
-
+// AIMMA · Galeria · UNIFICADO. 4 plantillas. tamano (columnas/slide) + carrusel real manual.
+// layout: 'carrusel' = tira scroll-snap (swipe movil, flechas desktop). grid/mosaico -> grilla.
+// mediano + grilla = salida historica (cero regresion). Aspecto por plantilla en los <style>.
 import type { Section } from '@aimma/database';
 import SectionShell from '~/components/blocks/_SectionShell.astro';
 
@@ -25,120 +17,132 @@ const prefix = plantilla === 'fashion_bold' ? 'fb'
   : plantilla === 'editorial_magazine' ? 'em'
   : 'ic';
 
-// gap (Tailwind JIT: literales). Identico en las 4 plantillas.
-const gapClass = p.gap === 'tight' ? 'gap-2'
-  : p.gap === 'loose' ? 'gap-8'
-  : 'gap-4';
+const gapClass = p.gap === 'tight' ? 'gap-2' : p.gap === 'loose' ? 'gap-8' : 'gap-4';
+const tamano = ((p as any).tamano ?? 'mediano') as 'pequeno' | 'mediano' | 'grande';
+const isCarrusel = p.layout === 'carrusel';
 
-// clase del grid + data-field por plantilla.
-let gridClass: string;
-let dataField: string | undefined;
-if (plantilla === 'fashion_bold') {
-  gridClass = `fb-galeria-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${gapClass}`;
-  dataField = undefined;
-} else if (plantilla === 'minimal_artesanal') {
-  gridClass = `ma-galeria grid grid-cols-2 md:grid-cols-3 ${gapClass}`;
-  dataField = undefined;
-} else if (plantilla === 'editorial_magazine') {
-  gridClass = `em-galeria-grid grid grid-cols-2 lg:grid-cols-3 ${gapClass}`;
-  dataField = undefined;
-} else {
-  gridClass = `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${gapClass}`;
-  dataField = 'imagenes';
+// Columnas de grilla por plantilla y tamano (literales JIT; mediano = clases actuales).
+function gridCols(plant: string, t: 'pequeno' | 'mediano' | 'grande'): string {
+  if (plant === 'minimal_artesanal') {
+    return t === 'grande' ? 'grid-cols-2 md:grid-cols-2'
+      : t === 'pequeno' ? 'grid-cols-2 md:grid-cols-4'
+      : 'grid-cols-2 md:grid-cols-3';
+  }
+  if (plant === 'editorial_magazine') {
+    return t === 'grande' ? 'grid-cols-2 lg:grid-cols-2'
+      : t === 'pequeno' ? 'grid-cols-2 lg:grid-cols-4'
+      : 'grid-cols-2 lg:grid-cols-3';
+  }
+  return t === 'grande' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-3'
+    : t === 'pequeno' ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5'
+    : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
 }
+// Ancho de slide en carrusel (asomo de la siguiente). Movil menos visibles. Literales JIT.
+function carruselBasis(t: 'pequeno' | 'mediano' | 'grande'): string {
+  return t === 'grande' ? 'basis-[78%] md:basis-[48%]'
+    : t === 'pequeno' ? 'basis-[45%] md:basis-[23.5%]'
+    : 'basis-[60%] md:basis-[31.5%]';
+}
+
+const gridPrefixClass = plantilla === 'fashion_bold' ? 'fb-galeria-grid '
+  : plantilla === 'minimal_artesanal' ? 'ma-galeria '
+  : plantilla === 'editorial_magazine' ? 'em-galeria-grid '
+  : '';
+const dataField = plantilla === 'industrial_clean' ? 'imagenes' : undefined;
+const gridClass = `${gridPrefixClass}grid ${gridCols(plantilla, tamano)} ${gapClass}`;
+const itemExtra = isCarrusel ? ` snap-start shrink-0 ${carruselBasis(tamano)}` : '';
 ---
 
 <SectionShell section={section}>
-  <div class={gridClass} data-field={isPreview ? dataField : undefined}>
-    {p.imagenes.map((img, i) => (
-      plantilla === 'editorial_magazine' ? (
-        <figure class="em-galeria-item group">
-          <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">
-            Pieza {String(i + 1).padStart(2, '0')}
-          </p>
-          <div class="em-galeria-frame">
-            <img
-              src={img.src}
-              alt={img.alt}
-              loading="lazy"
-              decoding="async"
-              class="w-full h-full object-cover"
-            />
-          </div>
-        </figure>
-      ) : (
-        <figure class={`${prefix}-galeria-item`}>
-          <img
-            src={img.src}
-            alt={img.alt}
-            loading="lazy"
-            decoding="async"
-            class="w-full h-full object-cover"
-          />
-        </figure>
-      )
-    ))}
-  </div>
+  {isCarrusel ? (
+    <div class="gal-carrusel-wrap relative">
+      <div class={`gal-carrusel flex overflow-x-auto snap-x snap-mandatory ${gapClass}`} data-gal-carrusel tabindex="0" role="region" aria-label="Galeria (carrusel)" data-field={isPreview ? dataField : undefined}>
+        {p.imagenes.map((img, i) => (
+          plantilla === 'editorial_magazine' ? (
+            <figure class={`em-galeria-item group${itemExtra}`}>
+              <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">Pieza {String(i + 1).padStart(2, '0')}</p>
+              <div class="em-galeria-frame"><img src={img.src} alt={img.alt} loading="lazy" decoding="async" class="w-full h-full object-cover" /></div>
+            </figure>
+          ) : (
+            <figure class={`${prefix}-galeria-item${itemExtra}`}>
+              <img src={img.src} alt={img.alt} loading="lazy" decoding="async" class="w-full h-full object-cover" />
+            </figure>
+          )
+        ))}
+      </div>
+      <button type="button" class="gal-carrusel-nav gal-carrusel-prev" data-gal-prev aria-label="Anterior">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      <button type="button" class="gal-carrusel-nav gal-carrusel-next" data-gal-next aria-label="Siguiente">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+    </div>
+  ) : (
+    <div class={gridClass} data-field={isPreview ? dataField : undefined}>
+      {p.imagenes.map((img, i) => (
+        plantilla === 'editorial_magazine' ? (
+          <figure class="em-galeria-item group">
+            <p class="font-body text-[11px] uppercase tracking-[0.18em] text-[var(--ta-color-accent)] font-medium mb-3 tabular-nums">Pieza {String(i + 1).padStart(2, '0')}</p>
+            <div class="em-galeria-frame"><img src={img.src} alt={img.alt} loading="lazy" decoding="async" class="w-full h-full object-cover" /></div>
+          </figure>
+        ) : (
+          <figure class={`${prefix}-galeria-item`}>
+            <img src={img.src} alt={img.alt} loading="lazy" decoding="async" class="w-full h-full object-cover" />
+          </figure>
+        )
+      ))}
+    </div>
+  )}
 </SectionShell>
 
 <style>
   /* ===== industrial_clean ===== */
-  .ic-galeria-item {
-    margin: 0;
-    aspect-ratio: 1 / 1;
-    overflow: hidden;
-    border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent);
-    border-radius: 2px;
-    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
-  }
-  .ic-galeria-item img {
-    display: block;
-    transition: transform 300ms ease-out;
-  }
-  .ic-galeria-item:hover img {
-    transform: scale(1.04);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .ic-galeria-item img { transition: none; }
-    .ic-galeria-item:hover img { transform: none; }
-  }
+  .ic-galeria-item { margin: 0; aspect-ratio: 1 / 1; overflow: hidden; border: 1px solid color-mix(in oklab, var(--ta-color-text-base) 8%, transparent); border-radius: 2px; background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent); }
+  .ic-galeria-item img { display: block; transition: transform 300ms ease-out; }
+  .ic-galeria-item:hover img { transform: scale(1.04); }
+  @media (prefers-reduced-motion: reduce) { .ic-galeria-item img { transition: none; } .ic-galeria-item:hover img { transform: none; } }
 
   /* ===== fashion_bold ===== */
-  /* Fashion Bold galeria: aspect 3/4 portrait, NO border, NO radius */
-  .fb-galeria-item {
-    margin: 0;
-    aspect-ratio: 3 / 4;
-    overflow: hidden;
-    border-radius: 0;
-    background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent);
-  }
+  .fb-galeria-item { margin: 0; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 0; background: color-mix(in oklab, var(--ta-color-text-base) 6%, transparent); }
 
   /* ===== minimal_artesanal ===== */
-  /* Minimal Artesanal galeria: aspect 4/5 portrait editorial, soft radius */
-  .ma-galeria-item {
-    margin: 0;
-    aspect-ratio: 4 / 5;
-    overflow: hidden;
-    border-radius: 4px;
-    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
-  }
+  .ma-galeria-item { margin: 0; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 4px; background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent); }
   .ma-galeria-item img { display: block; }
 
   /* ===== editorial_magazine ===== */
   .em-galeria-item { margin: 0; }
-  .em-galeria-frame {
-    aspect-ratio: 4 / 5;
-    overflow: hidden;
-    background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent);
-  }
-  .em-galeria-frame img {
-    display: block;
-    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
-  }
+  .em-galeria-frame { aspect-ratio: 4 / 5; overflow: hidden; background: color-mix(in oklab, var(--ta-color-text-base) 4%, transparent); }
+  .em-galeria-frame img { display: block; transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
   .em-galeria-item:hover .em-galeria-frame img { transform: scale(1.04); }
-  @media (prefers-reduced-motion: reduce) {
-    .em-galeria-frame img { transition: none; }
-    .em-galeria-item:hover .em-galeria-frame img { transform: none; }
+  @media (prefers-reduced-motion: reduce) { .em-galeria-frame img { transition: none; } .em-galeria-item:hover .em-galeria-frame img { transform: none; } }
+
+  /* ===== carrusel (todas las plantillas) ===== */
+  .gal-carrusel { scroll-snap-type: x mandatory; scroll-padding-left: 0; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+  .gal-carrusel > * { scroll-snap-align: start; }
+  .gal-carrusel-nav {
+    display: none; position: absolute; top: 50%; transform: translateY(-50%);
+    width: 2.75rem; height: 2.75rem; align-items: center; justify-content: center;
+    border: none; border-radius: 999px; cursor: pointer; z-index: 2;
+    background: color-mix(in oklab, var(--ta-color-bg-base) 82%, transparent); color: var(--ta-color-text-base);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.15);
   }
+  .gal-carrusel-prev { left: 0.5rem; } .gal-carrusel-next { right: 0.5rem; }
+  /* Flechas solo en escritorio con puntero fino (en movil = swipe) */
+  @media (pointer: fine) and (min-width: 1024px) { .gal-carrusel-nav { display: inline-flex; } }
 </style>
+
+{isCarrusel && (
+<script is:inline>
+  (function () {
+    document.querySelectorAll('[data-gal-carrusel]').forEach(function (track) {
+      var wrap = track.closest('.gal-carrusel-wrap');
+      if (!wrap) return;
+      function step() { return Math.max(track.clientWidth * 0.8, 120); }
+      var prev = wrap.querySelector('[data-gal-prev]');
+      var next = wrap.querySelector('[data-gal-next]');
+      if (prev) prev.addEventListener('click', function () { track.scrollBy({ left: -step(), behavior: 'smooth' }); });
+      if (next) next.addEventListener('click', function () { track.scrollBy({ left: step(), behavior: 'smooth' }); });
+    });
+  })();
+</script>
+)}
