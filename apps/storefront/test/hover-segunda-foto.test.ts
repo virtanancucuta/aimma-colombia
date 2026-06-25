@@ -78,15 +78,20 @@ describe('Productos · segunda foto al hover', () => {
     expect(imgTag(sinHover, 'main.jpg')).not.toContain('group-hover:opacity-0');
   });
 
-  test('IC: la principal es absolute inset-0 (llena el wrapper square; sin overflow que recorte)', async () => {
-    // h-full (height:100%) NO resuelve dentro de aspect-ratio -> la img tomaba su alto natural y
-    // desbordaba el wrapper square; overflow-hidden recortaba abajo. absolute inset-0 fija el box
-    // al wrapper exacto -> object-contain muestra la foto entera. Aplica con y sin 2a foto.
+  test('IC: la principal usa aspect-square (alto definido), NO h-full (que no resuelve en aspect-ratio)', async () => {
+    // ROOT CAUSE verificado en navegador: h-full (height:100%) NO resuelve dentro de un wrapper con
+    // aspect-ratio -> la img tomaba su alto natural (231px) y desbordaba el wrapper square (181px);
+    // overflow-hidden recortaba abajo. Fix: aspect-square da alto definido desde el ancho definido
+    // (w-full) -> imgBox 181x181 (probado con Playwright). Aplica con y sin 2a foto.
     const conHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
-    expect(imgTag(conHover, 'main.jpg')).toContain('absolute inset-0');
+    const p1 = imgTag(conHover, 'main.jpg');
+    expect(p1).toContain('aspect-square');
+    expect(p1).not.toContain('h-full');
     const noGal = [{ ...HOVER_ROW[0], fotos_galeria: [] }];
     const sinHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), noGal);
-    expect(imgTag(sinHover, 'main.jpg')).toContain('absolute inset-0');
+    const p2 = imgTag(sinHover, 'main.jpg');
+    expect(p2).toContain('aspect-square');
+    expect(p2).not.toContain('h-full');
   });
 
   test('producto SIN galeria -> sin segunda imagen aunque el toggle este ON', async () => {
