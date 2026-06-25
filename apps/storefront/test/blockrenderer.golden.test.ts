@@ -36,7 +36,7 @@ const PAGE = [
   { id: 'sec_ct0001', tipo: 'cita', padding: 'xl', ancho: 'contenido', fondo: { tipo: 'transparente', valor: '' },
     props: { texto: 'Una frase que inspira.', autor: 'Cliente', alineacion: 'center' } },
   { id: 'sec_pr0001', tipo: 'productos', padding: 'md', ancho: 'completo', fondo: { tipo: 'transparente', valor: '' },
-    props: { categoria_id: null, limite: 24, orden: 'recientes', columnas: 'auto', mostrar_precio: true } },
+    props: { categoria_id: null, limite: 24, orden: 'recientes', tamano: 'mediano', mostrar_precio: true } },
   { id: 'sec_sp0001', tipo: 'espacio', padding: 'sm', ancho: 'contenido', fondo: { tipo: 'transparente', valor: '' },
     props: { altura: 'md' } },
 ];

@@ -20,7 +20,7 @@ describe('Productos unificado == snapshot', () => {
   for (const slug of TEMPLATES) {
     for (const combo of COMBOS) {
       test(`${slug} · ${combo.label}`, async () => {
-        const section = makeProductosSection({ columnas: combo.columnas, mostrar_precio: combo.mostrar_precio });
+        const section = makeProductosSection({ tamano: combo.tamano, mostrar_precio: combo.mostrar_precio });
         const tienda = makeTienda(slug);
         const rows = combo.empty ? [] : PRODUCTOS_FIXTURE;
 
@@ -44,7 +44,7 @@ describe('Productos · segunda foto al hover == snapshot', () => {
       { label: 'hover-off', hoverOff: true },
     ]) {
       test(`${slug} · ${variante.label}`, async () => {
-        const section = makeProductosSection({ columnas: 'auto', mostrar_precio: true });
+        const section = makeProductosSection({ tamano: 'mediano', mostrar_precio: true });
         const tienda = makeTienda(slug, variante.hoverOff ? { hoverSegundaFoto: false } : {});
         const html = await renderNormalized(Productos, section, tienda, PRODUCTOS_HOVER_FIXTURE);
         await expect(html).toMatchFileSnapshot(
