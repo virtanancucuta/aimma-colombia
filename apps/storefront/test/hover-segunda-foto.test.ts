@@ -78,6 +78,17 @@ describe('Productos · segunda foto al hover', () => {
     expect(imgTag(sinHover, 'main.jpg')).not.toContain('group-hover:opacity-0');
   });
 
+  test('IC: la principal es absolute inset-0 (llena el wrapper square; sin overflow que recorte)', async () => {
+    // h-full (height:100%) NO resuelve dentro de aspect-ratio -> la img tomaba su alto natural y
+    // desbordaba el wrapper square; overflow-hidden recortaba abajo. absolute inset-0 fija el box
+    // al wrapper exacto -> object-contain muestra la foto entera. Aplica con y sin 2a foto.
+    const conHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
+    expect(imgTag(conHover, 'main.jpg')).toContain('absolute inset-0');
+    const noGal = [{ ...HOVER_ROW[0], fotos_galeria: [] }];
+    const sinHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), noGal);
+    expect(imgTag(sinHover, 'main.jpg')).toContain('absolute inset-0');
+  });
+
   test('producto SIN galeria -> sin segunda imagen aunque el toggle este ON', async () => {
     const noGal = [{ ...HOVER_ROW[0], fotos_galeria: [] }];
     const html = await renderNormalized(Productos, section(), tienda('industrial_clean', true), noGal);
