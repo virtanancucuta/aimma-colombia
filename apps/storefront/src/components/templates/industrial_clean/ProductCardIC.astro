@@ -30,12 +30,15 @@ const fmt = (n: number) =>
 const precioStr = fmt(producto.precio);
 const precioAnteriorStr = producto.precio_anterior ? fmt(producto.precio_anterior) : null;
 const enDescuento = producto.precio_anterior !== null && producto.precio_anterior !== undefined && producto.precio_anterior > producto.precio;
-const sinStock = producto.stock_disponible === 0;
+const sinStock = producto.stock_disponible !== null && producto.stock_disponible !== undefined && producto.stock_disponible <= 0;
 const stockLow = producto.stock_disponible !== null && producto.stock_disponible !== undefined && producto.stock_disponible > 0 && producto.stock_disponible <= 5;
+const ariaLabel = sinStock ? `${producto.nombre}, agotado`
+  : stockLow ? `${producto.nombre}, últimas unidades`
+  : producto.nombre;
 ---
 
 <article class="group border border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)] transition-colors duration-200 hover:bg-[var(--ta-color-text-base)]/[0.02]">
-  <a href={`/p/${producto.slug}`} class="block p-4 lg:p-5" aria-label={producto.nombre}>
+  <a href={`/p/${producto.slug}`} class="block p-4 lg:p-5" aria-label={ariaLabel}>
     {/* Imagen 1:1 (aspect-square en wrapper Y en img — patron B) */}
     <div class="relative aspect-square overflow-hidden bg-[var(--ta-color-text-base)]/5 mb-4">
       {/* Badge de stock condicional sobre la foto */}

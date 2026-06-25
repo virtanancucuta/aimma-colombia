@@ -30,13 +30,15 @@ describe('ProductCardIC · card limpia', () => {
     expect(html).not.toContain('Agotado');
     expect(html).not.toContain('Últimas');
   });
-  test('stock 0 -> badge Agotado', async () => {
+  test('stock 0 -> badge Agotado + aria-label incluye agotado', async () => {
     const html = await render(0);
     expect(html).toContain('Agotado');
+    expect(html).toContain('aria-label="Zapato Alfa, agotado"');
   });
-  test('stock bajo (3) -> badge Últimas 3', async () => {
+  test('stock bajo (3) -> badge Últimas 3 + aria-label incluye últimas unidades', async () => {
     const html = await render(3);
     expect(html).toContain('Últimas 3');
+    expect(html).toContain('aria-label="Zapato Alfa, últimas unidades"');
   });
   test('precio sigue visible', async () => {
     const html = await render(10);
