@@ -1,13 +1,88 @@
-<article class="ma-pdp" data-astro-cid-CID> <div class="ma-pdp__top" data-astro-cid-CID> <section class="ma-pdp__gallery" aria-label="Imagenes del producto" data-astro-cid-CID> <div class="pgal pgal--ma" data-astro-cid-CID>  <div class="pgal__main-wrap" data-astro-cid-CID> <img class="pgal__main" data-pdp-main-img src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg" alt="Camiseta Deportiva Pro" loading="eager" data-astro-cid-CID> </div> <div class="pgal__thumbs" data-astro-cid-CID> <button type="button" class="pgal__thumb" data-pgal-thumb data-src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg" aria-label="Ver imagen" data-astro-cid-CID> <img src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg" alt="" loading="lazy" data-astro-cid-CID> </button><button type="button" class="pgal__thumb" data-pgal-thumb data-src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam2.jpg" aria-label="Ver imagen" data-astro-cid-CID> <img src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam2.jpg" alt="" loading="lazy" data-astro-cid-CID> </button> </div> </div>  <script>
+<article class="ma-pdp" data-astro-cid-CID> <div class="ma-pdp__top" data-astro-cid-CID> <section class="ma-pdp__gallery" aria-label="Imagenes del producto" data-astro-cid-CID> <div class="pgal pgal--ma" data-pgal-srcs="[&#34;https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg&#34;,&#34;https://rsmxklkxqsaptchcjszd.supabase.co/img/cam2.jpg&#34;]" data-astro-cid-CID>  <div class="pgal__main-wrap" data-astro-cid-CID> <img class="pgal__main" data-pdp-main-img src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg" alt="Camiseta Deportiva Pro" loading="eager" data-astro-cid-CID> <button type="button" class="pgal__zoom" data-pgal-open aria-label="Ampliar imagen" data-astro-cid-CID> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" data-astro-cid-CID> <circle cx="11" cy="11" r="7" data-astro-cid-CID></circle><line x1="21" y1="21" x2="16.65" y2="16.65" data-astro-cid-CID></line> <line x1="11" y1="8" x2="11" y2="14" data-astro-cid-CID></line><line x1="8" y1="11" x2="14" y2="11" data-astro-cid-CID></line> </svg> </button> </div> <div class="pgal__thumbs" data-astro-cid-CID> <button type="button" class="pgal__thumb" data-pgal-thumb data-src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg" aria-current="true" aria-label="Ver imagen" data-astro-cid-CID> <img src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg" alt="" loading="lazy" data-astro-cid-CID> </button><button type="button" class="pgal__thumb" data-pgal-thumb data-src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam2.jpg" aria-current="false" aria-label="Ver imagen" data-astro-cid-CID> <img src="https://rsmxklkxqsaptchcjszd.supabase.co/img/cam2.jpg" alt="" loading="lazy" data-astro-cid-CID> </button> </div> <div class="pgal__lb" data-pgal-lb hidden role="dialog" aria-modal="true" aria-label="Galería de imágenes del producto" data-astro-cid-CID> <button type="button" class="pgal__lb-close" data-pgal-close aria-label="Cerrar" data-astro-cid-CID> <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" data-astro-cid-CID><line x1="18" y1="6" x2="6" y2="18" data-astro-cid-CID></line><line x1="6" y1="6" x2="18" y2="18" data-astro-cid-CID></line></svg> </button> <button type="button" class="pgal__lb-nav pgal__lb-prev" data-pgal-prev aria-label="Imagen anterior" data-astro-cid-CID> <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" data-astro-cid-CID><polyline points="15 18 9 12 15 6" data-astro-cid-CID></polyline></svg> </button> <img class="pgal__lb-img" data-pgal-lb-img src="" alt="Camiseta Deportiva Pro" data-astro-cid-CID> <button type="button" class="pgal__lb-nav pgal__lb-next" data-pgal-next aria-label="Imagen siguiente" data-astro-cid-CID> <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" data-astro-cid-CID><polyline points="9 18 15 12 9 6" data-astro-cid-CID></polyline></svg> </button> <span class="pgal__lb-counter" data-pgal-counter aria-live="polite" data-astro-cid-CID></span> </div> </div>  <script>
   (function () {
-    var main = document.querySelector('[data-pdp-main-img]');
-    if (!main) return;
-    document.querySelectorAll('[data-pgal-thumb]').forEach(function (t) {
+    var root = document.querySelector('.pgal[data-pgal-srcs]');
+    if (!root) return;
+    var main = root.querySelector('[data-pdp-main-img]');
+    var lb = root.querySelector('[data-pgal-lb]');
+    var lbImg = root.querySelector('[data-pgal-lb-img]');
+    var counter = root.querySelector('[data-pgal-counter]');
+    var prevBtn = root.querySelector('[data-pgal-prev]');
+    var nextBtn = root.querySelector('[data-pgal-next]');
+    var srcs = [];
+    try { srcs = JSON.parse(root.getAttribute('data-pgal-srcs') || '[]'); } catch (e) { srcs = []; }
+    var idx = 0, lastFocus = null;
+
+    function setActiveThumb(src) {
+      root.querySelectorAll('.pgal__thumb').forEach(function (t) {
+        t.setAttribute('aria-current', t.getAttribute('data-src') === src ? 'true' : 'false');
+      });
+    }
+    // Thumb click -> swap principal (la miniatura activa la actualiza el observer del src)
+    root.querySelectorAll('.pgal__thumb').forEach(function (t) {
       t.addEventListener('click', function () {
-        var src = t.getAttribute('data-src');
-        if (src) main.setAttribute('src', src);
+        var s = t.getAttribute('data-src');
+        if (s && main) main.setAttribute('src', s);
       });
     });
+    // El VariantSelector (u otro) cambia el src de la principal -> sincroniza la miniatura activa.
+    if (main && 'MutationObserver' in window) {
+      new MutationObserver(function () { setActiveThumb(main.getAttribute('src')); })
+        .observe(main, { attributes: true, attributeFilter: ['src'] });
+    }
+
+    // ---- Lightbox ----
+    if (!lb || !lbImg || !main) return;
+    function render() {
+      lbImg.setAttribute('src', srcs[idx] || '');
+      if (counter) counter.textContent = (idx + 1) + ' / ' + srcs.length;
+      var solo = srcs.length <= 1;
+      if (prevBtn) prevBtn.hidden = solo;
+      if (nextBtn) nextBtn.hidden = solo;
+    }
+    function open() {
+      var cur = main.getAttribute('src');
+      var list = srcs.slice();
+      var i = list.indexOf(cur);
+      if (i < 0) { list = [cur].concat(list); i = 0; } // foto de color no listada: mostrarla igual
+      srcs = list; idx = i;
+      lastFocus = document.activeElement;
+      lb.hidden = false;
+      render();
+      var c = lb.querySelector('[data-pgal-close]');
+      if (c) c.focus();
+      document.addEventListener('keydown', onKey);
+    }
+    function close() {
+      lb.hidden = true;
+      document.removeEventListener('keydown', onKey);
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    function go(d) { idx = (idx + d + srcs.length) % srcs.length; render(); }
+    function onKey(e) {
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'ArrowRight') { go(1); return; }
+      if (e.key === 'ArrowLeft') { go(-1); return; }
+      if (e.key === 'Tab') {
+        var f = Array.prototype.slice.call(lb.querySelectorAll('button')).filter(function (b) { return !b.hidden; });
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    main.addEventListener('click', open);
+    var openBtn = root.querySelector('[data-pgal-open]');
+    if (openBtn) openBtn.addEventListener('click', function (e) { e.stopPropagation(); open(); });
+    var closeBtn = root.querySelector('[data-pgal-close]'); if (closeBtn) closeBtn.addEventListener('click', close);
+    if (prevBtn) prevBtn.addEventListener('click', function () { go(-1); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { go(1); });
+    lb.addEventListener('click', function (e) { if (e.target === lb) close(); });
+    var sx = 0;
+    lb.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+    lb.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+    }, { passive: true });
   })();
 </script> </section> <section class="ma-pdp__info" data-astro-cid-CID> <nav class="ma-pdp__crumb" aria-label="Breadcrumb" data-astro-cid-CID> <a href="/" data-astro-cid-CID>Inicio</a><span aria-hidden="true" data-astro-cid-CID> / </span><span data-astro-cid-CID>Camiseta Deportiva Pro</span> </nav> <h1 class="ma-pdp__title" data-astro-cid-CID>Camiseta Deportiva Pro</h1> <p class="ma-pdp__sku" data-astro-cid-CID>Ref: KAY-CAM-001</p> <div class="vsel vsel--ma" data-vsel data-astro-cid-CID>  <div class="vsel__precio-row" data-astro-cid-CID> <span class="vsel__precio" data-pdp-precio data-astro-cid-CID>$ 89.000</span> <span class="vsel__precio-ant" data-pdp-precio-anterior hidden data-astro-cid-CID></span> </div>  <div class="vsel__nojs" data-pdp-nojs data-astro-cid-CID> <p class="vsel__stock-txt" data-astro-cid-CID>8 disponibles</p> <ul class="vsel__lista" data-astro-cid-CID> <li class="vsel__lista-item" data-astro-cid-CID> <span data-astro-cid-CID>Negro / M</span> <span class="vsel__lista-stock" data-astro-cid-CID>— 5 disponibles</span> </li><li class="vsel__lista-item" data-astro-cid-CID> <span data-astro-cid-CID>Negro / L</span> <span class="vsel__lista-stock" data-astro-cid-CID>— 3 disponibles</span> </li><li class="vsel__lista-item" data-astro-cid-CID> <span data-astro-cid-CID>Azul / M</span> <span class="vsel__lista-stock" data-astro-cid-CID>— 0 disponibles</span> </li> </ul> <a class="vsel__wpp-directo" href="https://wa.me/573001234567?text=Hola!%20Me%20interesa%3A%20Camiseta%20Deportiva%20Pro%20(%24%C2%A089.000).%20https%3A%2F%2Faimma-test.tienda.aimma.com.co%2Fp%2Fcamiseta-deportiva-pro" target="_blank" rel="noopener" data-astro-cid-CID>Comprar por WhatsApp</a> </div>  <div class="vsel__interactive" data-pdp-interactive hidden data-astro-cid-CID> <div class="vsel__axis" data-pdp-axis="color" data-astro-cid-CID> <span class="vsel__axis-label" data-astro-cid-CID>Color: <strong class="vsel__axis-sel" data-pdp-axis-sel="color" data-astro-cid-CID></strong></span> <div class="vsel__opts vsel__opts--chip" data-astro-cid-CID> <button type="button" class="vsel__chip" data-pdp-opt data-axis="color" data-value="Negro" data-astro-cid-CID>Negro</button><button type="button" class="vsel__chip" data-pdp-opt data-axis="color" data-value="Azul" data-astro-cid-CID>Azul</button> </div> </div><div class="vsel__axis" data-pdp-axis="talla" data-astro-cid-CID> <span class="vsel__axis-label" data-astro-cid-CID>Talla: <strong class="vsel__axis-sel" data-pdp-axis-sel="talla" data-astro-cid-CID></strong></span> <div class="vsel__opts vsel__opts--chip" data-astro-cid-CID> <button type="button" class="vsel__chip" data-pdp-opt data-axis="talla" data-value="M" data-astro-cid-CID>M</button><button type="button" class="vsel__chip" data-pdp-opt data-axis="talla" data-value="L" data-astro-cid-CID>L</button> </div> </div> <p class="vsel__stock-live" data-pdp-stock data-astro-cid-CID></p> <div class="vsel__qty-row" data-astro-cid-CID> <label class="vsel__qty-label" for="vsel-qty" data-astro-cid-CID>Cantidad</label> <div class="vsel__qty-stepper" data-astro-cid-CID> <button type="button" class="vsel__qty-btn" data-pdp-qty-dec aria-label="Disminuir cantidad" data-astro-cid-CID>&minus;</button> <input type="number" id="vsel-qty" class="vsel__qty" data-pdp-qty value="1" min="1" inputmode="numeric" data-astro-cid-CID> <button type="button" class="vsel__qty-btn" data-pdp-qty-inc aria-label="Aumentar cantidad" data-astro-cid-CID>+</button> </div> </div> <button type="button" class="vsel__add" data-pdp-add disabled data-astro-cid-CID>Agregar al carrito</button> <button type="button" class="vsel__buynow" data-pdp-buynow disabled data-astro-cid-CID>Comprar ya por WhatsApp</button> <div class="vsel__toast" data-pdp-toast role="status" aria-live="polite" hidden data-astro-cid-CID> <span class="vsel__toast-msg" data-astro-cid-CID>✓ Agregado al carrito</span> <a class="vsel__toast-link" href="/carrito" data-astro-cid-CID>Ver carrito</a> </div> </div> <script type="application/json" data-pdp-data>{"producto_id":"prod-f3-01","nombre":"Camiseta Deportiva Pro","slug":"camiseta-deportiva-pro","sku_base":"KAY-CAM-001","foto_principal":"https://rsmxklkxqsaptchcjszd.supabase.co/img/cam.jpg","precioBase":89000,"tieneVariantes":true,"axes":["color","talla"],"variantes":[{"id":"v1","color":"Negro","talla":"M","sku":"KAY-CAM-001-NEG-M","disponible":5,"foto":null,"precio":89000},{"id":"v2","color":"Negro","talla":"L","sku":"KAY-CAM-001-NEG-L","disponible":3,"foto":null,"precio":89000},{"id":"v3","color":"Azul","talla":"M","sku":"KAY-CAM-001-AZU-M","disponible":0,"foto":null,"precio":89000}],"wppDigits":"573001234567","tiendaNombre":"KAYBU","productUrl":"https://aimma-test.tienda.aimma.com.co/p/camiseta-deportiva-pro"}</script> </div>  <script type="module" src="src/components/VariantSelector.astro?astro&type=script&index=0&lang.ts"></script> </section> </div> <section class="ma-pdp__desc" data-astro-cid-CID> <h2 class="ma-pdp__h2" data-astro-cid-CID>Descripcion</h2> <p class="ma-pdp__desc-body" data-astro-cid-CID>Camiseta de alto rendimiento para entrenamiento.
 Tela transpirable.</p> </section>  </article> 
