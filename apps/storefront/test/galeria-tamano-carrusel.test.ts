@@ -35,4 +35,20 @@ describe('Galeria · tamano + carrusel', () => {
     expect(html).not.toContain('data-gal-carrusel');
     expect(html).toContain('lg:grid-cols-4');
   });
+
+  test('carrusel en PREVIEW: inerte (overflow-hidden, sin flechas, sin script)', async () => {
+    const html = await renderNormalized(Galeria, sec({ layout: 'carrusel' }), makeTienda('industrial_clean'), [], { isPreview: true });
+    expect(html).toContain('data-gal-carrusel');           // sigue siendo carrusel visualmente
+    expect(html).toContain('overflow-hidden');             // inerte
+    expect(html).not.toContain('overflow-x-auto');         // no captura scroll
+    expect(html).not.toContain('data-gal-next');           // sin flechas en preview
+    expect(html).not.toContain('initGalCarrusel');         // sin script en preview
+  });
+  test('carrusel PUBLICADO: scroll real + flechas + script', async () => {
+    const html = await renderNormalized(Galeria, sec({ layout: 'carrusel' }), makeTienda('industrial_clean'), []);
+    expect(html).toContain('overflow-x-auto');
+    expect(html).toContain('data-gal-next');
+    expect(html).toContain('initGalCarrusel');
+  });
+
 });

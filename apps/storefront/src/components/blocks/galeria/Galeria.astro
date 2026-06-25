@@ -51,12 +51,17 @@ const gridPrefixClass = plantilla === 'fashion_bold' ? 'fb-galeria-grid '
 const dataField = plantilla === 'industrial_clean' ? 'imagenes' : undefined;
 const gridClass = `${gridPrefixClass}grid ${gridCols(plantilla, tamano)} ${gapClass}`;
 const itemExtra = isCarrusel ? ` snap-start shrink-0 ${carruselBasis(tamano)}` : '';
+// En la vista previa del editor el carrusel va INERTE (sin scroll/snap ni flechas ni JS): el swipe/scroll
+// del carrusel capturaba el gesto y estorbaba la seleccion/edicion. En la tienda publicada va completo.
+const carruselTrackClass = isPreview
+  ? `gal-carrusel flex overflow-hidden ${gapClass}`
+  : `gal-carrusel flex overflow-x-auto snap-x snap-mandatory ${gapClass}`;
 ---
 
 <SectionShell section={section}>
   {isCarrusel ? (
     <div class="gal-carrusel-wrap relative">
-      <div class={`gal-carrusel flex overflow-x-auto snap-x snap-mandatory ${gapClass}`} data-gal-carrusel tabindex="0" role="region" aria-label="Galeria (carrusel)" data-field={isPreview ? dataField : undefined}>
+      <div class={carruselTrackClass} data-gal-carrusel tabindex="0" role="region" aria-label="Galeria (carrusel)" data-field={isPreview ? dataField : undefined}>
         {p.imagenes.map((img, i) => (
           plantilla === 'editorial_magazine' ? (
             <figure class={`em-galeria-item group${itemExtra}`}>
@@ -70,12 +75,16 @@ const itemExtra = isCarrusel ? ` snap-start shrink-0 ${carruselBasis(tamano)}` :
           )
         ))}
       </div>
-      <button type="button" class="gal-carrusel-nav gal-carrusel-prev" data-gal-prev aria-label="Anterior">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
-      </button>
-      <button type="button" class="gal-carrusel-nav gal-carrusel-next" data-gal-next aria-label="Siguiente">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </button>
+      {!isPreview && (
+        <>
+          <button type="button" class="gal-carrusel-nav gal-carrusel-prev" data-gal-prev aria-label="Anterior">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button type="button" class="gal-carrusel-nav gal-carrusel-next" data-gal-next aria-label="Siguiente">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </>
+      )}
     </div>
   ) : (
     <div class={gridClass} data-field={isPreview ? dataField : undefined}>
@@ -131,7 +140,7 @@ const itemExtra = isCarrusel ? ` snap-start shrink-0 ${carruselBasis(tamano)}` :
   @media (pointer: fine) and (min-width: 1024px) { .gal-carrusel-nav { display: inline-flex; } }
 </style>
 
-{isCarrusel && (
+{isCarrusel && !isPreview && (
 <script is:inline>
   function initGalCarrusel() {
     document.querySelectorAll('[data-gal-carrusel]:not([data-gal-bound])').forEach(function (track) {
