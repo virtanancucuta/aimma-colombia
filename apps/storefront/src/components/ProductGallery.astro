@@ -133,7 +133,10 @@ const nombre = pdp.producto?.nombre || '';
     function close() {
       lb.hidden = true;
       document.removeEventListener('keydown', onKey);
-      if (lastFocus && lastFocus.focus) lastFocus.focus();
+      // Devolver el foco a un control focusable: el boton de zoom (la principal <img> no es
+      // focusable, asi que lastFocus no la captura). Fallback al elemento previo.
+      var ret = root.querySelector('[data-pgal-open]') || lastFocus;
+      if (ret && ret.focus) ret.focus();
     }
     function go(d) { idx = (idx + d + srcs.length) % srcs.length; render(); }
     function onKey(e) {
