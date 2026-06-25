@@ -175,6 +175,9 @@ const GaleriaProps = z.object({
   imagenes: z.array(ImagenRefSchema).min(3).max(12),
   layout: z.enum(['grid', 'carrusel', 'mosaico']).default('grid'),
   gap: z.enum(['tight', 'normal', 'loose']).default('normal'),
+  // Rediseño 2026-06-25: tamano de las fotos de la galeria (columnas en grilla / ancho de slide
+  // en carrusel). Default mediano = comportamiento actual.
+  tamano: z.enum(['pequeno', 'mediano', 'grande']).default('mediano'),
 });
 
 const FormularioProps = z.object({
