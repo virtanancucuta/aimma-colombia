@@ -488,6 +488,9 @@ const ThemeSchema = z.object({
   // M5.C: tamano de texto del menu (3 presets). El storefront mapea sm->0.875 / md->1 / lg->1.15
   // a la var --nav-text-scale; ausente o 'md' => sin var => tamano actual (byte-identico visual).
   nav_text_size: z.enum(['sm', 'md', 'lg']).optional(),
+  // Rediseño 2026-06-25: ajuste global de las fotos de producto. rellenar=object-cover (default),
+  // contener=object-contain + padding + fondo neutro (rubros packshot). Ausente => rellenar.
+  foto_ajuste: z.enum(['rellenar', 'contener']).optional(),
 });
 
 // ============================================================
