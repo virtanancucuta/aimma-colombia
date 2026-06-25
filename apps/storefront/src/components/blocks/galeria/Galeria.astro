@@ -133,16 +133,19 @@ const itemExtra = isCarrusel ? ` snap-start shrink-0 ${carruselBasis(tamano)}` :
 
 {isCarrusel && (
 <script is:inline>
-  (function () {
-    document.querySelectorAll('[data-gal-carrusel]').forEach(function (track) {
+  function initGalCarrusel() {
+    document.querySelectorAll('[data-gal-carrusel]:not([data-gal-bound])').forEach(function (track) {
+      track.setAttribute('data-gal-bound', '');
       var wrap = track.closest('.gal-carrusel-wrap');
       if (!wrap) return;
       function step() { return Math.max(track.clientWidth * 0.8, 120); }
+      var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var prev = wrap.querySelector('[data-gal-prev]');
       var next = wrap.querySelector('[data-gal-next]');
-      if (prev) prev.addEventListener('click', function () { track.scrollBy({ left: -step(), behavior: 'smooth' }); });
-      if (next) next.addEventListener('click', function () { track.scrollBy({ left: step(), behavior: 'smooth' }); });
+      if (prev) prev.addEventListener('click', function () { track.scrollBy({ left: -step(), behavior: rm ? 'auto' : 'smooth' }); });
+      if (next) next.addEventListener('click', function () { track.scrollBy({ left: step(), behavior: rm ? 'auto' : 'smooth' }); });
     });
-  })();
+  }
+  document.addEventListener('astro:page-load', initGalCarrusel);
 </script>
 )}
