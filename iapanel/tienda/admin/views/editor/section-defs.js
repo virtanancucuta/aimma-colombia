@@ -170,7 +170,7 @@
 
     galeria: {
       label: 'Galeria',
-      catalog: { group: 'avanzado', icon: '▤', desc: 'Varias fotos juntas en grilla, mosaico o carrusel.' },
+      catalog: { group: 'avanzado', icon: '▤', desc: 'Varias fotos juntas en grilla o carrusel.' },
       context: null, render_strategy: 'unified',
       ancho_default: 'completo', padding_default: 'md',
       campos: [
