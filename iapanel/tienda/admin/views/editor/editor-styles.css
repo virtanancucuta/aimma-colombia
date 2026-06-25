@@ -445,6 +445,13 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+/* Fase 1a: nota guia bajo un control (texto pequeno, no-uppercase). */
+.ed-ctrl__hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--ed-color-text-muted);
+}
 .ed-ctrl__input, .ed-ctrl__textarea, .ed-ctrl__select {
   width: 100%;
   padding: 0.5rem 0.625rem;

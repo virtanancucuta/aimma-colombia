@@ -46,6 +46,9 @@ export const PRODUCTOS_FIXTURE = [
 export function makeProductosSection(props: {
   columnas: 'auto' | 2 | 3 | 4;
   mostrar_precio: boolean;
+  forma?: '3/4' | '4/5' | '1/1' | '4/3';
+  ajuste?: 'rellenar' | 'contener';
+  hover?: 'heredar' | 'on' | 'off';
 }): any {
   return {
     id: 'sec_pilot01',
@@ -59,6 +62,10 @@ export function makeProductosSection(props: {
       orden: 'recientes',
       columnas: props.columnas,
       mostrar_precio: props.mostrar_precio,
+      // Fase 1a: solo se incluyen si el test los pide (ausentes -> defaults del render).
+      ...(props.forma ? { forma: props.forma } : {}),
+      ...(props.ajuste ? { ajuste: props.ajuste } : {}),
+      ...(props.hover ? { hover: props.hover } : {}),
     },
   };
 }

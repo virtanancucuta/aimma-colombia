@@ -243,6 +243,12 @@
       default:
         break;
     }
+    // Fase 1a: nota guia opcional bajo el control. campo.note puede ser string o fn(props) para
+    // texto dinamico (con rebuild_on_change en el campo, se refresca al cambiar el valor).
+    if (campo.note) {
+      const txt = typeof campo.note === 'function' ? campo.note(target.props || {}) : campo.note;
+      if (txt) wrap.appendChild(C.el('p', { class: 'ed-ctrl__hint' }, txt));
+    }
   }
 
   // ── toggle-object: switch ON/OFF de un objeto opcional + subcampos ──

@@ -21,6 +21,10 @@
     ASPECT_VIDEO: [{ v: '16/9', l: '16:9 (video)' }, { v: '4/3', l: '4:3' }, { v: '1/1', l: '1:1 (cuadrado)' }],
     ORDEN: [{ v: 'recientes', l: 'Mas recientes' }, { v: 'precio_asc', l: 'Precio: menor a mayor' }, { v: 'precio_desc', l: 'Precio: mayor a menor' }, { v: 'manual', l: 'Manual' }],
     COLUMNAS: [{ v: 'auto', l: 'Automatico' }, { v: 2, l: '2 columnas' }, { v: 3, l: '3 columnas' }, { v: 4, l: '4 columnas' }],
+    // Fase 1a: primitivo de imagen del bloque productos.
+    FORMA: [{ v: '3/4', l: 'Vertical 3:4 (recomendado)' }, { v: '4/5', l: 'Vertical 4:5' }, { v: '1/1', l: 'Cuadrado 1:1' }, { v: '4/3', l: 'Horizontal 4:3' }],
+    AJUSTE: [{ v: 'rellenar', l: 'Rellenar (recorta para llenar el marco)' }, { v: 'contener', l: 'Contener (foto entera, con margen)' }],
+    HOVER: [{ v: 'heredar', l: 'Como la tienda' }, { v: 'on', l: 'Si, mostrar 2a foto' }, { v: 'off', l: 'No' }],
     GALERIA_LAYOUT: [{ v: 'grid', l: 'Grilla uniforme' }, { v: 'carrusel', l: 'Carrusel horizontal' }, { v: 'mosaico', l: 'Mosaico' }],
     GALERIA_GAP: [{ v: 'tight', l: 'Compacto' }, { v: 'normal', l: 'Normal' }, { v: 'loose', l: 'Aireado' }],
     // B-secciones Lote 1
@@ -162,6 +166,11 @@
         { key: 'orden', control: 'select', label: 'Ordenar por', default: 'recientes', opts: { options: 'ORDEN' } },
         { key: 'columnas', control: 'select', label: 'Columnas', default: 'auto', opts: { options: 'COLUMNAS' } },
         { key: 'mostrar_precio', control: 'switch', label: 'Mostrar precio', default: true },
+        // Fase 1a: control de imagen (forma/ajuste/hover). Hoy solo industrial_clean lo aplica.
+        { key: 'forma', control: 'select', label: 'Forma de las fotos', default: '3/4', opts: { options: 'FORMA' }, rebuild_on_change: true,
+          note: (p) => 'Las fotos se recortan a ' + (p.forma || '3/4') + '. Subilas en esa proporcion para mejor calidad.' },
+        { key: 'ajuste', control: 'select', label: 'Ajuste de la foto', default: 'rellenar', opts: { options: 'AJUSTE' } },
+        { key: 'hover', control: 'select', label: 'Segunda foto al pasar el mouse', default: 'heredar', opts: { options: 'HOVER' } },
       ],
     },
 

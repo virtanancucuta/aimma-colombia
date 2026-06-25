@@ -59,12 +59,11 @@ describe('Productos · segunda foto al hover', () => {
     expect(tag).toContain('motion-reduce:transition-none'); // respeta prefers-reduced-motion
   });
 
-  test('IC: la segunda imagen usa object-contain p-4 (caja cuadrada -> foto entera, sin recorte)', async () => {
+  test('IC: la segunda imagen hereda el fit default (rellenar=object-cover) — detalle de forma/fit en fase1a-img.test', async () => {
     const html = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
     const tag = imgTag(html, 'hover.jpg');
-    expect(tag).toContain('object-contain');
-    expect(tag).toContain('p-4');
-    expect(tag).not.toContain('object-cover');
+    expect(tag).toContain('object-cover');     // Fase 1a: default rellenar (full-bleed tipo KAYBU)
+    expect(tag).not.toContain('h-full');        // nunca h-full (overflow de ayer)
   });
 
   test('IC: la principal se desvanece al hover SOLO si hay 2a foto', async () => {
@@ -78,19 +77,18 @@ describe('Productos · segunda foto al hover', () => {
     expect(imgTag(sinHover, 'main.jpg')).not.toContain('group-hover:opacity-0');
   });
 
-  test('IC: la principal usa aspect-square (alto definido), NO h-full (que no resuelve en aspect-ratio)', async () => {
+  test('IC: la principal usa aspect EN LA IMG (default aspect-[3/4]), NO h-full (que no resuelve en aspect-ratio)', async () => {
     // ROOT CAUSE verificado en navegador: h-full (height:100%) NO resuelve dentro de un wrapper con
-    // aspect-ratio -> la img tomaba su alto natural (231px) y desbordaba el wrapper square (181px);
-    // overflow-hidden recortaba abajo. Fix: aspect-square da alto definido desde el ancho definido
-    // (w-full) -> imgBox 181x181 (probado con Playwright). Aplica con y sin 2a foto.
+    // aspect-ratio -> overflow. Fix: aspect en la img da alto definido desde el ancho definido.
+    // Fase 1a: la forma default es 3/4 (configurable por seccion; ver fase1a-img.test).
     const conHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
     const p1 = imgTag(conHover, 'main.jpg');
-    expect(p1).toContain('aspect-square');
+    expect(p1).toContain('aspect-[3/4]');
     expect(p1).not.toContain('h-full');
     const noGal = [{ ...HOVER_ROW[0], fotos_galeria: [] }];
     const sinHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), noGal);
     const p2 = imgTag(sinHover, 'main.jpg');
-    expect(p2).toContain('aspect-square');
+    expect(p2).toContain('aspect-[3/4]');
     expect(p2).not.toContain('h-full');
   });
 

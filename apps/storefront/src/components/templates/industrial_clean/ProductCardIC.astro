@@ -19,12 +19,24 @@ interface Props {
     referencia?: string | null;
   };
   hoverSegundaFoto?: boolean;
+  /** Fase 1a: forma del marco (aspect). Default 3/4 para colecciones /c/ y callers no actualizados. */
+  forma?: '3/4' | '4/5' | '1/1' | '4/3';
+  /** Fase 1a: object-fit. cover = full-bleed (default), contain = entera con margen. */
+  fit?: 'cover' | 'contain';
 }
 
-const { producto, hoverSegundaFoto = false } = Astro.props;
+const { producto, hoverSegundaFoto = false, forma = '3/4', fit = 'cover' } = Astro.props;
 // Fase A: hay 2a foto que mostrar al hover. Gatea el fade-out de la principal (un producto de
 // una sola foto NO debe desvanecerse al pasar el mouse).
 const mostrarHover = hoverSegundaFoto && !!producto.foto_hover;
+
+// Fase 1a: la forma va al wrapper Y a la img (patron B verificado en navegador: aspect en la img
+// da alto definido sin depender de h-full, que ayer desbordaba). Mapa de clases LITERALES (Tailwind
+// v4 JIT no genera clases por interpolacion).
+const ASPECT: Record<string, string> = { '3/4': 'aspect-[3/4]', '4/5': 'aspect-[4/5]', '1/1': 'aspect-square', '4/3': 'aspect-[4/3]' };
+const aspectClass = ASPECT[forma] ?? 'aspect-[3/4]';
+// rellenar: object-cover sin padding (full-bleed). contener: object-contain con margen minimo (p-2).
+const objectClass = fit === 'contain' ? 'object-contain p-2' : 'object-cover';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -59,7 +71,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
     </div>
 
     {/* Image */}
-    <div class="relative aspect-square overflow-hidden bg-[var(--ta-color-text-base)]/5 mb-4">
+    <div class={`relative ${aspectClass} overflow-hidden bg-[var(--ta-color-text-base)]/5 mb-4`}>
       {producto.foto_principal ? (
         <OptimizedImage
           src={producto.foto_principal}
@@ -67,7 +79,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
           width={400}
           height={400}
           loading="lazy"
-          class={`absolute inset-0 w-full aspect-square object-contain p-4${mostrarHover ? ' transition-opacity duration-300 group-hover:opacity-0 group-focus-within:opacity-0 motion-reduce:transition-none' : ''}`}
+          class={`absolute inset-0 w-full ${aspectClass} ${objectClass}${mostrarHover ? ' transition-opacity duration-300 group-hover:opacity-0 group-focus-within:opacity-0 motion-reduce:transition-none' : ''}`}
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -86,9 +98,9 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
         </div>
       )}
 
-      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). object-contain p-4: caja
-          cuadrada de IC + fotos verticales -> contain muestra la foto ENTERA sin recortar. La
-          principal hace fade-out (gateado por mostrarHover) para un crossfade limpio sin asomo. */}
+      {/* Fase 1a: segunda foto al hover (CSS-only, decorativa, lazy). MISMO aspect+fit que la
+          principal -> crossfade limpio y uniforme. La principal hace fade-out (gateado por
+          mostrarHover) para que no asome aunque las 2 fotos difieran de proporcion. */}
       {mostrarHover && (
         <OptimizedImage
           src={producto.foto_hover}
@@ -96,7 +108,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 w-full aspect-square object-contain p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+          class={`absolute inset-0 w-full ${aspectClass} ${objectClass} opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none`}
         />
       )}
     </div>
