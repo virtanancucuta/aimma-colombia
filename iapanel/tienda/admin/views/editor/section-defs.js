@@ -176,7 +176,7 @@
       campos: [
         { key: 'layout', control: 'select', label: 'Disposicion', default: 'grid', opts: { options: 'GALERIA_LAYOUT' } },
         { key: 'gap', control: 'select', label: 'Espaciado', default: 'normal', opts: { options: 'GALERIA_GAP' } },
-        { key: 'imagenes', control: 'list', min: 3, max: 12, item_label: 'Imagen',
+        { key: 'imagenes', control: 'list', min: 3, max: 12, item_label: 'Imagen', after_base: true,
           add_label: '+ Agregar imagen', add_default_fn: 'galeria_img',
           max_note: 'Maximo 12 imagenes en la galeria.',
           min_note: 'La galeria necesita al menos 3 imagenes para verse bien.',

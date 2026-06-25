@@ -107,13 +107,23 @@
     wrap.appendChild(header);
 
     // ── Props especificas por tipo (autogeneradas desde campos[]) ──
+    // Los campos con after_base:true se renderizan DESPUES del grupo "Apariencia de la
+    // seccion" (p.ej. la lista de Imagenes de la galeria: toda la config junta primero,
+    // el contenido al final). El resto va antes, como siempre.
+    const afterBase = [];
     if (def) {
       const target = sectionTarget(sec, ES);
-      def.campos.forEach((campo) => renderCampo(wrap, target, campo, C));
+      def.campos.forEach((campo) => {
+        if (campo.after_base) { afterBase.push({ campo, target }); return; }
+        renderCampo(wrap, target, campo, C);
+      });
     }
 
     // ── Apariencia (base: ancho, fondo, padding) colapsable ──
     wrap.appendChild(C.collapsibleSection('Apariencia de la seccion', buildBaseControls(sec, C, ES)));
+
+    // ── Campos diferidos (after_base): van al final, despues de Apariencia ──
+    afterBase.forEach(({ campo, target }) => renderCampo(wrap, target, campo, C));
 
     // ── Acciones ──
     wrap.appendChild(C.primaryButton('Duplicar seccion', () => ES.duplicateSection(sec.id)));
