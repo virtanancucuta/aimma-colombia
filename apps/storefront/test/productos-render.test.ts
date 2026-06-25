@@ -23,9 +23,9 @@ describe('Productos · tamano -> columnas (IC)', () => {
     const html = await renderNormalized(Productos, makeProductosSection({ tamano: 'pequeno', mostrar_precio: true }), ic(), ROW);
     expect(html).toContain('lg:grid-cols-5');
   });
-  test('grilla IC ensanchada con lg:-mx-4 (alinea al header)', async () => {
+  test('grilla IC ensanchada con lg:-mx-12 (alinea al header)', async () => {
     const html = await renderNormalized(Productos, makeProductosSection({ mostrar_precio: true }), ic(), ROW);
-    expect(html).toContain('lg:-mx-4');
+    expect(html).toContain('lg:-mx-12');
   });
   test('hover on + flag OFF -> SI 2a imagen (override se mantiene)', async () => {
     const html = await renderNormalized(Productos, makeProductosSection({ mostrar_precio: true, hover: 'on' }), ic({ hover_segunda_foto: false }), ROW);
