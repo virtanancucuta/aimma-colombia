@@ -71,6 +71,11 @@ const ADMIN_ORIGIN = 'https://aimma.com.co';
       const NAV_SCALE = { sm: '0.875', md: '1', lg: '1.15' };
       const navScale = (typeof msg.nav_text_size === 'string' && Object.prototype.hasOwnProperty.call(NAV_SCALE, msg.nav_text_size)) ? NAV_SCALE[msg.nav_text_size] : '1';
       document.documentElement.style.setProperty('--nav-text-scale', navScale);
+      // Ajuste de foto: allowlist fijo -> sin eco del input. Ausente/rellenar = cover/0px.
+      const FOTO_FIT = { rellenar: 'cover', contener: 'contain' };
+      const fit = (typeof msg.foto_ajuste === 'string' && Object.prototype.hasOwnProperty.call(FOTO_FIT, msg.foto_ajuste)) ? FOTO_FIT[msg.foto_ajuste] : 'cover';
+      document.documentElement.style.setProperty('--ta-foto-fit', fit);
+      document.documentElement.style.setProperty('--ta-foto-pad', fit === 'contain' ? '0.5rem' : '0px');
     }
     if (msg.type === 'section-patch') {
       // Origin ya validado arriba (=== exacto). Shape ESTRICTO antes de tocar el DOM.

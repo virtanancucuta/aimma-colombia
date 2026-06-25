@@ -271,6 +271,11 @@
     else { delete state.theme.nav_text_size; }
     pushSnapshot(); markDirty(); notify('theme');
   }
+  function setThemeFotoAjuste(val) {
+    if (val === 'contener') { state.theme.foto_ajuste = 'contener'; }
+    else { delete state.theme.foto_ajuste; } // 'rellenar'/ausente = default, no se persiste
+    pushSnapshot(); markDirty(); notify('theme');
+  }
 
   // ============================================================
   // M2 · arbol de navegacion (Administrador de Paginas)
@@ -671,7 +676,7 @@
     get lastDraftSavedAt() { return state.lastDraftSavedAt; },
     get lastOp() { return state.lastOp; },
     setLastDraftSavedAt(d) { state.lastDraftSavedAt = d; },
-    setThemeColors, setThemePalette, setThemeFontPairing, setThemeNavTextSize,
+    setThemeColors, setThemePalette, setThemeFontPairing, setThemeNavTextSize, setThemeFotoAjuste,
     addNavNode, insertNavNodes, renameNavNode, navSlugExists, navHasCategoria, navNodeIdForCategoria,
     moveNavNode, setNavMostrarEnMenu, removeNavNode,
     findSection, findChild, findContenedor, findTarget, findFranja,

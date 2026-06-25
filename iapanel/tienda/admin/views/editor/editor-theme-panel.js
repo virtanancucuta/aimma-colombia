@@ -106,8 +106,9 @@
     var theme = (window.TiendaIA.editorState && window.TiendaIA.editorState.theme) || {};
     var pairing = theme.font_pairing || null;
     var navSize = theme.nav_text_size || null; // M5.C: tamano de texto del menu (preview en vivo)
+    var fotoAjuste = theme.foto_ajuste || 'rellenar';
     if (window.TiendaIA.editorCanvas && window.TiendaIA.editorCanvas.applyThemePreview) {
-      window.TiendaIA.editorCanvas.applyThemePreview(buildColorsVars(r), pairing, navSize);
+      window.TiendaIA.editorCanvas.applyThemePreview(buildColorsVars(r), pairing, navSize, fotoAjuste);
     }
   }
 
@@ -210,6 +211,35 @@
     navSec.appendChild(navRow);
     navSec.appendChild(E('p', { class: 'ed-theme-hint' }, 'Cambia el tamano de los textos del menu de navegacion (categorias y paginas) en tu tienda.'));
     body.appendChild(navSec);
+
+    // ---- Seccion: Ajuste de las fotos de producto (rellenar/contener) ----
+    var fitSec = E('section', { class: 'ed-theme-sec' });
+    fitSec.appendChild(E('p', { class: 'ed-theme-sec__label' }, 'Ajuste de las fotos de producto'));
+    var fitOpts = [
+      { id: 'rellenar', label: 'Rellenar' },
+      { id: 'contener', label: 'Contener' },
+    ];
+    var selFit = (editorState.theme && editorState.theme.foto_ajuste) || 'rellenar';
+    var fitRow = document.createElement('div');
+    fitRow.className = 'ed-theme-navsize';
+    fitRow.setAttribute('role', 'group');
+    fitRow.setAttribute('aria-label', 'Ajuste de las fotos de producto');
+    fitOpts.forEach(function(opt) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ed-theme-navsize__btn' + (opt.id === selFit ? ' is-sel' : '');
+      b.setAttribute('aria-pressed', opt.id === selFit ? 'true' : 'false');
+      b.textContent = opt.label;
+      b.addEventListener('click', function() {
+        editorState.setThemeFotoAjuste(opt.id);
+        applyPreview();
+        renderBody();
+      });
+      fitRow.appendChild(b);
+    });
+    fitSec.appendChild(fitRow);
+    fitSec.appendChild(E('p', { class: 'ed-theme-hint' }, 'Rellenar recorta la foto para llenar el cuadro (ideal moda/calzado). Contener muestra el producto completo sin recortar (ideal ferreteria, supermercado, bisuteria).'));
+    body.appendChild(fitSec);
 
     // ---- Seccion: Color ----
     var colorSec = E('section', { class: 'ed-theme-sec' });
