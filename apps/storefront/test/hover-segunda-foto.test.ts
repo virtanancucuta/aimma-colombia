@@ -81,7 +81,7 @@ describe('Productos · segunda foto al hover', () => {
   test('IC: la principal usa aspect EN LA IMG (aspect-square), NO h-full (que no resuelve en aspect-ratio)', async () => {
     // ROOT CAUSE verificado en navegador: h-full (height:100%) NO resuelve dentro de un wrapper con
     // aspect-ratio -> overflow. Fix: aspect en la img da alto definido desde el ancho definido.
-    // Fase 1a (card IC reescrita): la img usa aspect-square object-cover (foto cuadrada por diseno).
+    // Fase 1a (card IC reescrita): la img usa aspect-square object-fit var (foto cuadrada por diseno).
     const conHover = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
     const p1 = imgTag(conHover, 'main.jpg');
     expect(p1).toContain('aspect-square');

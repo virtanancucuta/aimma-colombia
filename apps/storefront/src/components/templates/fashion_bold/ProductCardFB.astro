@@ -57,7 +57,7 @@ const sinStock = producto.stock_disponible === 0;
         </div>
       )}
 
-      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). object-cover como la primaria. */}
+      {/* Fase A: segunda foto al hover (CSS-only, decorativa, lazy). object-fit var como la primaria. */}
       {hoverSegundaFoto && producto.foto_hover && (
         <OptimizedImage
           src={producto.foto_hover}
