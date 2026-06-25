@@ -41,7 +41,7 @@ const sinStock = producto.stock_disponible === 0;
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 w-full aspect-square object-cover transition-opacity duration-700 ease-out group-hover:opacity-95"
+          class="absolute inset-0 w-full aspect-square [object-fit:var(--ta-foto-fit,cover)] [padding:var(--ta-foto-pad,0px)] transition-opacity duration-700 ease-out group-hover:opacity-95"
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -63,7 +63,7 @@ const sinStock = producto.stock_disponible === 0;
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 w-full aspect-square object-cover opacity-0 transition-opacity duration-700 ease-out group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+          class="absolute inset-0 w-full aspect-square [object-fit:var(--ta-foto-fit,cover)] [padding:var(--ta-foto-pad,0px)] opacity-0 transition-opacity duration-700 ease-out group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
         />
       )}
 

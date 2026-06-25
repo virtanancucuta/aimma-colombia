@@ -14,7 +14,7 @@ describe('ProductCardIC · card limpia', () => {
   test('foto usa aspect-square en wrapper y en img, sin h-full', async () => {
     const html = await render(10);
     expect(html).toContain('relative aspect-square overflow-hidden');
-    expect(html).toContain('w-full aspect-square object-cover');
+    expect(html).toContain('w-full aspect-square [object-fit:var(--ta-foto-fit,cover)]');
     expect(html).not.toContain('h-full w-full object-cover');
   });
   test('sin SKU (no aparece "SKU ")', async () => {

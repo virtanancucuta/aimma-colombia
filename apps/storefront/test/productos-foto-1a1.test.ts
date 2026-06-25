@@ -20,13 +20,13 @@ describe('Productos · foto estandar 1:1 en las 4 plantillas', () => {
       const html = await renderNormalized(Productos, makeProductosSection({ mostrar_precio: true, hover: 'on' }), tienda(slug), ROW);
       // wrapper cuadrado
       expect(html).toContain('relative aspect-square overflow-hidden');
-      // img principal y de hover: patron B (absolute inset-0 + aspect-square + object-cover)
+      // img principal y de hover: patron B (absolute inset-0 + aspect-square + var fit)
       const imgs = html.match(/<img[^>]*>/g) || [];
       const cardImgs = imgs.filter((t) => /a\.jpg|b\.jpg/.test(t));
       expect(cardImgs.length).toBeGreaterThanOrEqual(2); // principal + hover
       for (const t of cardImgs) {
         expect(t).toContain('aspect-square');
-        expect(t).toContain('object-cover');
+        expect(t).toContain('object-fit:var(--ta-foto-fit,cover)'); // Task 2: var en lugar de clase literal
         expect(t).not.toContain('h-full');           // el patron fragil que mordio a IC
       }
       // ningun aspect vertical viejo en el bloque

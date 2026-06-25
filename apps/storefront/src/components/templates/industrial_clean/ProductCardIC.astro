@@ -59,7 +59,7 @@ const ariaLabel = sinStock ? `${producto.nombre}, agotado`
           width={400}
           height={400}
           loading="lazy"
-          class={`absolute inset-0 w-full aspect-square object-cover${mostrarHover ? ' transition-opacity duration-300 group-hover:opacity-0 group-focus-within:opacity-0 motion-reduce:transition-none' : ''}`}
+          class={`absolute inset-0 w-full aspect-square [object-fit:var(--ta-foto-fit,cover)] [padding:var(--ta-foto-pad,0px)]${mostrarHover ? ' transition-opacity duration-300 group-hover:opacity-0 group-focus-within:opacity-0 motion-reduce:transition-none' : ''}`}
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -85,7 +85,7 @@ const ariaLabel = sinStock ? `${producto.nombre}, agotado`
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 w-full aspect-square object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+          class="absolute inset-0 w-full aspect-square [object-fit:var(--ta-foto-fit,cover)] [padding:var(--ta-foto-pad,0px)] opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
         />
       )}
     </div>

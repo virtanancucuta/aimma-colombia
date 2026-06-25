@@ -59,10 +59,11 @@ describe('Productos · segunda foto al hover', () => {
     expect(tag).toContain('motion-reduce:transition-none'); // respeta prefers-reduced-motion
   });
 
-  test('IC: la segunda imagen hereda el fit default (rellenar=object-cover)', async () => {
+  test('IC: la segunda imagen hereda el fit via var (--ta-foto-fit default=cover)', async () => {
     const html = await renderNormalized(Productos, section(), tienda('industrial_clean', true), HOVER_ROW);
     const tag = imgTag(html, 'hover.jpg');
-    expect(tag).toContain('object-cover');     // Fase 1a: default rellenar (full-bleed tipo KAYBU)
+    expect(tag).toContain('object-fit:var(--ta-foto-fit,cover)'); // Task 2: var con fallback cover
+    expect(tag).toContain('padding:var(--ta-foto-pad,0px)');
     expect(tag).not.toContain('h-full');        // nunca h-full (overflow de ayer)
   });
 

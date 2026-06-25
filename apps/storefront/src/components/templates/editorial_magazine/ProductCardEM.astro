@@ -42,7 +42,7 @@ const sinStock = producto.stock_disponible === 0;
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 w-full aspect-square object-cover transition-[transform,opacity] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform group-hover:scale-[1.04]"
+          class="absolute inset-0 w-full aspect-square [object-fit:var(--ta-foto-fit,cover)] [padding:var(--ta-foto-pad,0px)] transition-[transform,opacity] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform group-hover:scale-[1.04]"
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -64,7 +64,7 @@ const sinStock = producto.stock_disponible === 0;
           width={400}
           height={400}
           loading="lazy"
-          class="absolute inset-0 w-full aspect-square object-cover opacity-0 transition-opacity duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+          class="absolute inset-0 w-full aspect-square [object-fit:var(--ta-foto-fit,cover)] [padding:var(--ta-foto-pad,0px)] opacity-0 transition-opacity duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
         />
       )}
 

@@ -82,6 +82,10 @@ const fontUrl = pairing ? pairing.url : template.fonts.googleFontsUrl;
 const NAV_TEXT_SCALE: Record<string, string> = { sm: '0.875', lg: '1.15' };
 const navScale = themeActivo.nav_text_size ? NAV_TEXT_SCALE[themeActivo.nav_text_size] : undefined;
 
+// Ajuste de foto por tienda. Ausente => rellenar (cover, sin padding) = byte-identico a hoy.
+const fotoFit = themeActivo.foto_ajuste === 'contener' ? 'contain' : 'cover';
+const fotoPad = themeActivo.foto_ajuste === 'contener' ? '0.5rem' : '0px';
+
 // CSS vars en el style attribute del <html> = declaraciones validas + heredadas
 // por todos los descendientes. Incluye theming (paleta) + auto-contrast + fonts.
 const themeStyle =
@@ -94,7 +98,8 @@ const themeStyle =
   `--ta-color-on-bg:${onBg};` +
   `--ta-font-display:${displayFamily};` +
   `--ta-font-body:${bodyFamily};` +
-  (navScale ? `--nav-text-scale:${navScale};` : '');
+  (navScale ? `--nav-text-scale:${navScale};` : '') +
+  `--ta-foto-fit:${fotoFit};--ta-foto-pad:${fotoPad};`;
 ---
 
 <!doctype html>
