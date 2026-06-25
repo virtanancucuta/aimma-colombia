@@ -165,6 +165,11 @@ const ProductosProps = z.object({
   orden: z.enum(['recientes', 'precio_asc', 'precio_desc', 'manual']).default('recientes'),
   columnas: z.union([z.literal('auto'), z.literal(2), z.literal(3), z.literal(4)]).default('auto'),
   mostrar_precio: z.boolean().default(true),
+  // Fase 1a: primitivo de imagen por seccion. forma = aspect del marco; ajuste = object-fit;
+  // hover = override del flag de tienda hover_segunda_foto. Por ahora solo industrial_clean los usa.
+  forma: z.enum(['3/4', '4/5', '1/1', '4/3']).default('3/4'),
+  ajuste: z.enum(['rellenar', 'contener']).default('rellenar'),
+  hover: z.enum(['heredar', 'on', 'off']).default('heredar'),
 });
 
 const GaleriaProps = z.object({
