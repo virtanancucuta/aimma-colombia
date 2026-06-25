@@ -1,8 +1,8 @@
 ---
-// Industrial Clean · ProductCard · 2026-05-31
-// Technical card. SKU top-left + stock indicator dot top-right. Image bg-base/5.
-// Info: nombre semibold + precio mono tabular + "Ver producto →" link.
-// bg-white p-5 border. Hover: bg-base/5 (color shift only).
+// Industrial Clean · ProductCard · Rediseño 2026-06-25
+// Foto 1:1 fija (estandar multi-rubro). Card limpia: foto + nombre + precio. Sin SKU/stock-row/CTA.
+// Badge de stock SOLO cuando aplica (Agotado / Ultimas X). Card completa clickeable. Hover 2a foto.
+// Patron B: aspect-square en wrapper Y en la img. NUNCA h-full.
 
 import OptimizedImage from '~/components/OptimizedImage.astro';
 
@@ -19,24 +19,10 @@ interface Props {
     referencia?: string | null;
   };
   hoverSegundaFoto?: boolean;
-  /** Fase 1a: forma del marco (aspect). Default 3/4 para colecciones /c/ y callers no actualizados. */
-  forma?: '3/4' | '4/5' | '1/1' | '4/3';
-  /** Fase 1a: object-fit. cover = full-bleed (default), contain = entera con margen. */
-  fit?: 'cover' | 'contain';
 }
 
-const { producto, hoverSegundaFoto = false, forma = '3/4', fit = 'cover' } = Astro.props;
-// Fase A: hay 2a foto que mostrar al hover. Gatea el fade-out de la principal (un producto de
-// una sola foto NO debe desvanecerse al pasar el mouse).
+const { producto, hoverSegundaFoto = false } = Astro.props;
 const mostrarHover = hoverSegundaFoto && !!producto.foto_hover;
-
-// Fase 1a: la forma va al wrapper Y a la img (patron B verificado en navegador: aspect en la img
-// da alto definido sin depender de h-full, que ayer desbordaba). Mapa de clases LITERALES (Tailwind
-// v4 JIT no genera clases por interpolacion).
-const ASPECT: Record<string, string> = { '3/4': 'aspect-[3/4]', '4/5': 'aspect-[4/5]', '1/1': 'aspect-square', '4/3': 'aspect-[4/3]' };
-const aspectClass = ASPECT[forma] ?? 'aspect-[3/4]';
-// rellenar: object-cover sin padding (full-bleed). contener: object-contain con margen minimo (p-2).
-const objectClass = fit === 'contain' ? 'object-contain p-2' : 'object-cover';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -50,28 +36,19 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
 
 <article class="group border border-[var(--ta-color-text-base)]/10 bg-[var(--ta-color-bg-base)] transition-colors duration-200 hover:bg-[var(--ta-color-text-base)]/[0.02]">
   <a href={`/p/${producto.slug}`} class="block p-4 lg:p-5" aria-label={producto.nombre}>
-    {/* Top meta row: SKU + stock dot */}
-    <div class="mb-3 flex items-center justify-between text-[11px] font-body text-[var(--ta-color-text-base)]/50">
-      <span class="font-mono uppercase tracking-wide">
-        {producto.referencia ? `SKU ${producto.referencia}` : '—'}
-      </span>
-      <span class="flex items-center gap-1.5" aria-label={sinStock ? 'Agotado' : stockLow ? 'Bajo stock' : 'En stock'}>
-        <span
-          class:list={[
-            'inline-block h-2 w-2 rounded-full',
-            sinStock
-              ? 'bg-[var(--ta-color-text-base)]/20'
-              : stockLow
-                ? 'bg-amber-500'
-                : 'bg-emerald-600',
-          ]}
-        ></span>
-        {sinStock ? 'Agotado' : stockLow ? 'Bajo stock' : 'En stock'}
-      </span>
-    </div>
+    {/* Imagen 1:1 (aspect-square en wrapper Y en img — patron B) */}
+    <div class="relative aspect-square overflow-hidden bg-[var(--ta-color-text-base)]/5 mb-4">
+      {/* Badge de stock condicional sobre la foto */}
+      {sinStock ? (
+        <span class="absolute left-2 top-2 z-10 rounded-sm bg-[var(--ta-color-text-base)] px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--ta-color-bg-base)]">
+          Agotado
+        </span>
+      ) : stockLow ? (
+        <span class="absolute left-2 top-2 z-10 rounded-sm bg-amber-500 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-amber-950">
+          Últimas {producto.stock_disponible}
+        </span>
+      ) : null}
 
-    {/* Image */}
-    <div class={`relative ${aspectClass} overflow-hidden bg-[var(--ta-color-text-base)]/5 mb-4`}>
       {producto.foto_principal ? (
         <OptimizedImage
           src={producto.foto_principal}
@@ -79,7 +56,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
           width={400}
           height={400}
           loading="lazy"
-          class={`absolute inset-0 w-full ${aspectClass} ${objectClass}${mostrarHover ? ' transition-opacity duration-300 group-hover:opacity-0 group-focus-within:opacity-0 motion-reduce:transition-none' : ''}`}
+          class={`absolute inset-0 w-full aspect-square object-cover${mostrarHover ? ' transition-opacity duration-300 group-hover:opacity-0 group-focus-within:opacity-0 motion-reduce:transition-none' : ''}`}
           transitionName={`producto-${producto.id}`}
         />
       ) : (
@@ -98,9 +75,6 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
         </div>
       )}
 
-      {/* Fase 1a: segunda foto al hover (CSS-only, decorativa, lazy). MISMO aspect+fit que la
-          principal -> crossfade limpio y uniforme. La principal hace fade-out (gateado por
-          mostrarHover) para que no asome aunque las 2 fotos difieran de proporcion. */}
       {mostrarHover && (
         <OptimizedImage
           src={producto.foto_hover}
@@ -108,7 +82,7 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
           width={400}
           height={400}
           loading="lazy"
-          class={`absolute inset-0 w-full ${aspectClass} ${objectClass} opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none`}
+          class="absolute inset-0 w-full aspect-square object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
         />
       )}
     </div>
@@ -129,14 +103,5 @@ const stockLow = producto.stock_disponible !== null && producto.stock_disponible
         </span>
       )}
     </div>
-
-    {/* CTA link */}
-    <p class="mt-3 inline-flex items-center gap-1 font-body text-xs font-medium text-[var(--ta-color-primary)] group-hover:gap-2 transition-all duration-200">
-      Ver producto
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <line x1="5" y1="12" x2="19" y2="12" />
-        <polyline points="12 5 19 12 12 19" />
-      </svg>
-    </p>
   </a>
 </article>
