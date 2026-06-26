@@ -734,6 +734,68 @@ a:hover { text-decoration: underline; }
   .ta-inv-vlabel { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); margin-bottom:1px; }
 }
 
+/* ============================ Ventas por articulo (Fase 3a) ============================ */
+.ta-vta-daterange { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+.ta-vta-date { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ta-text-soft); }
+.ta-vta-date .ta-input { max-width:160px; }
+
+.ta-vta-kpis { display:flex; flex-wrap:wrap; gap:10px 28px; align-items:baseline; padding:12px 14px; margin:0 0 4px; background:var(--ta-bg-soft); border:1px solid var(--ta-border); border-radius:12px; }
+.ta-vta-kpi { display:flex; flex-direction:column; gap:2px; }
+.ta-vta-kpi__val { font-size:20px; font-weight:800; color:var(--ta-text); line-height:1; }
+.ta-vta-kpi__lbl { font-size:12px; color:var(--ta-text-soft); }
+.ta-vta-kpis__note { margin:4px 2px 12px; font-size:13px; color:var(--ta-text-soft); }
+
+.ta-vta-list { width:100%; }
+.ta-vta-list__head, .ta-vta-item, .ta-vta-vrow {
+  display:grid;
+  grid-template-columns: 26px 46px minmax(140px,1.8fr) repeat(6, minmax(86px,1fr));
+  gap:0 12px; align-items:center;
+}
+.ta-vta-list__head { padding:10px 12px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--ta-text-mut); border-bottom:1px solid var(--ta-border); }
+.ta-vta-item { padding:10px 12px; border-bottom:1px solid var(--ta-border); cursor:pointer; transition:background .15s ease; }
+.ta-vta-item:hover { background:var(--ta-bg-soft); }
+.ta-vta-item--nodrill { cursor:default; }
+.ta-vta-chevron { color:var(--ta-text-mut); transition:transform .15s ease; }
+.ta-vta-item[data-open="1"] .ta-vta-chevron { transform:rotate(90deg); }
+.ta-vta-thumb, .ta-vta-thumb--empty { width:40px; height:40px; border-radius:8px; object-fit:cover; border:1px solid var(--ta-border); }
+.ta-vta-thumb--empty { display:flex; align-items:center; justify-content:center; background:var(--ta-bg-soft); font-size:18px; }
+.ta-vta-ref { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.ta-vta-ref strong { font-size:14px; }
+.ta-vta-ref span { font-size:12px; color:var(--ta-text-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ta-vta-cell { font-size:14px; font-weight:600; }
+.ta-vta-cell.num { text-align:right; }
+.ta-vta-cell__label { display:none; }
+.ta-vta-aprox { font-size:11px; font-weight:500; color:var(--ta-text-mut); cursor:help; border-bottom:1px dotted var(--ta-text-mut); }
+
+.ta-vta-vrow { padding:8px 12px; background:var(--ta-bg-soft); border-bottom:1px solid var(--ta-border); font-size:13px; }
+.ta-vta-vrow .ta-vta-vref { grid-column:2 / 4; display:flex; gap:8px; align-items:baseline; min-width:0; }
+.ta-vta-vrow .ta-vta-vref strong { font-weight:700; }
+.ta-vta-vrow code { font-size:11px; color:var(--ta-text-mut); }
+.ta-vta-vrow .ta-vta-cell { font-weight:500; }
+.ta-vta-vrow--msg { color:var(--ta-text-mut); }
+
+@media (min-width:1500px) {
+  .ta-main--inv-wide .ta-vta-list__head,
+  .ta-main--inv-wide .ta-vta-item,
+  .ta-main--inv-wide .ta-vta-vrow {
+    grid-template-columns: 26px 46px minmax(200px,1.8fr) repeat(6, minmax(110px,1fr));
+  }
+}
+
+@media (max-width:760px) {
+  .ta-vta-list__head { display:none; }
+  .ta-vta-item, .ta-vta-vrow {
+    grid-template-columns: 40px 1fr; gap:8px 12px; padding:12px; align-items:start;
+  }
+  .ta-vta-item { border:1px solid var(--ta-border); border-radius:12px; margin-bottom:10px; background:var(--ta-surface); }
+  .ta-vta-chevron { grid-column:2; justify-self:end; }
+  .ta-vta-thumb, .ta-vta-thumb--empty { grid-column:1; grid-row:1 / span 2; }
+  .ta-vta-ref { grid-column:2; }
+  .ta-vta-cell { grid-column:1 / -1; display:flex; justify-content:space-between; text-align:left !important; border-top:1px solid var(--ta-border); padding-top:6px; }
+  .ta-vta-cell__label { display:inline; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--ta-text-mut); }
+  .ta-vta-vrow .ta-vta-vref { grid-column:1 / -1; }
+}
+
 /* ============================ Acciones recomendadas ============================ */
 .ta-acciones-list {
   display: flex;

@@ -32,7 +32,7 @@
   const STOREFRONT_HOST = 'tienda.aimma.com.co'; // <slug>.tienda.aimma.com.co
 
   // 'pedidos' mantiene retrocompat con URLs viejas; alias a 'crm' (misma vista).
-  const ROUTES = ['', 'productos', 'inventario', 'categorias', 'crm', 'pedidos', 'resenas', 'configuracion', 'legales', 'vista-previa', 'editor', 'fotos-ia'];
+  const ROUTES = ['', 'productos', 'inventario', 'ventas', 'categorias', 'crm', 'pedidos', 'resenas', 'configuracion', 'legales', 'vista-previa', 'editor', 'fotos-ia'];
   const DEFAULT_ROUTE = '';
 
   // ============================================================
