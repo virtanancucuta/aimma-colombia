@@ -170,7 +170,7 @@ serve(async (req: Request) => {
 
   const { data: productos, error: errProd } = await supabase
     .from('productos')
-    .select('id, nombre, referencia, precio_venta, precio_promo, estado')
+    .select('id, nombre, referencia, precio_venta, precio_promo, estado, tasa_iva')
     .eq('tienda_id', tienda.id)
     .eq('estado', 'activo')
     .in('id', productoIds);
@@ -205,6 +205,7 @@ serve(async (req: Request) => {
     cantidad: number;
     precio_unitario: number;
     subtotal: number;
+    tasa_iva: number;
   };
   const itemsFinales: PreparedItem[] = [];
   let subtotalProductos = 0;
@@ -239,6 +240,9 @@ serve(async (req: Request) => {
       cantidad: it.cantidad,
       precio_unitario: precioUnit,
       subtotal,
+      // Freeze del IVA: se congela la tasa del producto AL MOMENTO de la venta (server-side, nunca
+      // del cliente). Modelo A (precio IVA-incluido); queda como hecho historico inmutable.
+      tasa_iva: Number(prod.tasa_iva ?? 0),
     });
   }
 
@@ -367,6 +371,7 @@ serve(async (req: Request) => {
       cantidad: it.cantidad,
       precio_unitario: it.precio_unitario,
       subtotal: it.subtotal,
+      tasa_iva: it.tasa_iva,
     })));
   if (errItems) {
     // Rollback pedido + reservas
