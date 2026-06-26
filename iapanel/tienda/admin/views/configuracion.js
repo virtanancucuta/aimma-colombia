@@ -207,6 +207,19 @@
             '</label>' +
             '<span class="ta-field__hint">Si lo apagas, los productos no muestran reseñas ni el formulario para dejarlas. Las reseñas se moderan en la seccion Reseñas.</span>' +
           '</div>' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="cfg-factura-iva">Facturación con IVA</label>' +
+            '<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">' +
+              '<input type="checkbox" id="cfg-factura-iva"' + (t.factura_con_iva === false ? '' : ' checked') + ' />' +
+              '<span>Tu empresa factura con IVA</span>' +
+            '</label>' +
+            '<span class="ta-field__hint">Si lo apagas, los productos nuevos se crean sin IVA (0%).</span>' +
+          '</div>' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="cfg-tasa-iva-default">IVA por defecto (%)</label>' +
+            '<input type="number" id="cfg-tasa-iva-default" class="ta-input" min="0" max="100" step="1" value="' + (t.tasa_iva_default != null ? t.tasa_iva_default : 19) + '" />' +
+            '<span class="ta-field__hint">% por defecto al crear productos — editable por producto.</span>' +
+          '</div>' +
         '</div>' +
       '</section>';
   }
@@ -329,6 +342,13 @@
       el.addEventListener('input', marcarDirty);
       el.addEventListener('change', marcarDirty);
     });
+
+    // IVA: el campo "IVA por defecto" solo es editable si la tienda factura con IVA.
+    const chkFacturaIva = view.querySelector('#cfg-factura-iva');
+    const inpTasaIva = view.querySelector('#cfg-tasa-iva-default');
+    function syncTasaIvaField() { if (chkFacturaIva && inpTasaIva) inpTasaIva.disabled = !chkFacturaIva.checked; }
+    if (chkFacturaIva) chkFacturaIva.addEventListener('change', syncTasaIvaField);
+    syncTasaIvaField();
 
     // Cascade plantilla -> paleta (interno, sin select visible)
     // v5: el select de paleta fue retirado del DOM. Se trackea la paleta_id
@@ -490,6 +510,9 @@
     const mostrarBuscadorHeader = view.querySelector('#cfg-buscador-header').checked;
     const hoverSegundaFoto = view.querySelector('#cfg-hover-segunda-foto').checked;
     const mostrarResenasProductos = view.querySelector('#cfg-resenas-productos').checked;
+    const facturaConIva = view.querySelector('#cfg-factura-iva').checked;
+    const tasaIvaDefaultRaw = view.querySelector('#cfg-tasa-iva-default').value;
+    const tasaIvaDefault = tasaIvaDefaultRaw === '' ? 19 : Number(tasaIvaDefaultRaw);
     const plantillaId = view.querySelector('#cfg-plantilla').value;
     // v5: paletaId se lee del estado interno (no del DOM — el select fue retirado).
     const paletaId = cstate.paletaIdSel || tienda.paleta_id || null;
@@ -509,6 +532,9 @@
     if (!nombre) { T.toast('El nombre del negocio es obligatorio.', 'error'); return; }
     if (!whatsapp) { T.toast('El WhatsApp del dueño es obligatorio.', 'error'); return; }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { T.toast('Email de contacto invalido.', 'error'); return; }
+    if (facturaConIva && (Number.isNaN(tasaIvaDefault) || tasaIvaDefault < 0 || tasaIvaDefault > 100)) {
+      T.toast('El IVA por defecto debe estar entre 0 y 100.', 'error'); return;
+    }
 
     // No publicar sin plantilla/paleta
     if (estado === 'publicada' && (!plantillaId || !paletaId)) {
@@ -558,6 +584,8 @@
       mostrar_buscador_header: mostrarBuscadorHeader,
       hover_segunda_foto: hoverSegundaFoto,
       mostrar_resenas_productos: mostrarResenasProductos,
+      factura_con_iva: facturaConIva,
+      tasa_iva_default: tasaIvaDefault,
       plantilla_id: plantillaId || null,
       paleta_id: paletaId || null,
       nombre_legal: nombreLegal || null,

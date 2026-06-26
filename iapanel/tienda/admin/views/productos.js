@@ -489,6 +489,12 @@
     const T = window.TiendaIA;
     const p = formState.producto;
     const esEdicion = !!p;
+    // IVA: en edicion = la tasa guardada del producto; en creacion = precarga del ajuste de la tienda
+    // (tasa_iva_default si factura con IVA, si no 0). Editable por producto.
+    const tIva = T.state.tienda || {};
+    const ivaInicial = esEdicion
+      ? (p && p.tasa_iva != null ? p.tasa_iva : 0)
+      : (tIva.factura_con_iva ? (tIva.tasa_iva_default != null ? tIva.tasa_iva_default : 19) : 0);
 
     // F3: contenido editorial por-producto (guia de tallas + ficha). Todo opcional.
     // En edicion se popula desde p.guia_tallas_url / p.ficha_editorial (jsonb).
@@ -621,6 +627,11 @@
             '<label class="ta-field__label" for="f-precio-promo">Precio promo (COP)</label>' +
             '<input id="f-precio-promo" name="precio_promo" class="ta-input" type="number" min="1" step="1" value="' + (p?.precio_promo || '') + '">' +
             '<span class="ta-field__hint">Si está, se muestra el precio normal tachado.</span>' +
+          '</div>' +
+          '<div class="ta-field">' +
+            '<label class="ta-field__label" for="f-tasa-iva">IVA (%)</label>' +
+            '<input id="f-tasa-iva" name="tasa_iva" class="ta-input" type="number" min="0" max="100" step="1" value="' + ivaInicial + '">' +
+            '<span class="ta-field__hint">Incluido en el precio.' + (esEdicion ? '' : ' Precargado del ajuste de tu tienda.') + '</span>' +
           '</div>' +
         '</div>' +
 
@@ -1878,6 +1889,7 @@
       precio_promo: fd.get('precio_promo') ? Number(fd.get('precio_promo')) : null,
       precio_mayorista: fd.get('precio_mayorista') ? Number(fd.get('precio_mayorista')) : null,
       cantidad_min_mayorista: fd.get('cantidad_min_mayorista') ? Number(fd.get('cantidad_min_mayorista')) : null,
+      tasa_iva: (fd.get('tasa_iva') != null && String(fd.get('tasa_iva')) !== '') ? Number(fd.get('tasa_iva')) : 0,
       estado: String(fd.get('estado') || 'activo'),
       // F3: contenido editorial. guia = URL (hidden input seteado por el picker).
       guia_tallas_url: String(fd.get('guia_tallas_url') || '').trim() || null,
@@ -1890,6 +1902,9 @@
     if (!(payload.precio_venta > 0)) { T.toast('El precio de venta debe ser mayor a 0', 'error'); restoreBtn(btnGuardar); return; }
     if (payload.precio_promo != null && payload.precio_promo >= payload.precio_venta) {
       T.toast('El precio promo debe ser menor al precio de venta', 'error'); restoreBtn(btnGuardar); return;
+    }
+    if (Number.isNaN(payload.tasa_iva) || payload.tasa_iva < 0 || payload.tasa_iva > 100) {
+      T.toast('El IVA debe estar entre 0 y 100', 'error'); restoreBtn(btnGuardar); return;
     }
 
     // v14 BUG #3 fix: en EDICION, si user activa variantes pero la defaultVariant
