@@ -45,6 +45,7 @@
       catalogos: { proveedores: [], categorias: [] },
       loadedCatalogos: false,
       buscarTimer: null,
+      grupo: null,            // 4-UI-b: { tipo, rows, drillCache, drillOpen } (solo el rango, NO hereda filtros)
     };
   }
 
@@ -112,7 +113,7 @@
     vtaState.totales = null; vtaState.resumen = null;
     vtaState.drillCache = {}; vtaState.drillOpen = {}; // el costo/agregado por variante depende del rango
     if (vtaState.tab === 'articulo') fetchAndRender();
-    // Proveedor/Categoria (4-UI-b) re-consultaran aqui cuando existan.
+    else renderActiveTab(); // Proveedor/Categoría: re-monta el panel (re-fetch + reset drill) con el nuevo rango
   }
 
   function syncDateInputs() {
@@ -138,10 +139,9 @@
       wireArticulo();
       fetchAndRender();
     } else {
-      const nombre = vtaState.tab === 'proveedor' ? 'proveedor' : 'categoría';
-      cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:48px 16px;text-align:center;">' +
-        '<h2 class="ta-empty__title">Próximamente</h2>' +
-        '<p class="ta-empty__text">La vista de ventas por ' + nombre + ' llega en la próxima entrega.</p></div></div>';
+      cont.innerHTML = renderGrupoPanel(vtaState.tab);
+      wireGrupo(vtaState.tab);
+      fetchGrupo(vtaState.tab);
     }
   }
 
@@ -492,6 +492,219 @@
         aoa,
         cols: [{ wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 13 }],
       }], 'ventas_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  }
+
+  // ============================================================
+  // Pestañas PROVEEDOR / CATEGORÍA (4-UI-b) — tabla de grupos + drill (SOLO el rango; NO hereda filtros de Artículo)
+  // ============================================================
+  function renderGrupoPanel(tipo) {
+    return '' +
+      '<div class="ta-card" style="padding:12px 16px;margin-bottom:16px;display:flex;justify-content:flex-end;">' +
+        '<button id="vta-grp-export" class="ta-btn" style="padding:6px 12px;white-space:nowrap;">⬇ Exportar a Excel</button>' +
+      '</div>' +
+      '<div id="vta-kpis"></div>' +
+      '<div id="vta-grp-content"></div>';
+  }
+
+  function wireGrupo(tipo) {
+    const ex = window.TiendaIA.dom.mainView.querySelector('#vta-grp-export');
+    if (ex) ex.addEventListener('click', () => exportarExcelGrupo(ex, tipo));
+  }
+
+  async function fetchGrupo(tipo) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const cont = T.dom.mainView.querySelector('#vta-grp-content');
+    if (cont) cont.innerHTML = loadingCard();
+    vtaState.grupo = { tipo: tipo, rows: null, drillCache: {}, drillOpen: {} };
+    try {
+      // Header KPIs: ventas_totales del periodo SIN filtros de Articulo (solo el rango compartido) -> invariante.
+      const { data: tdata, error: terr } = await sb.rpc('ventas_totales', {
+        p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta,
+        p_proveedor_id: null, p_categoria_id: null, p_buscar: null,
+      });
+      if (terr) { if (cont) cont.innerHTML = errorCard(terr.message); return; }
+      const tot = (tdata && tdata[0]) || null;
+      if (tot) { vtaState.desde = String(tot.desde); vtaState.hasta = String(tot.hasta); syncDateInputs(); }
+      pintarKpis(tot);
+      const rpc = tipo === 'proveedor' ? 'ventas_por_proveedor' : 'ventas_por_categoria';
+      const args = tipo === 'proveedor'
+        ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta }
+        : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: null };
+      const { data, error } = await sb.rpc(rpc, args);
+      if (error) { if (cont) cont.innerHTML = errorCard(error.message); return; }
+      vtaState.grupo.rows = data || [];
+      renderGrupoTabla(cont);
+    } catch (e) { if (cont) cont.innerHTML = errorCard(e.message || String(e)); }
+  }
+
+  // rentabilidad del GRUPO sobre sus totales agregados (NO promedio de refs). Misma formula + neta=0->null que Articulo.
+  function grupoRentab(r) { const n = num(r.neta); return n === 0 ? null : (n - num(r.costo)) / n; }
+
+  function renderGrupoTabla(cont) {
+    if (!cont) return;
+    const g = vtaState.grupo, rows = (g && g.rows) || [];
+    if (!rows.length) {
+      cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:32px 16px;">' +
+        '<h2 class="ta-empty__title">Sin ventas</h2>' +
+        '<p class="ta-empty__text">No hubo ventas cerradas en este período.</p></div></div>';
+      return;
+    }
+    const maxIng = Math.max.apply(null, rows.map(r => Number(r.ingreso || 0)).concat([1]));
+    let html = '';
+    rows.forEach(r => {
+      html += filaGrupo(r, maxIng);
+      if (!r.es_sin_grupo && g.drillOpen[r.grupo_id]) html += drillGrupoHtml(r);
+    });
+    cont.innerHTML =
+      '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-vta-grp">' +
+        '<div class="ta-vta-grphead">' +
+          '<span>' + (g.tipo === 'proveedor' ? 'Proveedor' : 'Categoría') + '</span>' +
+          '<span style="text-align:right;">Refs</span>' +
+          '<span style="text-align:right;">Unidades</span>' +
+          '<span style="text-align:right;">Ingreso</span>' +
+          '<span style="text-align:right;">Venta neta</span>' +
+          '<span style="text-align:right;">Costo</span>' +
+          '<span style="text-align:right;">Utilidad</span>' +
+          '<span style="text-align:right;">Rentab.</span>' +
+          '<span>% participación</span>' +
+        '</div>' + html +
+      '</div></div>';
+    wireGrupoRows(cont);
+  }
+
+  function filaGrupo(r, maxIng) {
+    const T = window.TiendaIA;
+    const drillable = !r.es_sin_grupo;
+    const abierto = drillable && !!vtaState.grupo.drillOpen[r.grupo_id];
+    const barW = Math.max(2, Math.round(Number(r.ingreso || 0) / maxIng * 100));
+    const pct1 = (r.pct == null) ? '0' : String(Math.round(Number(r.pct) * 10) / 10);
+    const rentab = grupoRentab(r);
+    const rentabNeg = (rentab != null && rentab < 0);
+    const costoCell = fmtCOP(num(r.costo)) + aproxBadge(r.costo_estimado_parcial);
+    return '<div class="ta-vta-grprow' + (drillable ? '' : ' ta-vta-grprow--nodrill') + '"' +
+      (drillable ? ' data-gid="' + T.escapeHtml(r.grupo_id) + '" data-open="' + (abierto ? '1' : '0') + '" role="button" tabindex="0"' : '') + '>' +
+      '<div class="ta-vta-grpname"><span class="ta-vta-chevron" aria-hidden="true"' + (drillable ? '' : ' style="visibility:hidden;"') + '>▸</span><strong>' + T.escapeHtml(r.grupo_nombre) + '</strong></div>' +
+      cell('num', 'Refs', fmtNum(r.num_referencias)) +
+      cell('num', 'Unidades', fmtNum(r.unidades)) +
+      cell('num', 'Ingreso', fmtCOP(num(r.ingreso))) +
+      cell('num', 'Venta neta', fmtCOP(num(r.neta))) +
+      cell('num', 'Costo', costoCell) +
+      cell('num', 'Utilidad', fmtCOP(num(r.utilidad))) +
+      '<div class="ta-vta-cell num' + (rentabNeg ? ' ta-vta-neg' : '') + '"><span class="ta-vta-cell__label">Rentab.</span>' + rentabTxt(rentab) + '</div>' +
+      '<div class="ta-vta-grppct"><span class="ta-vta-cell__label">% participación</span>' +
+        '<span class="ta-vta-grpbar"><span class="ta-vta-grpbar__fill" style="width:' + barW + '%;"></span></span>' +
+        '<span class="ta-vta-grppct__n">' + pct1 + '%</span></div>' +
+    '</div>';
+  }
+
+  function drillGrupoHtml(r) {
+    const T = window.TiendaIA, g = vtaState.grupo;
+    const c = g.drillCache[r.grupo_id];
+    if (!c) return '<div class="ta-vta-grpdrill"><div class="ta-vta-grpdrill__msg">Cargando…</div></div>';
+    let html = '<div class="ta-vta-grpdrill">';
+    if (g.tipo === 'categoria' && c.subs && c.subs.length > 1) {
+      html += '<div class="ta-vta-grpsubs">' + c.subs.map(s =>
+        '<span class="ta-vta-grpsub"><b>' + T.escapeHtml(s.grupo_nombre) + '</b> ' + fmtCOP(num(s.ingreso)) + ' · ' + fmtNum(s.num_referencias) + ' refs</span>').join('') + '</div>';
+    }
+    if (!c.refs || !c.refs.length) html += '<div class="ta-vta-grpdrill__msg">Sin referencias.</div>';
+    else html += c.refs.map(filaGrupoRef).join('');
+    html += '</div>';
+    return html;
+  }
+
+  function filaGrupoRef(rf) {
+    const T = window.TiendaIA;
+    const costoCell = fmtCOP(num(rf.costo)) + aproxBadge(rf.costo_estimado);
+    return '<div class="ta-vta-vrow">' +
+      '<span class="ta-vta-vmark" aria-hidden="true"></span>' +
+      '<div class="ta-vta-vref"><strong>' + T.escapeHtml(rf.referencia) + '</strong> <span>' + T.escapeHtml(rf.nombre || '') + '</span></div>' +
+      cell('num', 'Unidades', fmtNum(rf.unidades)) +
+      cell('num', 'Ingreso', fmtCOP(num(rf.ingreso))) +
+      cell('num', 'Venta neta', fmtCOP(num(rf.neta))) +
+      cell('num', 'Costo', costoCell) +
+      cell('num', 'Utilidad', fmtCOP(num(rf.utilidad))) +
+      cell('num', 'Rentab.', rentabTxt(rf.rentabilidad)) +
+    '</div>';
+  }
+
+  async function toggleGrupo(gid, tipo) {
+    const T = window.TiendaIA;
+    const g = vtaState.grupo;
+    const cont = T.dom.mainView.querySelector('#vta-grp-content');
+    if (!cont) return;
+    const open = !g.drillOpen[gid];
+    g.drillOpen[gid] = open;
+    if (open && !g.drillCache[gid]) {
+      renderGrupoTabla(cont); // muestra "Cargando…" en ese grupo
+      try { await loadGrupoDrill(gid, tipo); } catch (e) { T.toast('No se pudo cargar el detalle: ' + (e.message || e), 'error'); }
+    }
+    renderGrupoTabla(cont);
+  }
+
+  async function loadGrupoDrill(gid, tipo) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const cache = {};
+    if (tipo === 'proveedor') {
+      const { data } = await sb.rpc('ventas_resumen', {
+        p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso',
+        p_proveedor_id: gid, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 });
+      cache.refs = data || [];
+    } else {
+      const subsR = await sb.rpc('ventas_por_categoria', { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: gid });
+      const refsR = await sb.rpc('ventas_resumen', {
+        p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso',
+        p_proveedor_id: null, p_categoria_id: gid, p_buscar: null, p_limit: null, p_offset: 0 });
+      cache.subs = subsR.data || []; cache.refs = refsR.data || [];
+    }
+    vtaState.grupo.drillCache[gid] = cache;
+  }
+
+  function wireGrupoRows(cont) {
+    cont.querySelectorAll('.ta-vta-grprow[data-gid]').forEach(row => {
+      const gid = row.getAttribute('data-gid');
+      const go = () => toggleGrupo(gid, vtaState.grupo.tipo);
+      row.addEventListener('click', go);
+      row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+  }
+
+  async function exportarExcelGrupo(btn, tipo) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      const rpc = tipo === 'proveedor' ? 'ventas_por_proveedor' : 'ventas_por_categoria';
+      const args = tipo === 'proveedor'
+        ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta }
+        : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: null };
+      const { data: groups, error } = await sb.rpc(rpc, args);
+      if (error) throw error;
+      if (!groups || !groups.length) { T.toast('No hay ventas para exportar.', 'info'); return; }
+      const enc = tipo === 'proveedor' ? 'Proveedor' : 'Categoría';
+      const aoa = [[enc, 'N° refs', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '% Participación']];
+      for (const grp of groups) {
+        const rentab = grupoRentab(grp);
+        aoa.push([grp.grupo_nombre, numExcel(grp.num_referencias), numExcel(grp.unidades), numExcel(grp.ingreso),
+          numExcel(grp.neta), numExcel(grp.iva), numExcel(grp.costo), numExcel(grp.utilidad),
+          pctExcel(rentab), (grp.pct == null ? '' : Math.round(Number(grp.pct) * 10) / 10)]);
+        if (!grp.es_sin_grupo) {
+          const refArgs = tipo === 'proveedor'
+            ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: grp.grupo_id, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 }
+            : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: null, p_categoria_id: grp.grupo_id, p_buscar: null, p_limit: null, p_offset: 0 };
+          const { data: refs } = await sb.rpc('ventas_resumen', refArgs);
+          (refs || []).forEach(rf => aoa.push(['↳ ' + rf.referencia, '', numExcel(rf.unidades), numExcel(rf.ingreso),
+            numExcel(rf.neta), numExcel(rf.iva), numExcel(rf.costo), numExcel(rf.utilidad), pctExcel(rf.rentabilidad), '']));
+        }
+      }
+      const sum = (k) => groups.reduce((a, gg) => a + Number(gg[k] || 0), 0);
+      const sumPct = groups.reduce((a, gg) => a + Number(gg.pct || 0), 0);
+      aoa.push([]);
+      aoa.push(['TOTAL', '', numExcel(sum('unidades')), numExcel(sum('ingreso')), numExcel(sum('neta')), numExcel(sum('iva')),
+        numExcel(sum('costo')), numExcel(sum('utilidad')), '', Math.round(sumPct * 10) / 10]);
+      xlsxDescargar(XLSX, [{ nombre: enc, aoa, cols: [{ wch: 22 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }] }],
+        'ventas_por_' + tipo + '_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
     finally { btn.disabled = false; btn.textContent = old; }
   }
