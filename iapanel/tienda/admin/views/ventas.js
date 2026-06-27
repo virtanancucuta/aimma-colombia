@@ -1,11 +1,9 @@
-/* AIMMA · Tienda IA · views/ventas.js · v2 · Fase 3a+3b · Venta por articulo
-   La cara de la capa de calculo de Ventas (RPCs ventas_resumen / ventas_variantes / ventas_totales).
-   3a: header de totales + tabla por referencia + rango de fechas (default mes en curso, lo manda la RPC)
-   + drill a variantes. 3b: ordenamientos + filtros (proveedor/categoria con rollup) + buscador + Excel.
-   Patrones reusados de inventario.js (registerView, cargarCatalogos, tabla densa, drill quirurgico,
-   debounce 300ms, helpers de Excel, cell+label responsive).
-   Invalidacion del header: filtro/buscar/rango -> fetchAndRender (recalcula totales); orden/paginacion
-   -> fetchResumen (el total no cambia). */
+/* AIMMA · Tienda IA · views/ventas.js · v3 · Fase 3a/3b + 4-UI-a · Ventas
+   Sub-pestañas: Artículo (3a/3b, viva) / Proveedor / Categoría (placeholder "Próximamente", se construyen en 4-UI-b).
+   Rango de fechas ARRIBA, compartido (montado 1 vez, persiste al cambiar de pestaña).
+   Controles de orden/filtros/buscador/Excel DENTRO de la pestaña Artículo.
+   renderActiveTab() re-monta SOLO #vta-tab-content -> los listeners viejos mueren con el DOM (sin duplicar);
+   wireShared (fechas+tabs) corre 1 sola vez. El estado (vtaState.orden/filtros) persiste y repuebla los inputs. */
 (function () {
   'use strict';
 
@@ -17,22 +15,34 @@
   }
   whenReady(() => { window.TiendaIA.registerView('ventas', renderVentas); });
 
+  const TABS = [
+    { id: 'articulo', label: 'Artículo' },
+    { id: 'proveedor', label: 'Proveedor' },
+    { id: 'categoria', label: 'Categoría' },
+  ];
+  const TAB_META = {
+    articulo:  { titulo: 'Ventas por artículo',  sub: 'Lo que vendiste en el período, por referencia. La venta neta es sin IVA; la rentabilidad se calcula sobre la neta.' },
+    proveedor: { titulo: 'Ventas por proveedor', sub: 'Cuánto vendiste agrupado por proveedor, en el período.' },
+    categoria: { titulo: 'Ventas por categoría', sub: 'Cuánto vendiste agrupado por categoría, en el período.' },
+  };
+
   // ============================================================
   // Estado de modulo
   // ============================================================
   let vtaState = null;
   function initState() {
     vtaState = {
+      tab: 'articulo',        // 4-UI-a: pestaña activa (default Artículo)
       desde: null,            // resueltos por la RPC (fuente de verdad server, tz Bogota). null = mes en curso.
       hasta: null,
-      orden: 'ingreso',       // default = Mayor venta (3a). El selector lo cambia (3b).
+      orden: 'ingreso',       // default = Mayor venta
       totales: null,
       page: { limit: 25, offset: 0 },
       resumen: null,          // { rows, total }
       drillCache: {},         // producto_id -> [variantes]
       drillOpen: {},          // producto_id -> bool
-      filtros: { proveedor_id: '', categoria_id: '', buscar: '' },  // 3b
-      catalogos: { proveedores: [], categorias: [] },               // 3b
+      filtros: { proveedor_id: '', categoria_id: '', buscar: '' },
+      catalogos: { proveedores: [], categorias: [] },
       loadedCatalogos: false,
       buscarTimer: null,
     };
@@ -43,10 +53,9 @@
     if (!vtaState) initState();
     if (!vtaState.loadedCatalogos) await cargarCatalogos();
     T.dom.mainView.innerHTML = renderShell();
-    // Ventas usa tabla ancha: reusa el cap ancho de inventario (.ta-main--inv-wide; cleanupCurrentView lo quita al salir).
-    T.dom.mainView.classList.add('ta-main--inv-wide');
-    wireShell();
-    fetchAndRender();
+    T.dom.mainView.classList.add('ta-main--inv-wide'); // tabla ancha (cleanupCurrentView la quita al salir)
+    wireShared();
+    renderActiveTab();
   }
 
   async function cargarCatalogos() {
@@ -62,11 +71,85 @@
     vtaState.loadedCatalogos = true;
   }
 
+  // ============================================================
+  // Shell COMPARTIDO: titulo dinamico + rango de fechas (arriba) + barra de tabs + contenedor del panel
+  // ============================================================
   function renderShell() {
-    const T = window.TiendaIA;
     const d = vtaState.desde || '', h = vtaState.hasta || '';
-    const f = vtaState.filtros;
+    const tabBar = TABS.map(t =>
+      '<button type="button" class="ta-btn ta-vta-tab' + (vtaState.tab === t.id ? ' ta-btn--primary' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>'
+    ).join('');
+    return '' +
+      '<header style="display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:12px;flex-wrap:wrap;">' +
+        '<div style="max-width:560px;">' +
+          '<h1 class="ta-section-title" id="vta-title"></h1>' +
+          '<p class="ta-section-sub" id="vta-sub"></p>' +
+        '</div>' +
+        '<div class="ta-vta-daterange">' +
+          '<label class="ta-vta-date">Desde <input type="date" id="vta-desde" class="ta-input" value="' + d + '"></label>' +
+          '<label class="ta-vta-date">Hasta <input type="date" id="vta-hasta" class="ta-input" value="' + h + '"></label>' +
+        '</div>' +
+      '</header>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">' + tabBar + '</div>' +
+      '<div id="vta-tab-content"></div>';
+  }
 
+  function wireShared() {
+    const view = window.TiendaIA.dom.mainView;
+    const dD = view.querySelector('#vta-desde'), dH = view.querySelector('#vta-hasta');
+    if (dD) dD.addEventListener('change', (e) => { vtaState.desde = e.target.value || null; onRangeChange(); });
+    if (dH) dH.addEventListener('change', (e) => { vtaState.hasta = e.target.value || null; onRangeChange(); });
+    view.querySelectorAll('.ta-vta-tab').forEach(b => b.addEventListener('click', () => {
+      const id = b.getAttribute('data-tab');
+      if (vtaState.tab === id) return;
+      vtaState.tab = id;
+      renderActiveTab();
+    }));
+  }
+
+  function onRangeChange() {
+    vtaState.page.offset = 0;
+    vtaState.totales = null; vtaState.resumen = null;
+    vtaState.drillCache = {}; vtaState.drillOpen = {}; // el costo/agregado por variante depende del rango
+    if (vtaState.tab === 'articulo') fetchAndRender();
+    // Proveedor/Categoria (4-UI-b) re-consultaran aqui cuando existan.
+  }
+
+  function syncDateInputs() {
+    const v = window.TiendaIA.dom.mainView;
+    const dD = v.querySelector('#vta-desde'), dH = v.querySelector('#vta-hasta');
+    if (dD && vtaState.desde) dD.value = vtaState.desde;
+    if (dH && vtaState.hasta) dH.value = vtaState.hasta;
+  }
+
+  // Cambia el panel segun la pestaña. Re-monta SOLO #vta-tab-content (listeners viejos mueren con el DOM).
+  function renderActiveTab() {
+    const view = window.TiendaIA.dom.mainView;
+    view.querySelectorAll('.ta-vta-tab').forEach(b =>
+      b.classList.toggle('ta-btn--primary', b.getAttribute('data-tab') === vtaState.tab));
+    const meta = TAB_META[vtaState.tab] || TAB_META.articulo;
+    const tEl = view.querySelector('#vta-title'), sEl = view.querySelector('#vta-sub');
+    if (tEl) tEl.textContent = meta.titulo;
+    if (sEl) sEl.textContent = meta.sub;
+    const cont = view.querySelector('#vta-tab-content');
+    if (!cont) return;
+    if (vtaState.tab === 'articulo') {
+      cont.innerHTML = renderArticuloPanel();
+      wireArticulo();
+      fetchAndRender();
+    } else {
+      const nombre = vtaState.tab === 'proveedor' ? 'proveedor' : 'categoría';
+      cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:48px 16px;text-align:center;">' +
+        '<h2 class="ta-empty__title">Próximamente</h2>' +
+        '<p class="ta-empty__text">La vista de ventas por ' + nombre + ' llega en la próxima entrega.</p></div></div>';
+    }
+  }
+
+  // ============================================================
+  // Pestaña ARTÍCULO (3a/3b) — controles + tabla por referencia + KPIs + drill (sin cambios funcionales)
+  // ============================================================
+  function renderArticuloPanel() {
+    const T = window.TiendaIA, f = vtaState.filtros;
     const provOpts = '<option value="">Todos los proveedores</option>' +
       vtaState.catalogos.proveedores.map(p => '<option value="' + T.escapeHtml(p.id) + '"' + (f.proveedor_id === p.id ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>').join('');
     const catOpts = '<option value="">Todas las categorías</option>' +
@@ -80,19 +163,7 @@
       '<option value="rentabilidad"' + sel('rentabilidad') + '>Mayor rentabilidad</option>' +
       '<option value="referencia"' + sel('referencia') + '>Referencia (A-Z)</option>';
     const hayFiltro = f.proveedor_id || f.categoria_id || f.buscar;
-
     return '' +
-      '<header style="display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
-        '<div style="max-width:560px;">' +
-          '<h1 class="ta-section-title">Ventas por artículo</h1>' +
-          '<p class="ta-section-sub">Lo que vendiste en el período, por referencia. La venta neta es sin IVA; la rentabilidad se calcula sobre la neta.</p>' +
-        '</div>' +
-        '<div class="ta-vta-daterange">' +
-          '<label class="ta-vta-date">Desde <input type="date" id="vta-desde" class="ta-input" value="' + d + '"></label>' +
-          '<label class="ta-vta-date">Hasta <input type="date" id="vta-hasta" class="ta-input" value="' + h + '"></label>' +
-        '</div>' +
-      '</header>' +
-
       '<div class="ta-card" style="padding:14px 16px;margin-bottom:16px;">' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">' +
           '<input id="vta-buscar" class="ta-input" type="text" placeholder="Buscar por referencia o nombre..." value="' + T.escapeHtml(f.buscar) + '" style="flex:1;min-width:220px;">' +
@@ -103,24 +174,17 @@
           '<button id="vta-export" class="ta-btn" style="padding:6px 12px;white-space:nowrap;">⬇ Exportar a Excel</button>' +
         '</div>' +
       '</div>' +
-
       '<div id="vta-kpis"></div>' +
       '<div id="vta-content"></div>';
   }
 
-  function wireShell() {
+  function wireArticulo() {
     const view = window.TiendaIA.dom.mainView;
-    const dD = view.querySelector('#vta-desde'), dH = view.querySelector('#vta-hasta');
-    if (dD) dD.addEventListener('change', (e) => { vtaState.desde = e.target.value || null; onRangeChange(); });
-    if (dH) dH.addEventListener('change', (e) => { vtaState.hasta = e.target.value || null; onRangeChange(); });
-
-    // 3b: orden -> solo resumen (el total NO cambia con el orden)
     const orden = view.querySelector('#vta-orden');
     if (orden) orden.addEventListener('change', () => {
       vtaState.orden = orden.value; vtaState.page.offset = 0;
-      fetchResumen(view.querySelector('#vta-content'));
+      fetchResumen(view.querySelector('#vta-content')); // orden no cambia el header
     });
-    // 3b: filtros + buscar -> fetchAndRender (recalcula el header con el subconjunto)
     const prov = view.querySelector('#vta-proveedor');
     if (prov) prov.addEventListener('change', () => { vtaState.filtros.proveedor_id = prov.value; vtaState.page.offset = 0; fetchAndRender(); });
     const cat = view.querySelector('#vta-categoria');
@@ -136,23 +200,10 @@
     if (limpiar) limpiar.addEventListener('click', () => {
       vtaState.filtros = { proveedor_id: '', categoria_id: '', buscar: '' };
       vtaState.page.offset = 0;
-      renderVentas(); // re-render del shell para limpiar selects/input/boton
+      renderActiveTab(); // re-monta el panel Artículo (repuebla controles desde vtaState)
     });
     const ex = view.querySelector('#vta-export');
     if (ex) ex.addEventListener('click', () => exportarExcelVentas(ex));
-  }
-  function onRangeChange() {
-    vtaState.page.offset = 0;
-    vtaState.totales = null; vtaState.resumen = null;
-    vtaState.drillCache = {}; vtaState.drillOpen = {}; // el costo/agregado por variante depende del rango
-    fetchAndRender();
-  }
-
-  function syncDateInputs() {
-    const v = window.TiendaIA.dom.mainView;
-    const dD = v.querySelector('#vta-desde'), dH = v.querySelector('#vta-hasta');
-    if (dD && vtaState.desde) dD.value = vtaState.desde;
-    if (dH && vtaState.hasta) dH.value = vtaState.hasta;
   }
 
   // params comunes de filtro/rango para las RPCs
@@ -167,16 +218,11 @@
     };
   }
 
-  // ============================================================
-  // Fetch + render
-  // ============================================================
   async function fetchAndRender() {
     const T = window.TiendaIA, sb = T.supabase();
     const cont = T.dom.mainView.querySelector('#vta-content');
     if (cont) cont.innerHTML = loadingCard();
     try {
-      // 1) Totales PRIMERO: la RPC es la fuente de verdad del rango (mes en curso en tz Bogota server-side)
-      //    y recalcula el header con el filtro vigente.
       const p = rpcParams();
       const { data: tdata, error: terr } = await sb.rpc('ventas_totales', {
         p_tienda_id: p.p_tienda_id, p_desde: p.p_desde, p_hasta: p.p_hasta,
@@ -187,7 +233,6 @@
       vtaState.totales = tot;
       if (tot) { vtaState.desde = String(tot.desde); vtaState.hasta = String(tot.hasta); syncDateInputs(); }
       pintarKpis(tot);
-      // 2) Resumen con el rango ya resuelto (mismas fechas + mismo filtro que el header).
       await fetchResumen(cont);
     } catch (e) { if (cont) cont.innerHTML = errorCard(e.message || String(e)); }
   }
@@ -269,7 +314,6 @@
     wireList(cont);
   }
 
-  // cell helper: una celda del grid con su label (visible solo en mobile)
   function cell(cls, label, val) {
     return '<div class="ta-vta-cell ' + cls + '"><span class="ta-vta-cell__label">' + label + '</span>' + val + '</div>';
   }
@@ -336,7 +380,6 @@
     if (next) next.addEventListener('click', () => { vtaState.page.offset += vtaState.page.limit; fetchResumen(cont); });
   }
 
-  // Drill quirurgico: inserta/quita filas de variante en su lugar, sin re-render de la tabla.
   async function toggleDrill(productoId) {
     const T = window.TiendaIA, sb = T.supabase();
     const cont = T.dom.mainView.querySelector('#vta-content');
@@ -378,7 +421,7 @@
   function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/"/g, '\\"'); }
 
   // ============================================================
-  // Excel (SheetJS lazy) — exporta TODO el filtro/orden/rango vigente (no solo la pagina)
+  // Excel (exporta TODO el filtro/orden/rango vigente, no solo la pagina)
   // ============================================================
   let _xlsxPromise = null;
   function loadXLSX() {
@@ -403,7 +446,7 @@
     XLSX.writeFile(wb, filename);
   }
   function numExcel(n) { return (n == null) ? '' : Number(n); }
-  function pctExcel(x) { return (x == null) ? '' : Math.round(Number(x) * 1000) / 10; } // 0.5240 -> 52.4
+  function pctExcel(x) { return (x == null) ? '' : Math.round(Number(x) * 1000) / 10; }
   function slugTienda() { return (window.TiendaIA.state.tienda || {}).slug || 'tienda'; }
   function hoyExcel() { return new Date().toISOString().slice(0, 10); }
 
@@ -413,9 +456,8 @@
     try {
       const XLSX = await loadXLSX();
       const p = rpcParams();
-      // ESCALA (anotado, no optimizar ahora): este full-fetch (p_limit:null) + el drill de TODOS los
-      // producto_ids es el mismo punto de escala ya nombrado. A este volumen (decenas de refs) es
-      // correcto; si con miles de refs/rango ancho se vuelve lento -> tabla pre-agregada (palanca ya nombrada).
+      // ESCALA (anotado, no optimizar ahora): full-fetch (p_limit:null) + drill de todos los ids es el mismo
+      // punto de escala ya nombrado; con miles de refs -> tabla pre-agregada (palanca nombrada).
       const { data: prods, error } = await sb.rpc('ventas_resumen', {
         p_tienda_id: p.p_tienda_id, p_desde: p.p_desde, p_hasta: p.p_hasta, p_orden: vtaState.orden,
         p_proveedor_id: p.p_proveedor_id, p_categoria_id: p.p_categoria_id, p_buscar: p.p_buscar,
@@ -442,7 +484,6 @@
             numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad), (v.costo_estimado ? 'Sí' : '')]);
         });
       });
-      // Fila TOTAL = suma de las filas padre (== header en pantalla por el invariante header==Σ filas).
       const sum = (k) => prods.reduce((a, r) => a + Number(r[k] || 0), 0);
       aoa.push([]);
       aoa.push(['TOTAL', sum('unidades'), sum('ingreso'), sum('neta'), sum('iva'), sum('costo'), sum('utilidad'), '', '']);
