@@ -1,8 +1,11 @@
-/* AIMMA · Tienda IA · views/ventas.js · v1 · Fase 3a · Venta por articulo
+/* AIMMA · Tienda IA · views/ventas.js · v2 · Fase 3a+3b · Venta por articulo
    La cara de la capa de calculo de Ventas (RPCs ventas_resumen / ventas_variantes / ventas_totales).
    3a: header de totales + tabla por referencia + rango de fechas (default mes en curso, lo manda la RPC)
-   + drill a variantes. 3b suma: ordenamientos, filtros (proveedor/categoria), buscador y Excel.
-   Patrones reusados de inventario.js (registerView, tabla densa, drill quirurgico, cell+label responsive). */
+   + drill a variantes. 3b: ordenamientos + filtros (proveedor/categoria con rollup) + buscador + Excel.
+   Patrones reusados de inventario.js (registerView, cargarCatalogos, tabla densa, drill quirurgico,
+   debounce 300ms, helpers de Excel, cell+label responsive).
+   Invalidacion del header: filtro/buscar/rango -> fetchAndRender (recalcula totales); orden/paginacion
+   -> fetchResumen (el total no cambia). */
 (function () {
   'use strict';
 
@@ -22,18 +25,23 @@
     vtaState = {
       desde: null,            // resueltos por la RPC (fuente de verdad server, tz Bogota). null = mes en curso.
       hasta: null,
-      orden: 'ingreso',       // 3a: fijo (el selector llega en 3b)
+      orden: 'ingreso',       // default = Mayor venta (3a). El selector lo cambia (3b).
       totales: null,
       page: { limit: 25, offset: 0 },
       resumen: null,          // { rows, total }
       drillCache: {},         // producto_id -> [variantes]
       drillOpen: {},          // producto_id -> bool
+      filtros: { proveedor_id: '', categoria_id: '', buscar: '' },  // 3b
+      catalogos: { proveedores: [], categorias: [] },               // 3b
+      loadedCatalogos: false,
+      buscarTimer: null,
     };
   }
 
-  function renderVentas() {
+  async function renderVentas() {
     const T = window.TiendaIA;
     if (!vtaState) initState();
+    if (!vtaState.loadedCatalogos) await cargarCatalogos();
     T.dom.mainView.innerHTML = renderShell();
     // Ventas usa tabla ancha: reusa el cap ancho de inventario (.ta-main--inv-wide; cleanupCurrentView lo quita al salir).
     T.dom.mainView.classList.add('ta-main--inv-wide');
@@ -41,8 +49,38 @@
     fetchAndRender();
   }
 
+  async function cargarCatalogos() {
+    const T = window.TiendaIA, sb = T.supabase(), tienda = T.state.tienda;
+    try {
+      const [prov, cat] = await Promise.all([
+        sb.from('proveedores').select('id, nombre').eq('tienda_id', tienda.id).order('nombre'),
+        sb.from('categorias').select('id, nombre, parent_id').eq('tienda_id', tienda.id).order('nombre'),
+      ]);
+      vtaState.catalogos.proveedores = prov.data || [];
+      vtaState.catalogos.categorias = cat.data || [];
+    } catch (e) { console.warn('[ventas] catalogos', e); }
+    vtaState.loadedCatalogos = true;
+  }
+
   function renderShell() {
+    const T = window.TiendaIA;
     const d = vtaState.desde || '', h = vtaState.hasta || '';
+    const f = vtaState.filtros;
+
+    const provOpts = '<option value="">Todos los proveedores</option>' +
+      vtaState.catalogos.proveedores.map(p => '<option value="' + T.escapeHtml(p.id) + '"' + (f.proveedor_id === p.id ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>').join('');
+    const catOpts = '<option value="">Todas las categorías</option>' +
+      vtaState.catalogos.categorias.map(c => '<option value="' + T.escapeHtml(c.id) + '"' + (f.categoria_id === c.id ? ' selected' : '') + '>' + (c.parent_id ? '— ' : '') + T.escapeHtml(c.nombre) + '</option>').join('');
+    const sel = (v) => vtaState.orden === v ? ' selected' : '';
+    const ordenOpts =
+      '<option value="ingreso"' + sel('ingreso') + '>Mayor venta</option>' +
+      '<option value="ingreso_asc"' + sel('ingreso_asc') + '>Menor venta</option>' +
+      '<option value="unidades"' + sel('unidades') + '>Mayor cantidad</option>' +
+      '<option value="utilidad"' + sel('utilidad') + '>Mayor utilidad</option>' +
+      '<option value="rentabilidad"' + sel('rentabilidad') + '>Mayor rentabilidad</option>' +
+      '<option value="referencia"' + sel('referencia') + '>Referencia (A-Z)</option>';
+    const hayFiltro = f.proveedor_id || f.categoria_id || f.buscar;
+
     return '' +
       '<header style="display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
         '<div style="max-width:560px;">' +
@@ -54,6 +92,18 @@
           '<label class="ta-vta-date">Hasta <input type="date" id="vta-hasta" class="ta-input" value="' + h + '"></label>' +
         '</div>' +
       '</header>' +
+
+      '<div class="ta-card" style="padding:14px 16px;margin-bottom:16px;">' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">' +
+          '<input id="vta-buscar" class="ta-input" type="text" placeholder="Buscar por referencia o nombre..." value="' + T.escapeHtml(f.buscar) + '" style="flex:1;min-width:220px;">' +
+          '<select id="vta-proveedor" class="ta-select" style="max-width:220px;">' + provOpts + '</select>' +
+          '<select id="vta-categoria" class="ta-select" style="max-width:220px;">' + catOpts + '</select>' +
+          '<select id="vta-orden" class="ta-select" style="max-width:210px;">' + ordenOpts + '</select>' +
+          (hayFiltro ? '<button id="vta-limpiar" class="ta-btn" style="white-space:nowrap;">Limpiar</button>' : '') +
+          '<button id="vta-export" class="ta-btn" style="padding:6px 12px;white-space:nowrap;">⬇ Exportar a Excel</button>' +
+        '</div>' +
+      '</div>' +
+
       '<div id="vta-kpis"></div>' +
       '<div id="vta-content"></div>';
   }
@@ -63,6 +113,33 @@
     const dD = view.querySelector('#vta-desde'), dH = view.querySelector('#vta-hasta');
     if (dD) dD.addEventListener('change', (e) => { vtaState.desde = e.target.value || null; onRangeChange(); });
     if (dH) dH.addEventListener('change', (e) => { vtaState.hasta = e.target.value || null; onRangeChange(); });
+
+    // 3b: orden -> solo resumen (el total NO cambia con el orden)
+    const orden = view.querySelector('#vta-orden');
+    if (orden) orden.addEventListener('change', () => {
+      vtaState.orden = orden.value; vtaState.page.offset = 0;
+      fetchResumen(view.querySelector('#vta-content'));
+    });
+    // 3b: filtros + buscar -> fetchAndRender (recalcula el header con el subconjunto)
+    const prov = view.querySelector('#vta-proveedor');
+    if (prov) prov.addEventListener('change', () => { vtaState.filtros.proveedor_id = prov.value; vtaState.page.offset = 0; fetchAndRender(); });
+    const cat = view.querySelector('#vta-categoria');
+    if (cat) cat.addEventListener('change', () => { vtaState.filtros.categoria_id = cat.value; vtaState.page.offset = 0; fetchAndRender(); });
+    const buscar = view.querySelector('#vta-buscar');
+    if (buscar) buscar.addEventListener('input', () => {
+      clearTimeout(vtaState.buscarTimer);
+      vtaState.buscarTimer = setTimeout(() => {
+        vtaState.filtros.buscar = buscar.value.trim(); vtaState.page.offset = 0; fetchAndRender();
+      }, 300);
+    });
+    const limpiar = view.querySelector('#vta-limpiar');
+    if (limpiar) limpiar.addEventListener('click', () => {
+      vtaState.filtros = { proveedor_id: '', categoria_id: '', buscar: '' };
+      vtaState.page.offset = 0;
+      renderVentas(); // re-render del shell para limpiar selects/input/boton
+    });
+    const ex = view.querySelector('#vta-export');
+    if (ex) ex.addEventListener('click', () => exportarExcelVentas(ex));
   }
   function onRangeChange() {
     vtaState.page.offset = 0;
@@ -78,6 +155,18 @@
     if (dH && vtaState.hasta) dH.value = vtaState.hasta;
   }
 
+  // params comunes de filtro/rango para las RPCs
+  function rpcParams() {
+    const f = vtaState.filtros;
+    return {
+      p_tienda_id: window.TiendaIA.state.tienda.id,
+      p_desde: vtaState.desde, p_hasta: vtaState.hasta,
+      p_proveedor_id: f.proveedor_id || null,
+      p_categoria_id: f.categoria_id || null,
+      p_buscar: f.buscar || null,
+    };
+  }
+
   // ============================================================
   // Fetch + render
   // ============================================================
@@ -86,26 +175,30 @@
     const cont = T.dom.mainView.querySelector('#vta-content');
     if (cont) cont.innerHTML = loadingCard();
     try {
-      // 1) Totales PRIMERO: la RPC es la fuente de verdad del rango (mes en curso en tz Bogota server-side).
+      // 1) Totales PRIMERO: la RPC es la fuente de verdad del rango (mes en curso en tz Bogota server-side)
+      //    y recalcula el header con el filtro vigente.
+      const p = rpcParams();
       const { data: tdata, error: terr } = await sb.rpc('ventas_totales', {
-        p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta,
-        p_proveedor_id: null, p_categoria_id: null, p_buscar: null,
+        p_tienda_id: p.p_tienda_id, p_desde: p.p_desde, p_hasta: p.p_hasta,
+        p_proveedor_id: p.p_proveedor_id, p_categoria_id: p.p_categoria_id, p_buscar: p.p_buscar,
       });
       if (terr) { if (cont) cont.innerHTML = errorCard(terr.message); return; }
       const tot = (tdata && tdata[0]) || null;
       vtaState.totales = tot;
       if (tot) { vtaState.desde = String(tot.desde); vtaState.hasta = String(tot.hasta); syncDateInputs(); }
       pintarKpis(tot);
-      // 2) Resumen con el rango ya resuelto (mismas fechas que el header).
+      // 2) Resumen con el rango ya resuelto (mismas fechas + mismo filtro que el header).
       await fetchResumen(cont);
     } catch (e) { if (cont) cont.innerHTML = errorCard(e.message || String(e)); }
   }
 
   async function fetchResumen(cont) {
     const T = window.TiendaIA, sb = T.supabase();
+    if (cont) cont.innerHTML = loadingCard();
+    const p = rpcParams();
     const { data, error } = await sb.rpc('ventas_resumen', {
-      p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta,
-      p_orden: vtaState.orden, p_proveedor_id: null, p_categoria_id: null, p_buscar: null,
+      p_tienda_id: p.p_tienda_id, p_desde: p.p_desde, p_hasta: p.p_hasta, p_orden: vtaState.orden,
+      p_proveedor_id: p.p_proveedor_id, p_categoria_id: p.p_categoria_id, p_buscar: p.p_buscar,
       p_limit: vtaState.page.limit, p_offset: vtaState.page.offset,
     });
     if (error) { if (cont) cont.innerHTML = errorCard(error.message); return; }
@@ -142,7 +235,7 @@
     if (!rows.length) {
       cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:32px 16px;">' +
         '<h2 class="ta-empty__title">Sin ventas</h2>' +
-        '<p class="ta-empty__text">No hubo ventas cerradas en este período.</p></div></div>';
+        '<p class="ta-empty__text">No hubo ventas cerradas con esos filtros en este período.</p></div></div>';
       return;
     }
     let html = '';
@@ -180,7 +273,6 @@
   function cell(cls, label, val) {
     return '<div class="ta-vta-cell ' + cls + '"><span class="ta-vta-cell__label">' + label + '</span>' + val + '</div>';
   }
-  // Badge "costo aprox." (copy plano, no tecnico) cuando el costo es estimado (sin movimiento de kardex).
   function aproxBadge(estimado) {
     return estimado ? ' <span class="ta-vta-aprox" title="Costo estimado: esta venta no tiene movimiento de inventario registrado.">aprox.</span>' : '';
   }
@@ -240,8 +332,8 @@
       if (pid) toggleDrill(pid);
     }));
     const prev = cont.querySelector('#vta-prev'), next = cont.querySelector('#vta-next');
-    if (prev) prev.addEventListener('click', () => { if (vtaState.page.offset <= 0) return; vtaState.page.offset -= vtaState.page.limit; fetchResumen(window.TiendaIA.dom.mainView.querySelector('#vta-content')); });
-    if (next) next.addEventListener('click', () => { vtaState.page.offset += vtaState.page.limit; fetchResumen(window.TiendaIA.dom.mainView.querySelector('#vta-content')); });
+    if (prev) prev.addEventListener('click', () => { if (vtaState.page.offset <= 0) return; vtaState.page.offset -= vtaState.page.limit; fetchResumen(cont); });
+    if (next) next.addEventListener('click', () => { vtaState.page.offset += vtaState.page.limit; fetchResumen(cont); });
   }
 
   // Drill quirurgico: inserta/quita filas de variante en su lugar, sin re-render de la tabla.
@@ -284,6 +376,84 @@
     Array.from(tpl.content.children).forEach(node => { ref.after(node); ref = node; });
   }
   function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/"/g, '\\"'); }
+
+  // ============================================================
+  // Excel (SheetJS lazy) — exporta TODO el filtro/orden/rango vigente (no solo la pagina)
+  // ============================================================
+  let _xlsxPromise = null;
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (_xlsxPromise) return _xlsxPromise;
+    _xlsxPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('Excel no cargó'));
+      s.onerror = () => { _xlsxPromise = null; reject(new Error('No se pudo cargar el generador de Excel')); };
+      document.head.appendChild(s);
+    });
+    return _xlsxPromise;
+  }
+  function xlsxDescargar(XLSX, hojas, filename) {
+    const wb = XLSX.utils.book_new();
+    hojas.forEach(h => {
+      const ws = XLSX.utils.aoa_to_sheet(h.aoa);
+      if (h.cols) ws['!cols'] = h.cols;
+      XLSX.utils.book_append_sheet(wb, ws, h.nombre);
+    });
+    XLSX.writeFile(wb, filename);
+  }
+  function numExcel(n) { return (n == null) ? '' : Number(n); }
+  function pctExcel(x) { return (x == null) ? '' : Math.round(Number(x) * 1000) / 10; } // 0.5240 -> 52.4
+  function slugTienda() { return (window.TiendaIA.state.tienda || {}).slug || 'tienda'; }
+  function hoyExcel() { return new Date().toISOString().slice(0, 10); }
+
+  async function exportarExcelVentas(btn) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      const p = rpcParams();
+      // ESCALA (anotado, no optimizar ahora): este full-fetch (p_limit:null) + el drill de TODOS los
+      // producto_ids es el mismo punto de escala ya nombrado. A este volumen (decenas de refs) es
+      // correcto; si con miles de refs/rango ancho se vuelve lento -> tabla pre-agregada (palanca ya nombrada).
+      const { data: prods, error } = await sb.rpc('ventas_resumen', {
+        p_tienda_id: p.p_tienda_id, p_desde: p.p_desde, p_hasta: p.p_hasta, p_orden: vtaState.orden,
+        p_proveedor_id: p.p_proveedor_id, p_categoria_id: p.p_categoria_id, p_buscar: p.p_buscar,
+        p_limit: null, p_offset: 0,
+      });
+      if (error) throw error;
+      if (!prods || !prods.length) { T.toast('No hay ventas para exportar con esos filtros.', 'info'); return; }
+      const ids = prods.map(r => r.producto_id).filter(Boolean);
+      let byProd = {};
+      if (ids.length) {
+        const { data: vars, error: e2 } = await sb.rpc('ventas_variantes', {
+          p_tienda_id: p.p_tienda_id, p_producto_ids: ids, p_desde: p.p_desde, p_hasta: p.p_hasta,
+        });
+        if (e2) throw e2;
+        (vars || []).forEach(v => { (byProd[v.producto_id] = byProd[v.producto_id] || []).push(v); });
+      }
+      const aoa = [['Referencia', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '¿Costo aprox.?']];
+      prods.forEach(r => {
+        aoa.push([r.referencia, numExcel(r.unidades), numExcel(r.ingreso), numExcel(r.neta), numExcel(r.iva),
+          numExcel(r.costo), numExcel(r.utilidad), pctExcel(r.rentabilidad), (r.costo_estimado ? 'Sí' : '')]);
+        (byProd[r.producto_id] || []).forEach(v => {
+          const et = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '');
+          aoa.push(['↳ ' + et, numExcel(v.unidades), numExcel(v.ingreso), numExcel(v.neta), numExcel(v.iva),
+            numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad), (v.costo_estimado ? 'Sí' : '')]);
+        });
+      });
+      // Fila TOTAL = suma de las filas padre (== header en pantalla por el invariante header==Σ filas).
+      const sum = (k) => prods.reduce((a, r) => a + Number(r[k] || 0), 0);
+      aoa.push([]);
+      aoa.push(['TOTAL', sum('unidades'), sum('ingreso'), sum('neta'), sum('iva'), sum('costo'), sum('utilidad'), '', '']);
+      xlsxDescargar(XLSX, [{
+        nombre: 'Ventas',
+        aoa,
+        cols: [{ wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 13 }],
+      }], 'ventas_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  }
 
   // ============================================================
   // Utils
