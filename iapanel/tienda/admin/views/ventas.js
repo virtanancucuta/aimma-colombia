@@ -573,7 +573,7 @@
           '<span style="text-align:right;">Costo</span>' +
           '<span style="text-align:right;">Utilidad</span>' +
           '<span style="text-align:right;">Rentab.</span>' +
-          '<span>' + (g.tipo === 'cliente' ? 'Última compra' : '% participación') + '</span>' +
+          '<span' + (g.tipo === 'cliente' ? ' style="text-align:right;"' : '') + '>' + (g.tipo === 'cliente' ? 'Última compra' : '% participación') + '</span>' +
         '</div>' + html +
       '</div></div>';
     wireGrupoRows(cont);
@@ -603,7 +603,7 @@
       cell('num', 'Utilidad', fmtCOP(num(r.utilidad))) +
       '<div class="ta-vta-cell num' + (rentabNeg ? ' ta-vta-neg' : '') + '"><span class="ta-vta-cell__label">Rentab.</span>' + rentabTxt(rentab) + '</div>' +
       (vtaState.grupo.tipo === 'cliente'
-        ? '<div class="ta-vta-cell"><span class="ta-vta-cell__label">Última compra</span>' + fmtFecha(r.ultima_compra) + '</div>'
+        ? '<div class="ta-vta-cell num"><span class="ta-vta-cell__label">Última compra</span>' + fmtFecha(r.ultima_compra) + '</div>'
         : '<div class="ta-vta-grppct"><span class="ta-vta-cell__label">% participación</span>' +
             '<span class="ta-vta-grpbar"><span class="ta-vta-grpbar__fill" style="width:' + barW + '%;"></span></span>' +
             '<span class="ta-vta-grppct__n">' + pct1 + '%</span></div>') +
