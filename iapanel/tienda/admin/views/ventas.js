@@ -519,7 +519,7 @@
     const T = window.TiendaIA, sb = T.supabase();
     const cont = T.dom.mainView.querySelector('#vta-grp-content');
     if (cont) cont.innerHTML = loadingCard();
-    vtaState.grupo = { tipo: tipo, rows: null, drillCache: {}, drillOpen: {} };
+    vtaState.grupo = { tipo: tipo, rows: null, drillCache: {}, drillOpen: {}, drillMode: {} };
     try {
       // Header KPIs: ventas_totales del periodo SIN filtros de Articulo (solo el rango compartido) -> invariante.
       const { data: tdata, error: terr } = await sb.rpc('ventas_totales', {
@@ -611,9 +611,26 @@
   }
 
   function drillGrupoHtml(r) {
-    const T = window.TiendaIA, g = vtaState.grupo;
-    const c = g.drillCache[r.grupo_id];
+    const T = window.TiendaIA, g = vtaState.grupo, gid = r.grupo_id;
+    const c = g.drillCache[gid];
     if (!c) return '<div class="ta-vta-grpdrill"><div class="ta-vta-grpdrill__msg">Cargando…</div></div>';
+    // CLIENTE: ficha CRM con toggle "Por artículo / Por compra" (SOLO cliente; prov/cat no llevan toggle).
+    if (g.tipo === 'cliente') {
+      const modo = g.drillMode[gid] || 'articulo';
+      const btn = (m, txt) => '<button type="button" class="ta-btn' + (modo === m ? ' ta-btn--primary' : '') + '" data-cli-modo="' + m + '" data-gid="' + T.escapeHtml(gid) + '" style="padding:5px 12px;">' + txt + '</button>';
+      let html = '<div class="ta-vta-grpdrill">' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px;">' + btn('articulo', 'Por artículo') + btn('compra', 'Por compra') + '</div>';
+      if (modo === 'articulo') {
+        if (!c.refs || !c.refs.length) html += '<div class="ta-vta-grpdrill__msg">Sin referencias.</div>';
+        else html += c.refs.map(filaGrupoRef).join('');
+      } else {
+        if (!c.compras) html += '<div class="ta-vta-grpdrill__msg">Cargando…</div>';
+        else if (!c.compras.length) html += '<div class="ta-vta-grpdrill__msg">Sin compras en el período.</div>';
+        else html += renderComprasHtml(c.compras);
+      }
+      return html + '</div>';
+    }
+    // PROVEEDOR / CATEGORIA (sin cambios)
     let html = '<div class="ta-vta-grpdrill">';
     if (g.tipo === 'categoria' && c.subs && c.subs.length > 1) {
       html += '<div class="ta-vta-grpsubs">' + c.subs.map(s =>
@@ -623,6 +640,58 @@
     else html += c.refs.map(filaGrupoRef).join('');
     html += '</div>';
     return html;
+  }
+
+  // "Por compra": agrupa las filas planas (una por item) de ventas_cliente_pedidos por pedido -> 1 tarjeta c/u.
+  function renderComprasHtml(rows) {
+    const orden = []; const idx = {};
+    rows.forEach(rf => {
+      if (idx[rf.pedido_id] === undefined) { idx[rf.pedido_id] = orden.length; orden.push({ ped: rf, items: [] }); }
+      orden[idx[rf.pedido_id]].items.push(rf);
+    });
+    return orden.map(o => filaCompra(o.ped, o.items)).join('');
+  }
+
+  function filaCompra(ped, items) {
+    const T = window.TiendaIA;
+    const badge = ped.es_devuelto
+      ? ' <span style="font-size:11px;font-weight:700;color:#c92a2a;border:1px solid #c92a2a;border-radius:999px;padding:1px 7px;">Devuelto</span>'
+      : '';
+    // El monto de la compra sale de pedido_venta (NETO de cabecera), NO de sumar los subtotal de los items.
+    const head = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 4px;">' +
+      '<strong style="font-size:13px;">' + fmtFecha(ped.cerrado_at) + '</strong>' +
+      '<code style="font-size:12px;color:var(--ta-text-mut);">' + T.escapeHtml(ped.codigo_publico || '') + '</code>' + badge +
+      '<span style="margin-left:auto;font-weight:700;">' + fmtCOP(num(ped.pedido_venta)) + '</span>' +
+      '</div>';
+    const lineas = items.map(it =>
+      '<div style="display:flex;gap:10px;padding:2px 0 2px 12px;font-size:12px;color:var(--ta-text-soft);">' +
+        '<span style="flex:1;min-width:0;"><strong style="color:var(--ta-text);">' + T.escapeHtml(it.referencia) + '</strong>' + (it.nombre ? ' · ' + T.escapeHtml(it.nombre) : '') + '</span>' +
+        '<span>x' + fmtNum(it.cantidad) + '</span>' +
+        '<span style="min-width:92px;text-align:right;">' + fmtCOP(num(it.subtotal)) + '</span>' +
+      '</div>').join('');
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--ta-border);">' + head + lineas + '</div>';
+  }
+
+  async function toggleClienteModo(gid, modo) {
+    const T = window.TiendaIA, g = vtaState.grupo;
+    if (!g) return;
+    g.drillMode[gid] = modo;
+    const cont = T.dom.mainView.querySelector('#vta-grp-content');
+    if (!cont) return;
+    if (modo === 'compra' && g.drillCache[gid] && !g.drillCache[gid].compras) {
+      renderGrupoTabla(cont); // muestra "Cargando…" en modo compra
+      try { await loadComprasCliente(gid); } catch (e) { T.toast('No se pudieron cargar las compras: ' + (e.message || e), 'error'); }
+    }
+    renderGrupoTabla(cont);
+  }
+
+  async function loadComprasCliente(gid) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const { data, error } = await sb.rpc('ventas_cliente_pedidos', {
+      p_tienda_id: T.state.tienda.id, p_telefono: gid, p_desde: vtaState.desde, p_hasta: vtaState.hasta });
+    if (error) throw error;
+    if (!vtaState.grupo.drillCache[gid]) vtaState.grupo.drillCache[gid] = {};
+    vtaState.grupo.drillCache[gid].compras = data || [];
   }
 
   function filaGrupoRef(rf) {
@@ -684,6 +753,11 @@
       row.addEventListener('click', go);
       row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
     });
+    // toggle de la ficha de cliente (Por artículo / Por compra) — vive en el drill, no en la fila
+    cont.querySelectorAll('[data-cli-modo]').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleClienteModo(b.getAttribute('data-gid'), b.getAttribute('data-cli-modo'));
+    }));
   }
 
   async function exportarExcelGrupo(btn, tipo) {
