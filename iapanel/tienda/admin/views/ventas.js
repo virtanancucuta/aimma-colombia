@@ -573,7 +573,7 @@
           '<span style="text-align:right;">Costo</span>' +
           '<span style="text-align:right;">Utilidad</span>' +
           '<span style="text-align:right;">Rentab.</span>' +
-          '<span>% participación</span>' +
+          '<span>' + (g.tipo === 'cliente' ? 'Última compra' : '% participación') + '</span>' +
         '</div>' + html +
       '</div></div>';
     wireGrupoRows(cont);
@@ -602,9 +602,11 @@
       cell('num', 'Costo', costoCell) +
       cell('num', 'Utilidad', fmtCOP(num(r.utilidad))) +
       '<div class="ta-vta-cell num' + (rentabNeg ? ' ta-vta-neg' : '') + '"><span class="ta-vta-cell__label">Rentab.</span>' + rentabTxt(rentab) + '</div>' +
-      '<div class="ta-vta-grppct"><span class="ta-vta-cell__label">% participación</span>' +
-        '<span class="ta-vta-grpbar"><span class="ta-vta-grpbar__fill" style="width:' + barW + '%;"></span></span>' +
-        '<span class="ta-vta-grppct__n">' + pct1 + '%</span></div>' +
+      (vtaState.grupo.tipo === 'cliente'
+        ? '<div class="ta-vta-cell"><span class="ta-vta-cell__label">Última compra</span>' + fmtFecha(r.ultima_compra) + '</div>'
+        : '<div class="ta-vta-grppct"><span class="ta-vta-cell__label">% participación</span>' +
+            '<span class="ta-vta-grpbar"><span class="ta-vta-grpbar__fill" style="width:' + barW + '%;"></span></span>' +
+            '<span class="ta-vta-grppct__n">' + pct1 + '%</span></div>') +
     '</div>';
   }
 
@@ -699,13 +701,22 @@
       if (error) throw error;
       if (!groups || !groups.length) { T.toast('No hay ventas para exportar.', 'info'); return; }
       const enc = tipo === 'proveedor' ? 'Proveedor' : tipo === 'cliente' ? 'Cliente' : 'Categoría';
-      const colConteo = tipo === 'cliente' ? 'N° pedidos' : 'N° refs';
-      const aoa = [[enc, colConteo, 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '% Participación']];
+      const isCli = tipo === 'cliente';
+      const header = isCli
+        ? ['Cliente', 'Teléfono', 'Email', 'Ciudad', 'Última compra', 'N° pedidos', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %']
+        : [enc, 'N° refs', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '% Participación'];
+      const aoa = [header];
       for (const grp of groups) {
         const rentab = grupoRentab(grp);
-        aoa.push([grp.grupo_nombre, numExcel(grp.num_referencias), numExcel(grp.unidades), numExcel(grp.ingreso),
-          numExcel(grp.neta), numExcel(grp.iva), numExcel(grp.costo), numExcel(grp.utilidad),
-          pctExcel(rentab), (grp.pct == null ? '' : Math.round(Number(grp.pct) * 10) / 10)]);
+        if (isCli) {
+          aoa.push([grp.grupo_nombre, grp.grupo_id, (grp.email || ''), (grp.ciudad || ''), fmtFecha(grp.ultima_compra),
+            numExcel(grp.num_referencias), numExcel(grp.unidades), numExcel(grp.ingreso), numExcel(grp.neta),
+            numExcel(grp.iva), numExcel(grp.costo), numExcel(grp.utilidad), pctExcel(rentab)]);
+        } else {
+          aoa.push([grp.grupo_nombre, numExcel(grp.num_referencias), numExcel(grp.unidades), numExcel(grp.ingreso),
+            numExcel(grp.neta), numExcel(grp.iva), numExcel(grp.costo), numExcel(grp.utilidad),
+            pctExcel(rentab), (grp.pct == null ? '' : Math.round(Number(grp.pct) * 10) / 10)]);
+        }
         if (!grp.es_sin_grupo) {
           const refArgs = tipo === 'proveedor'
             ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: grp.grupo_id, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 }
@@ -713,16 +724,26 @@
             ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: null, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0, p_telefono: grp.grupo_id }
             : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: null, p_categoria_id: grp.grupo_id, p_buscar: null, p_limit: null, p_offset: 0 };
           const { data: refs } = await sb.rpc('ventas_resumen', refArgs);
-          (refs || []).forEach(rf => aoa.push(['↳ ' + rf.referencia, '', numExcel(rf.unidades), numExcel(rf.ingreso),
-            numExcel(rf.neta), numExcel(rf.iva), numExcel(rf.costo), numExcel(rf.utilidad), pctExcel(rf.rentabilidad), '']));
+          (refs || []).forEach(rf => {
+            if (isCli) aoa.push(['↳ ' + rf.referencia, '', '', '', '', '', numExcel(rf.unidades), numExcel(rf.ingreso),
+              numExcel(rf.neta), numExcel(rf.iva), numExcel(rf.costo), numExcel(rf.utilidad), pctExcel(rf.rentabilidad)]);
+            else aoa.push(['↳ ' + rf.referencia, '', numExcel(rf.unidades), numExcel(rf.ingreso),
+              numExcel(rf.neta), numExcel(rf.iva), numExcel(rf.costo), numExcel(rf.utilidad), pctExcel(rf.rentabilidad), '']);
+          });
         }
       }
       const sum = (k) => groups.reduce((a, gg) => a + Number(gg[k] || 0), 0);
       const sumPct = groups.reduce((a, gg) => a + Number(gg.pct || 0), 0);
       aoa.push([]);
-      aoa.push(['TOTAL', '', numExcel(sum('unidades')), numExcel(sum('ingreso')), numExcel(sum('neta')), numExcel(sum('iva')),
-        numExcel(sum('costo')), numExcel(sum('utilidad')), '', Math.round(sumPct * 10) / 10]);
-      xlsxDescargar(XLSX, [{ nombre: enc, aoa, cols: [{ wch: 22 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }] }],
+      aoa.push(isCli
+        ? ['TOTAL', '', '', '', '', '', numExcel(sum('unidades')), numExcel(sum('ingreso')), numExcel(sum('neta')),
+           numExcel(sum('iva')), numExcel(sum('costo')), numExcel(sum('utilidad')), '']
+        : ['TOTAL', '', numExcel(sum('unidades')), numExcel(sum('ingreso')), numExcel(sum('neta')), numExcel(sum('iva')),
+           numExcel(sum('costo')), numExcel(sum('utilidad')), '', Math.round(sumPct * 10) / 10]);
+      const cols = isCli
+        ? [{ wch: 20 }, { wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }]
+        : [{ wch: 22 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+      xlsxDescargar(XLSX, [{ nombre: enc, aoa, cols }],
         'ventas_por_' + tipo + '_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
     finally { btn.disabled = false; btn.textContent = old; }
@@ -739,6 +760,11 @@
   }
   function fmtNum(n) { return Number(n || 0).toLocaleString('es-CO'); }
   function fmtPct(x) { const p = Number(x) * 100; return (Math.round(p * 10) / 10).toLocaleString('es-CO') + '%'; }
+  function fmtFecha(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\./g, ''); }
+    catch { return '—'; }
+  }
   function loadingCard() {
     return '<div class="ta-card" style="padding:40px 16px;text-align:center;color:var(--ta-text-mut);">Cargando ventas…</div>';
   }
