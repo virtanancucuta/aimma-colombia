@@ -19,11 +19,13 @@
     { id: 'articulo', label: 'Artículo' },
     { id: 'proveedor', label: 'Proveedor' },
     { id: 'categoria', label: 'Categoría' },
+    { id: 'cliente', label: 'Cliente' },
   ];
   const TAB_META = {
     articulo:  { titulo: 'Ventas por artículo',  sub: 'Lo que vendiste en el período, por referencia. La venta neta es sin IVA; la rentabilidad se calcula sobre la neta.' },
     proveedor: { titulo: 'Ventas por proveedor', sub: 'Cuánto vendiste agrupado por proveedor, en el período.' },
     categoria: { titulo: 'Ventas por categoría', sub: 'Cuánto vendiste agrupado por categoría, en el período.' },
+    cliente:   { titulo: 'Ventas por cliente',   sub: 'Cuánto te compró cada cliente, en el período.' },
   };
 
   // ============================================================
@@ -528,10 +530,13 @@
       const tot = (tdata && tdata[0]) || null;
       if (tot) { vtaState.desde = String(tot.desde); vtaState.hasta = String(tot.hasta); syncDateInputs(); }
       pintarKpis(tot);
-      const rpc = tipo === 'proveedor' ? 'ventas_por_proveedor' : 'ventas_por_categoria';
-      const args = tipo === 'proveedor'
-        ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta }
-        : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: null };
+      const rpc = tipo === 'proveedor' ? 'ventas_por_proveedor'
+                : tipo === 'cliente' ? 'ventas_por_cliente'
+                : 'ventas_por_categoria';
+      // SOLO el rango compartido — NO hereda vtaState.filtros (proveedor/categoria/buscar viven en Articulo) -> invariante.
+      const args = (tipo === 'categoria')
+        ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: null }
+        : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta };
       const { data, error } = await sb.rpc(rpc, args);
       if (error) { if (cont) cont.innerHTML = errorCard(error.message); return; }
       vtaState.grupo.rows = data || [];
@@ -560,8 +565,8 @@
     cont.innerHTML =
       '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-vta-grp">' +
         '<div class="ta-vta-grphead">' +
-          '<span>' + (g.tipo === 'proveedor' ? 'Proveedor' : 'Categoría') + '</span>' +
-          '<span style="text-align:right;">Refs</span>' +
+          '<span>' + (g.tipo === 'proveedor' ? 'Proveedor' : g.tipo === 'cliente' ? 'Cliente' : 'Categoría') + '</span>' +
+          '<span style="text-align:right;">' + (g.tipo === 'cliente' ? 'N° pedidos' : 'Refs') + '</span>' +
           '<span style="text-align:right;">Unidades</span>' +
           '<span style="text-align:right;">Ingreso</span>' +
           '<span style="text-align:right;">Venta neta</span>' +
@@ -585,8 +590,12 @@
     const costoCell = fmtCOP(num(r.costo)) + aproxBadge(r.costo_estimado_parcial);
     return '<div class="ta-vta-grprow' + (drillable ? '' : ' ta-vta-grprow--nodrill') + '"' +
       (drillable ? ' data-gid="' + T.escapeHtml(r.grupo_id) + '" data-open="' + (abierto ? '1' : '0') + '" role="button" tabindex="0"' : '') + '>' +
-      '<div class="ta-vta-grpname"><span class="ta-vta-chevron" aria-hidden="true"' + (drillable ? '' : ' style="visibility:hidden;"') + '>▸</span><strong>' + T.escapeHtml(r.grupo_nombre) + '</strong></div>' +
-      cell('num', 'Refs', fmtNum(r.num_referencias)) +
+      '<div class="ta-vta-grpname"><span class="ta-vta-chevron" aria-hidden="true"' + (drillable ? '' : ' style="visibility:hidden;"') + '>▸</span>' +
+        (vtaState.grupo.tipo === 'cliente'
+          ? '<span style="display:flex;flex-direction:column;line-height:1.25;min-width:0;"><strong>' + T.escapeHtml(r.grupo_nombre) + '</strong><span style="font-size:12px;color:var(--ta-text-mut);">' + T.escapeHtml(r.grupo_id || '') + '</span></span>'
+          : '<strong>' + T.escapeHtml(r.grupo_nombre) + '</strong>') +
+      '</div>' +
+      cell('num', (vtaState.grupo.tipo === 'cliente' ? 'N° pedidos' : 'Refs'), fmtNum(r.num_referencias)) +
       cell('num', 'Unidades', fmtNum(r.unidades)) +
       cell('num', 'Ingreso', fmtCOP(num(r.ingreso))) +
       cell('num', 'Venta neta', fmtCOP(num(r.neta))) +
@@ -651,6 +660,11 @@
         p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso',
         p_proveedor_id: gid, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 });
       cache.refs = data || [];
+    } else if (tipo === 'cliente') {
+      const { data } = await sb.rpc('ventas_resumen', {
+        p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso',
+        p_proveedor_id: null, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0, p_telefono: gid });
+      cache.refs = data || [];
     } else {
       const subsR = await sb.rpc('ventas_por_categoria', { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: gid });
       const refsR = await sb.rpc('ventas_resumen', {
@@ -675,15 +689,18 @@
     const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
     try {
       const XLSX = await loadXLSX();
-      const rpc = tipo === 'proveedor' ? 'ventas_por_proveedor' : 'ventas_por_categoria';
-      const args = tipo === 'proveedor'
-        ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta }
-        : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: null };
+      const rpc = tipo === 'proveedor' ? 'ventas_por_proveedor'
+                : tipo === 'cliente' ? 'ventas_por_cliente'
+                : 'ventas_por_categoria';
+      const args = (tipo === 'categoria')
+        ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_parent_id: null }
+        : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta };
       const { data: groups, error } = await sb.rpc(rpc, args);
       if (error) throw error;
       if (!groups || !groups.length) { T.toast('No hay ventas para exportar.', 'info'); return; }
-      const enc = tipo === 'proveedor' ? 'Proveedor' : 'Categoría';
-      const aoa = [[enc, 'N° refs', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '% Participación']];
+      const enc = tipo === 'proveedor' ? 'Proveedor' : tipo === 'cliente' ? 'Cliente' : 'Categoría';
+      const colConteo = tipo === 'cliente' ? 'N° pedidos' : 'N° refs';
+      const aoa = [[enc, colConteo, 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '% Participación']];
       for (const grp of groups) {
         const rentab = grupoRentab(grp);
         aoa.push([grp.grupo_nombre, numExcel(grp.num_referencias), numExcel(grp.unidades), numExcel(grp.ingreso),
@@ -692,6 +709,8 @@
         if (!grp.es_sin_grupo) {
           const refArgs = tipo === 'proveedor'
             ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: grp.grupo_id, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 }
+            : tipo === 'cliente'
+            ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: null, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0, p_telefono: grp.grupo_id }
             : { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: null, p_categoria_id: grp.grupo_id, p_buscar: null, p_limit: null, p_offset: 0 };
           const { data: refs } = await sb.rpc('ventas_resumen', refArgs);
           (refs || []).forEach(rf => aoa.push(['↳ ' + rf.referencia, '', numExcel(rf.unidades), numExcel(rf.ingreso),
