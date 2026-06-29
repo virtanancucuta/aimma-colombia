@@ -56,6 +56,8 @@
         resumen: null,        // { rows, total }
         filtros: { proveedor_id: '', categoria_id: '', buscar: '' },
         buscarTimer: null,
+        drillCache: {},       // Fase 6 drill: producto_id -> [variantes] (propio, NO pisa el de Artículo)
+        drillOpen: {},        // producto_id -> bool
       },
     };
   }
@@ -123,6 +125,7 @@
     vtaState.page.offset = 0;
     vtaState.totales = null; vtaState.resumen = null;
     vtaState.drillCache = {}; vtaState.drillOpen = {}; // el costo/agregado por variante depende del rango
+    vtaState.cob.drillCache = {}; vtaState.cob.drillOpen = {}; // Fase 6: la cobertura por variante depende del rango -> invalidar
     if (vtaState.tab === 'articulo') fetchAndRender();
     else if (vtaState.tab === 'cobertura') { vtaState.cob.page.offset = 0; fetchCobertura(); }
     else renderActiveTab(); // Proveedor/Categoría: re-monta el panel (re-fetch + reset drill) con el nuevo rango
@@ -1020,14 +1023,18 @@
         '<p class="ta-empty__text">No hubo ventas cerradas con esos filtros en este período.</p></div></div>';
       return;
     }
-    const html = rows.map(filaCobertura).join('');
+    let html = '';
+    rows.forEach(r => {
+      html += filaCobertura(r);
+      if (r.producto_id && vtaState.cob.drillOpen[r.producto_id]) html += filaCobDrill(r.producto_id);
+    });
     const desde = vtaState.cob.page.offset + 1;
     const hasta = vtaState.cob.page.offset + rows.length;
     cont.innerHTML =
       '<div class="ta-card" style="padding:0;overflow:hidden;">' +
         '<div class="ta-vta-cob">' +
           '<div class="ta-vta-cobhead">' +
-            '<span></span><span>Referencia</span>' +
+            '<span></span><span></span><span>Referencia</span>' +
             '<span style="text-align:right;">Unidades</span>' +
             '<span style="text-align:right;">Ingreso</span>' +
             '<span style="text-align:right;">Venta neta</span>' +
@@ -1049,17 +1056,21 @@
     const prev = cont.querySelector('#vta-cob-prev'), next = cont.querySelector('#vta-cob-next');
     if (prev) prev.addEventListener('click', () => { if (vtaState.cob.page.offset <= 0) return; vtaState.cob.page.offset -= vtaState.cob.page.limit; fetchCobertura(); });
     if (next) next.addEventListener('click', () => { vtaState.cob.page.offset += vtaState.cob.page.limit; fetchCobertura(); });
+    wireCobList(cont);
   }
 
   function filaCobertura(r) {
     const T = window.TiendaIA;
+    const drillable = !!r.producto_id;
+    const abierto = drillable && !!vtaState.cob.drillOpen[r.producto_id];
     const foto = r.foto_principal_url
       ? '<img class="ta-vta-thumb" src="' + T.escapeHtml(r.foto_principal_url) + '" alt="">'
       : '<div class="ta-vta-thumb ta-vta-thumb--empty">📦</div>';
     const costoCell = fmtCOP(num(r.costo)) + aproxBadge(r.costo_estimado);
     const cob = fmtDias(r.cobertura_dias);
     const cobCell = (cob == null) ? '<span class="ta-vta-cob-sinrot">Sin rotación</span>' : cob;
-    return '<div class="ta-vta-cobrow">' +
+    return '<div class="ta-vta-cobrow' + (drillable ? '' : ' ta-vta-cobrow--nodrill') + '" data-prod="' + T.escapeHtml(r.producto_id || '') + '" data-open="' + (abierto ? '1' : '0') + '">' +
+      '<span class="ta-vta-chevron" aria-hidden="true"' + (drillable ? '' : ' style="visibility:hidden;"') + '>▸</span>' +
       foto +
       '<div class="ta-vta-ref"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span></div>' +
       cell('num', 'Unidades', fmtNum(r.unidades)) +
@@ -1071,6 +1082,83 @@
       cell('num', 'Cobertura', cobCell) +
       '<div class="ta-vta-cell ta-vta-cobestado"><span class="ta-vta-cell__label">Estado</span>' + estadoBadge(r.estado) + '</div>' +
     '</div>';
+  }
+
+  // Drill de la pestaña Cobertura (estado propio cob.drillOpen/drillCache; consume ventas_cobertura_variantes).
+  function filaCobDrill(productoId) {
+    const vs = vtaState.cob.drillCache[productoId];
+    if (!vs) return cobVrowMsg('Cargando variantes…');
+    if (!vs.length) return cobVrowMsg('Sin variantes.');
+    return vs.map(filaCoberturaVariante).join('');
+  }
+  function filaCoberturaVariante(v) {
+    const T = window.TiendaIA;
+    const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+    const costoCell = fmtCOP(num(v.costo)) + aproxBadge(v.costo_estimado);
+    const cob = fmtDias(v.cobertura_dias);
+    const cobCell = (cob == null) ? '<span class="ta-vta-cob-sinrot">Sin rotación</span>' : cob;
+    return '<div class="ta-vta-cobvrow">' +
+      '<span class="ta-vta-vmark" aria-hidden="true"></span>' +
+      '<div class="ta-vta-cobvref"><strong>' + T.escapeHtml(etiqueta) + '</strong> <code>' + T.escapeHtml(v.sku || '') + '</code></div>' +
+      cell('num', 'Unidades', fmtNum(v.unidades)) +
+      cell('num', 'Ingreso', fmtCOP(num(v.ingreso))) +
+      cell('num', 'Venta neta', fmtCOP(num(v.neta))) +
+      cell('num', 'Costo', costoCell) +
+      cell('num', 'Rentab.', rentabTxt(v.rentabilidad)) +
+      cell('num', 'Stock disp.', fmtNum(v.stock_disponible)) +
+      cell('num', 'Cobertura', cobCell) +
+      '<div class="ta-vta-cell ta-vta-cobestado"><span class="ta-vta-cell__label">Estado</span>' + estadoBadge(v.estado) + '</div>' +
+    '</div>';
+  }
+  function cobVrowMsg(txt) {
+    return '<div class="ta-vta-cobvrow ta-vta-cobvrow--msg"><span class="ta-vta-vmark"></span>' +
+      '<div class="ta-vta-cobvref" style="color:var(--ta-text-mut);font-size:12px;">' + window.TiendaIA.escapeHtml(txt) + '</div></div>';
+  }
+
+  function wireCobList(cont) {
+    cont.querySelectorAll('.ta-vta-cobrow[data-prod]').forEach(it => {
+      if (it.classList.contains('ta-vta-cobrow--nodrill')) return;
+      it.addEventListener('click', (e) => {
+        if (e.target.closest && e.target.closest('button')) return;
+        if (window.getSelection && String(window.getSelection()).length > 0) return;
+        const pid = it.getAttribute('data-prod');
+        if (pid) toggleCoberturaDrill(pid);
+      });
+    });
+  }
+
+  async function toggleCoberturaDrill(productoId) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const cont = T.dom.mainView.querySelector('#vta-cob-content');
+    if (!cont) return;
+    const item = cont.querySelector('.ta-vta-cobrow[data-prod="' + cssEsc(productoId) + '"]');
+    if (!item) return;
+    if (item.getAttribute('data-open') === '1') {
+      vtaState.cob.drillOpen[productoId] = false;
+      item.setAttribute('data-open', '0');
+      removeCobDrillRows(item);
+      return;
+    }
+    vtaState.cob.drillOpen[productoId] = true;
+    item.setAttribute('data-open', '1');
+    if (!vtaState.cob.drillCache[productoId]) {
+      insertDrillRows(item, cobVrowMsg('Cargando variantes…'));
+      const { data, error } = await sb.rpc('ventas_cobertura_variantes', {
+        p_tienda_id: T.state.tienda.id, p_producto_id: productoId,
+        p_desde: vtaState.desde, p_hasta: vtaState.hasta,
+      });
+      if (error) {
+        T.toast('No pudimos cargar las variantes: ' + error.message, 'error');
+        vtaState.cob.drillOpen[productoId] = false; item.setAttribute('data-open', '0'); removeCobDrillRows(item); return;
+      }
+      vtaState.cob.drillCache[productoId] = data || [];
+    }
+    removeCobDrillRows(item);
+    insertDrillRows(item, filaCobDrill(productoId));
+  }
+  function removeCobDrillRows(item) {
+    let n = item.nextElementSibling;
+    while (n && n.classList && n.classList.contains('ta-vta-cobvrow')) { const x = n; n = n.nextElementSibling; x.remove(); }
   }
 
   async function exportarExcelCobertura(btn) {
