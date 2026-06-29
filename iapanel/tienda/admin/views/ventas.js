@@ -1206,7 +1206,9 @@
       if (errGrupo) throw errGrupo.error;
       // Columnas genericas Tipo N · Valor N (nombre del eje POR FILA via nombreEje -> multi-rubro convive en 1 hoja).
       // Mapeo por slot: eje1=color (variante_tipo_1), eje2=talla (variante_tipo_2), eje3=atributo_3 (variante_tipo_3).
-      const aoa2 = [['Referencia', 'Tipo 1', 'Valor 1', 'Tipo 2', 'Valor 2', 'Tipo 3', 'Valor 3', 'SKU',
+      // Encabezados FIJOS "Variante N" (coherente con como el editor le pedira los ejes al dueño). La CELDA "Variante N"
+      // muestra el nombre real del eje (variante_tipo_N) o "Variante N" si no lo nombro -> via tipoSiValor/nombreEje.
+      const aoa2 = [['Referencia', 'Variante 1', 'Valor 1', 'Variante 2', 'Valor 2', 'Variante 3', 'Valor 3', 'SKU',
         'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', 'Stock disponible', 'Cobertura (días)', 'Estado']];
       grupos.forEach(g => {
         g.rows.forEach(v => {
