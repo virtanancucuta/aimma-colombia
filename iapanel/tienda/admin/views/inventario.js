@@ -413,7 +413,7 @@
     const costo = padre.costo_unitario;
     const ver = (invState.accion && invState.accion.ver) || 'ruptura';
     return vs.map(v => {
-      const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      const etiqueta = window.TiendaIA.ejesConcat(v) || (v.sku || '—');
       const acc = ver === 'sobrestock'
         ? accionSobraHtml(v.venta_diaria, v.stock, costo)
         : accionCompraHtml(sugCompra(v.venta_diaria, v.datos_insuficientes, v.stock, costo));
@@ -516,7 +516,7 @@
     if (!vs) return msg('Cargando variantes…');
     if (!vs.length) return msg('Sin variantes.');
     return vs.map(v => {
-      const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      const etiqueta = window.TiendaIA.ejesConcat(v) || (v.sku || '—');
       // 5 celdas alineadas a la fila padre: Ref(+stock) · Última venta(—) · Último ingreso(—) · Capital.
       // En este tab la variante nunca tuvo venta -> "—" (NO stock bajo Última venta). Capital = stock×costo.
       return '<div class="ta-inv-vrow ta-inv-vrow--sv">' +
@@ -654,7 +654,7 @@
     const padre = ((invState.kardex && invState.kardex.refs) || []).find(x => x.producto_id === productoId) || {};
     const ult = haceTxt(padre.fecha_ultimo_ingreso); // último ingreso = product-level (PASO 0: variantes no lo trae)
     return vs.map(v => {
-      const label = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      const label = window.TiendaIA.ejesConcat(v) || (v.sku || '—');
       return '<div class="ta-inv-vrow ta-inv-vrow--kx">' +
         '<div class="ta-inv-kxvref"><strong>' + T.escapeHtml(label) + '</strong>' +
           '<span class="ta-inv-kxvmeta">stock ' + Number(v.stock) + ' · disp. ' + Number(v.disponible) + ' · ingreso ' + ult + '</span></div>' +
@@ -735,7 +735,7 @@
           (showEnt ? '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Entrada</span>' + ent + '</div>' : '') +
           (showSal ? '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Salida</span>' + sal + '</div>' : '') +
           (todas
-            ? '<div class="ta-inv-kxcell ta-inv-kxcell--var"><span class="ta-inv-cell__label">Variante</span>' + T.escapeHtml([m.color, m.talla].filter(Boolean).join(' · ') || (m.sku || '—')) + '</div>'
+            ? '<div class="ta-inv-kxcell ta-inv-kxcell--var"><span class="ta-inv-cell__label">Variante</span>' + T.escapeHtml(window.TiendaIA.ejesConcat(m) || (m.sku || '—')) + '</div>'
             : '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Saldo</span>' + Number(m.saldo_acumulado) + '</div>') +
           '<div class="ta-inv-kxcell num"><span class="ta-inv-cell__label">Costo unit.</span>' + (m.costo_unitario != null ? fmtCOP(Number(m.costo_unitario)) : '—') + '</div>' +
         '</div>';
@@ -975,7 +975,7 @@
     // Cada variante = fila ALINEADA a la grilla del padre: stock bajo STOCK,
     // cobertura (semaforo por variante) bajo COBERTURA. reservado/disp como sub-linea.
     return vs.map(v => {
-      const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      const etiqueta = window.TiendaIA.ejesConcat(v) || (v.sku || '—');
       return '<div class="ta-inv-vrow">' +
         '<span class="ta-inv-vmark" aria-hidden="true"></span>' +
         '<span class="ta-inv-vswatch" aria-hidden="true"></span>' +
@@ -1132,7 +1132,7 @@
         aoa.push([p.referencia, p.nombre || '', numExcel(p.stock_total), numExcel(p.reservado_total), numExcel(p.stock_disponible),
           numExcel(p.costo_unitario), numExcel(p.valor_inventario), cobTexto(p), p.clasificacion, fechaExcel(p.fecha_ultima_venta), p.proveedor_nombre || '', c.cat, c.sub]);
         (byProd[p.producto_id] || []).forEach(v => {
-          const et = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '');
+          const et = window.TiendaIA.ejesConcat(v) || (v.sku || '');
           aoa.push(['↳ ' + et, v.sku || '', numExcel(v.stock), numExcel(v.reservado), numExcel(v.disponible), '', '', cobTexto(v), v.clasificacion, '', '', '', '']);
         });
       });
@@ -1191,7 +1191,7 @@
         : ['Referencia', 'Nombre', 'Proveedor', 'Stock', 'Cobertura', 'Comprar (uds)', 'Costo reposición'];
       const aoa = [head];
       lista.forEach(r => {
-        const etq = (v) => '↳ ' + ([v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || ''));
+        const etq = (v) => '↳ ' + (window.TiendaIA.ejesConcat(v) || (v.sku || ''));
         if (esSob) {
           const c = capitalAmarrado(r.venta_diaria, r.stock_total, r.costo_unitario);
           aoa.push([r.referencia, r.nombre || '', r.proveedor_nombre || '', numExcel(r.stock_total), cobTexto(r), c.unidades, numExcel(c.capital)]);
@@ -1226,7 +1226,7 @@
         aoa.push([r.referencia, r.nombre || '', r.proveedor_nombre || '', numExcel(r.stock_total),
           (r.fecha_ultima_venta ? haceTxt(r.fecha_ultima_venta) : 'Nunca vendido'), haceTxt(r.fecha_ultimo_ingreso), numExcel(r.valor_inventario)]);
         (byProd[r.producto_id] || []).forEach(v => {
-          aoa.push(['↳ ' + ([v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '')), v.sku || '', '', numExcel(v.stock), '', '', numExcel(Number(v.stock) * Number(r.costo_unitario || 0))]);
+          aoa.push(['↳ ' + (window.TiendaIA.ejesConcat(v) || (v.sku || '')), v.sku || '', '', numExcel(v.stock), '', '', numExcel(Number(v.stock) * Number(r.costo_unitario || 0))]);
         });
       });
       const total = lista.reduce((s, r) => s + Number(r.valor_inventario || 0), 0);
@@ -1255,7 +1255,7 @@
         ['Fecha', 'Movimiento', 'Entrada', 'Salida', (todas ? 'Variante' : 'Saldo'), 'Costo unit.'],
       ];
       filtradas.forEach(m => aoa.push([fechaExcel(m.fecha), tipoLabel(m), numExcel(m.entrada), numExcel(m.salida),
-        (todas ? ([m.color, m.talla].filter(Boolean).join(' · ') || (m.sku || '')) : numExcel(m.saldo_acumulado)),
+        (todas ? (window.TiendaIA.ejesConcat(m) || (m.sku || '')) : numExcel(m.saldo_acumulado)),
         (m.costo_unitario != null ? numExcel(m.costo_unitario) : '')]));
       xlsxDescargar(XLSX, [{ nombre: 'Kardex', aoa, cols: [{ wch: 14 }, { wch: 16 }, { wch: 9 }, { wch: 9 }, { wch: 10 }, { wch: 12 }] }],
         'Kardex_' + (p.ref || 'ref').replace(/[^\w-]/g, '') + '_' + (p.vlabel || '').replace(/[^\w-]/g, '') + '_' + hoyExcel() + '.xlsx');
@@ -1277,7 +1277,7 @@
       lista.forEach(r => {
         aoa.push([r.referencia, r.nombre || '', r.proveedor_nombre || '', '', numExcel(r.stock_total), numExcel(r.stock_disponible), fechaExcel(r.fecha_ultimo_ingreso)]);
         (byProd[r.producto_id] || []).forEach(v => {
-          aoa.push(['', '', '', ([v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '')), numExcel(v.stock), numExcel(v.disponible), '']);
+          aoa.push(['', '', '', (window.TiendaIA.ejesConcat(v) || (v.sku || '')), numExcel(v.stock), numExcel(v.disponible), '']);
         });
       });
       xlsxDescargar(XLSX, [{ nombre: 'Últimos ingresos', aoa, cols: [{ wch: 16 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 8 }, { wch: 11 }, { wch: 14 }] }],

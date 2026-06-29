@@ -368,7 +368,7 @@
     if (!vs) return vrowMsg('Cargando variantes…');
     if (!vs.length) return vrowMsg('Sin variantes.');
     return vs.map(v => {
-      const etiqueta = ejesConcat(v) || (v.sku || '—');
+      const etiqueta = T.ejesConcat(v) || (v.sku || '—');
       const costoCell = fmtCOP(num(v.costo)) + aproxBadge(v.costo_estimado);
       return '<div class="ta-vta-vrow">' +
         '<span class="ta-vta-vmark" aria-hidden="true"></span>' +
@@ -498,7 +498,7 @@
         aoa.push([r.referencia, numExcel(r.unidades), numExcel(r.ingreso), numExcel(r.neta), numExcel(r.iva),
           numExcel(r.costo), numExcel(r.utilidad), pctExcel(r.rentabilidad), (r.costo_estimado ? 'Sí' : '')]);
         (byProd[r.producto_id] || []).forEach(v => {
-          const et = ejesConcat(v) || (v.sku || '');
+          const et = T.ejesConcat(v) || (v.sku || '');
           aoa.push(['↳ ' + et, numExcel(v.unidades), numExcel(v.ingreso), numExcel(v.neta), numExcel(v.iva),
             numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad), (v.costo_estimado ? 'Sí' : '')]);
         });
@@ -1093,7 +1093,7 @@
   }
   function filaCoberturaVariante(v) {
     const T = window.TiendaIA;
-    const etiqueta = ejesConcat(v) || (v.sku || '—');
+    const etiqueta = T.ejesConcat(v) || (v.sku || '—');
     const costoCell = fmtCOP(num(v.costo)) + aproxBadge(v.costo_estimado);
     const cob = fmtDias(v.cobertura_dias);
     const cobCell = (cob == null) ? '<span class="ta-vta-cob-sinrot">Sin rotación</span>' : cob;
@@ -1213,9 +1213,9 @@
       grupos.forEach(g => {
         g.rows.forEach(v => {
           aoa2.push([g.ref,
-            tipoSiValor(v.color, v.variante_tipo_1, 1), (v.color || ''),
-            tipoSiValor(v.talla, v.variante_tipo_2, 2), (v.talla || ''),
-            tipoSiValor(v.atributo_3, v.variante_tipo_3, 3), (v.atributo_3 || ''),
+            T.tipoSiValor(v.color, v.variante_tipo_1, 1), (v.color || ''),
+            T.tipoSiValor(v.talla, v.variante_tipo_2, 2), (v.talla || ''),
+            T.tipoSiValor(v.atributo_3, v.variante_tipo_3, 3), (v.atributo_3 || ''),
             (v.sku || ''),
             numExcel(v.unidades), numExcel(v.ingreso), numExcel(v.neta), numExcel(v.iva),
             numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad),
@@ -1240,12 +1240,8 @@
   // Utils
   // ============================================================
   function num(n) { return Number(n || 0); }
-  // Variantes genericas (B2): nombre de eje con fallback "Variante N" (UN solo lugar; lo usan todas las superficies)
-  function nombreEje(tipo, n) { return tipo || ('Variante ' + n); }
-  // Concat de los valores de los ejes definidos (omite null, separador ' · '). Sin fallback aqui -> lo pone el caller.
-  function ejesConcat(v) { return [v.color, v.talla, v.atributo_3].filter(Boolean).join(' · '); }
-  // Hoja "Por variante": el par Tipo N / Valor N va junto -> Tipo N solo si hay Valor N (si no, celda vacia, sin "Variante N").
-  function tipoSiValor(valor, tipo, n) { return valor ? nombreEje(tipo, n) : ''; }
+  // Variantes genericas: los helpers nombreEje/ejesConcat/tipoSiValor viven en el core window.TiendaIA
+  // (admin.js) -> se usan como T.nombreEje / T.ejesConcat / T.tipoSiValor. UN solo lugar, compartido con inventario.js.
   function fmtCOP(n) {
     if (!n && n !== 0) return '$0';
     try { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }

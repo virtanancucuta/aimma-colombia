@@ -341,6 +341,15 @@
       .replace(/'/g, '&#039;');
   }
 
+  // Variantes genericas (capa de lectura B2/B3): helpers compartidos — UN solo lugar (core).
+  // Los importan ventas.js e inventario.js via T.nombreEje/T.ejesConcat/T.tipoSiValor (y el editor en Sub-fase C).
+  // nombreEje: nombre real del eje del producto (variante_tipo_N) con fallback "Variante N".
+  function nombreEje(tipo, n) { return tipo || ('Variante ' + n); }
+  // ejesConcat: concat de los valores de los ejes definidos (color · talla · atributo_3), omite null, sep ' · '. Sin fallback (lo pone el caller).
+  function ejesConcat(v) { return [v.color, v.talla, v.atributo_3].filter(Boolean).join(' · '); }
+  // tipoSiValor: para hojas planas Tipo/Valor — el nombre del eje N solo si hay valor N (si no, '').
+  function tipoSiValor(valor, tipo, n) { return valor ? nombreEje(tipo, n) : ''; }
+
   function closeSidebarMobile() {
     if (window.innerWidth <= 760 && dom.sidebar) {
       dom.sidebar.classList.remove('is-open');
@@ -402,6 +411,9 @@
     registerView,
     registerNavGuard,  // v4 (Fase 3.3): cancelar navegacion si dirty form
     escapeHtml,
+    nombreEje,      // variantes genericas: helpers compartidos (ventas.js + inventario.js + editor)
+    ejesConcat,
+    tipoSiValor,
     // Plan 3: cache de sesion sincrono para editor.js y otras views
     _lastSession: null,
     getSession: () => window.TiendaIA._lastSession,
