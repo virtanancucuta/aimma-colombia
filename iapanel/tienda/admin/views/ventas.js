@@ -1211,9 +1211,9 @@
       grupos.forEach(g => {
         g.rows.forEach(v => {
           aoa2.push([g.ref,
-            nombreEje(v.variante_tipo_1, 1), (v.color || ''),
-            nombreEje(v.variante_tipo_2, 2), (v.talla || ''),
-            nombreEje(v.variante_tipo_3, 3), (v.atributo_3 || ''),
+            tipoSiValor(v.color, v.variante_tipo_1, 1), (v.color || ''),
+            tipoSiValor(v.talla, v.variante_tipo_2, 2), (v.talla || ''),
+            tipoSiValor(v.atributo_3, v.variante_tipo_3, 3), (v.atributo_3 || ''),
             (v.sku || ''),
             numExcel(v.unidades), numExcel(v.ingreso), numExcel(v.neta), numExcel(v.iva),
             numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad),
@@ -1242,6 +1242,8 @@
   function nombreEje(tipo, n) { return tipo || ('Variante ' + n); }
   // Concat de los valores de los ejes definidos (omite null, separador ' · '). Sin fallback aqui -> lo pone el caller.
   function ejesConcat(v) { return [v.color, v.talla, v.atributo_3].filter(Boolean).join(' · '); }
+  // Hoja "Por variante": el par Tipo N / Valor N va junto -> Tipo N solo si hay Valor N (si no, celda vacia, sin "Variante N").
+  function tipoSiValor(valor, tipo, n) { return valor ? nombreEje(tipo, n) : ''; }
   function fmtCOP(n) {
     if (!n && n !== 0) return '$0';
     try { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
