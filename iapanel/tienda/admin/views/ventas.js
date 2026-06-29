@@ -834,7 +834,7 @@
       // CLIENTE: hoja 1 "Por artículo" (la actual) + hoja 2 "Por compra" (historial de pedidos por cliente).
       const hoja1 = { nombre: 'Por artículo', aoa, cols };
       // Columnas de DATOS fijas por posición (type-homogeneas -> el equipo filtra/ordena). A = nivel.
-      const aoa2 = [['Detalle', 'Fecha', 'Código', '¿Devuelto?', 'Cantidad', 'Venta neta']];
+      const aoa2 = [['Detalle', 'Teléfono', 'Email', 'Ciudad', 'Fecha', 'Código', '¿Devuelto?', 'Cantidad', 'Venta neta']];
       for (const grp of groups) {
         if (grp.es_sin_grupo) continue; // "Sin teléfono" no tiene pedidos consultables
         // full-fetch: 1 llamada por cliente. ESCALA: con muchos clientes optimizar (no ahora).
@@ -846,17 +846,18 @@
           peds[pidx[rf.pedido_id]].items.push(rf);
         });
         const cliNeto = peds.reduce((a, o) => a + Number(o.ped.pedido_venta || 0), 0);
-        aoa2.push([grp.grupo_nombre + ' — ' + grp.grupo_id, '', '', '', '', numExcel(cliNeto)]); // fila cliente (F = neto del cliente)
+        // fila cliente: contacto (tel/email/ciudad de ventas_por_cliente, SIN llamada extra) + neto. Resto vacío.
+        aoa2.push([grp.grupo_nombre, grp.grupo_id, (grp.email || ''), (grp.ciudad || ''), '', '', '', '', numExcel(cliNeto)]);
         peds.forEach(o => {
-          aoa2.push(['↳ ' + (o.ped.codigo_publico || ''), fmtFecha(o.ped.cerrado_at), (o.ped.codigo_publico || ''),
-            (o.ped.es_devuelto ? 'Sí' : ''), '', numExcel(o.ped.pedido_venta)]); // pedido (F = pedido_venta NETO)
+          aoa2.push(['↳ ' + (o.ped.codigo_publico || ''), '', '', '', fmtFecha(o.ped.cerrado_at), (o.ped.codigo_publico || ''),
+            (o.ped.es_devuelto ? 'Sí' : ''), '', numExcel(o.ped.pedido_venta)]); // pedido: Fecha/Código/¿Devuelto?/Venta neta (sin contacto)
           o.items.forEach(it => aoa2.push(['    ↳↳ ' + it.referencia + (it.nombre ? ' · ' + it.nombre : ''),
-            '', '', '', numExcel(it.cantidad), numExcel(it.subtotal)])); // item (E = cantidad, F = subtotal)
+            '', '', '', '', '', '', numExcel(it.cantidad), numExcel(it.subtotal)])); // item: Cantidad + subtotal en Venta neta (sin contacto)
         });
         aoa2.push([]); // separador entre clientes
       }
       const hoja2 = { nombre: 'Por compra', aoa: aoa2,
-        cols: [{ wch: 38 }, { wch: 13 }, { wch: 18 }, { wch: 11 }, { wch: 10 }, { wch: 14 }] };
+        cols: [{ wch: 30 }, { wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 13 }, { wch: 18 }, { wch: 11 }, { wch: 10 }, { wch: 14 }] };
       xlsxDescargar(XLSX, [hoja1, hoja2], fname);
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
     finally { btn.disabled = false; btn.textContent = old; }
