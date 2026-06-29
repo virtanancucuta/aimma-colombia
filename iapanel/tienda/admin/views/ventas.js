@@ -560,7 +560,7 @@
     let html = '';
     rows.forEach(r => {
       html += filaGrupo(r, maxIng);
-      if (!r.es_sin_grupo && g.drillOpen[r.grupo_id]) html += drillGrupoHtml(r);
+      if (g.drillOpen[r.grupo_id || '__sin__']) html += drillGrupoHtml(r);
     });
     cont.innerHTML =
       '<div class="ta-card" style="padding:0;overflow:hidden;"><div class="ta-vta-grp">' +
@@ -581,15 +581,16 @@
 
   function filaGrupo(r, maxIng) {
     const T = window.TiendaIA;
-    const drillable = !r.es_sin_grupo;
-    const abierto = drillable && !!vtaState.grupo.drillOpen[r.grupo_id];
+    const drillable = !r.es_sin_grupo || vtaState.grupo.tipo !== 'cliente'; // sin-grupo drilleable en prov/cat, NO en cliente
+    const gkey = r.grupo_id || '__sin__';
+    const abierto = drillable && !!vtaState.grupo.drillOpen[gkey];
     const barW = Math.max(2, Math.round(Number(r.ingreso || 0) / maxIng * 100));
     const pct1 = (r.pct == null) ? '0' : String(Math.round(Number(r.pct) * 10) / 10);
     const rentab = grupoRentab(r);
     const rentabNeg = (rentab != null && rentab < 0);
     const costoCell = fmtCOP(num(r.costo)) + aproxBadge(r.costo_estimado_parcial);
     return '<div class="ta-vta-grprow' + (drillable ? '' : ' ta-vta-grprow--nodrill') + '"' +
-      (drillable ? ' data-gid="' + T.escapeHtml(r.grupo_id) + '" data-open="' + (abierto ? '1' : '0') + '" role="button" tabindex="0"' : '') + '>' +
+      (drillable ? ' data-gid="' + T.escapeHtml(gkey) + '" data-open="' + (abierto ? '1' : '0') + '" role="button" tabindex="0"' : '') + '>' +
       '<div class="ta-vta-grpname"><span class="ta-vta-chevron" aria-hidden="true"' + (drillable ? '' : ' style="visibility:hidden;"') + '>▸</span>' +
         (vtaState.grupo.tipo === 'cliente'
           ? '<span style="display:flex;flex-direction:column;line-height:1.25;min-width:0;"><strong>' + T.escapeHtml(r.grupo_nombre) + '</strong><span style="font-size:12px;color:var(--ta-text-mut);">' + T.escapeHtml(r.grupo_id || '') + '</span></span>'
@@ -611,7 +612,7 @@
   }
 
   function drillGrupoHtml(r) {
-    const T = window.TiendaIA, g = vtaState.grupo, gid = r.grupo_id;
+    const T = window.TiendaIA, g = vtaState.grupo, gid = r.grupo_id || '__sin__';
     const c = g.drillCache[gid];
     if (!c) return '<div class="ta-vta-grpdrill"><div class="ta-vta-grpdrill__msg">Cargando…</div></div>';
     // CLIENTE: ficha CRM con toggle "Por artículo / Por compra" (SOLO cliente; prov/cat no llevan toggle).
@@ -726,7 +727,14 @@
   async function loadGrupoDrill(gid, tipo) {
     const T = window.TiendaIA, sb = T.supabase();
     const cache = {};
-    if (tipo === 'proveedor') {
+    if (gid === '__sin__') {
+      // drill de "Sin proveedor"/"Sin categoria" via los booleanos (no hay id que pasar)
+      const { data } = await sb.rpc('ventas_resumen', {
+        p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso',
+        p_proveedor_id: null, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0, p_telefono: null,
+        p_sin_proveedor: tipo === 'proveedor', p_sin_categoria: tipo === 'categoria' });
+      cache.refs = data || [];
+    } else if (tipo === 'proveedor') {
       const { data } = await sb.rpc('ventas_resumen', {
         p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso',
         p_proveedor_id: gid, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 });
@@ -791,8 +799,12 @@
             numExcel(grp.neta), numExcel(grp.iva), numExcel(grp.costo), numExcel(grp.utilidad),
             pctExcel(rentab), (grp.pct == null ? '' : Math.round(Number(grp.pct) * 10) / 10)]);
         }
-        if (!grp.es_sin_grupo) {
-          const refArgs = tipo === 'proveedor'
+        // refs como hijas: grupos con id + sin-grupo de prov/cat (via booleanos). Cliente "Sin teléfono" se salta.
+        const fetchRefs = !grp.es_sin_grupo || tipo === 'proveedor' || tipo === 'categoria';
+        if (fetchRefs) {
+          const refArgs = grp.es_sin_grupo
+            ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: null, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0, p_telefono: null, p_sin_proveedor: tipo === 'proveedor', p_sin_categoria: tipo === 'categoria' }
+            : tipo === 'proveedor'
             ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: grp.grupo_id, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0 }
             : tipo === 'cliente'
             ? { p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta, p_orden: 'ingreso', p_proveedor_id: null, p_categoria_id: null, p_buscar: null, p_limit: null, p_offset: 0, p_telefono: grp.grupo_id }
