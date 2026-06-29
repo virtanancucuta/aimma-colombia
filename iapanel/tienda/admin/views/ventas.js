@@ -1174,6 +1174,8 @@
         p_limit: null, p_offset: 0 });
       if (error) throw error;
       if (!prods || !prods.length) { T.toast('No hay ventas para exportar con esos filtros.', 'info'); return; }
+
+      // ---- Hoja 1 "Por referencia" (la actual: una fila por producto + TOTAL) ----
       const aoa = [['Referencia', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '¿Costo aprox.?', 'Stock disponible', 'Cobertura (días)', 'Estado']];
       prods.forEach(r => {
         aoa.push([r.referencia, numExcel(r.unidades), numExcel(r.ingreso), numExcel(r.neta), numExcel(r.iva),
@@ -1185,11 +1187,41 @@
       const sum = (k) => prods.reduce((a, r) => a + Number(r[k] || 0), 0);
       aoa.push([]);
       aoa.push(['TOTAL', sum('unidades'), sum('ingreso'), sum('neta'), sum('iva'), sum('costo'), sum('utilidad'), '', '', sum('stock_disponible'), '', '']);
-      xlsxDescargar(XLSX, [{
-        nombre: 'Cobertura',
+      const hoja1 = {
+        nombre: 'Por referencia',
         aoa,
         cols: [{ wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 16 }, { wch: 16 }, { wch: 14 }],
-      }], 'ventas_cobertura_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
+      };
+
+      // ---- Hoja 2 "Por variante" (nueva: una fila por variante de TODOS los productos de la vista) ----
+      // ESCALA: 1 llamada a ventas_cobertura_variantes por producto (full-fetch, como el drill pero para todos).
+      // Con cientos de productos esto se optimizaria (RPC batch/multi-producto) — no ahora.
+      const ordenados = prods.slice().sort((a, b) => String(a.referencia || '').localeCompare(String(b.referencia || ''), 'es'));
+      const grupos = await Promise.all(ordenados.map(pr =>
+        sb.rpc('ventas_cobertura_variantes', {
+          p_tienda_id: p.p_tienda_id, p_producto_id: pr.producto_id, p_desde: p.p_desde, p_hasta: p.p_hasta,
+        }).then(res => ({ ref: pr.referencia, rows: (res.data || []), error: res.error }))
+      ));
+      const errGrupo = grupos.find(g => g.error);
+      if (errGrupo) throw errGrupo.error;
+      const aoa2 = [['Referencia', 'Color', 'Talla', 'SKU', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', 'Stock disponible', 'Cobertura (días)', 'Estado']];
+      grupos.forEach(g => {
+        g.rows.forEach(v => {
+          aoa2.push([g.ref, (v.color || ''), (v.talla || ''), (v.sku || ''),
+            numExcel(v.unidades), numExcel(v.ingreso), numExcel(v.neta), numExcel(v.iva),
+            numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad),
+            numExcel(v.stock_disponible),
+            (v.cobertura_dias == null ? 'Sin rotación' : Number(v.cobertura_dias)),
+            estadoLabel(v.estado)]);
+        });
+      });
+      const hoja2 = {
+        nombre: 'Por variante',
+        aoa: aoa2,
+        cols: [{ wch: 18 }, { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }],
+      };
+
+      xlsxDescargar(XLSX, [hoja1, hoja2], 'ventas_cobertura_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
     finally { btn.disabled = false; btn.textContent = old; }
   }
