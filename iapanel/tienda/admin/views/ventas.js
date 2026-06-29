@@ -368,7 +368,7 @@
     if (!vs) return vrowMsg('Cargando variantes…');
     if (!vs.length) return vrowMsg('Sin variantes.');
     return vs.map(v => {
-      const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+      const etiqueta = ejesConcat(v) || (v.sku || '—');
       const costoCell = fmtCOP(num(v.costo)) + aproxBadge(v.costo_estimado);
       return '<div class="ta-vta-vrow">' +
         '<span class="ta-vta-vmark" aria-hidden="true"></span>' +
@@ -498,7 +498,7 @@
         aoa.push([r.referencia, numExcel(r.unidades), numExcel(r.ingreso), numExcel(r.neta), numExcel(r.iva),
           numExcel(r.costo), numExcel(r.utilidad), pctExcel(r.rentabilidad), (r.costo_estimado ? 'Sí' : '')]);
         (byProd[r.producto_id] || []).forEach(v => {
-          const et = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '');
+          const et = ejesConcat(v) || (v.sku || '');
           aoa.push(['↳ ' + et, numExcel(v.unidades), numExcel(v.ingreso), numExcel(v.neta), numExcel(v.iva),
             numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad), (v.costo_estimado ? 'Sí' : '')]);
         });
@@ -1093,7 +1093,7 @@
   }
   function filaCoberturaVariante(v) {
     const T = window.TiendaIA;
-    const etiqueta = [v.color, v.talla].filter(Boolean).join(' · ') || (v.sku || '—');
+    const etiqueta = ejesConcat(v) || (v.sku || '—');
     const costoCell = fmtCOP(num(v.costo)) + aproxBadge(v.costo_estimado);
     const cob = fmtDias(v.cobertura_dias);
     const cobCell = (cob == null) ? '<span class="ta-vta-cob-sinrot">Sin rotación</span>' : cob;
@@ -1204,10 +1204,17 @@
       ));
       const errGrupo = grupos.find(g => g.error);
       if (errGrupo) throw errGrupo.error;
-      const aoa2 = [['Referencia', 'Color', 'Talla', 'SKU', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', 'Stock disponible', 'Cobertura (días)', 'Estado']];
+      // Columnas genericas Tipo N · Valor N (nombre del eje POR FILA via nombreEje -> multi-rubro convive en 1 hoja).
+      // Mapeo por slot: eje1=color (variante_tipo_1), eje2=talla (variante_tipo_2), eje3=atributo_3 (variante_tipo_3).
+      const aoa2 = [['Referencia', 'Tipo 1', 'Valor 1', 'Tipo 2', 'Valor 2', 'Tipo 3', 'Valor 3', 'SKU',
+        'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', 'Stock disponible', 'Cobertura (días)', 'Estado']];
       grupos.forEach(g => {
         g.rows.forEach(v => {
-          aoa2.push([g.ref, (v.color || ''), (v.talla || ''), (v.sku || ''),
+          aoa2.push([g.ref,
+            nombreEje(v.variante_tipo_1, 1), (v.color || ''),
+            nombreEje(v.variante_tipo_2, 2), (v.talla || ''),
+            nombreEje(v.variante_tipo_3, 3), (v.atributo_3 || ''),
+            (v.sku || ''),
             numExcel(v.unidades), numExcel(v.ingreso), numExcel(v.neta), numExcel(v.iva),
             numExcel(v.costo), numExcel(v.utilidad), pctExcel(v.rentabilidad),
             numExcel(v.stock_disponible),
@@ -1218,7 +1225,8 @@
       const hoja2 = {
         nombre: 'Por variante',
         aoa: aoa2,
-        cols: [{ wch: 18 }, { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }],
+        cols: [{ wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 16 },
+          { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }],
       };
 
       xlsxDescargar(XLSX, [hoja1, hoja2], 'ventas_cobertura_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
@@ -1230,6 +1238,10 @@
   // Utils
   // ============================================================
   function num(n) { return Number(n || 0); }
+  // Variantes genericas (B2): nombre de eje con fallback "Variante N" (UN solo lugar; lo usan todas las superficies)
+  function nombreEje(tipo, n) { return tipo || ('Variante ' + n); }
+  // Concat de los valores de los ejes definidos (omite null, separador ' · '). Sin fallback aqui -> lo pone el caller.
+  function ejesConcat(v) { return [v.color, v.talla, v.atributo_3].filter(Boolean).join(' · '); }
   function fmtCOP(n) {
     if (!n && n !== 0) return '$0';
     try { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); }
