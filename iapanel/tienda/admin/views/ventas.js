@@ -1,5 +1,5 @@
-/* AIMMA · Tienda IA · views/ventas.js · v3 · Fase 3a/3b + 4-UI-a · Ventas
-   Sub-pestañas: Artículo (3a/3b, viva) / Proveedor / Categoría (placeholder "Próximamente", se construyen en 4-UI-b).
+/* AIMMA · Tienda IA · views/ventas.js · v4 · Fase 3a/3b + 4-UI + Fase 6 · Ventas
+   Sub-pestañas: Artículo / Proveedor / Categoría / Cliente / Venta & Cobertura (Fase 6).
    Rango de fechas ARRIBA, compartido (montado 1 vez, persiste al cambiar de pestaña).
    Controles de orden/filtros/buscador/Excel DENTRO de la pestaña Artículo.
    renderActiveTab() re-monta SOLO #vta-tab-content -> los listeners viejos mueren con el DOM (sin duplicar);
@@ -20,12 +20,14 @@
     { id: 'proveedor', label: 'Proveedor' },
     { id: 'categoria', label: 'Categoría' },
     { id: 'cliente', label: 'Cliente' },
+    { id: 'cobertura', label: 'Venta & Cobertura' },
   ];
   const TAB_META = {
     articulo:  { titulo: 'Ventas por artículo',  sub: 'Lo que vendiste en el período, por referencia. La venta neta es sin IVA; la rentabilidad se calcula sobre la neta.' },
     proveedor: { titulo: 'Ventas por proveedor', sub: 'Cuánto vendiste agrupado por proveedor, en el período.' },
     categoria: { titulo: 'Ventas por categoría', sub: 'Cuánto vendiste agrupado por categoría, en el período.' },
     cliente:   { titulo: 'Ventas por cliente',   sub: 'Cuánto te compró cada cliente, en el período.' },
+    cobertura: { titulo: 'Venta & Cobertura',    sub: 'Qué tan rápido rota cada producto y cuántos días de stock te quedan al ritmo de venta del período.' },
   };
 
   // ============================================================
@@ -48,6 +50,13 @@
       loadedCatalogos: false,
       buscarTimer: null,
       grupo: null,            // 4-UI-b: { tipo, rows, drillCache, drillOpen } (solo el rango, NO hereda filtros)
+      cob: {                  // Fase 6: pestaña Venta & Cobertura — estado propio (no pisa Artículo)
+        orden: 'cobertura',   // default RPC = menor cobertura primero (urgente arriba)
+        page: { limit: 25, offset: 0 },
+        resumen: null,        // { rows, total }
+        filtros: { proveedor_id: '', categoria_id: '', buscar: '' },
+        buscarTimer: null,
+      },
     };
   }
 
@@ -115,6 +124,7 @@
     vtaState.totales = null; vtaState.resumen = null;
     vtaState.drillCache = {}; vtaState.drillOpen = {}; // el costo/agregado por variante depende del rango
     if (vtaState.tab === 'articulo') fetchAndRender();
+    else if (vtaState.tab === 'cobertura') { vtaState.cob.page.offset = 0; fetchCobertura(); }
     else renderActiveTab(); // Proveedor/Categoría: re-monta el panel (re-fetch + reset drill) con el nuevo rango
   }
 
@@ -140,6 +150,10 @@
       cont.innerHTML = renderArticuloPanel();
       wireArticulo();
       fetchAndRender();
+    } else if (vtaState.tab === 'cobertura') {
+      cont.innerHTML = renderCoberturaPanel();
+      wireCobertura();
+      fetchCobertura();
     } else {
       cont.innerHTML = renderGrupoPanel(vtaState.tab);
       wireGrupo(vtaState.tab);
@@ -859,6 +873,235 @@
       const hoja2 = { nombre: 'Por compra', aoa: aoa2,
         cols: [{ wch: 30 }, { wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 13 }, { wch: 18 }, { wch: 11 }, { wch: 10 }, { wch: 14 }] };
       xlsxDescargar(XLSX, [hoja1, hoja2], fname);
+    } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  }
+
+  // ============================================================
+  // Pestaña VENTA & COBERTURA (Fase 6) — lista de productos: venta (misma fuente: ventas_resumen)
+  // + stock disponible + cobertura en días + estado (semáforo). Consume RPC ventas_cobertura.
+  // Reusa el molde de Artículo (filtros/orden/buscador/Excel/paginación); SIN drill (es lista, no agrupada).
+  // Estado propio en vtaState.cob (orden/filtros) -> NO pisa Artículo. Clases CSS propias .ta-vta-cob*/.ta-vta-badge*.
+  // ============================================================
+  function renderCoberturaPanel() {
+    const T = window.TiendaIA, f = vtaState.cob.filtros;
+    const provOpts = '<option value="">Todos los proveedores</option>' +
+      vtaState.catalogos.proveedores.map(p => '<option value="' + T.escapeHtml(p.id) + '"' + (f.proveedor_id === p.id ? ' selected' : '') + '>' + T.escapeHtml(p.nombre) + '</option>').join('');
+    const catOpts = '<option value="">Todas las categorías</option>' +
+      vtaState.catalogos.categorias.map(c => '<option value="' + T.escapeHtml(c.id) + '"' + (f.categoria_id === c.id ? ' selected' : '') + '>' + (c.parent_id ? '— ' : '') + T.escapeHtml(c.nombre) + '</option>').join('');
+    const sel = (v) => vtaState.cob.orden === v ? ' selected' : '';
+    const ordenOpts =
+      '<option value="cobertura"' + sel('cobertura') + '>Menor cobertura (urgente)</option>' +
+      '<option value="cobertura_desc"' + sel('cobertura_desc') + '>Mayor cobertura</option>' +
+      '<option value="stock"' + sel('stock') + '>Mayor stock</option>' +
+      '<option value="ingreso"' + sel('ingreso') + '>Mayor venta</option>' +
+      '<option value="unidades"' + sel('unidades') + '>Mayor cantidad</option>' +
+      '<option value="utilidad"' + sel('utilidad') + '>Mayor utilidad</option>' +
+      '<option value="rentabilidad"' + sel('rentabilidad') + '>Mayor rentabilidad</option>' +
+      '<option value="referencia"' + sel('referencia') + '>Referencia (A-Z)</option>';
+    const hayFiltro = f.proveedor_id || f.categoria_id || f.buscar;
+    return '' +
+      '<div class="ta-card" style="padding:14px 16px;margin-bottom:12px;">' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">' +
+          '<input id="vta-cob-buscar" class="ta-input" type="text" placeholder="Buscar por referencia o nombre..." value="' + T.escapeHtml(f.buscar) + '" style="flex:1;min-width:220px;">' +
+          '<select id="vta-cob-proveedor" class="ta-select" style="max-width:220px;">' + provOpts + '</select>' +
+          '<select id="vta-cob-categoria" class="ta-select" style="max-width:220px;">' + catOpts + '</select>' +
+          '<select id="vta-cob-orden" class="ta-select" style="max-width:230px;">' + ordenOpts + '</select>' +
+          (hayFiltro ? '<button id="vta-cob-limpiar" class="ta-btn" style="white-space:nowrap;">Limpiar</button>' : '') +
+          '<button id="vta-cob-export" class="ta-btn" style="padding:6px 12px;white-space:nowrap;">⬇ Exportar a Excel</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="ta-vta-help" id="vta-cob-note">Cobertura calculada sobre los días del rango filtrado.</p>' +
+      '<div id="vta-cob-content"></div>';
+  }
+
+  function wireCobertura() {
+    const view = window.TiendaIA.dom.mainView;
+    const orden = view.querySelector('#vta-cob-orden');
+    if (orden) orden.addEventListener('change', () => {
+      vtaState.cob.orden = orden.value; vtaState.cob.page.offset = 0; fetchCobertura();
+    });
+    const prov = view.querySelector('#vta-cob-proveedor');
+    if (prov) prov.addEventListener('change', () => { vtaState.cob.filtros.proveedor_id = prov.value; vtaState.cob.page.offset = 0; fetchCobertura(); });
+    const cat = view.querySelector('#vta-cob-categoria');
+    if (cat) cat.addEventListener('change', () => { vtaState.cob.filtros.categoria_id = cat.value; vtaState.cob.page.offset = 0; fetchCobertura(); });
+    const buscar = view.querySelector('#vta-cob-buscar');
+    if (buscar) buscar.addEventListener('input', () => {
+      clearTimeout(vtaState.cob.buscarTimer);
+      vtaState.cob.buscarTimer = setTimeout(() => {
+        vtaState.cob.filtros.buscar = buscar.value.trim(); vtaState.cob.page.offset = 0; fetchCobertura();
+      }, 300);
+    });
+    const limpiar = view.querySelector('#vta-cob-limpiar');
+    if (limpiar) limpiar.addEventListener('click', () => {
+      vtaState.cob.filtros = { proveedor_id: '', categoria_id: '', buscar: '' };
+      vtaState.cob.page.offset = 0;
+      renderActiveTab(); // re-monta el panel (repuebla controles desde vtaState.cob)
+    });
+    const ex = view.querySelector('#vta-cob-export');
+    if (ex) ex.addEventListener('click', () => exportarExcelCobertura(ex));
+  }
+
+  function cobParams() {
+    const f = vtaState.cob.filtros;
+    return {
+      p_tienda_id: window.TiendaIA.state.tienda.id,
+      p_desde: vtaState.desde, p_hasta: vtaState.hasta,
+      p_proveedor_id: f.proveedor_id || null,
+      p_categoria_id: f.categoria_id || null,
+      p_buscar: f.buscar || null,
+    };
+  }
+
+  async function fetchCobertura() {
+    const T = window.TiendaIA, sb = T.supabase();
+    const cont = T.dom.mainView.querySelector('#vta-cob-content');
+    if (cont) cont.innerHTML = loadingCard();
+    try {
+      // Resolver el rango si está en null (la nota necesita los días resueltos; mismo coalesce mes-en-curso que la RPC).
+      if (!vtaState.desde || !vtaState.hasta) {
+        const { data: tdata } = await sb.rpc('ventas_totales', {
+          p_tienda_id: T.state.tienda.id, p_desde: vtaState.desde, p_hasta: vtaState.hasta,
+          p_proveedor_id: null, p_categoria_id: null, p_buscar: null });
+        const tot = (tdata && tdata[0]) || null;
+        if (tot) { vtaState.desde = String(tot.desde); vtaState.hasta = String(tot.hasta); syncDateInputs(); }
+      }
+      updateCobNote();
+      const p = cobParams();
+      const { data, error } = await sb.rpc('ventas_cobertura', {
+        p_tienda_id: p.p_tienda_id, p_desde: p.p_desde, p_hasta: p.p_hasta, p_orden: vtaState.cob.orden,
+        p_proveedor_id: p.p_proveedor_id, p_categoria_id: p.p_categoria_id, p_buscar: p.p_buscar,
+        p_limit: vtaState.cob.page.limit, p_offset: vtaState.cob.page.offset });
+      if (error) { if (cont) cont.innerHTML = errorCard(error.message); return; }
+      const rows = data || [];
+      vtaState.cob.resumen = { rows, total: rows.length ? Number(rows[0].total_count) : 0 };
+      renderCoberturaTabla(cont);
+    } catch (e) { if (cont) cont.innerHTML = errorCard(e.message || String(e)); }
+  }
+
+  function diasRango(d, h) {
+    if (!d || !h) return null;
+    const a = Date.parse(d + 'T00:00:00Z'), b = Date.parse(h + 'T00:00:00Z');
+    if (isNaN(a) || isNaN(b)) return null;
+    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+  }
+  function updateCobNote() {
+    const el = window.TiendaIA.dom.mainView.querySelector('#vta-cob-note');
+    if (!el) return;
+    const n = diasRango(vtaState.desde, vtaState.hasta);
+    el.textContent = n
+      ? 'Cobertura calculada sobre los ' + n + ' días del rango filtrado.'
+      : 'Cobertura calculada sobre los días del rango filtrado.';
+  }
+
+  function fmtDias(x) {
+    if (x == null) return null;
+    return Number(x).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' días';
+  }
+  const ESTADOS = {
+    quiebre:      { txt: 'Quiebre',      cls: 'quiebre' },
+    ruptura:      { txt: 'Ruptura',      cls: 'ruptura' },
+    sobrestock:   { txt: 'Sobrestock',   cls: 'sobrestock' },
+    normal:       { txt: 'Normal',       cls: 'normal' },
+    sin_rotacion: { txt: 'Sin rotación', cls: 'sinrot' },
+  };
+  function estadoBadge(estado) {
+    const m = ESTADOS[estado] || ESTADOS.normal;
+    return '<span class="ta-vta-badge ta-vta-badge--' + m.cls + '">' + m.txt + '</span>';
+  }
+  function estadoLabel(estado) { return (ESTADOS[estado] || { txt: estado || '—' }).txt; }
+
+  function renderCoberturaTabla(cont) {
+    if (!cont) return;
+    const { rows, total } = vtaState.cob.resumen;
+    if (!rows.length) {
+      cont.innerHTML = '<div class="ta-card"><div class="ta-empty" style="padding:32px 16px;">' +
+        '<h2 class="ta-empty__title">Sin ventas</h2>' +
+        '<p class="ta-empty__text">No hubo ventas cerradas con esos filtros en este período.</p></div></div>';
+      return;
+    }
+    const html = rows.map(filaCobertura).join('');
+    const desde = vtaState.cob.page.offset + 1;
+    const hasta = vtaState.cob.page.offset + rows.length;
+    cont.innerHTML =
+      '<div class="ta-card" style="padding:0;overflow:hidden;">' +
+        '<div class="ta-vta-cob">' +
+          '<div class="ta-vta-cobhead">' +
+            '<span></span><span>Referencia</span>' +
+            '<span style="text-align:right;">Unidades</span>' +
+            '<span style="text-align:right;">Ingreso</span>' +
+            '<span style="text-align:right;">Venta neta</span>' +
+            '<span style="text-align:right;">Costo</span>' +
+            '<span style="text-align:right;">Rentab.</span>' +
+            '<span style="text-align:right;">Stock disp.</span>' +
+            '<span style="text-align:right;">Cobertura</span>' +
+            '<span>Estado</span>' +
+          '</div>' + html +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;flex-wrap:wrap;">' +
+        '<span style="color:var(--ta-text-mut);font-size:13px;">' + total + ' producto(s) · mostrando ' + desde + '–' + hasta + '</span>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button id="vta-cob-prev" class="ta-btn" ' + (vtaState.cob.page.offset <= 0 ? 'disabled' : '') + ' style="padding:6px 12px;">← Anterior</button>' +
+          '<button id="vta-cob-next" class="ta-btn" ' + (hasta >= total ? 'disabled' : '') + ' style="padding:6px 12px;">Siguiente →</button>' +
+        '</div>' +
+      '</div>';
+    const prev = cont.querySelector('#vta-cob-prev'), next = cont.querySelector('#vta-cob-next');
+    if (prev) prev.addEventListener('click', () => { if (vtaState.cob.page.offset <= 0) return; vtaState.cob.page.offset -= vtaState.cob.page.limit; fetchCobertura(); });
+    if (next) next.addEventListener('click', () => { vtaState.cob.page.offset += vtaState.cob.page.limit; fetchCobertura(); });
+  }
+
+  function filaCobertura(r) {
+    const T = window.TiendaIA;
+    const foto = r.foto_principal_url
+      ? '<img class="ta-vta-thumb" src="' + T.escapeHtml(r.foto_principal_url) + '" alt="">'
+      : '<div class="ta-vta-thumb ta-vta-thumb--empty">📦</div>';
+    const costoCell = fmtCOP(num(r.costo)) + aproxBadge(r.costo_estimado);
+    const cob = fmtDias(r.cobertura_dias);
+    const cobCell = (cob == null) ? '<span class="ta-vta-cob-sinrot">Sin rotación</span>' : cob;
+    return '<div class="ta-vta-cobrow">' +
+      foto +
+      '<div class="ta-vta-ref"><strong>' + T.escapeHtml(r.referencia) + '</strong><span>' + T.escapeHtml(r.nombre || '') + '</span></div>' +
+      cell('num', 'Unidades', fmtNum(r.unidades)) +
+      cell('num', 'Ingreso', fmtCOP(num(r.ingreso))) +
+      cell('num', 'Venta neta', fmtCOP(num(r.neta))) +
+      cell('num', 'Costo', costoCell) +
+      cell('num', 'Rentab.', rentabTxt(r.rentabilidad)) +
+      cell('num', 'Stock disp.', fmtNum(r.stock_disponible)) +
+      cell('num', 'Cobertura', cobCell) +
+      '<div class="ta-vta-cell ta-vta-cobestado"><span class="ta-vta-cell__label">Estado</span>' + estadoBadge(r.estado) + '</div>' +
+    '</div>';
+  }
+
+  async function exportarExcelCobertura(btn) {
+    const T = window.TiendaIA, sb = T.supabase();
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const XLSX = await loadXLSX();
+      const p = cobParams();
+      // full-fetch (p_limit:null) -> exporta TODO el filtro/orden/rango vigente, no solo la página.
+      const { data: prods, error } = await sb.rpc('ventas_cobertura', {
+        p_tienda_id: p.p_tienda_id, p_desde: p.p_desde, p_hasta: p.p_hasta, p_orden: vtaState.cob.orden,
+        p_proveedor_id: p.p_proveedor_id, p_categoria_id: p.p_categoria_id, p_buscar: p.p_buscar,
+        p_limit: null, p_offset: 0 });
+      if (error) throw error;
+      if (!prods || !prods.length) { T.toast('No hay ventas para exportar con esos filtros.', 'info'); return; }
+      const aoa = [['Referencia', 'Unidades', 'Ingreso', 'Venta Neta', 'IVA', 'Costo', 'Utilidad', 'Rentabilidad %', '¿Costo aprox.?', 'Stock disponible', 'Cobertura (días)', 'Estado']];
+      prods.forEach(r => {
+        aoa.push([r.referencia, numExcel(r.unidades), numExcel(r.ingreso), numExcel(r.neta), numExcel(r.iva),
+          numExcel(r.costo), numExcel(r.utilidad), pctExcel(r.rentabilidad), (r.costo_estimado ? 'Sí' : ''),
+          numExcel(r.stock_disponible),
+          (r.cobertura_dias == null ? 'Sin rotación' : Number(r.cobertura_dias)),
+          estadoLabel(r.estado)]);
+      });
+      const sum = (k) => prods.reduce((a, r) => a + Number(r[k] || 0), 0);
+      aoa.push([]);
+      aoa.push(['TOTAL', sum('unidades'), sum('ingreso'), sum('neta'), sum('iva'), sum('costo'), sum('utilidad'), '', '', sum('stock_disponible'), '', '']);
+      xlsxDescargar(XLSX, [{
+        nombre: 'Cobertura',
+        aoa,
+        cols: [{ wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 16 }, { wch: 16 }, { wch: 14 }],
+      }], 'ventas_cobertura_' + slugTienda() + '_' + hoyExcel() + '.xlsx');
     } catch (e) { T.toast('No pudimos exportar: ' + (e.message || e), 'error'); }
     finally { btn.disabled = false; btn.textContent = old; }
   }
